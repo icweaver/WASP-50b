@@ -997,13 +997,13 @@ def plot_params():
 
 def plot_spec_file(
     ax,
-    fpath=None,
-    data=None,
-    wavs=None,
-    i=1,
-    label=None,
-    median_kwargs=None,
-    fill_kwargs=None,
+    fpath = None,
+    data = None,
+    wavs = None,
+    i = 1,
+    label = None,
+    median_kwargs = None,
+    fill_kwargs = None,
 ):
     """
     plots items in <object>_spec.fits files.
