@@ -56,6 +56,7 @@ def compress_pickle(fname_out, fpath_pickle):
     with bz2.BZ2File(f"{fname_out}.pbz2", "wb") as f:
         pickle.dump(data, f)
 
+
 def detrend_BMA_WLC(
     out_folder,
     ld_law="linear",
@@ -63,7 +64,7 @@ def detrend_BMA_WLC(
     omegamean=90.0,
     pl=0.0,
     pu=1.0,
-    JITTER=(200.0 * 1e-6)**2.0,
+    JITTER=(200.0 * 1e-6) ** 2.0,
 ):
     # File paths
     lc_path = f"{out_folder}/lc.dat"
@@ -94,7 +95,7 @@ def detrend_BMA_WLC(
     ########################
     BMA = pd.read_table(
         BMA_path,
-        escapechar='#',
+        escapechar="#",
         sep="\s+",
         index_col=" Variable",
     )
@@ -110,9 +111,7 @@ def detrend_BMA_WLC(
 
     if "rho" in BMA.columns:
         rhos = BMA.at["rho", "Value"]
-        aR = ((rhos * G * ((P * 24.0 * 3600.0) ** 2)) / (3.0 * np.pi)) ** (
-            1.0 / 3.0
-        )
+        aR = ((rhos * G * ((P * 24.0 * 3600.0) ** 2)) / (3.0 * np.pi)) ** (1.0 / 3.0)
     else:
         aR = BMA.at["aR", "Value"]
 
@@ -130,9 +129,7 @@ def detrend_BMA_WLC(
 
     ecc = eccmean
     omega = omegamean
-    ecc_factor = (1.0 + ecc * np.sin(omega * np.pi / 180.0)) / (
-        1.0 - ecc ** 2
-    )
+    ecc_factor = (1.0 + ecc * np.sin(omega * np.pi / 180.0)) / (1.0 - ecc ** 2)
     inc_inv_factor = (b / aR) * ecc_factor
     inc = np.arccos(inc_inv_factor) * 180.0 / np.pi
 
@@ -175,7 +172,7 @@ def detrend_BMA_WLC(
     )
 
     jitter = george.modeling.ConstantModel(np.log(JITTER))
-    ljitter = np.log(BMA.at["jitter", "Value"]**2)
+    ljitter = np.log(BMA.at["jitter", "Value"] ** 2)
     max_var = BMA.at["max_var", "Value"]
     alpha_names = [k for k in BMA.index if "alpha" in k]
     alphas = np.array([BMA.at[alpha, "Value"] for alpha in alpha_names])
@@ -199,22 +196,22 @@ def detrend_BMA_WLC(
 
     detrended_lc = f - (comp_model + pred_mean)
 
-    LC_det = 10**(-detrended_lc/2.51)
+    LC_det = 10 ** (-detrended_lc / 2.51)
     LC_det_err = np.sqrt(np.exp(ljitter))
     LC_transit_model = lcmodel
     LC_systematics_model = comp_model + pred_mean
 
     return {
-       "LC_det":LC_det,
-       "LC_det_err":LC_det_err,
-       "LC_transit_model":LC_transit_model,
-       "LC_systematics_model":LC_systematics_model,
-       "comp_model":comp_model,
-       "pred_mean":pred_mean,
-       "t":t,
-       "t0":t0,
-       "P":P,
-   }
+        "LC_det": LC_det,
+        "LC_det_err": LC_det_err,
+        "LC_transit_model": LC_transit_model,
+        "LC_systematics_model": LC_systematics_model,
+        "comp_model": comp_model,
+        "pred_mean": pred_mean,
+        "t": t,
+        "t0": t0,
+        "P": P,
+    }
 
 
 def decompress_pickle(fname):
@@ -261,7 +258,7 @@ def get_evidences(base_dir, relative_to_spot_only=False):
     if relative_to_spot_only:
         model_id = f"Het_FitP0_NoClouds_NoHaze_{fit_R0}_no_features"
         df_lnZ_min = load_pickle(f"{base_dir}/HATP23_E1_{model_id}/retrieval.pkl")
-        #print(f"spot only lnZ: {df_lnZ_min['lnZ']} +/- {df_lnZ_min['lnZerr']}")
+        # print(f"spot only lnZ: {df_lnZ_min['lnZ']} +/- {df_lnZ_min['lnZerr']}")
         species_min = "no_features"
         model_min = "spot only"
     else:
@@ -314,19 +311,20 @@ def get_table_stats(df, ps=[0.16, 0.5, 0.84], columns=None):
     latex_strs = df_latex.apply(write_latex_row2, axis=0)
     return pd.DataFrame(latex_strs, columns=columns)
 
+
 def init_batman(t, law):
     """
     This function initializes the batman code.
     """
     params = batman.TransitParams()
-    params.t0 = 0.
-    params.per = 1.
+    params.t0 = 0.0
+    params.per = 1.0
     params.rp = 0.1
-    params.a = 15.
-    params.inc = 87.
-    params.ecc = 0.
-    params.w = 90.
-    if law == 'linear':
+    params.a = 15.0
+    params.inc = 87.0
+    params.ecc = 0.0
+    params.w = 90.0
+    if law == "linear":
         params.u = [0.5]
     else:
         params.u = [0.1, 0.3]
@@ -334,26 +332,26 @@ def init_batman(t, law):
     m = batman.TransitModel(params, t)
     return params, m
 
+
 def get_transit_model(t, lc_params):
     # Load ld params and init model
-    ld_law = lc_params['ld_law']
+    ld_law = lc_params["ld_law"]
     params, m = init_batman(t, law=ld_law)
-    q1 = lc_params['q1']
-    if ld_law != 'linear':
-        q2 = lc_params['q2']
+    q1 = lc_params["q1"]
+    if ld_law != "linear":
+        q2 = lc_params["q2"]
         coeff1, coeff2 = reverse_ld_coeffs(ld_law, q1, q2)
         params.u = [coeff1, coeff2]
     else:
         params.u = [q1]
 
     # Load the rest of the transit params
-    params.t0 = lc_params['t0']
-    params.per = lc_params['P']
-    params.rp = lc_params['p']
-    params.a = lc_params['a']
-    params.inc = lc_params['inc']
+    params.t0 = lc_params["t0"]
+    params.per = lc_params["P"]
+    params.rp = lc_params["p"]
+    params.a = lc_params["a"]
+    params.inc = lc_params["inc"]
     return m.light_curve(params)
-
 
 
 def load_pickle(fpath):
@@ -731,14 +729,14 @@ def plot_corner(
 def plot_divided_wlcs(
     ax,
     data,
-    t0 = 0,
-    ferr = 0,
-    c = "b",
-    comps_to_use = None,
-    div_kwargs = None,
-    bad_div_kwargs = None,
-    bad_idxs_user = None,
-    comps_to_highlight = None,
+    t0=0,
+    ferr=0,
+    c="b",
+    comps_to_use=None,
+    div_kwargs=None,
+    bad_div_kwargs=None,
+    bad_idxs_user=None,
+    comps_to_highlight=None,
 ):
     # Create plotting config dictionaries if needed
     if div_kwargs is None:
@@ -768,7 +766,9 @@ def plot_divided_wlcs(
             for i in range(1, len(flux_div) - 1):
                 diff_left = np.abs(flux_div[i] - flux_div[i - 1])
                 diff_right = np.abs(flux_div[i] - flux_div[i + 1])
-                if ((diff_left > 3 * ferr) and (diff_right > 3 * ferr)) or airmass[i] >= 2:
+                if ((diff_left > 3 * ferr) and (diff_right > 3 * ferr)) or airmass[
+                    i
+                ] >= 2:
                     bad_idxs.append(i)
         # print(cName, bad_idxs)
 
@@ -792,14 +792,14 @@ def plot_divided_wlcs(
             ax.plot(
                 (time[bad_idxs_user] - t0) * 24.0,
                 flux_div[bad_idxs_user],
-                #yerr=ferr,
+                # yerr=ferr,
                 zorder=10,
                 **bad_div_kwargs,
             )
             ax.plot(
                 (time[bad_idxs_user] - t0) * 24.0,
                 flux_div[bad_idxs_user],
-                #yerr=ferr,
+                # yerr=ferr,
                 zorder=10,
                 **bad_div_kwargs,
             )
@@ -977,13 +977,13 @@ def plot_params():
         # pallete
         "axes.prop_cycle": mpl.cycler(
             color=[
-                #"#fdbf6f",  # Yellow
+                # "#fdbf6f",  # Yellow
                 "#f7ad4d",  # Yellow
                 "#ff7f00",  # Orange
-                #"#a6cee3",  # Cyan
+                # "#a6cee3",  # Cyan
                 "#5daed9",  # Cyan
-                #"#75bfe6",  # Cyan
-                #"#1f78b4",  # Blue
+                # "#75bfe6",  # Cyan
+                # "#1f78b4",  # Blue
                 "#126399",  # Blue
                 "plum",
                 "#956cb4",  # Purple
@@ -997,13 +997,13 @@ def plot_params():
 
 def plot_spec_file(
     ax,
-    fpath = None,
-    data = None,
-    wavs = None,
-    i = 1,
-    label = None,
-    median_kwargs = None,
-    fill_kwargs = None,
+    fpath=None,
+    data=None,
+    wavs=None,
+    i=1,
+    label=None,
+    median_kwargs=None,
+    fill_kwargs=None,
 ):
     """
     plots items in <object>_spec.fits files.
@@ -1073,16 +1073,14 @@ def plot_tspec_IMACS(ax, data_dict):
         depth_wlc_stats.append([wlc_depth, wlc_depth_u, wlc_depth_d])
 
         # Tspec
-        df_wavs = transit_data["tspec"][
-            ["Wav_d", "Wav_u"]
-        ]
+        df_wavs = transit_data["tspec"][["Wav_d", "Wav_u"]]
         wav = np.mean(df_wavs, axis=1)
         df_tspec = transit_data["tspec"][
             ["Depth (ppm)", "Depthup (ppm)", "DepthDown (ppm)"]
         ]
         tspec, tspec_u, tspec_d = df_tspec.values.T
         tspec_stats.append([tspec, tspec_u, tspec_d])
-        ax.errorbar(wav, tspec, yerr=tspec_u, fmt='o')
+        ax.errorbar(wav, tspec, yerr=tspec_u, fmt="o")
 
     # Compute offset
     depth_wlc_stats = np.array(depth_wlc_stats)
@@ -1092,40 +1090,40 @@ def plot_tspec_IMACS(ax, data_dict):
     )
 
     wlc_offsets = depth_wlc - mean_wlc_depth
-    #wlc_offsets *= 0
+    # wlc_offsets *= 0
     print(f"offsets: {wlc_offsets}")
     print(f"offsets (% mean wlc depth): {wlc_offsets*100/mean_wlc_depth}")
-    #[print(tspec_stats[i]) for i in range(len(tspec_stats))]
-    #tspec_stats = np.array(tspec_stats)  # transits x (depth, u, d) x wavelength
-    #tspec_stats[:, 0, :] -= wlc_offsets[np.newaxis].T
+    # [print(tspec_stats[i]) for i in range(len(tspec_stats))]
+    # tspec_stats = np.array(tspec_stats)  # transits x (depth, u, d) x wavelength
+    # tspec_stats[:, 0, :] -= wlc_offsets[np.newaxis].T
 
-    #tspec_depths = tspec_stats[:, 0, :]
-    #tspec_us = tspec_stats[:, 1, :]
-    #tspec_ds = tspec_stats[:, 2, :]
+    # tspec_depths = tspec_stats[:, 0, :]
+    # tspec_us = tspec_stats[:, 1, :]
+    # tspec_ds = tspec_stats[:, 2, :]
 
     #######
     ## Plot
     #######
 
-    #ax.axhline(mean_wlc_depth, color="darkgrey", zorder=0, ls="--")
+    # ax.axhline(mean_wlc_depth, color="darkgrey", zorder=0, ls="--")
 
     ## Species
-    #species = {
+    # species = {
     #    "Na I-D": 5892.9,
     #    # "Hα":6564.6,
     #    "K I_avg": 7682.0,
     #    "Na I-8200_avg": 8189.0,
-    #}
-    #[
+    # }
+    # [
     #    ax.axvline(wav, ls="--", lw=0.5, color="grey", zorder=0)
     #    for name, wav in species.items()
-    #]
+    # ]
 
-    #tspec_tables = {}  # Each entry will hold Table(Transit, Depth, Up , Down)
+    # tspec_tables = {}  # Each entry will hold Table(Transit, Depth, Up , Down)
     ## For combining into latex later
-    #for transit, tspec, tspec_d, tspec_u in zip(
+    # for transit, tspec, tspec_d, tspec_u in zip(
     #    data_dict.keys(), tspec_depths, tspec_ds, tspec_us
-    #):
+    # ):
     #    ax.errorbar(
     #        wav,
     #        tspec,
@@ -1180,33 +1178,33 @@ def plot_tspec_IMACS(ax, data_dict):
     ##)
 
     ## Write to table
-    #tspec_table = pd.DataFrame()
-    #tspec_table["Wavelength (Å)"] = df_wavs.apply(write_latex_wav, axis=1)
+    # tspec_table = pd.DataFrame()
+    # tspec_table["Wavelength (Å)"] = df_wavs.apply(write_latex_wav, axis=1)
     ## Transmission spectra
-    #for transit, df_tspec in tspec_tables.items():
+    # for transit, df_tspec in tspec_tables.items():
     #    tspec_table[transit] = df_tspec.apply(write_latex_sig_fig, axis=1)
     ##data = np.array([tspec_combined, tspec_combined_unc]).T
     ##df_combined = pd.DataFrame(data, columns=["Combined", "Unc"])
     ##tspec_table["Combined"] = df_combined.apply(write_latex_single_sig_fig, axis=1)
     ## Save data
-    #table_suffix = "full" if "full" in dirpath else "species"
-    #out_path_tspec = f"{base_dir}/tspecs_{table_suffix}.csv"
-    #print(f"Saving tspec to: {out_path_tspec}")
-    #tspec_table.to_csv(out_path_tspec, index=False)
+    # table_suffix = "full" if "full" in dirpath else "species"
+    # out_path_tspec = f"{base_dir}/tspecs_{table_suffix}.csv"
+    # print(f"Saving tspec to: {out_path_tspec}")
+    # tspec_table.to_csv(out_path_tspec, index=False)
     ##np.savetxt(
     ##    f"{base_dir}/tspec_{table_suffix}.txt",
     ##    np.c_[wav, data],
     ##    header="wav(Å) depth(ppm) depth_unc(ppm)",
     ##),
-    #np.savetxt(
+    # np.savetxt(
     #    f"{base_dir}/mean_wlc_depth_{table_suffix}.txt",
     #    np.c_[mean_wlc_depth, mean_wlc_depth_unc],
     #    header="depth(ppm) depth_unc(ppm)",
-    #)
+    # )
 
-    #ax.legend(loc=1, ncol=6, frameon=True, fontsize=11)
+    # ax.legend(loc=1, ncol=6, frameon=True, fontsize=11)
     ## Inset plots
-    #if "species" in dirpath:
+    # if "species" in dirpath:
     #    margin = 10
     #    plot_inset(
     #        ax,
@@ -1245,17 +1243,17 @@ def plot_tspec_IMACS(ax, data_dict):
     ## Save
     ##ax.set_xlim(5106.55, 9362.45)
     ##ax.set_ylim(9_500, 16_500)
-    #ax.set_xlabel("Wavelength (Å)")
-    #ax.set_ylabel(r"Transit Depth (ppm)")
+    # ax.set_xlabel("Wavelength (Å)")
+    # ax.set_ylabel(r"Transit Depth (ppm)")
 
-    #print("mean WLC depth:", mean_wlc_depth, mean_wlc_depth_unc)
-    #Rs = 1.152 * uni.solRad
-    #Rp = np.sqrt(mean_wlc_depth * 1e-6 * Rs ** 2)
-    #Mp = 1.92 * uni.jupiterMass
-    #gp = const.G * Mp / Rp ** 2
-    #print("Rp (Rj):", Rp.to("Rjupiter"))
-    #print("Rs (Rsun):", Rs.to("Rsun"))
-    #print("gp (m/s^2):", gp.to("cm/s^2"))
+    # print("mean WLC depth:", mean_wlc_depth, mean_wlc_depth_unc)
+    # Rs = 1.152 * uni.solRad
+    # Rp = np.sqrt(mean_wlc_depth * 1e-6 * Rs ** 2)
+    # Mp = 1.92 * uni.jupiterMass
+    # gp = const.G * Mp / Rp ** 2
+    # print("Rp (Rj):", Rp.to("Rjupiter"))
+    # print("Rs (Rsun):", Rs.to("Rsun"))
+    # print("gp (m/s^2):", gp.to("cm/s^2"))
 
     return ax
 
@@ -1365,26 +1363,28 @@ def write_latex_wav(row):
     wav_d, wav_u = row
     return f"{wav_d:.1f} - {wav_u:.1f}"
 
+
 # PCA TOOLS:
 def get_sigma(x):
     """
     This function returns the MAD-based standard-deviation.
     """
     median = np.median(x)
-    mad = np.median(np.abs(x-median))
-    return 1.4826*mad
+    mad = np.median(np.abs(x - median))
+    return 1.4826 * mad
+
 
 def standarize_data(input_data):
     output_data = np.copy(input_data)
-    averages = np.median(input_data,axis=1)
+    averages = np.median(input_data, axis=1)
     for i in range(len(averages)):
-        sigma = get_sigma(output_data[i,:])
-        output_data[i,:] = output_data[i,:] - averages[i]
-        output_data[i,:] = output_data[i,:]/sigma
+        sigma = get_sigma(output_data[i, :])
+        output_data[i, :] = output_data[i, :] - averages[i]
+        output_data[i, :] = output_data[i, :] / sigma
     return output_data
 
 
-def classic_PCA(Input_Data, standarize = True):
+def classic_PCA(Input_Data, standarize=True):
     """
     classic_PCA function
     Description
@@ -1394,10 +1394,10 @@ def classic_PCA(Input_Data, standarize = True):
         Data = standarize_data(Input_Data)
     else:
         Data = np.copy(Input_Data)
-    eigenvectors_cols,eigenvalues,eigenvectors_rows = np.linalg.svd(np.cov(Data))
+    eigenvectors_cols, eigenvalues, eigenvectors_rows = np.linalg.svd(np.cov(Data))
     idx = eigenvalues.argsort()
     eigenvalues = eigenvalues[idx[::-1]]
-    eigenvectors_cols = eigenvectors_cols[:,idx[::-1]]
-    eigenvectors_rows = eigenvectors_rows[idx[::-1],:]
+    eigenvectors_cols = eigenvectors_cols[:, idx[::-1]]
+    eigenvectors_rows = eigenvectors_rows[idx[::-1], :]
     # Return: V matrix, eigenvalues and the principal components.
-    return eigenvectors_rows,eigenvalues,np.dot(eigenvectors_rows,Data)
+    return eigenvectors_rows, eigenvalues, np.dot(eigenvectors_rows, Data)
