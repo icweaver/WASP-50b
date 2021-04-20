@@ -95,9 +95,9 @@ def detrend_BMA_WLC(
     ########################
     BMA = pd.read_table(
         BMA_path,
-        escapechar="#",
+        comment="#",
         sep="\s+",
-        index_col=" Variable",
+        index_col="Variable",
     )
 
     mmeani, t0, P, r1, r2, q1 = (
@@ -653,7 +653,7 @@ def plot_chips(dirpath, fpathame, target="", vmin=0, vmax=2_000, spec_ap=0, sky_
             y = -0.2
         ax.set_title("Chip " + (chips[i])[1:], fontsize=12, y=y)
         ax.grid(False)
-        date_time = f"{h['DATE-OBS']} -- {h['TIME-OBS']}"
+        date_time = f"{h['DATE-OBS']} -- {h['UT-TIME']}"
 
     plt.axis("off")
     fig.colorbar(im, cax=grid.cbar_axes[0])
@@ -737,6 +737,7 @@ def plot_divided_wlcs(
     bad_div_kwargs=None,
     bad_idxs_user=None,
     comps_to_highlight=None,
+    use_time=True,
 ):
     # Create plotting config dictionaries if needed
     if div_kwargs is None:
@@ -746,7 +747,10 @@ def plot_divided_wlcs(
     flux_target = np.c_[data["oLC"]]
     flux_comps = data["cLC"]
     cNames = data["cNames"]  # Original unsorted order from tepspec
-    time = data["t"]
+    if use_time:
+        time = data["t"]
+    else:
+        time = np.arange(0, len(flux_target))
     airmass = data["Z"]
     flux_comps = flux_comps[:, np.argsort(cNames)]  # Sort columns by cName
     cNames = sorted(cNames)
@@ -766,21 +770,11 @@ def plot_divided_wlcs(
             for i in range(1, len(flux_div) - 1):
                 diff_left = np.abs(flux_div[i] - flux_div[i - 1])
                 diff_right = np.abs(flux_div[i] - flux_div[i + 1])
-                if ((diff_left > 3 * ferr) and (diff_right > 3 * ferr)) or airmass[
-                    i
-                ] >= 2:
+                if ((diff_left > 3 * ferr) and (diff_right > 3 * ferr)) or airmass[i] >= 2:
                     bad_idxs.append(i)
+            #print(bad_idxs)
         # print(cName, bad_idxs)
 
-        # ax.plot(
-        #    (time[bad_idxs] - t0) * 24.0,
-        #    flux_div[bad_idxs],
-        #    #yerr=ferr,
-        #    "k.",
-        #    ms=15,
-        #    zorder=10,
-        #    #**bad_div_kwargs,
-        # )
         if bad_idxs_user is not None:
             if isinstance(bad_idxs_user, str):
                 bad_idxs_user = _bad_idxs(bad_idxs_user)
@@ -790,14 +784,14 @@ def plot_divided_wlcs(
                 bad_div_kwargs["mec"] = "grey"
                 div_kwargs["c"] = "grey"
             ax.plot(
-                (time[bad_idxs_user] - t0) * 24.0,
+                (time[bad_idxs_user] - t0),
                 flux_div[bad_idxs_user],
                 # yerr=ferr,
                 zorder=10,
                 **bad_div_kwargs,
             )
             ax.plot(
-                (time[bad_idxs_user] - t0) * 24.0,
+                (time[bad_idxs_user] - t0),
                 flux_div[bad_idxs_user],
                 # yerr=ferr,
                 zorder=10,
@@ -806,11 +800,21 @@ def plot_divided_wlcs(
             # bad_idxs = set(bad_idxs_user).union(set(bad_idxs))
             # bad_idxs = list(bad_idxs)
 
+        ax.plot(
+           (time[bad_idxs] - t0),
+           flux_div[bad_idxs],
+           #yerr=ferr,
+           "k.",
+           ms=5,
+           zorder=10,
+           #**bad_div_kwargs,
+        )
+
         idxs = np.arange(len(flux_div))
         flux_div_used = flux_div  # [idxs != bad_idxs_user]
         idxs_used = idxs  # [idxs != bad_idxs_user]
         ax.errorbar(
-            (time[idxs_used] - t0) * 24.0,
+            (time[idxs_used] - t0),
             flux_div_used,
             yerr=ferr,
             label=cName,
@@ -1060,8 +1064,9 @@ def plot_spec_file(
     return ax, wavs, data
 
 
-def plot_tspec_IMACS(ax, data_dict):
+def plot_tspec_IMACS(ax, base_dir, data_dict):
     depth_wlc_stats = []
+    wavs = []
     tspec_stats = []
     for transit, transit_data in data_dict.items():
         # WLCs
@@ -1075,12 +1080,12 @@ def plot_tspec_IMACS(ax, data_dict):
         # Tspec
         df_wavs = transit_data["tspec"][["Wav_d", "Wav_u"]]
         wav = np.mean(df_wavs, axis=1)
+        wavs.append(wav.values)
         df_tspec = transit_data["tspec"][
             ["Depth (ppm)", "Depthup (ppm)", "DepthDown (ppm)"]
         ]
         tspec, tspec_u, tspec_d = df_tspec.values.T
         tspec_stats.append([tspec, tspec_u, tspec_d])
-        ax.errorbar(wav, tspec, yerr=tspec_u, fmt="o")
 
     # Compute offset
     depth_wlc_stats = np.array(depth_wlc_stats)
@@ -1090,119 +1095,128 @@ def plot_tspec_IMACS(ax, data_dict):
     )
 
     wlc_offsets = depth_wlc - mean_wlc_depth
+    #for i, (wav, tspec, offs) in enumerate(zip(wavs, tspec_stats, wlc_offsets), start=1):
+    #    t = tspec[0] - offs
+    #    yerr = np.r_[[tspec[2], tspec[1]]]
+    #    ax.errorbar(
+    #        wav,
+    #        t,
+    #        yerr=yerr,
+    #        fmt="o",
+    #        label=f"Transit {i}",
+    #    )
+    #    print("lower avg, upper avg:", np.mean(yerr, axis=1))
     # wlc_offsets *= 0
     print(f"offsets: {wlc_offsets}")
     print(f"offsets (% mean wlc depth): {wlc_offsets*100/mean_wlc_depth}")
-    # [print(tspec_stats[i]) for i in range(len(tspec_stats))]
-    # tspec_stats = np.array(tspec_stats)  # transits x (depth, u, d) x wavelength
-    # tspec_stats[:, 0, :] -= wlc_offsets[np.newaxis].T
+    tspec_stats = np.array(tspec_stats)  # transits x (depth, u, d) x wavelength
+    tspec_stats[:, 0, :] -= wlc_offsets[np.newaxis].T
 
-    # tspec_depths = tspec_stats[:, 0, :]
-    # tspec_us = tspec_stats[:, 1, :]
-    # tspec_ds = tspec_stats[:, 2, :]
+    tspec_depths = tspec_stats[:, 0, :]
+    tspec_us = tspec_stats[:, 1, :]
+    tspec_ds = tspec_stats[:, 2, :]
 
     #######
     ## Plot
     #######
 
-    # ax.axhline(mean_wlc_depth, color="darkgrey", zorder=0, ls="--")
+    ax.axhline(mean_wlc_depth, color="darkgrey", zorder=0, ls="--")
 
-    ## Species
-    # species = {
-    #    "Na I-D": 5892.9,
-    #    # "Hα":6564.6,
-    #    "K I_avg": 7682.0,
-    #    "Na I-8200_avg": 8189.0,
-    # }
-    # [
-    #    ax.axvline(wav, ls="--", lw=0.5, color="grey", zorder=0)
-    #    for name, wav in species.items()
-    # ]
+    # Species
+    species = {
+       "Na I-D": 5892.9,
+       # "Hα":6564.6,
+       "K I_avg": 7682.0,
+       "Na I-8200_avg": 8189.0,
+    }
+    [
+       ax.axvline(wav, ls="--", lw=0.5, color="grey", zorder=0)
+       for name, wav in species.items()
+    ]
 
-    # tspec_tables = {}  # Each entry will hold Table(Transit, Depth, Up , Down)
-    ## For combining into latex later
-    # for transit, tspec, tspec_d, tspec_u in zip(
-    #    data_dict.keys(), tspec_depths, tspec_ds, tspec_us
-    # ):
-    #    ax.errorbar(
-    #        wav,
-    #        tspec,
-    #        yerr=[tspec_d, tspec_u],
-    #        fmt="o",
-    #        alpha=1.0,
-    #        mew=0,
-    #        label=transit,
-    #        barsabove=False,
-    #    )
+    tspec_tables = {}  # Each entry will hold Table(Transit, Depth, Up , Down)
+    # For combining into latex later
+    for transit, tspec, tspec_d, tspec_u in zip(
+       data_dict.keys(), tspec_depths, tspec_ds, tspec_us
+    ):
+        ax.errorbar(
+            wav,
+            tspec,
+            yerr=[tspec_d, tspec_u],
+            fmt="o",
+            alpha=1.0,
+            mew=0,
+            label=transit,
+            barsabove=False,
+        )
 
-    #    data_i = {}
-    #    data_i["Depth (ppm)"] = tspec
-    #    data_i["Depthup (ppm)"] = tspec_u
-    #    data_i["DepthDown (ppm)"] = tspec_d
-    #    df = pd.DataFrame(data_i)
-    #    tspec_tables[transit] = df
+        data_i = {}
+        data_i["Depth (ppm)"] = tspec
+        data_i["Depthup (ppm)"] = tspec_u
+        data_i["DepthDown (ppm)"] = tspec_d
+        df = pd.DataFrame(data_i)
+        tspec_tables[transit] = df
 
-    ##tspec_combined = []
-    ##tspec_combined_unc = []
-    ##tspec_combined_max = []
-    ##tspec_combined_unc_max = []
-    ##for i in range(len(tspec_stats[0, 0, :])):
-    ##    tspec_comb, tspec_comb_unc = weighted_mean_uneven_errors(
-    ##        tspec_stats[:, 0, i], tspec_stats[:, 1, i], tspec_stats[:, 2, i]
-    ##    )
-    ##    tspec_combined.append(tspec_comb)
-    ##    tspec_combined_unc.append(tspec_comb_unc)
+    tspec_combined = []
+    tspec_combined_unc = []
+    tspec_combined_max = []
+    tspec_combined_unc_max = []
+    for i in range(len(tspec_stats[0, 0, :])):
+        tspec_comb, tspec_comb_unc = weighted_mean_uneven_errors(
+            tspec_stats[:, 0, i], tspec_stats[:, 1, i], tspec_stats[:, 2, i]
+        )
+        tspec_combined.append(tspec_comb)
+        tspec_combined_unc.append(tspec_comb_unc)
 
-    ##    # single errorbar way
-    ##    uncs_max = np.max([tspec_stats[:, 1, i], tspec_stats[:, 2, i]], axis=0)
-    ##    weights = 1 / uncs_max ** 2
-    ##    tspec_comb_max = np.average(tspec_stats[:, 0, i], weights=weights)
-    ##    tspec_comb_max_unc = weighted_err(uncs_max)
-    ##    tspec_combined_max.append(tspec_comb_max)
-    ##    tspec_combined_unc_max.append(tspec_comb_max_unc)
+        # single errorbar way
+        uncs_max = np.max([tspec_stats[:, 1, i], tspec_stats[:, 2, i]], axis=0)
+        weights = 1 / uncs_max ** 2
+        tspec_comb_max = np.average(tspec_stats[:, 0, i], weights=weights)
+        tspec_comb_max_unc = weighted_err(uncs_max)
+        tspec_combined_max.append(tspec_comb_max)
+        tspec_combined_unc_max.append(tspec_comb_max_unc)
 
     ### Combined
-    ##tspec_combined = np.array(tspec_combined)
-    ##tspec_combined_unc = np.array(tspec_combined_unc)
-    ##p = ax.errorbar(
-    ##    wav,
-    ##    tspec_combined,
-    ##    yerr=tspec_combined_unc,
-    ##    c="w",
-    ##    mec="k",
-    ##    fmt="o",
-    ##    zorder=10,
-    ##    label="combined",
-    ##    ecolor="k",
-    ##    lw=4,
-    ##)
+    tspec_combined = np.array(tspec_combined)
+    tspec_combined_unc = np.array(tspec_combined_unc)
+    p = ax.errorbar(
+        wav,
+        tspec_combined,
+        yerr=tspec_combined_unc,
+        c="w",
+        mec="k",
+        fmt="o",
+        zorder=10,
+        label="combined",
+        ecolor="k",
+        lw=4,
+    )
+    print("Mean depth unc (ppm):", np.mean(tspec_combined_unc))
+    print("Median depth unc (ppm)", np.median(tspec_combined_unc))
 
-    ## Write to table
-    # tspec_table = pd.DataFrame()
-    # tspec_table["Wavelength (Å)"] = df_wavs.apply(write_latex_wav, axis=1)
-    ## Transmission spectra
-    # for transit, df_tspec in tspec_tables.items():
-    #    tspec_table[transit] = df_tspec.apply(write_latex_sig_fig, axis=1)
-    ##data = np.array([tspec_combined, tspec_combined_unc]).T
-    ##df_combined = pd.DataFrame(data, columns=["Combined", "Unc"])
-    ##tspec_table["Combined"] = df_combined.apply(write_latex_single_sig_fig, axis=1)
-    ## Save data
-    # table_suffix = "full" if "full" in dirpath else "species"
-    # out_path_tspec = f"{base_dir}/tspecs_{table_suffix}.csv"
-    # print(f"Saving tspec to: {out_path_tspec}")
-    # tspec_table.to_csv(out_path_tspec, index=False)
-    ##np.savetxt(
-    ##    f"{base_dir}/tspec_{table_suffix}.txt",
-    ##    np.c_[wav, data],
-    ##    header="wav(Å) depth(ppm) depth_unc(ppm)",
-    ##),
-    # np.savetxt(
-    #    f"{base_dir}/mean_wlc_depth_{table_suffix}.txt",
-    #    np.c_[mean_wlc_depth, mean_wlc_depth_unc],
-    #    header="depth(ppm) depth_unc(ppm)",
-    # )
+    # Write to table
+    tspec_table = pd.DataFrame()
+    tspec_table["Wavelength (Å)"] = df_wavs.apply(write_latex_wav, axis=1)
+    # Transmission spectra
+    for transit, df_tspec in tspec_tables.items():
+       tspec_table[transit] = df_tspec.apply(write_latex_sig_fig, axis=1)
+    data = np.array([tspec_combined, tspec_combined_unc]).T
+    df_combined = pd.DataFrame(data, columns=["Combined", "Unc"])
+    tspec_table["Combined"] = df_combined.apply(write_latex_single_sig_fig, axis=1)
+    # Save data
+    wlc_depth_info = f"# Mean WLC Depth (ppm): {mean_wlc_depth} +/- {mean_wlc_depth_unc}"
+    out_path_tspec = f"{base_dir}/tspecs.csv"
+    print(f"\nSaving tspecs to: {out_path_tspec}")
+    with open(out_path_tspec, 'w') as f:
+        f.write(f"{wlc_depth_info}\n")
+        tspec_table.to_csv(f, index=False)
+    np.savetxt(
+        f"{base_dir}/tspec_combined.txt",
+        np.c_[wav, data],
+        header=f"{wlc_depth_info}\nwav(Å) depth(ppm) depth_unc(ppm)",
+    ),
 
-    # ax.legend(loc=1, ncol=6, frameon=True, fontsize=11)
+    ax.legend(loc=1, ncol=6, frameon=True, fontsize=12)
     ## Inset plots
     # if "species" in dirpath:
     #    margin = 10
@@ -1243,17 +1257,17 @@ def plot_tspec_IMACS(ax, data_dict):
     ## Save
     ##ax.set_xlim(5106.55, 9362.45)
     ##ax.set_ylim(9_500, 16_500)
-    # ax.set_xlabel("Wavelength (Å)")
-    # ax.set_ylabel(r"Transit Depth (ppm)")
+    ax.set_xlabel("Wavelength (Å)")
+    ax.set_ylabel(r"Transit Depth (ppm)")
 
-    # print("mean WLC depth:", mean_wlc_depth, mean_wlc_depth_unc)
-    # Rs = 1.152 * uni.solRad
-    # Rp = np.sqrt(mean_wlc_depth * 1e-6 * Rs ** 2)
-    # Mp = 1.92 * uni.jupiterMass
-    # gp = const.G * Mp / Rp ** 2
-    # print("Rp (Rj):", Rp.to("Rjupiter"))
-    # print("Rs (Rsun):", Rs.to("Rsun"))
-    # print("gp (m/s^2):", gp.to("cm/s^2"))
+    print("mean WLC depth:", mean_wlc_depth, mean_wlc_depth_unc)
+    Rs = 1.152 * uni.solRad
+    Rp = np.sqrt(mean_wlc_depth * 1e-6 * Rs ** 2)
+    Mp = 1.92 * uni.jupiterMass
+    gp = const.G * Mp / Rp ** 2
+    print("Rp (Rj):", Rp.to("Rjupiter"))
+    print("Rs (Rsun):", Rs.to("Rsun"))
+    print("gp (m/s^2):", gp.to("cm/s^2"))
 
     return ax
 
