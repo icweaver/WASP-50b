@@ -463,19 +463,19 @@ def plot_binned(
             # trans = transforms.blended_transform_factory(
             #            ax.transAxes, ax.transData
             #        )
-            trans = transforms.blended_transform_factory(ax.transData, ax.transData)
+            trans = transforms.blended_transform_factory(ax.transAxes, ax.transData)
             # Annotate wavelength bins
             ann = ax.annotate(
-                wav_bin,
-                # xy=(0, 1.004*(1 + offs)),
-                xy=(idxs_used[-1], 1.002 * (1 + offs)),
-                xycoords=trans,
+                f"${wav_bin[0]} - {wav_bin[1]}$ Å",
+                xy = (0.8, 1.002*(1 + offs)),
+                #xy=(idxs_used[-30], 1.002 * (1 + offs)),
+                xycoords = trans,
                 **annotate_kwargs,
             )
             rms = np.std(fluxes[:, i]) * 1e6
             ann_rms = ax.annotate(
                 f"{int(rms)}",
-                xy=(idxs_used[0], 1.002 * (1 + offs)),
+                xy=(0.1, 1.002 * (1 + offs)),
                 xycoords=trans,
                 **annotate_rms_kwargs,
             )
