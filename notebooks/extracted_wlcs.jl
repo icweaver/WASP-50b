@@ -15,10 +15,19 @@ end
 
 # ╔═╡ b1b0690a-a1eb-11eb-1590-396d92c80c23
 begin
-	using PlutoUI
-	using Gadfly, ColorSchemes, Compose, Fontconfig
+	import PlutoUI
+	#using Gadfly, ColorSchemes, Compose
+	#import Cairo, Fontconfig
 	using Statistics
 	using PyCall
+end
+
+# ╔═╡ 4a0b5c46-aebd-4f72-8873-df7094c45c78
+using ColorSchemes
+
+# ╔═╡ 4962f384-5882-4932-a487-6a5a3b7b0ef6
+begin
+	using CairoMakie
 end
 
 # ╔═╡ 2d53ee50-c95b-4e9c-9ddb-e47ed9e3168b
@@ -90,8 +99,50 @@ md"""
 With `oLCw` and `cLCw` now computed, we next compute `f_norms`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `nbins` ``\times`` `ncomps`, where, for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
 """
 
-# ╔═╡ 06bd9d81-c7d3-45f5-9d02-167546b070e0
-set_default_plot_size(4inch, 8inch)
+# ╔═╡ f3644805-5951-4e5d-8d20-1596eebcce65
+# begin
+# 	wbin_labels = [
+# 		"$(wav[w_idxs[begin]]) - $(wav[w_idxs[end]]) Å" for w_idxs in wbins_idxs
+# 	]
+	
+# 	offs = reshape(range(0, 0.4, length=nbins), 1, :)
+	
+# 	p_blcs = plot(
+# 		# Binned LCs
+# 		layer(
+# 			f_norms[:, :, comp_idx] .+ offs,
+# 			x = Row.index,
+# 			y = Col.value,
+# 			color = Col.index,
+# 		),
+# 		# Baseline
+# 		layer(
+# 			ones(size(f_norms[:, :, comp_idx])).+ offs,
+# 			x = Row.index,
+# 			y = Col.value,
+# 			color = Col.index,
+# 			Geom.line,
+# 		),
+# 		# Label wavelength bins
+# 		Guide.annotation(
+# 			compose(
+# 				context(),
+# 				text(repeat([ntimes], nbins), offs .+ 1.01, wbin_labels, [hright])
+# 			)	
+# 		),
+# 		# Global settings
+# 		Theme(highlight_width=0pt, key_position=:none),
+# 		Scale.ContinuousColorScale(
+# 			p -> get(reverse(ColorSchemes.Spectral_4), p)
+# 		),
+# 		Guide.xlabel("Index"),
+# 		Guide.ylabel("Normalized flux + offset"),
+# 		Guide.title("Reduced target flux / comp $comp_idx flux"),
+# 	) #|> HTMLDocument
+	
+# 	#plot(y=ones(size(f_norms[:, :, 1])).+ offs)
+# 	#draw(PNG("/home/mango/Desktop/myplot.png", 8inch, 11inch), p_blcs)
+# end
 
 # ╔═╡ 3653ee36-35a6-4e0a-8d46-4f8389381d45
 begin
@@ -177,54 +228,21 @@ begin
 	end
 end;
 
-# ╔═╡ 7ee58880-d19e-4ecc-8ad2-74b057c8ebdc
-struct HTMLDocument
-	embedded
-end
-
-# ╔═╡ f3644805-5951-4e5d-8d20-1596eebcce65
+# ╔═╡ ef7eade9-5c9b-4d94-8b18-5ad208729e7f
 begin
 	wbin_labels = [
 		"$(wav[w_idxs[begin]]) - $(wav[w_idxs[end]]) Å" for w_idxs in wbins_idxs
 	]
 	
 	offs = reshape(range(0, 0.4, length=nbins), 1, :)
-	
-	p_blcs = plot(
-		# Binned LCs
-		layer(
-			f_norms[:, :, comp_idx] .+ offs,
-			x = Row.index,
-			y = Col.value,
-			color = Col.index,
-		),
-		# Baseline
-		layer(
-			ones(size(f_norms[:, :, comp_idx])).+ offs,
-			x = Row.index,
-			y = Col.value,
-			color = Col.index,
-			Geom.line,
-		),
-		# Label wavelength bins
-		Guide.annotation(
-			compose(
-				context(),
-				text(repeat([ntimes], nbins), offs .+ 1.01, wbin_labels, [hright])
-			)	
-		),
-		# Global settings
-		Theme(highlight_width=0pt, key_position=:none),
-		Scale.ContinuousColorScale(
-			p -> get(reverse(ColorSchemes.Spectral_4), p)
-		),
-		Guide.xlabel("Index"),
-		Guide.ylabel("Normalized flux + offset"),
-		Guide.title("Reduced target flux / comp $comp_idx flux"),
-	) |> HTMLDocument
-	
-	#plot(y=ones(size(f_norms[:, :, 1])).+ offs)
-	#draw(PNG("/home/mango/Desktop/myplot.png", 8inch, 11inch), p_blcs)
+	lines(f_norms[:, :, comp_idx] .+ offs)
+		
+	current_figure()
+end
+
+# ╔═╡ 7ee58880-d19e-4ecc-8ad2-74b057c8ebdc
+struct HTMLDocument
+	embedded
 end
 
 # ╔═╡ 6199f3e8-a082-4b36-bcae-44a3a4e998ee
@@ -232,6 +250,41 @@ function Base.show(io::IO, mime::MIME"text/html", doc::HTMLDocument)
 	println(io, "<html>")
 	show(io, mime, doc.embedded)
 	println(io, "</html>")
+end
+
+# ╔═╡ efccdc2d-0ed3-47ee-9a3d-d7bfcfde3fa8
+# begin
+# 	using JSServe
+# 	Page()
+# end
+
+# ╔═╡ cc6547eb-548a-4f4a-9081-32a19d52acb2
+X = [
+	6 7 8 9
+	1 2 4 8
+	9 8 9 7
+	6 6 6 6
+	1 1 1 1
+	0 3 4 1
+]
+
+# ╔═╡ ad379c1d-4efe-48b4-89ef-ed03cbbdbce6
+function CairoMakie.lines(A::Matrix)
+	nrows, ncols = size(A)
+	colors = range(ColorSchemes.Spectral_4[1], ColorSchemes.Spectral_4[4], length=ncols)
+	a, l = lines([0])
+	for (line, color) in zip(eachcol(A), colors)
+		lines!(l, line, color=color)
+	end
+	ylims!(l, 0.8, 1.6)
+	#axislegend()
+	#current_figure()
+end
+
+# ╔═╡ b5e8d9d2-14d6-4d92-b051-837f24daf335
+begin
+	lines([1,2,3])
+	ylims!(current_figure(), (0, 1))
 end
 
 # ╔═╡ Cell order:
@@ -262,9 +315,15 @@ end
 # ╟─f44393ab-2e49-4817-9870-890c9cd556ce
 # ╠═90fec9cf-37b0-4bcf-a6df-85a4cdfc511b
 # ╟─6fb2ce35-23ab-4a14-85b1-b8c4fc53d15d
-# ╠═06bd9d81-c7d3-45f5-9d02-167546b070e0
+# ╠═ef7eade9-5c9b-4d94-8b18-5ad208729e7f
 # ╠═f3644805-5951-4e5d-8d20-1596eebcce65
 # ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
-# ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23
 # ╠═7ee58880-d19e-4ecc-8ad2-74b057c8ebdc
 # ╠═6199f3e8-a082-4b36-bcae-44a3a4e998ee
+# ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23
+# ╠═efccdc2d-0ed3-47ee-9a3d-d7bfcfde3fa8
+# ╠═cc6547eb-548a-4f4a-9081-32a19d52acb2
+# ╠═ad379c1d-4efe-48b4-89ef-ed03cbbdbce6
+# ╠═b5e8d9d2-14d6-4d92-b051-837f24daf335
+# ╠═4a0b5c46-aebd-4f72-8873-df7094c45c78
+# ╠═4962f384-5882-4932-a487-6a5a3b7b0ef6
