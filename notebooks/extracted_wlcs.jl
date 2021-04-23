@@ -65,10 +65,39 @@ md"""
 The contents of each field can also be interactively explored using the tree viewer below:
 """
 
+# ╔═╡ 3653ee36-35a6-4e0a-8d46-4f8389381d45
+begin
+	py"""
+	import numpy as np
+	
+	def load_npz(fpath, allow_pickle=False):
+		return np.load(fpath, allow_pickle=allow_pickle)[()]
+	"""
+	load_npz(s; allow_pickle=false) = py"load_npz"(s, allow_pickle=allow_pickle)
+end
+
+# ╔═╡ 44808b97-df11-4aff-9e97-f97987fe9939
+cube = load_npz("data/reduced_LDSS3/ut150927_flat.npy", allow_pickle = true)
+
 # ╔═╡ 7185f603-3e57-42db-9665-c215094776ad
 md"""
 Next we extract the common wavelength grid, along with the target and comparison star flux, and compute the resulting spectrum and light curves:
 """
+
+# ╔═╡ 31bdc830-dfc9-445a-ba7e-76be7627561a
+wav = cube["spectral"]["wavelength"]
+
+# ╔═╡ 5b645084-1f21-42a2-8184-e27f8b3000c3
+target_name = cube["target"]
+
+# ╔═╡ 5d624218-5106-4e3f-a3b1-77ed0d2a02fa
+comp_names = convert(Vector{String}, cube["comparisons"])
+
+# ╔═╡ 639f666b-09fc-488b-982b-01a523278cae
+raw_counts = cube["cubes"]["raw_counts"];
+
+# ╔═╡ 7c6a3f88-cdc5-4b56-9bbf-2e9a2fa8ae26
+target_fluxes = raw_counts[target_name]
 
 # ╔═╡ 7bfc971c-8737-49ad-adec-ac57d176f10e
 md"""
@@ -98,6 +127,9 @@ md"""
 # ╔═╡ d6c17e99-452e-43e0-b998-10cb81009076
 md"""
 Move the slider below to view the stellar spectra for WASP-50b and each comparison start at any given time:
+
+!!! future
+	Ability to interact with sliders completely in the browser coming soon!
 """
 
 # ╔═╡ e3468c61-782b-4f55-a4a1-9d1883655d11
@@ -130,6 +162,11 @@ md"""
 ## Binned light curves 🌈
 """
 
+# ╔═╡ 83da3243-c61b-4a4b-8d50-6d32c606d34c
+md"""
+Similarly to above, we next integrate the target and comparison star flux over given wavelength ranges to build the binned light curves below.
+"""
+
 # ╔═╡ e992642a-342b-467b-ad75-594b73c88ac7
 md"""
 ### Define wavelength bins
@@ -137,14 +174,23 @@ md"""
 
 # ╔═╡ 17039dc4-d554-4810-a147-854cd95c81d3
 md"""
-We define the lower and upper bound for each of the `nbins` wavelength bins that the timeseries data will be integrated over:
+We define the lower and upper bound for each of the `nbins` wavelength bins that the timeseries data will be integrated over, where `nbins` is the total number of wavelength bins used:
 """
 
 # ╔═╡ 84893ece-b867-4e13-a45f-081d4a9a0934
 const λ_start, Δλ, nbins = 5_800, 200, 19
 
+# ╔═╡ 9aa02a13-ec25-40cc-8a54-89a192d228e5
+wbin_idx_start = findfirst(==(λ_start), wav)
+
 # ╔═╡ 1b550fd4-95a8-4130-972f-8dc963436cdc
 compute_wbins_idxs(c, λ_start_idx, Δλ) = (λ_start_idx:λ_start_idx+Δλ) .+ c
+
+# ╔═╡ fadb7a1b-d631-493f-97e0-4271599cd480
+wbins_idxs = compute_wbins_idxs.(0:Δλ:Δλ*nbins-1, wbin_idx_start, Δλ)
+
+# ╔═╡ a0b2cff5-67cd-4ee0-b538-d39fe6c6b67c
+wav[wbins_idxs[begin][begin]], wav[wbins_idxs[end][end]]
 
 # ╔═╡ f7feb44e-a363-4f8d-bf62-d3541533e4da
 md"""
@@ -156,55 +202,6 @@ md"""
 We will next compute `oLCw` and `cLCw`, where `oLCw` is an `ntimes` ``\times`` `nbins` matrix that holds the binned target flux, where `ntimes` is the number of timeseries points ``N``. Similarly `cLCw` is an `ntimes` ``\times`` `nbins` ``\times`` `ncomps` matrix that holds the comparison star flux, where `ncomps` is the number of comparison stars:
 """
 
-# ╔═╡ c7792d3e-52f9-4762-8e51-00d29d196d93
-view_cols(A, col_range) = @view A[:, col_range]
-
-# ╔═╡ 2b20e471-16e5-4b54-abc5-4308af4e60b6
-sum_flux(A, idx_range) = sum(view_cols(A, idx_range), dims=2)[:, 1]
-
-# ╔═╡ f44393ab-2e49-4817-9870-890c9cd556ce
-md"""
-With `oLCw` and `cLCw` now computed, we next compute `f_norms`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `nbins` ``\times`` `ncomps`, where, for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve. We plot these below for each comparison star division:
-"""
-
-# ╔═╡ 3653ee36-35a6-4e0a-8d46-4f8389381d45
-begin
-	py"""
-	import numpy as np
-	
-	def load_npz(fpath, allow_pickle=False):
-		return np.load(fpath, allow_pickle=allow_pickle)[()]
-	"""
-	load_npz(s; allow_pickle=false) = py"load_npz"(s, allow_pickle=allow_pickle)
-end
-
-# ╔═╡ 44808b97-df11-4aff-9e97-f97987fe9939
-cube = load_npz("data/reduced_LDSS3/ut150927_flat.npy", allow_pickle = true)
-
-# ╔═╡ 31bdc830-dfc9-445a-ba7e-76be7627561a
-wav = cube["spectral"]["wavelength"]
-
-# ╔═╡ 9aa02a13-ec25-40cc-8a54-89a192d228e5
-wbin_idx_start = findfirst(==(λ_start), wav)
-
-# ╔═╡ fadb7a1b-d631-493f-97e0-4271599cd480
-wbins_idxs = compute_wbins_idxs.(0:Δλ:Δλ*nbins-1, wbin_idx_start, Δλ)
-
-# ╔═╡ a0b2cff5-67cd-4ee0-b538-d39fe6c6b67c
-wav[wbins_idxs[begin][begin]], wav[wbins_idxs[end][end]]
-
-# ╔═╡ 5b645084-1f21-42a2-8184-e27f8b3000c3
-target_name, comp_names = cube["target"], convert(Vector{String}, cube["comparisons"])
-
-# ╔═╡ 70a2863d-6f55-4cec-8c69-162157e2c199
-const ncomps = length(comp_names)
-
-# ╔═╡ 639f666b-09fc-488b-982b-01a523278cae
-raw_counts = cube["cubes"]["raw_counts"]
-
-# ╔═╡ 7c6a3f88-cdc5-4b56-9bbf-2e9a2fa8ae26
-target_fluxes = raw_counts[target_name]
-
 # ╔═╡ 6953f995-86e1-42ee-9591-8c4e372b06fb
 const ntimes = size(target_fluxes)[1]
 
@@ -212,6 +209,9 @@ const ntimes = size(target_fluxes)[1]
 md"""
 Time index: $(@bind t_i pl.Slider(1:10:ntimes, show_value=true))
 """
+
+# ╔═╡ 70a2863d-6f55-4cec-8c69-162157e2c199
+const ncomps = length(comp_names)
 
 # ╔═╡ bb2c6085-5cb4-4efc-a322-27fda09fb904
 comp_fluxes = cat([raw_counts[comp_names[c_i]] for c_i in 1:ncomps]..., dims=3)
@@ -258,7 +258,7 @@ let
 	end
 	
 	axs = copy(fig.content)
-	axislegend.(axs, valign=:bottom)
+	axislegend.(axs, valign=:top)
 	
 	linkaxes!(axs...)
 	hidexdecorations!.(axs[1:2], grid = false)
@@ -267,6 +267,14 @@ let
 	
 	current_figure()
 end
+
+# ╔═╡ 2b20e471-16e5-4b54-abc5-4308af4e60b6
+"""
+	sum_flux(A::AbstractMatrix, idx_range::AbstractRange, [dims=2])
+
+For columnar data `A`, returns the sum of each row (for default `dims=2`) along the range of columns specified by `idx_range`.
+"""
+sum_flux(A, idx_range, dims=2) = sum(view(A, :, idx_range), dims=dims)[:, 1]
 
 # ╔═╡ a6805e63-bbf4-48bc-8e15-be24da9b0348
 begin
@@ -281,53 +289,52 @@ begin
 	end
 end
 
+# ╔═╡ f44393ab-2e49-4817-9870-890c9cd556ce
+md"""
+With `oLCw` and `cLCw` now computed, we next compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `nbins` ``\times`` `ncomps`, where, for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve. We plot these below for each comparison star division:
+"""
+
+# ╔═╡ e59f0d21-7573-43c6-9eb9-8863f174f77e
+md"""
+### Plot
+"""
+
+# ╔═╡ 70380521-e0f3-45a4-b818-c50adb635c69
+md"""
+Move the slider to view the plot for the corresponding comparison star:
+
+comp star $(@bind comp_idx pl.Slider(1:ncomps, show_value=true))
+"""
+
 # ╔═╡ 90fec9cf-37b0-4bcf-a6df-85a4cdfc511b
 begin	
-	f_norms = Array{Float64}(undef, ntimes, nbins, ncomps)
+	f_norm_w = Array{Float64}(undef, ntimes, nbins, ncomps)
 	for c_i in 1:ncomps
-		f = oLCw ./ cLCw[:, :, c_i]
-		f_norms[:, :, c_i] .= f ./ median(f, dims=1)
+		f_w = oLCw ./ cLCw[:, :, c_i]
+		f_norm_w[:, :, c_i] .= f_w ./ median(f_w, dims=1)
 	end
+	
+	offs = reshape(range(0, 0.6, length=nbins), 1, :) # Arbitrary offsets for clarity
+	f_norm_w .+= offs
+	baselines = ones(size(f_norm_w[:, :, comp_idx])) .+ offs # Reference baselines
 end;
 
-# ╔═╡ 26f86aec-1a39-42f0-9d85-70efe0a490a3
-function plot_bins(comp_idx, offs, pal, anns)	
-	p = plot(
-		title = "target / comp $comp_idx",
-		#xlabel = "Index",
-		#ylabel = "Relative flux + offset",
-	)
-	scatter!(p, f_norms[:, :, comp_idx] .+ offs, msw=0, label=false, palette=pal)
-	plot!(p, ones(size(f_norms[:, :, comp_idx])) .+ offs, label=false)
-	annotate!(p, anns)
-	return p
-end
-
-# ╔═╡ 981e588f-bb45-4c35-93a3-e4d13ee0181e
+# ╔═╡ fbc57d8b-3b1b-44d1-bd7d-0e9749026d4c
 begin
-	# Define offset between light curves for clarity
-	offs = reshape(range(0, 0.6, length=nbins), 1, :)
+	fig = Figure(resolution = (600, 900))
+	ax = fig[1, 1] = Axis(fig, title = "target / comp $comp_idx")
 	
-	# Wavelength bin labels
-	wbin_labels = [
-	"$(wav[w_idxs[begin]]) - $(wav[w_idxs[end]]) Å" for w_idxs in wbins_idxs
-	]
-	anns = Vector{Tuple{Float64, Float64, Plots.PlotText}}()
-	for (wbin_label, off) in zip(wbin_labels, offs)
-		push!(
-			anns,
-			(ntimes, off + 1.01, text("$wbin_label", 10, :right, :bottom))
-		)
+	cmap = reverse(to_colormap(:Spectral_4, nbins))
+	
+	for (c, f, b) in zip(cmap, eachcol(f_norm_w[:, :, comp_idx]), eachcol(baselines))
+		scatter!(f, color=c, strokewidth=0, markersize=5)
+		lines!(b, color=c)
 	end
+		
+	ax.xlabel = "Index"
+	ax.ylabel = "Relative flux + offset"
 	
-	# Color palette
-	pal = palette(:Spectral_4, nbins, rev=:true)
-	
-	# Plot each binned LC, one comp star per column
-	p1 = plot_bins(1, offs, pal, anns)
-	p2 = plot_bins(2, offs, pal, anns)
-	p3 = plot_bins(3, offs, pal, anns)
-	plot(p1, p2, p3, layout=(1, 3), link=:all, size=(1_000, 1_000))
+	current_figure()
 end
 
 # ╔═╡ Cell order:
@@ -336,9 +343,11 @@ end
 # ╟─470c738f-c2c8-4f56-b936-e08c43c161b1
 # ╟─4dddc586-2383-41f8-a888-ef421372d71a
 # ╠═44808b97-df11-4aff-9e97-f97987fe9939
+# ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
 # ╟─7185f603-3e57-42db-9665-c215094776ad
 # ╠═31bdc830-dfc9-445a-ba7e-76be7627561a
 # ╠═5b645084-1f21-42a2-8184-e27f8b3000c3
+# ╠═5d624218-5106-4e3f-a3b1-77ed0d2a02fa
 # ╠═639f666b-09fc-488b-982b-01a523278cae
 # ╠═7c6a3f88-cdc5-4b56-9bbf-2e9a2fa8ae26
 # ╟─7bfc971c-8737-49ad-adec-ac57d176f10e
@@ -358,6 +367,7 @@ end
 # ╟─7831034a-01fc-49bb-bd42-ff796713cc50
 # ╠═76ba54ff-a396-48e2-8837-b839cb62caef
 # ╟─e98dee2e-a369-448e-bfe4-8fea0f318fa8
+# ╟─83da3243-c61b-4a4b-8d50-6d32c606d34c
 # ╟─e992642a-342b-467b-ad75-594b73c88ac7
 # ╟─17039dc4-d554-4810-a147-854cd95c81d3
 # ╠═84893ece-b867-4e13-a45f-081d4a9a0934
@@ -369,12 +379,11 @@ end
 # ╟─eb4f7a92-a9e7-4bf5-8b1c-bca928fcedde
 # ╠═6953f995-86e1-42ee-9591-8c4e372b06fb
 # ╠═70a2863d-6f55-4cec-8c69-162157e2c199
-# ╟─c7792d3e-52f9-4762-8e51-00d29d196d93
 # ╠═2b20e471-16e5-4b54-abc5-4308af4e60b6
 # ╠═a6805e63-bbf4-48bc-8e15-be24da9b0348
 # ╟─f44393ab-2e49-4817-9870-890c9cd556ce
 # ╠═90fec9cf-37b0-4bcf-a6df-85a4cdfc511b
-# ╠═981e588f-bb45-4c35-93a3-e4d13ee0181e
-# ╠═26f86aec-1a39-42f0-9d85-70efe0a490a3
-# ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
+# ╟─e59f0d21-7573-43c6-9eb9-8863f174f77e
+# ╟─70380521-e0f3-45a4-b818-c50adb635c69
+# ╠═fbc57d8b-3b1b-44d1-bd7d-0e9749026d4c
 # ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23
