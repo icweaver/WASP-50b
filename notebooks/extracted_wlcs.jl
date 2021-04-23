@@ -17,8 +17,9 @@ end
 begin
 	import PlutoUI as pl
 	using CairoMakie
-	using Statistics
+	using Glob
 	using PyCall
+	using Statistics
 end
 
 # ╔═╡ 2d53ee50-c95b-4e9c-9ddb-e47ed9e3168b
@@ -30,7 +31,9 @@ md"""
 md"""
 $(pl.TableOfContents())
 
-In this notebook we will visualize the stellar spectra, white-light, and wavelength binned light curves from the raw flux extracted from LDSS3 using [(cite)]().
+In this notebook we will visualize the stellar spectra, white-light, and wavelength binned light curves from the raw flux extracted from LDSS3 using [(cite)](). Select a data cube to begin:
+
+$(@bind data_path pl.Select(sort(glob("data/reduced_LDSS3/*.npy"))))
 """
 
 # ╔═╡ 470c738f-c2c8-4f56-b936-e08c43c161b1
@@ -77,7 +80,7 @@ begin
 end
 
 # ╔═╡ 44808b97-df11-4aff-9e97-f97987fe9939
-cube = load_npz("data/reduced_LDSS3/ut150927_flat.npy", allow_pickle = true)
+cube = load_npz(data_path, allow_pickle = true)
 
 # ╔═╡ 7185f603-3e57-42db-9665-c215094776ad
 md"""
@@ -228,9 +231,11 @@ let
 	axs = reshape(copy(fig.content), 2, 2)
 	axislegend.(axs)
 	
+	scene = current_axis()
 	linkaxes!(axs...)
 	hidexdecorations!.(axs[1, :], grid=false)
 	hideydecorations!.(axs[:, 2], grid=false)
+	ylims!(scene, 0, 8e4)
 	
 	fig[1:2, 0] = Label(fig, "Counts", rotation=π/2)
 	fig[end+1, 2:3] = Label(fig, "Index")
@@ -260,10 +265,12 @@ let
 	axs = copy(fig.content)
 	axislegend.(axs, valign=:top)
 	
+	scene = current_axis()
 	linkaxes!(axs...)
 	hidexdecorations!.(axs[1:2], grid = false)
 	axs[end].xlabel = "Index"
 	axs[2].ylabel = "Relative flux"
+	ylims!(scene, 0.97, 1.02)
 	
 	current_figure()
 end
@@ -304,6 +311,9 @@ md"""
 Move the slider to view the plot for the corresponding comparison star:
 
 comp star $(@bind comp_idx pl.Slider(1:ncomps, show_value=true))
+
+!!! future
+	Ability to interact with sliders completely in the browser coming soon!
 """
 
 # ╔═╡ 90fec9cf-37b0-4bcf-a6df-85a4cdfc511b
@@ -331,6 +341,8 @@ begin
 		lines!(b, color=c)
 	end
 		
+	scene = current_axis()
+	ylims!(scene, 0.9, 1.7)
 	ax.xlabel = "Index"
 	ax.ylabel = "Relative flux + offset"
 	
