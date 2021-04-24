@@ -7,78 +7,102 @@ using InteractiveUtils
 # ╔═╡ 38304fe1-5acb-4785-b7c3-bb08fa5481a6
 begin
 	import PlutoUI as pl
-	using FITSIO, Glob, Statistics
+	using FITSIO, Glob, Statistics, CCDReduction
 	using CairoMakie
-    # using WGLMakie, JSServe
-    # Page(exportable = true, offline = true)
 end
 
-# ╔═╡ eb500902-d124-4d17-bbba-b60855035f2a
-cube = Array{UInt16}(undef, 1088, 2112, 8);
+# ╔═╡ fb39c593-86bd-4d4c-b9ec-e5e212a4de98
+md"""
+# Raw data frames
+
+$(pl.TableOfContents())
+
+In this notebook we will take a quick look at a sample bias subtracted science frame using `CCDReductions.jl`. This is done to verify the mask slit placement, as well as the positions of WASP-50 and its comparison stars on each CCD chip.
+"""
+
+# ╔═╡ 8d370ec7-c633-4eb6-9216-f3b88a814b38
+md"""
+## Load data 📁
+"""
+
+# ╔═╡ 14769ed6-6522-4b91-9c84-64da3eba92fa
+md"""
+For each of the 8 fits files (1 for each chip), we extract just the portion on each chip specified by `DATASEC`, and then subtract out the median bias level measured in the overscan region (defined by `BIASSEC`). We then store the subtracted data in the ``2048 \times 1024 \times 8`` array `cube`:
+"""
 
 # ╔═╡ 86b4ace1-a891-41e5-a29f-f7eee5f8fb17
-fpaths_glob = sort(glob("data/raw_frames/ut131219/ift0026c*.fits"));
-
-# ╔═╡ 35c9020e-0a57-4006-95b3-43d48510ddf1
-chips = ["c1", "c6", "c2", "c5", "c3", "c8", "c4", "c7"]
-
-# ╔═╡ d4fed004-9747-4765-b0b0-995d8d54c30d
-fpaths = [
-	filter(s -> occursin(c, s), fpaths_glob)[1]
-	for c in chips
-]
-
-# ╔═╡ b37c402b-738e-42fa-aecb-9dafe706f832
-for (i, fpath) in enumerate(fpaths)
-	cube[:, :, i] .= FITS(fpath, "r") do f
-		read(f[1])
+begin
+	fpaths_glob = sort(glob("data/raw_frames/ut131219/ift0026c*.fits"))
+	
+	# Pre-sort chips into IMACS order
+	chips = ["c1", "c6", "c2", "c5", "c3", "c8", "c4", "c7"]
+	fpaths = [
+		filter(s -> occursin(c, s), fpaths_glob)[1]
+		for c in chips
+	]
+	
+	# Load science frames and perform bias subtraction
+	cube = Array{Float64}(undef, 2048, 1024, 8);	
+	for (i, fpath) in enumerate(fpaths)
+		ccd = CCDData(fpath)
+		dxsec, dysec = Meta.parse(ccd.hdr["DATASEC"]) |> eval
+		oxsec, oysec = Meta.parse(ccd.hdr["BIASSEC"]) |> eval
+		cube[:, :, i] .= ccd[dysec, dxsec] .- median(ccd[oysec, oxsec])
 	end
 end
+
+# ╔═╡ 2f1b6036-9ed8-429d-92a9-0f80222c0d68
+md"""
+## Plot
+"""
 
 # ╔═╡ 3a6ab0c0-ba08-4151-9646-c19d45749b9f
 let
-	fig = Figure(resolution = (1_000, 500))
-	
+	fig = Figure(resolution = (800, 600))
+	step = 32
 	chip_idx = 1
 	for j in 1:4, i in 1:2
-		if "$(chips[chip_idx])" ∈ ["c5", "c6", "c7", "c8"]
-			f = x -> x
-			g = reverse
+		if "$(chips[chip_idx])" in ["c5", "c6", "c7", "c8"]
+			x_flip = x -> x
+			y_flip = reverse
 		else
-			f = reverse #x -> x
-			g = x -> x
+			x_flip = reverse
+			y_flip = x -> x
 		end
-		heatmap(
+		d = cube[x_flip(begin:step:end), y_flip(begin:step:end), chip_idx]'
+		nrows, ncols = size(d)
+		global ax, hm = heatmap(
 			fig[i, j],
-			cube[g(begin:16:end), f(begin:16:end), chip_idx],
+			d,
 			colormap = :magma,
-			axis = (title="$(chips[chip_idx])",),
-			colorrange = (0, 4_000)
+			#axis = (title="$(chips[chip_idx])",),
+			colorrange = (0, 2_000),
+			#interpolate = true,
+		)
+		annotations!(
+			["$(chips[chip_idx])"],
+			[Point2f0(2, 0.92*ncols)],
+			textsize =0.1*nrows,
+			color = :white,
 		)
 		chip_idx += 1
 	end
-	
 	axs = reshape(copy(fig.content), 2, 4)
 	
-# 	for ax in axs
-# 		ax.colorrange = (1, 3)
-# 	end
+	Colorbar(fig[:, end+1], hm, width=20, labelcolor=:black, label="Counts",)
 	
 	scene = current_axis()
 	linkaxes!(axs...)
 	hidedecorations!.(axs)
 	
-# 	fig[1:2, 0] = Label(fig, "Counts", rotation=π/2)
-# 	fig[end+1, 2:3] = Label(fig, "Index")
-	
 	fig
 end
 
 # ╔═╡ Cell order:
-# ╠═eb500902-d124-4d17-bbba-b60855035f2a
+# ╟─fb39c593-86bd-4d4c-b9ec-e5e212a4de98
+# ╟─8d370ec7-c633-4eb6-9216-f3b88a814b38
+# ╟─14769ed6-6522-4b91-9c84-64da3eba92fa
 # ╠═86b4ace1-a891-41e5-a29f-f7eee5f8fb17
-# ╠═d4fed004-9747-4765-b0b0-995d8d54c30d
-# ╠═35c9020e-0a57-4006-95b3-43d48510ddf1
-# ╠═b37c402b-738e-42fa-aecb-9dafe706f832
+# ╟─2f1b6036-9ed8-429d-92a9-0f80222c0d68
 # ╠═3a6ab0c0-ba08-4151-9646-c19d45749b9f
 # ╠═38304fe1-5acb-4785-b7c3-bb08fa5481a6
