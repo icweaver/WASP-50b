@@ -26,11 +26,11 @@ end
 md"""
 # LDSS3 reduced data
 
-$(pl.TableOfContents())
-
 In this notebook we will visualize the stellar spectra, white-light, and wavelength binned light curves from the raw flux extracted from LDSS3 using [(cite)](). Select a data cube to begin:
 
 $(@bind data_path pl.Select(sort(glob("data/reduced_LDSS3/*.npy"))))
+
+$(pl.TableOfContents())
 """
 
 # ╔═╡ 470c738f-c2c8-4f56-b936-e08c43c161b1
@@ -349,6 +349,11 @@ begin
 	fig
 end
 
+# ╔═╡ eeb3da97-72d5-4317-acb9-d28637a06d67
+md"""
+## Packages 📦
+"""
+
 # ╔═╡ Cell order:
 # ╟─2d53ee50-c95b-4e9c-9ddb-e47ed9e3168b
 # ╟─470c738f-c2c8-4f56-b936-e08c43c161b1
@@ -398,4 +403,5 @@ end
 # ╟─e59f0d21-7573-43c6-9eb9-8863f174f77e
 # ╟─70380521-e0f3-45a4-b818-c50adb635c69
 # ╠═fbc57d8b-3b1b-44d1-bd7d-0e9749026d4c
+# ╟─eeb3da97-72d5-4317-acb9-d28637a06d67
 # ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23
