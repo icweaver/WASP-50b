@@ -1298,10 +1298,14 @@ def weighted_mean_uneven_errors(k, k_up, k_low, model=1):
     """
     A function to calculate the weighted mean of multiple, concatenated,
     transmission spectra that have un-even (non-symmetric) uncertainties. This
-    uses the models of Barlow 2003. Inputs: k - the concatenated Rp/Rs values
+    uses the models of Barlow 2003.
+
+    Inputs: k - the concatenated Rp/Rs values
     k_up - the concatenated positive uncertainties in Rp/Rs k_low - the
     concatenated negative uncertainties in Rp/Rs model - the number of the
-    model as given in Barlow 2003 (either 1 or 2) Returns: weighted mean Rp/Rs
+    model as given in Barlow 2003 (either 1 or 2)
+
+    Returns: weighted mean Rp/Rs
     the uncertainties in the weighted mean Rp/Rs values
     """
     nvalues = len(k)
@@ -1366,11 +1370,15 @@ def write_latex_sig_fig(row, x_digits=-2, x_u_digits=-2, x_d_digits=-2):
     return f"{v}^{{+{v_u}}}_{{-{v_d}}}"
 
 
-def write_latex_single_sig_fig(row, x_digits=-2, x_unc_digits=-2):
-    x, x_unc = row
-    v = int(round(x, x_digits))
-    v_unc = int(round(x_unc, x_unc_digits))
-    return f"{v} \pm {v_unc}"
+#def write_latex_single_sig_fig(row, x_digits=-2, x_unc_digits=-2):
+#    x, x_unc = row
+#    v = int(round(x, x_digits))
+#    v_unc = int(round(x_unc, x_unc_digits))
+#    return f"{v} \pm {v_unc}"
+
+def write_latex_single_sig_fig(row, fmt_v=".0f", fmt_verr=".0f"):
+    v, verr = row
+    return f"{v:{fmt_v}} \pm {verr:{fmt_verr}}"
 
 
 def write_latex_wav(row):

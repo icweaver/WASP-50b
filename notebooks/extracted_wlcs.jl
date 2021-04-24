@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.2
+# v0.14.3
 
 using Markdown
 using InteractiveUtils
@@ -80,7 +80,10 @@ begin
 end
 
 # ╔═╡ 44808b97-df11-4aff-9e97-f97987fe9939
-cube = load_npz(data_path, allow_pickle = true)
+cube = load_npz(data_path, allow_pickle=true)
+
+# ╔═╡ 51898712-b435-476f-8693-6824f77f3af8
+data_path
 
 # ╔═╡ 7185f603-3e57-42db-9665-c215094776ad
 md"""
@@ -241,7 +244,7 @@ let
 	fig[end+1, 2:3] = Label(fig, "Index")
     #textsize = 30, font = noto_sans_bold, color = (:black, 0.25))
 	
-	current_figure()
+	fig
 end
 
 # ╔═╡ 756c0e88-393e-404f-b36c-9f861a8172e2
@@ -272,7 +275,7 @@ let
 	axs[2].ylabel = "Relative flux"
 	ylims!(scene, 0.97, 1.02)
 	
-	current_figure()
+	fig
 end
 
 # ╔═╡ 2b20e471-16e5-4b54-abc5-4308af4e60b6
@@ -346,7 +349,7 @@ begin
 	ax.xlabel = "Index"
 	ax.ylabel = "Relative flux + offset"
 	
-	current_figure()
+	fig
 end
 
 # ╔═╡ Cell order:
@@ -356,6 +359,7 @@ end
 # ╟─4dddc586-2383-41f8-a888-ef421372d71a
 # ╠═44808b97-df11-4aff-9e97-f97987fe9939
 # ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
+# ╠═51898712-b435-476f-8693-6824f77f3af8
 # ╟─7185f603-3e57-42db-9665-c215094776ad
 # ╠═31bdc830-dfc9-445a-ba7e-76be7627561a
 # ╠═5b645084-1f21-42a2-8184-e27f8b3000c3
