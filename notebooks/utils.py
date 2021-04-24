@@ -160,6 +160,8 @@ def detrend_BMA_WLC(
     params.w = omega
 
     lcmodel = m.light_curve(params)
+    print(t.shape, t.mean())
+    print(lcmodel.mean())
     model = -2.51 * np.log10(lcmodel)
 
     #####
@@ -192,7 +194,13 @@ def detrend_BMA_WLC(
     # Detrending
     ############
     residuals = f - (model + comp_model)
+    print()
+    print(f.shape, f.mean())
+    print(model.shape, model.mean())
+    print(comp_model.shape, comp_model.mean())
+    print(residuals.shape, residuals.mean())
     pred_mean, pred_var = gp.predict(residuals, X, return_var=True)
+
 
     detrended_lc = f - (comp_model + pred_mean)
 
