@@ -8,6 +8,7 @@ using InteractiveUtils
 begin
 	import PlutoUI as pl
 	using CairoMakie
+	using Colors
 	using Glob
 	using PyCall
 	using Statistics, KernelDensity
@@ -26,6 +27,9 @@ $(pl.TableOfContents())
 md"""
 ## Transit curves ⚪
 """
+
+# ╔═╡ 3f0f5777-00f1-443d-8ced-d901550010d3
+const DATA_DIR = "data/detrended_wlcs/out_l/WASP50"
 
 # ╔═╡ 39dbca86-a4b9-11eb-1c64-9ddf1a9990ab
 begin
@@ -46,42 +50,145 @@ begin
 end
 
 # ╔═╡ 2191791b-df62-4f1b-88bf-060cc47896b2
-cube = load_npz(
-	"data/detrended_wlcs/out_l/WASP50/w50_161211/white-light/BMA_WLC.npy",
-	allow_pickle = true
+cubes = Dict(
+	"Transit $i" => load_npz(fpath, allow_pickle = true)
+	for (i, fpath) in enumerate(
+		glob("$(DATA_DIR)/w50_*/white-light/BMA_WLC.npy") |> sort
+	)
 )
-
-# ╔═╡ 4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
-begin
-	scatter(cube["t"] .- 2.45e6, cube["LC_det"])
-	lines!(cube["t_interp"] .- 2.45e6, cube["LC_det_model_interp"])
-	current_figure()
-end
 
 # ╔═╡ 68ec4343-5f6c-4dfd-90b5-6393b4c819b9
 md"""
 ## Corner plots 📐
 """
 
+# ╔═╡ b7eac49f-f140-43ca-876a-e480b593e885
+const PARAMS = ["p", "t0", "P"]#, "rho", "aR", "inc", "b", "q1"]
+
 # ╔═╡ 931ce3d5-c4ed-496c-883b-d7ee33e957cc
-d = filter!(
- 	p -> p.first ∈ ["p", "t0", "P", "rho", "inc", "b", "aRs", "q1"],
-	load_pickle(
-		"data/detrended_wlcs/out_l/WASP50/w50_131219/white-light/BMA_posteriors.pkl"
+function adj_dict(dict, params) 
+	d = filter!(p -> p.first ∈ params, dict)
+	d["t0"] .-= 2.455e6
+	d["P"] .= 86_400.0
+	return d
+end
+
+# ╔═╡ 831c5bbd-1b55-4b26-99f0-b9ae1959abef
+cubes_dist = Dict(
+	"Transit $i" => adj_dict(load_pickle(fpath), PARAMS)
+	for (i, fpath) in enumerate(
+		glob("$(DATA_DIR)/w50_*/white-light/BMA_posteriors.pkl") |> sort
 	)
 )
 
-# ╔═╡ c4524acb-4656-47a4-850f-f8ff1408b435
-pair = cat(d["rho"], d["inc"], dims=2)
+# ╔═╡ 6f66b5af-79e5-4697-8f91-aa124c8f53b0
+pair(dist₁, dist₂) = cat(dist₁, dist₂, dims=2)
 
-# ╔═╡ f65babf8-7d6a-4528-b33b-1d71d2047cc6
+# ╔═╡ 865b5cb4-7ac6-42cb-9036-070bc3e66699
+cubes_dist["Transit 3"]["P"]
+
+# ╔═╡ 6fcd1377-8364-45a3-9ff6-89d61df1ef42
+levels(A, n) = reverse(
+	range(maximum(A), step=-maximum(A)/(n+1), length=(n+1))
+)
+
+# ╔═╡ 2cbc6ddb-210e-41e8-b745-5c41eba4e778
+function plot_corner!(fig, cube, params; color=:blue)
+	for (j, p1) in enumerate(params), (i, p2) in enumerate(params)
+		i == j && density!(
+			fig[i, i],
+			cube[p1],
+			color = (color, 0.125),
+			#strokewidth = 0,
+			strokewidth = 3,
+			strokecolor = color,
+			#axis = (title=p1, aspect=1,),
+		)
+		if i > j
+			Z = kde(pair(cube[p1], cube[p2]), npoints=(16, 16))
+			contourf!(
+				fig[i, j],
+				Z,
+				levels = levels(Z.density, 5),
+				axis = (aspect=1, xticklabelrotation=π/4),
+				colormap = cgrad(range(colorant"white", color), alpha=0.5),
+			)
+			contour!(
+				fig[i, j],
+				Z,
+				levels = levels(Z.density, 5),
+				axis = (aspect=1, xticklabelrotation=π/4),
+				color = color,
+				linewidth = 3,
+			)
+		end
+	end
+end
+
+# ╔═╡ 940ebaf2-659a-4319-bbe6-e0290752f1fb
+const COLORS =  [
+	# "#fdbf6f",  # Yellow
+	colorant"#f7ad4d",  # Yellow
+	colorant"#ff7f00",  # Orange
+	# "#a6cee3",  # Cyan
+	colorant"#5daed9",  # Cyan
+	# "#75bfe6",  # Cyan
+	# "#1f78b4",  # Blue
+	colorant"#126399",  # Blue
+	colorant"plum",
+	colorant"#956cb4",  # Purple
+	colorant"mediumaquamarine",
+	colorant"#029e73",  # Green
+	colorant"slategray",
+]
+
+# ╔═╡ 4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
+let
+	fig = Figure(resolution=(700, 800))
+	
+	i = 1
+	for (i, (transit, cube)) in enumerate(cubes)
+			scatter(
+			fig[i, 1], cube["t"] .- 2.45e6,
+			cube["LC_det"],
+			color = COLORS[i],
+			strokewidth = 0,
+			axis = (title=transit,),
+		)
+		lines!(
+			fig[i, 1],
+			cube["t_interp"] .- 2.45e6,
+			cube["LC_det_model_interp"],
+			color = 0.75*COLORS[i],
+			linewidth = 3,
+		)
+	end
+	
+	fig
+end
+
+# ╔═╡ d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
 begin
-	fig = Figure()
+	fig = Figure(resolution=(1_600, 1_600))
 	
-	hist(fig[1, 1], pair[:, 1])
-	contourf(fig[2, 1], kde(pair, npoints=(16, 16)), levels=10)
-	hist(fig[2, 2], pair[:, 2])
+	n_params = length(PARAMS)
 	
+	for j in 1:n_params, i in 1:n_params
+		ax = Axis(fig[i, j], axis=(aspect=1, xticklabelrotation=π/4),)
+		ax.xticklabelrotation = π/4
+		ax.aspect = 1.0
+		j > i && (hidedecorations!(ax); hidespines!(ax))
+	end
+		
+	for (i, (transits, cube)) in enumerate(cubes_dist)
+		plot_corner!(fig, cube, PARAMS, color=COLORS[i])
+	end
+		
+	axs = reshape(copy(fig.content), n_params, n_params)
+	
+	hidexdecorations!.(axs[begin:end-1, :])
+	hideydecorations!.(axs[:, begin+1:end])
+
 	fig
 end
 
@@ -92,13 +199,20 @@ md"""
 
 # ╔═╡ Cell order:
 # ╟─506eeeb2-e56d-436b-91b8-605e52201563
-# ╠═a8cf11e2-796e-45ff-bdc9-e273b927700e
+# ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
+# ╠═3f0f5777-00f1-443d-8ced-d901550010d3
 # ╠═39dbca86-a4b9-11eb-1c64-9ddf1a9990ab
 # ╠═2191791b-df62-4f1b-88bf-060cc47896b2
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
 # ╟─68ec4343-5f6c-4dfd-90b5-6393b4c819b9
+# ╠═b7eac49f-f140-43ca-876a-e480b593e885
 # ╠═931ce3d5-c4ed-496c-883b-d7ee33e957cc
-# ╠═c4524acb-4656-47a4-850f-f8ff1408b435
-# ╠═f65babf8-7d6a-4528-b33b-1d71d2047cc6
+# ╠═831c5bbd-1b55-4b26-99f0-b9ae1959abef
+# ╠═6f66b5af-79e5-4697-8f91-aa124c8f53b0
+# ╠═d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
+# ╠═865b5cb4-7ac6-42cb-9036-070bc3e66699
+# ╠═6fcd1377-8364-45a3-9ff6-89d61df1ef42
+# ╠═2cbc6ddb-210e-41e8-b745-5c41eba4e778
+# ╠═940ebaf2-659a-4319-bbe6-e0290752f1fb
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
 # ╠═691eddff-f2eb-41a8-ab05-63afb46d15f2
