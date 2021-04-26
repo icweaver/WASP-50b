@@ -63,13 +63,15 @@ md"""
 """
 
 # ╔═╡ b7eac49f-f140-43ca-876a-e480b593e885
-const PARAMS = ["p", "t0", "P"]#, "rho", "aR", "inc", "b", "q1"]
+const PARAMS = ["p", "t0", "P", "rho", "aR", "inc", "b", "q1"]
 
 # ╔═╡ 931ce3d5-c4ed-496c-883b-d7ee33e957cc
 function adj_dict(dict, params) 
 	d = filter!(p -> p.first ∈ params, dict)
-	d["t0"] .-= 2.455e6
-	d["P"] .= 86_400.0
+	diff_t0 = diff(d["t0"])
+	d["t0"] = push!(diff_t0, diff_t0[end]) #d["t0"] .- 2.455e6
+	diff_P = diff(d["P"])
+	d["P"] = push!(diff_P, diff_P[end])
 	return d
 end
 
@@ -79,13 +81,10 @@ cubes_dist = Dict(
 	for (i, fpath) in enumerate(
 		glob("$(DATA_DIR)/w50_*/white-light/BMA_posteriors.pkl") |> sort
 	)
-)
+);
 
-# ╔═╡ 6f66b5af-79e5-4697-8f91-aa124c8f53b0
-pair(dist₁, dist₂) = cat(dist₁, dist₂, dims=2)
-
-# ╔═╡ 865b5cb4-7ac6-42cb-9036-070bc3e66699
-cubes_dist["Transit 3"]["P"]
+# ╔═╡ 1c7d5c2a-96f5-46b9-ae7f-076456e445c7
+PARAMS
 
 # ╔═╡ 6fcd1377-8364-45a3-9ff6-89d61df1ef42
 levels(A, n) = reverse(
@@ -93,7 +92,7 @@ levels(A, n) = reverse(
 )
 
 # ╔═╡ 2cbc6ddb-210e-41e8-b745-5c41eba4e778
-function plot_corner!(fig, cube, params; color=:blue)
+function plot_corner!(fig, cube, params; n_levels=4, color=:blue)
 	for (j, p1) in enumerate(params), (i, p2) in enumerate(params)
 		i == j && density!(
 			fig[i, i],
@@ -102,22 +101,22 @@ function plot_corner!(fig, cube, params; color=:blue)
 			#strokewidth = 0,
 			strokewidth = 3,
 			strokecolor = color,
-			#axis = (title=p1, aspect=1,),
+			strokearound = true,
 		)
 		if i > j
-			Z = kde(pair(cube[p1], cube[p2]), npoints=(16, 16))
+			Z = kde((cube[p1], cube[p2]), npoints=(2^4, 2^4),)
 			contourf!(
 				fig[i, j],
 				Z,
-				levels = levels(Z.density, 5),
-				axis = (aspect=1, xticklabelrotation=π/4),
+				levels = levels(Z.density, n_levels),
+				#levels = levels(Z.weights, 5),
 				colormap = cgrad(range(colorant"white", color), alpha=0.5),
 			)
 			contour!(
 				fig[i, j],
 				Z,
-				levels = levels(Z.density, 5),
-				axis = (aspect=1, xticklabelrotation=π/4),
+				levels = levels(Z.density, n_levels),
+				#levels = levels(Z.weights, 5),
 				color = color,
 				linewidth = 3,
 			)
@@ -168,7 +167,7 @@ let
 end
 
 # ╔═╡ d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
-begin
+let
 	fig = Figure(resolution=(1_600, 1_600))
 	
 	n_params = length(PARAMS)
@@ -208,11 +207,10 @@ md"""
 # ╠═b7eac49f-f140-43ca-876a-e480b593e885
 # ╠═931ce3d5-c4ed-496c-883b-d7ee33e957cc
 # ╠═831c5bbd-1b55-4b26-99f0-b9ae1959abef
-# ╠═6f66b5af-79e5-4697-8f91-aa124c8f53b0
 # ╠═d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
-# ╠═865b5cb4-7ac6-42cb-9036-070bc3e66699
-# ╠═6fcd1377-8364-45a3-9ff6-89d61df1ef42
+# ╠═1c7d5c2a-96f5-46b9-ae7f-076456e445c7
 # ╠═2cbc6ddb-210e-41e8-b745-5c41eba4e778
+# ╠═6fcd1377-8364-45a3-9ff6-89d61df1ef42
 # ╠═940ebaf2-659a-4319-bbe6-e0290752f1fb
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
 # ╠═691eddff-f2eb-41a8-ab05-63afb46d15f2
