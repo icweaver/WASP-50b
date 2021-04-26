@@ -7,6 +7,7 @@ using InteractiveUtils
 # ╔═╡ 691eddff-f2eb-41a8-ab05-63afb46d15f2
 begin
 	import PlutoUI as pl
+	import JSON
 	using CairoMakie
 	using Colors
 	using Glob
@@ -65,26 +66,27 @@ md"""
 # ╔═╡ b7eac49f-f140-43ca-876a-e480b593e885
 const PARAMS = ["p", "t0", "P", "rho", "aR", "inc", "b", "q1"]
 
+# ╔═╡ ddd9a95b-735a-4995-8893-542128bb56d6
+truths = JSON.parsefile("$(DATA_DIR)/truth.json")
+
 # ╔═╡ 931ce3d5-c4ed-496c-883b-d7ee33e957cc
-function adj_dict(dict, params) 
+function adjust_dict(dict, params, truths)
 	d = filter!(p -> p.first ∈ params, dict)
-	diff_t0 = diff(d["t0"])
-	d["t0"] = push!(diff_t0, diff_t0[end]) #d["t0"] .- 2.455e6
-	diff_P = diff(d["P"])
-	d["P"] = push!(diff_P, diff_P[end])
+	for param in params
+		println(param, " ", truths[param]["truth"][1])
+		d[param] = d[param] .- truths[param]["truth"][1]
+	end
+	
 	return d
 end
 
 # ╔═╡ 831c5bbd-1b55-4b26-99f0-b9ae1959abef
 cubes_dist = Dict(
-	"Transit $i" => adj_dict(load_pickle(fpath), PARAMS)
+	"Transit $i" => adjust_dict(load_pickle(fpath), PARAMS, truths)
 	for (i, fpath) in enumerate(
 		glob("$(DATA_DIR)/w50_*/white-light/BMA_posteriors.pkl") |> sort
 	)
 );
-
-# ╔═╡ 1c7d5c2a-96f5-46b9-ae7f-076456e445c7
-PARAMS
 
 # ╔═╡ 6fcd1377-8364-45a3-9ff6-89d61df1ef42
 levels(A, n) = reverse(
@@ -94,7 +96,8 @@ levels(A, n) = reverse(
 # ╔═╡ 2cbc6ddb-210e-41e8-b745-5c41eba4e778
 function plot_corner!(fig, cube, params; n_levels=4, color=:blue)
 	for (j, p1) in enumerate(params), (i, p2) in enumerate(params)
-		i == j && density!(
+		if i == j
+			density!(
 			fig[i, i],
 			cube[p1],
 			color = (color, 0.125),
@@ -103,6 +106,7 @@ function plot_corner!(fig, cube, params; n_levels=4, color=:blue)
 			strokecolor = color,
 			strokearound = true,
 		)
+		end
 		if i > j
 			Z = kde((cube[p1], cube[p2]), npoints=(2^4, 2^4),)
 			contourf!(
@@ -167,7 +171,7 @@ let
 end
 
 # ╔═╡ d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
-let
+begin
 	fig = Figure(resolution=(1_600, 1_600))
 	
 	n_params = length(PARAMS)
@@ -177,18 +181,30 @@ let
 		ax.xticklabelrotation = π/4
 		ax.aspect = 1.0
 		j > i && (hidedecorations!(ax); hidespines!(ax))
-	end
+		i == j && i != n_params && (hidedecorations!(ax))
 		
+	end
+			
 	for (i, (transits, cube)) in enumerate(cubes_dist)
 		plot_corner!(fig, cube, PARAMS, color=COLORS[i])
 	end
-		
+			
 	axs = reshape(copy(fig.content), n_params, n_params)
 	
 	hidexdecorations!.(axs[begin:end-1, :])
 	hideydecorations!.(axs[:, begin+1:end])
-
+	
+	for j in 1:n_params, i in 1:n_params
+		i > j && (
+			axs[i, j].xgridvisible = true;
+			axs[i, j].ygridvisible = true
+		)
+		i == j && (axs[i, j].xgridvisible = true)
+	end
+	
 	fig
+	
+	
 end
 
 # ╔═╡ baeadfce-535a-46c3-8cb9-79cf6bde8555
@@ -205,10 +221,10 @@ md"""
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
 # ╟─68ec4343-5f6c-4dfd-90b5-6393b4c819b9
 # ╠═b7eac49f-f140-43ca-876a-e480b593e885
+# ╠═ddd9a95b-735a-4995-8893-542128bb56d6
 # ╠═931ce3d5-c4ed-496c-883b-d7ee33e957cc
 # ╠═831c5bbd-1b55-4b26-99f0-b9ae1959abef
 # ╠═d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
-# ╠═1c7d5c2a-96f5-46b9-ae7f-076456e445c7
 # ╠═2cbc6ddb-210e-41e8-b745-5c41eba4e778
 # ╠═6fcd1377-8364-45a3-9ff6-89d61df1ef42
 # ╠═940ebaf2-659a-4319-bbe6-e0290752f1fb
