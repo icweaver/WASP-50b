@@ -65,6 +65,26 @@ md"""
 The contents of each field can also be interactively explored using the tree viewer below:
 """
 
+# ╔═╡ 7185f603-3e57-42db-9665-c215094776ad
+md"""
+Next we extract the common wavelength grid, along with the target and comparison star flux, and compute the resulting spectrum and light curves:
+"""
+
+# ╔═╡ 7bfc971c-8737-49ad-adec-ac57d176f10e
+md"""
+We can extract the comparison star flux in a similar way by stacking the ``N \times W`` matrix for each star on top of each other:
+"""
+
+# ╔═╡ 968d1f11-12a0-4b8f-abb5-0195652e4e1f
+md"""
+With the relevant fields extracted, we can now explore the various data products below.
+"""
+
+# ╔═╡ 1c3e8cb3-2eff-47c2-8c17-01d0599556b8
+md"""
+### Helper functions
+"""
+
 # ╔═╡ 3653ee36-35a6-4e0a-8d46-4f8389381d45
 begin
 	py"""
@@ -77,15 +97,7 @@ begin
 end
 
 # ╔═╡ 44808b97-df11-4aff-9e97-f97987fe9939
-cube = load_npz(data_path, allow_pickle=true);
-
-# ╔═╡ 51898712-b435-476f-8693-6824f77f3af8
-data_path
-
-# ╔═╡ 7185f603-3e57-42db-9665-c215094776ad
-md"""
-Next we extract the common wavelength grid, along with the target and comparison star flux, and compute the resulting spectrum and light curves:
-"""
+cube = load_npz(data_path, allow_pickle=true)
 
 # ╔═╡ 31bdc830-dfc9-445a-ba7e-76be7627561a
 wav = cube["spectral"]["wavelength"]
@@ -101,16 +113,6 @@ raw_counts = cube["cubes"]["raw_counts"];
 
 # ╔═╡ 7c6a3f88-cdc5-4b56-9bbf-2e9a2fa8ae26
 target_fluxes = raw_counts[target_name]
-
-# ╔═╡ 7bfc971c-8737-49ad-adec-ac57d176f10e
-md"""
-We can extract the comparison star flux in a similar way by stacking the ``N \times W`` matrix for each star on top of each other:
-"""
-
-# ╔═╡ 968d1f11-12a0-4b8f-abb5-0195652e4e1f
-md"""
-With the relevant fields extracted, we can now explore the various data products below.
-"""
 
 # ╔═╡ e774a20f-2d58-486a-ab71-6bde678b26f8
 md"""
@@ -235,7 +237,7 @@ let
 	linkaxes!(axs...)
 	hidexdecorations!.(axs[1, :], grid=false)
 	hideydecorations!.(axs[:, 2], grid=false)
-	ylims!(scene, 0, 8e4)
+	ylims!(scene, 0, 1.2e5)
 	
 	fig[1:2, 0] = Label(fig, "Counts", rotation=π/2)
 	fig[end+1, 2:3] = Label(fig, "Index")
@@ -351,7 +353,7 @@ end
 
 # ╔═╡ eeb3da97-72d5-4317-acb9-d28637a06d67
 md"""
-## Packages 📦
+## Packages
 """
 
 # ╔═╡ Cell order:
@@ -359,8 +361,6 @@ md"""
 # ╟─470c738f-c2c8-4f56-b936-e08c43c161b1
 # ╟─4dddc586-2383-41f8-a888-ef421372d71a
 # ╠═44808b97-df11-4aff-9e97-f97987fe9939
-# ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
-# ╠═51898712-b435-476f-8693-6824f77f3af8
 # ╟─7185f603-3e57-42db-9665-c215094776ad
 # ╠═31bdc830-dfc9-445a-ba7e-76be7627561a
 # ╠═5b645084-1f21-42a2-8184-e27f8b3000c3
@@ -370,6 +370,8 @@ md"""
 # ╟─7bfc971c-8737-49ad-adec-ac57d176f10e
 # ╠═bb2c6085-5cb4-4efc-a322-27fda09fb904
 # ╟─968d1f11-12a0-4b8f-abb5-0195652e4e1f
+# ╟─1c3e8cb3-2eff-47c2-8c17-01d0599556b8
+# ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
 # ╟─e774a20f-2d58-486a-ab71-6bde678b26f8
 # ╟─ed92fff0-6413-4fc2-939e-ecd13430ce75
 # ╟─843fc32b-a0c8-4281-876a-9579a862548b

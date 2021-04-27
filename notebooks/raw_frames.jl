@@ -22,7 +22,7 @@ In this notebook we will take a quick look at a sample bias subtracted science f
 
 # ╔═╡ 8d370ec7-c633-4eb6-9216-f3b88a814b38
 md"""
-## Load data 📁
+## Load data
 
 For each of the 8 fits files (1 for each chip), we extract just the portion on each chip specified by `DATASEC`, and then subtract out the median bias level measured in the overscan region (defined by `BIASSEC`). We then store the subtracted data in the ``2048 \times 1024 \times 8`` array `cube`:
 """
