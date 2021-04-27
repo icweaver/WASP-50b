@@ -990,14 +990,14 @@ def plot_params():
         "axes.prop_cycle": mpl.cycler(
             color=[
                 # "#fdbf6f",  # Yellow
+                "#5daed9",  # Cyan
+                "plum",
                 "#f7ad4d",  # Yellow
                 "#ff7f00",  # Orange
                 # "#a6cee3",  # Cyan
-                "#5daed9",  # Cyan
                 # "#75bfe6",  # Cyan
                 # "#1f78b4",  # Blue
                 "#126399",  # Blue
-                "plum",
                 "#956cb4",  # Purple
                 "mediumaquamarine",
                 "#029e73",  # Green
@@ -1092,7 +1092,12 @@ def plot_tspec_IMACS(ax, base_dir, data_dict):
         df_tspec = transit_data["tspec"][
             ["Depth (ppm)", "Depthup (ppm)", "DepthDown (ppm)"]
         ]
-        tspec, tspec_u, tspec_d = df_tspec.values.T
+        if transit == "Transit 1":
+            # Drop bluest bins unable to be observed in other nights
+            tspec, tspec_u, tspec_d = df_tspec.values[3:-1, :].T
+        else:
+            tspec, tspec_u, tspec_d = df_tspec.values.T
+
         tspec_stats.append([tspec, tspec_u, tspec_d])
 
     # Compute offset
