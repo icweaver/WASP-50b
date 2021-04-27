@@ -33,9 +33,6 @@ $(@bind data_path pl.Select(sort(glob("data/reduced_LDSS3/*.npy"))))
 $(pl.TableOfContents())
 """
 
-# ╔═╡ e51dabfd-8862-4f5c-a97d-9c6d3e9f2ab3
-data_path
-
 # ╔═╡ 470c738f-c2c8-4f56-b936-e08c43c161b1
 md"""
 ## Data cube exploration 🔳
@@ -358,8 +355,7 @@ md"""
 """
 
 # ╔═╡ Cell order:
-# ╠═2d53ee50-c95b-4e9c-9ddb-e47ed9e3168b
-# ╠═e51dabfd-8862-4f5c-a97d-9c6d3e9f2ab3
+# ╟─2d53ee50-c95b-4e9c-9ddb-e47ed9e3168b
 # ╟─470c738f-c2c8-4f56-b936-e08c43c161b1
 # ╟─4dddc586-2383-41f8-a888-ef421372d71a
 # ╠═44808b97-df11-4aff-9e97-f97987fe9939
