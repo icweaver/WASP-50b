@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.3
+# v0.14.4
 
 using Markdown
 using InteractiveUtils
@@ -65,6 +65,11 @@ md"""
 The contents of each field can also be interactively explored using the tree viewer below:
 """
 
+# ╔═╡ f2bb15ee-2180-4e0f-b71d-7f9cdc2178ef
+md"""
+### Common wavelengths
+"""
+
 # ╔═╡ 7185f603-3e57-42db-9665-c215094776ad
 md"""
 Next we extract the common wavelength grid, along with the target and comparison star flux, and compute the resulting spectrum and light curves:
@@ -85,6 +90,12 @@ md"""
 ### Helper functions
 """
 
+# ╔═╡ b27ac73d-141b-4d87-a918-43175a8d5624
+function idx_lim(f, A; dims=2)
+	max_or_min = f == findfirst ? maximum : minimum
+	return mapslices(x -> f(!=(0.0), x), A, dims=2) |> max_or_min #(x, dims=1)
+end
+
 # ╔═╡ 3653ee36-35a6-4e0a-8d46-4f8389381d45
 begin
 	py"""
@@ -99,9 +110,6 @@ end
 # ╔═╡ 44808b97-df11-4aff-9e97-f97987fe9939
 cube = load_npz(data_path, allow_pickle=true)
 
-# ╔═╡ 31bdc830-dfc9-445a-ba7e-76be7627561a
-wav = cube["spectral"]["wavelength"]
-
 # ╔═╡ 5b645084-1f21-42a2-8184-e27f8b3000c3
 target_name = cube["target"]
 
@@ -109,10 +117,22 @@ target_name = cube["target"]
 comp_names = convert(Vector{String}, cube["comparisons"])
 
 # ╔═╡ 639f666b-09fc-488b-982b-01a523278cae
-raw_counts = cube["cubes"]["raw_counts"];
+raw_counts = cube["cubes"]["raw_counts"]
+
+# ╔═╡ 8815f748-8bfd-455c-a55d-c5c74038a342
+idx_lims = [
+	idx_lim.((findfirst, findlast), Ref(fluxes))
+	for (name, fluxes) in raw_counts
+] |> x -> reinterpret(reshape, Int, x)
+
+# ╔═╡ 993e1e5a-9d78-4042-9aca-bb753af7f647
+useable_wav_idxs = maximum(idx_lims[1, :]):minimum(idx_lims[2, :])
+
+# ╔═╡ 31bdc830-dfc9-445a-ba7e-76be7627561a
+wav = cube["spectral"]["wavelength"][useable_wav_idxs]
 
 # ╔═╡ 7c6a3f88-cdc5-4b56-9bbf-2e9a2fa8ae26
-target_fluxes = raw_counts[target_name]
+target_fluxes = raw_counts[target_name][:, useable_wav_idxs]
 
 # ╔═╡ e774a20f-2d58-486a-ab71-6bde678b26f8
 md"""
@@ -121,21 +141,21 @@ md"""
 
 # ╔═╡ ed92fff0-6413-4fc2-939e-ecd13430ce75
 md"""
-This is the extracted flux from each star, as a function of wavelength.
+We now take a look at the extracted flux from each star as a function of wavelength.
 """
 
-# ╔═╡ 843fc32b-a0c8-4281-876a-9579a862548b
-md"""
-### Plot
-"""
+# ╔═╡ 19a61d46-32c1-4d26-ad86-52b900aeeef8
+target_fluxes
 
-# ╔═╡ d6c17e99-452e-43e0-b998-10cb81009076
-md"""
-Move the slider below to view the stellar spectra for WASP-50b and each comparison start at any given time:
+# ╔═╡ 6fd88483-d005-4186-8dd2-82cea767ce90
+med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
 
-!!! future
-	Ability to interact with sliders completely in the browser coming soon!
-"""
+# ╔═╡ 1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
+function spec_plot(ax, wav, A; label="")
+	μ, σ = med_std(A)
+	lines(ax, wav, μ, label=label)
+	band!(ax, wav, μ .- σ, μ .+ σ)
+end
 
 # ╔═╡ e3468c61-782b-4f55-a4a1-9d1883655d11
 md"""
@@ -210,35 +230,33 @@ We will next compute `oLCw` and `cLCw`, where `oLCw` is an `ntimes` ``\times`` `
 # ╔═╡ 6953f995-86e1-42ee-9591-8c4e372b06fb
 const ntimes = size(target_fluxes)[1]
 
-# ╔═╡ 081c0175-ea02-4a41-9dfe-60b871efc27d
-md"""
-Time index: $(@bind t_i pl.Slider(1:10:ntimes, show_value=true))
-"""
-
 # ╔═╡ 70a2863d-6f55-4cec-8c69-162157e2c199
 const ncomps = length(comp_names)
 
 # ╔═╡ bb2c6085-5cb4-4efc-a322-27fda09fb904
-comp_fluxes = cat([raw_counts[comp_names[c_i]] for c_i in 1:ncomps]..., dims=3)
+comp_fluxes = cat(
+	[raw_counts[comp_names[c_i]][:, useable_wav_idxs] for c_i in 1:ncomps]...,
+	dims=3
+)
 
 # ╔═╡ 2fd7bc68-a6ec-4ccb-ad73-07b031ffef5a
 let
 	fig = Figure(resolution = (1200, 700))
-
-	lines(fig[1, 1], wav, target_fluxes[t_i, :], label="WASP-50")
-	lines(fig[2, 1], wav, comp_fluxes[t_i, :, 1], label="comp 1")
-	lines(fig[1, 2], wav, comp_fluxes[t_i, :, 2], label="comp 2")
-	lines(fig[2, 2], wav, comp_fluxes[t_i, :, 3], label="comp 3")
+	
+	spec_plot(fig[1, 1], wav, target_fluxes, label="WASP-50")	
+	spec_plot(fig[2, 1], wav, comp_fluxes[:, :, 1], label="comp 1")
+	spec_plot(fig[1, 2], wav, comp_fluxes[:, :, 2], label="comp 2")
+	spec_plot(fig[2, 2], wav, comp_fluxes[:, :, 3], label="comp 3")
+	
 	
 	axs = reshape(copy(fig.content), 2, 2)
 	axislegend.(axs)
-	
-	scene = current_axis()
-	linkaxes!(axs...)
-	hidexdecorations!.(axs[1, :], grid=false)
-	hideydecorations!.(axs[:, 2], grid=false)
-	ylims!(scene, 0, 1.2e5)
-	
+	linkxaxes!(axs...)
+	linkyaxes!(axs[begin, :]...)
+	linkyaxes!(axs[end, :]...)
+	hidexdecorations!.(axs[begin, :], grid=false)
+	hideydecorations!.(axs[:, end], grid=false)
+		
 	fig[1:2, 0] = Label(fig, "Counts", rotation=π/2)
 	fig[end+1, 2:3] = Label(fig, "Index")
     #textsize = 30, font = noto_sans_bold, color = (:black, 0.25))
@@ -326,14 +344,14 @@ begin
 		f_norm_w[:, :, c_i] .= f_w ./ median(f_w, dims=1)
 	end
 	
-	offs = reshape(range(0, 0.6, length=nbins), 1, :) # Arbitrary offsets for clarity
+	offs = reshape(range(0, 0.3, length=nbins), 1, :) # Arbitrary offsets for clarity
 	f_norm_w .+= offs
 	baselines = ones(size(f_norm_w[:, :, comp_idx])) .+ offs # Reference baselines
 end;
 
 # ╔═╡ fbc57d8b-3b1b-44d1-bd7d-0e9749026d4c
 begin
-	fig = Figure(resolution = (600, 900))
+	fig = Figure(resolution = (400, 700))
 	ax = fig[1, 1] = Axis(fig, title = "target / comp $comp_idx")
 	
 	cmap = reverse(to_colormap(:Spectral_4, nbins))
@@ -343,8 +361,7 @@ begin
 		lines!(b, color=c)
 	end
 		
-	scene = current_axis()
-	ylims!(scene, 0.9, 1.7)
+	ylims!(ax, 0.95, 1.34)
 	ax.xlabel = "Index"
 	ax.ylabel = "Relative flux + offset"
 	
@@ -361,23 +378,27 @@ md"""
 # ╟─470c738f-c2c8-4f56-b936-e08c43c161b1
 # ╟─4dddc586-2383-41f8-a888-ef421372d71a
 # ╠═44808b97-df11-4aff-9e97-f97987fe9939
+# ╟─f2bb15ee-2180-4e0f-b71d-7f9cdc2178ef
 # ╟─7185f603-3e57-42db-9665-c215094776ad
-# ╠═31bdc830-dfc9-445a-ba7e-76be7627561a
 # ╠═5b645084-1f21-42a2-8184-e27f8b3000c3
 # ╠═5d624218-5106-4e3f-a3b1-77ed0d2a02fa
+# ╠═8815f748-8bfd-455c-a55d-c5c74038a342
+# ╠═993e1e5a-9d78-4042-9aca-bb753af7f647
+# ╠═31bdc830-dfc9-445a-ba7e-76be7627561a
 # ╠═639f666b-09fc-488b-982b-01a523278cae
 # ╠═7c6a3f88-cdc5-4b56-9bbf-2e9a2fa8ae26
 # ╟─7bfc971c-8737-49ad-adec-ac57d176f10e
 # ╠═bb2c6085-5cb4-4efc-a322-27fda09fb904
 # ╟─968d1f11-12a0-4b8f-abb5-0195652e4e1f
 # ╟─1c3e8cb3-2eff-47c2-8c17-01d0599556b8
+# ╠═b27ac73d-141b-4d87-a918-43175a8d5624
 # ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
 # ╟─e774a20f-2d58-486a-ab71-6bde678b26f8
 # ╟─ed92fff0-6413-4fc2-939e-ecd13430ce75
-# ╟─843fc32b-a0c8-4281-876a-9579a862548b
-# ╟─d6c17e99-452e-43e0-b998-10cb81009076
-# ╟─081c0175-ea02-4a41-9dfe-60b871efc27d
 # ╠═2fd7bc68-a6ec-4ccb-ad73-07b031ffef5a
+# ╠═1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
+# ╠═19a61d46-32c1-4d26-ad86-52b900aeeef8
+# ╠═6fd88483-d005-4186-8dd2-82cea767ce90
 # ╟─e3468c61-782b-4f55-a4a1-9d1883655d11
 # ╟─08eafc08-b0fb-4c99-9d4e-7fa5085d386c
 # ╟─ae39e476-3850-4bbf-aa45-0a16c2425324

@@ -91,6 +91,31 @@ md"""
 Plotting the data from the `models` cube returns the following detrended white light curves:
 """
 
+# ╔═╡ b28bb1b6-c148-41c4-9f94-0833e365cad4
+md"""
+## Summary table 📓
+"""
+
+# ╔═╡ 30b84501-fdcd-4d83-b929-ff354de69a17
+md"""
+We summarize the Bayesian modeled results by extracting the same parameters from `results` for each night:
+"""
+
+# ╔═╡ 1bc1110f-e57d-4f31-a309-9b4e1aed1c0a
+md"""
+Finally, we average together each parameter from each night, weighted by its maximum uncertainty per night:
+"""
+
+# ╔═╡ ecea9d26-0179-4035-b20e-b06beca290eb
+md"""
+### Helper Functions
+"""
+
+# ╔═╡ 22ebe763-b315-480b-abfd-4229e17407ab
+summary_table(df, parameters) = vcat(
+	(filter(x -> x["Variable"] == param, df) for param in parameters)...
+)
+
 # ╔═╡ 68ec4343-5f6c-4dfd-90b5-6393b4c819b9
 md"""
 ## Corner plots 📐
@@ -101,8 +126,8 @@ md"""
 The `samples` cube returns the following corner plot for the fitted `PARAMS` below for each night:
 """
 
-# ╔═╡ b7eac49f-f140-43ca-876a-e480b593e885
-const PARAMS = ["p", "t0", "P", "rho", "aR", "inc", "b", "q1"]
+# ╔═╡ ed935d16-ddce-4334-a880-005732b38936
+const PARAMS = ["p", "t0", "P", "rho", "aR", "inc", "b", "q1"];
 
 # ╔═╡ c5e10e47-ec64-4911-8107-487d1ef3f134
 md"""
@@ -120,7 +145,6 @@ function plot_corner!(fig, cube, params; n_levels=4, color=:blue)
 		if i == j
 			density!(fig[i, i], cube[p1];
 				color = (color, 0.125),
-				#strokewidth = 0,
 				strokewidth = 3,
 				strokecolor = color,
 				strokearound = true,
@@ -150,12 +174,9 @@ md"""
 # ╔═╡ ddd9a95b-735a-4995-8893-542128bb56d6
 truths = JSON.parsefile("$(DATA_DIR)/truth.json")
 
-# ╔═╡ d81d5ffd-f51d-4b0c-bf33-0bef9899d549
-truth_vals(d, param, truths) = (
-	d.Value[data_WLC.Variable .== param][1] - truths[param]["truth"][1],
-	d.SigmaUp[data_WLC.Variable .== param][1],
-	d.SigmaDown[data_WLC.Variable .== param][1]
-)
+# ╔═╡ ee0fe52a-2ac7-4421-a44d-e1f23e7a36d4
+# Enforce same parameter order in corner plot
+params_symbols = [truths[param]["symbol"] for param in PARAMS];
 
 # ╔═╡ 931ce3d5-c4ed-496c-883b-d7ee33e957cc
 function adjust_dict(dict, params, truths)
@@ -165,7 +186,6 @@ function adjust_dict(dict, params, truths)
 		truth_val_err = maximum((truths[param]["truth"][2:3])) 
 		d[param] = @. ((d[param] - truth_val) / truth_val_err)
 	end
-	
 	return d
 end
 
@@ -192,34 +212,6 @@ cubes = Dict(
 	))
 )
 
-# ╔═╡ b28bb1b6-c148-41c4-9f94-0833e365cad4
-md"""
-## Table 📓
-"""
-
-# ╔═╡ 30b84501-fdcd-4d83-b929-ff354de69a17
-md"""
-We summarize the Bayesian modeled results by extracting the same parameters as above from `results` for each night:
-"""
-
-# ╔═╡ 1bc1110f-e57d-4f31-a309-9b4e1aed1c0a
-md"""
-Finally, we average together the parameters from each night, weighted by its maximum uncertainty:
-"""
-
-# ╔═╡ ee0fe52a-2ac7-4421-a44d-e1f23e7a36d4
-params_symbols = [truths[param]["symbol"] for param in PARAMS];
-
-# ╔═╡ ecea9d26-0179-4035-b20e-b06beca290eb
-md"""
-### Helper Functions
-"""
-
-# ╔═╡ 22ebe763-b315-480b-abfd-4229e17407ab
-summary_table(df, parameters) = vcat(
-	(filter(x -> x["Variable"] == param, df) for param in parameters)...
-)
-
 # ╔═╡ 3b5b4f0e-0ac4-40e2-81cb-40c387526d9a
 summary_tables = [
 	summary_table(cube["results"], PARAMS)
@@ -228,15 +220,12 @@ summary_tables = [
 
 # ╔═╡ de0a4468-56aa-4748-80a0-6c9ab6b8579e
 m_results = hcat((
-	summary[!, "Value"] .± maximum(
-		(summary[!, "SigmaUp"],
-		summary[!, "SigmaDown"])
-	)
-for summary in summary_tables
+	summary[!, "Value"] .± maximum((summary[!, "SigmaUp"],summary[!, "SigmaDown"]))
+	for summary in summary_tables
 )...) |> x-> hcat(x, mean(x, dims=2));
 
 # ╔═╡ 19fcaa15-6f01-46a6-8225-4b5cafd89cc1
-DataFrame(
+BMA = DataFrame(
 	[params_symbols m_results],
 	["Parameter", "Transit 1", "Transit 2", " Transit 3", "Combined"]
 )
@@ -288,40 +277,39 @@ end
 
 # ╔═╡ d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
 let
+	n_params = length(PARAMS) # Number of fitted parameters
+	
+	# Create empty corner plot grid
 	fig = Figure(resolution=(1_400, 1_400))
 	
-	# Number of fitted parameters
-	n_params = length(PARAMS)
-	
 	for j in 1:n_params, i in 1:n_params
+		# Create subplot apply global settings
 		ax = Axis(fig[i, j], axis=(aspect=1, xticklabelrotation=π/4),)
 		ax.xticklabelrotation = π/4
 		ax.aspect = 1.0
+		# Hide upper triangle
 		j > i && (hidedecorations!(ax); hidespines!(ax))
-		i == j && i != n_params && (hidedecorations!(ax))
+		# Hide y ticks on diagonals
+		j == i && hideydecorations!(ax)
+		# Hide x ticks on all diagonals except the bottom one
+		j == i && i != n_params && hidexdecorations!(ax, grid=false)
+		# Hide ticks on interior lower triangle
+		j < i && i != n_params && j != 1 && (
+			hideydecorations!(ax, grid=false);
+			hidexdecorations!(ax, grid=false))
+		# Hide remaining xyticks
+		j < i && j == 1 && i != n_params && hidexdecorations!(ax, grid=false)
+		j < i && i == n_params && j != 1 && hideydecorations!(ax, grid=false) 
 	end
 			
+	# Plot corners from each night
 	for (i, (transits, cube)) in enumerate(cubes)
 		plot_corner!(fig, cube["samples"], PARAMS, color=COLORS[i])
 	end
 	
+	# Align axes limits and apply labels
 	axs = reshape(copy(fig.content), n_params, n_params)
-	
-	[linkxaxes!(reverse(axs[:, j])...) for j in 1:n_params]
-		
-	hidexdecorations!.(axs[begin:end-1, :])
-	hideydecorations!.(axs[:, begin+1:end])
-	
-	for j in 1:n_params, i in 1:n_params
-		i > j && (
-			axs[i, j].xgridvisible = true;
-			axs[i, j].ygridvisible = true
-		)
-		if i == j
-			axs[i, j].xgridvisible = true
-		end
-	end
-	
+	[linkxaxes!(reverse(axs[:, j])...) for j in 1:n_params]	
 	for (j, param) in enumerate(PARAMS)
 		axs[end, j].xlabel = "Δ"*truths[param]["symbol"]
 		axs[end, j].xlabelsize = 26
@@ -348,17 +336,6 @@ md"""
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
-# ╟─68ec4343-5f6c-4dfd-90b5-6393b4c819b9
-# ╟─e452d2b1-1010-4ce3-8d32-9e9f1d0dfa0b
-# ╠═d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
-# ╠═b7eac49f-f140-43ca-876a-e480b593e885
-# ╟─c5e10e47-ec64-4911-8107-487d1ef3f134
-# ╠═2cbc6ddb-210e-41e8-b745-5c41eba4e778
-# ╠═6fcd1377-8364-45a3-9ff6-89d61df1ef42
-# ╟─82a23101-9e1f-4eae-b529-e750a44c98b1
-# ╠═ddd9a95b-735a-4995-8893-542128bb56d6
-# ╠═d81d5ffd-f51d-4b0c-bf33-0bef9899d549
-# ╠═931ce3d5-c4ed-496c-883b-d7ee33e957cc
 # ╟─b28bb1b6-c148-41c4-9f94-0833e365cad4
 # ╟─30b84501-fdcd-4d83-b929-ff354de69a17
 # ╠═3b5b4f0e-0ac4-40e2-81cb-40c387526d9a
@@ -368,6 +345,16 @@ md"""
 # ╠═ee0fe52a-2ac7-4421-a44d-e1f23e7a36d4
 # ╟─ecea9d26-0179-4035-b20e-b06beca290eb
 # ╠═22ebe763-b315-480b-abfd-4229e17407ab
+# ╟─68ec4343-5f6c-4dfd-90b5-6393b4c819b9
+# ╟─e452d2b1-1010-4ce3-8d32-9e9f1d0dfa0b
+# ╠═d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
+# ╠═ed935d16-ddce-4334-a880-005732b38936
+# ╟─c5e10e47-ec64-4911-8107-487d1ef3f134
+# ╠═2cbc6ddb-210e-41e8-b745-5c41eba4e778
+# ╠═6fcd1377-8364-45a3-9ff6-89d61df1ef42
+# ╟─82a23101-9e1f-4eae-b529-e750a44c98b1
+# ╠═ddd9a95b-735a-4995-8893-542128bb56d6
+# ╠═931ce3d5-c4ed-496c-883b-d7ee33e957cc
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
 # ╠═940ebaf2-659a-4319-bbe6-e0290752f1fb
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
