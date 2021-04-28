@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.3
+# v0.14.4
 
 using Markdown
 using InteractiveUtils
@@ -11,7 +11,9 @@ begin
 	using CairoMakie
 	using Colors
 	using CSV
+	using DataFrames
 	using Glob
+	using Measurements
 	using PyCall
 	using Statistics, KernelDensity
 end
@@ -180,7 +182,7 @@ cubes = Dict(
 			comment = "#",
 			delim = ' ',			
 			ignorerepeated=true,
-		)
+		) |> DataFrame
 	)
 	
 	for (i, (fpath_sample, fpath_model, fpath_result)) in enumerate(zip(
@@ -188,6 +190,55 @@ cubes = Dict(
 		sort(glob("$(DATA_DIR)/w50_*/white-light/BMA_WLC.npy")),
 		sort(glob("$(DATA_DIR)/w50_*/white-light/results.dat")),
 	))
+)
+
+# ╔═╡ b28bb1b6-c148-41c4-9f94-0833e365cad4
+md"""
+## Table 📓
+"""
+
+# ╔═╡ 30b84501-fdcd-4d83-b929-ff354de69a17
+md"""
+We summarize the Bayesian modeled results by extracting the same parameters as above from `results` for each night:
+"""
+
+# ╔═╡ 1bc1110f-e57d-4f31-a309-9b4e1aed1c0a
+md"""
+Finally, we average together the parameters from each night, weighted by its maximum uncertainty:
+"""
+
+# ╔═╡ ee0fe52a-2ac7-4421-a44d-e1f23e7a36d4
+params_symbols = [truths[param]["symbol"] for param in PARAMS];
+
+# ╔═╡ ecea9d26-0179-4035-b20e-b06beca290eb
+md"""
+### Helper Functions
+"""
+
+# ╔═╡ 22ebe763-b315-480b-abfd-4229e17407ab
+summary_table(df, parameters) = vcat(
+	(filter(x -> x["Variable"] == param, df) for param in parameters)...
+)
+
+# ╔═╡ 3b5b4f0e-0ac4-40e2-81cb-40c387526d9a
+summary_tables = [
+	summary_table(cube["results"], PARAMS)
+	for (transit, cube) in cubes
+]
+
+# ╔═╡ de0a4468-56aa-4748-80a0-6c9ab6b8579e
+m_results = hcat((
+	summary[!, "Value"] .± maximum(
+		(summary[!, "SigmaUp"],
+		summary[!, "SigmaDown"])
+	)
+for summary in summary_tables
+)...) |> x-> hcat(x, mean(x, dims=2));
+
+# ╔═╡ 19fcaa15-6f01-46a6-8225-4b5cafd89cc1
+DataFrame(
+	[params_symbols m_results],
+	["Parameter", "Transit 1", "Transit 2", " Transit 3", "Combined"]
 )
 
 # ╔═╡ 30ae3744-0e7e-4c16-b91a-91eb518fba5b
@@ -291,8 +342,8 @@ md"""
 # ╟─782806a6-efd2-45a9-b898-788a276c282b
 # ╠═3f0f5777-00f1-443d-8ced-d901550010d3
 # ╠═2191791b-df62-4f1b-88bf-060cc47896b2
-# ╠═579e62da-7ffb-4639-bd73-3826ade1cfa2
-# ╠═583b3377-f4f6-4170-8658-d3ba17a5b86d
+# ╟─579e62da-7ffb-4639-bd73-3826ade1cfa2
+# ╟─583b3377-f4f6-4170-8658-d3ba17a5b86d
 # ╠═39dbca86-a4b9-11eb-1c64-9ddf1a9990ab
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
@@ -308,6 +359,15 @@ md"""
 # ╠═ddd9a95b-735a-4995-8893-542128bb56d6
 # ╠═d81d5ffd-f51d-4b0c-bf33-0bef9899d549
 # ╠═931ce3d5-c4ed-496c-883b-d7ee33e957cc
+# ╟─b28bb1b6-c148-41c4-9f94-0833e365cad4
+# ╟─30b84501-fdcd-4d83-b929-ff354de69a17
+# ╠═3b5b4f0e-0ac4-40e2-81cb-40c387526d9a
+# ╟─1bc1110f-e57d-4f31-a309-9b4e1aed1c0a
+# ╠═19fcaa15-6f01-46a6-8225-4b5cafd89cc1
+# ╠═de0a4468-56aa-4748-80a0-6c9ab6b8579e
+# ╠═ee0fe52a-2ac7-4421-a44d-e1f23e7a36d4
+# ╟─ecea9d26-0179-4035-b20e-b06beca290eb
+# ╠═22ebe763-b315-480b-abfd-4229e17407ab
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
 # ╠═940ebaf2-659a-4319-bbe6-e0290752f1fb
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
