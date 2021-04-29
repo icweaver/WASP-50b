@@ -4,16 +4,9 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 6a9b28b5-bc77-4c9f-86e4-a564d57feb72
-using Latexify, OrderedCollections
-
-# ╔═╡ 4cba0dcb-5d6e-42d2-baff-134dbe8500ba
-using DataFramesMeta
-
 # ╔═╡ 691eddff-f2eb-41a8-ab05-63afb46d15f2
 begin
 	import PlutoUI as pl
-	import JSON
 	using CairoMakie
 	using Colors
 	using CSV
@@ -22,6 +15,8 @@ begin
 	using Measurements
 	using PyCall
 	using Statistics, KernelDensity
+	using Latexify, OrderedCollections
+	using DataFramesMeta
 end
 
 # ╔═╡ 506eeeb2-e56d-436b-91b8-605e52201563
@@ -127,12 +122,17 @@ md"""
 
 # ╔═╡ 30b84501-fdcd-4d83-b929-ff354de69a17
 md"""
-We summarize the Bayesian modeled results for selected parameters for each night:
+We summarize the Bayesian Model Averag (BMA) results for selected parameters for each night below:
 """
 
 # ╔═╡ 1bc1110f-e57d-4f31-a309-9b4e1aed1c0a
 md"""
 Finally, we average together each parameter from each night, weighted by its maximum uncertainty per night:
+"""
+
+# ╔═╡ c936b76a-636b-4f10-b556-fa19808c1562
+md"""
+### Save to file
 """
 
 # ╔═╡ 68ec4343-5f6c-4dfd-90b5-6393b4c819b9
@@ -142,42 +142,80 @@ md"""
 
 # ╔═╡ e452d2b1-1010-4ce3-8d32-9e9f1d0dfa0b
 md"""
-The `samples` cube returns the following corner plot for the fitted `PARAMS` below for each night:
+To visualize the spread of each parameter, we define the dimensionless metric:
+
+```math
+Δx \equiv \frac{x - \overline{\text{BMA}}_μ}{\overline{\text{BMA}}_σ}\quad,
+```
+
+where $x$ is a sample from the posterior distribution for the given parameter, ``\overline{\text{BMA}}_μ`` is the BMA averaged across nights, and ``\overline{\text{BMA}}_σ`` is the maximum uncertainty, also averaged across nights. These values correspond to the `Combined` column in the table above. ``\Delta x`` is then a measure of the distance of each sample in its posterior distribution from its correspondning average BMA value, scaled by the uncertainty in the average BMA.
 """
+
+# ╔═╡ 706f1fb6-2895-48f6-a315-842fbf35da18
+function scale_samples(samples, param, BMA)
+	m = @where(BMA, :Parameter .== param)[!, "Combined"][1]
+	return (samples .- m.val) ./ m.err
+end
 
 # ╔═╡ ed935d16-ddce-4334-a880-005732b38936
 const PARAMS = OrderedDict(
 	"p" => "Rₚ/Rₛ",
 	"t0" => "t₀",
 	"P" => "P",
-	# "rho" => "ρₛ",
-	# "aR" => "a/Rₛ",
-	# "inc" => "i",
-	# "b" => "b",
-	# "q1" => "u"
+	"rho" => "ρₛ",
+	"aR" => "a/Rₛ",
+	"inc" => "i",
+	"b" => "b",
+	"q1" => "u",
 )
 
 # ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
-summary_tables = filter.(
-	row -> row.Variable in keys(PARAMS),
-	(cube["results"] for (transit, cube) in cubes)
-)
+begin
+	summary_tables = []
+	
+	for (transit, cube) in cubes
+		param_idxs = [
+			findfirst(cube["results"][!, :Variable] .== param)
+			for param in keys(PARAMS)
+		]
+		summary_table = cube["results"][param_idxs, :]
+		push!(summary_tables, summary_table)
+	end
+	
+	summary_tables
+end
 
 # ╔═╡ de0a4468-56aa-4748-80a0-6c9ab6b8579e
-m_results = hcat((
+BMA_matrix = hcat((
 	summary[!, "Value"] .± maximum((summary[!, "SigmaUp"], summary[!, "SigmaDown"]))
 	for summary in summary_tables
 )...) |> x-> hcat(x, mean(x, dims=2));
 
 # ╔═╡ 19fcaa15-6f01-46a6-8225-4b5cafd89cc1
 BMA = DataFrame(
-	[PARAMS.vals m_results],
+	[PARAMS.vals BMA_matrix],
 	[:Parameter, :Transit_1, :Transit_2, :Transit_3, :Combined]
-)
+);
+
+# ╔═╡ c7a179a3-9966-452d-b430-a28b2f004bc5
+latexify(BMA)
 
 # ╔═╡ d279e93e-8665-41b2-bd5c-723458fabe86
+# Will probably just copy-paste directly into paper
 pl.with_terminal() do
-BMA |> latexify |> print
+	BMA |> x -> latexify(x, env=:table) |> print
+end
+
+# ╔═╡ 56d0de38-5639-4196-aafe-79a9ab933980
+begin
+	samples_cube = Dict()
+	
+	for (transit, cube) in cubes
+		samples_cube[transit] = Dict(
+			param => scale_samples(cube["samples"][param], PARAMS[param], BMA)
+			for param in keys(PARAMS)
+		)
+	end
 end
 
 # ╔═╡ c5e10e47-ec64-4911-8107-487d1ef3f134
@@ -191,10 +229,10 @@ levels(A, n) = reverse(
 )
 
 # ╔═╡ 2cbc6ddb-210e-41e8-b745-5c41eba4e778
-function plot_corner!(fig, cube, params; n_levels=4, color=:blue)
+function plot_corner!(fig, samples, params; n_levels=4, color=:blue)
 	for (j, p1) in enumerate(params), (i, p2) in enumerate(params)
 		if i == j
-			density!(fig[i, i], cube[p1];
+			density!(fig[i, i], samples[p1];
 				color = (color, 0.125),
 				strokewidth = 3,
 				strokecolor = color,
@@ -202,7 +240,7 @@ function plot_corner!(fig, cube, params; n_levels=4, color=:blue)
 			)
 		end
 		if i > j
-			Z = kde((cube[p1], cube[p2]), npoints=(2^4, 2^4),)
+			Z = kde((samples[p1], samples[p2]), npoints=(2^4, 2^4),)
 			contourf!(fig[i, j], Z;
 				levels = levels(Z.density, n_levels),
 				colormap = cgrad(range(colorant"white", color), alpha=0.5),
@@ -221,32 +259,6 @@ md"""
 !!! note
 	The sampled values have been scaled so that the distance of each sample from its literature "truth" value is in units of that truth value's reported uncertainty. We show this operation below.
 """
-
-# ╔═╡ ddd9a95b-735a-4995-8893-542128bb56d6
-truths = JSON.parsefile("$(DATA_DIR)/truth.json")
-
-# ╔═╡ a0b7fc53-6d0a-47c1-94b9-6b742c014a93
-Measurements.uncertainty.(BMA[!, "Combined"])
-
-# ╔═╡ bfdf906b-1e54-4a77-820e-0ea43fe67210
-@where(BMA, :Parameter .== "P").Combined[1]
-
-# ╔═╡ 82647208-82e1-4e5a-b6f0-8c77db8b230a
-String.(keys(PARAMS))
-
-# ╔═╡ b676f75f-51e1-4ea8-acda-67d62607465e
-
-
-# ╔═╡ 931ce3d5-c4ed-496c-883b-d7ee33e957cc
-function adjust_dict(dict, params, truths)
-	d = filter!(p -> p.first ∈ keys(params), dict)
-	for param in params_str
-		truth_val = truths[param]["truth"][1]
-		truth_val_err = maximum((truths[param]["truth"][2:3])) 
-		d[param] = @. ((d[param] - truth_val) / truth_val_err)
-	end
-	return d
-end
 
 # ╔═╡ 30ae3744-0e7e-4c16-b91a-91eb518fba5b
 md"""
@@ -321,8 +333,8 @@ let
 	end
 			
 	# Plot corners from each night
-	for (i, (transits, cube)) in enumerate(cubes)
-		plot_corner!(fig, cube["samples"], keys(PARAMS), color=COLORS[i])
+	for (i, (transit, cube)) in enumerate(cubes)
+		plot_corner!(fig, samples_cube[transit], keys(PARAMS), color=COLORS[i])
 	end
 	
 	# Align axes limits and apply labels
@@ -358,25 +370,21 @@ md"""
 # ╟─30b84501-fdcd-4d83-b929-ff354de69a17
 # ╠═ee9347b2-e97d-4f66-9c21-7487ca2c2e30
 # ╟─1bc1110f-e57d-4f31-a309-9b4e1aed1c0a
+# ╠═c7a179a3-9966-452d-b430-a28b2f004bc5
 # ╠═19fcaa15-6f01-46a6-8225-4b5cafd89cc1
 # ╠═de0a4468-56aa-4748-80a0-6c9ab6b8579e
+# ╟─c936b76a-636b-4f10-b556-fa19808c1562
+# ╠═d279e93e-8665-41b2-bd5c-723458fabe86
 # ╟─68ec4343-5f6c-4dfd-90b5-6393b4c819b9
 # ╟─e452d2b1-1010-4ce3-8d32-9e9f1d0dfa0b
+# ╠═56d0de38-5639-4196-aafe-79a9ab933980
+# ╠═706f1fb6-2895-48f6-a315-842fbf35da18
 # ╠═d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
 # ╠═ed935d16-ddce-4334-a880-005732b38936
-# ╠═6a9b28b5-bc77-4c9f-86e4-a564d57feb72
-# ╠═d279e93e-8665-41b2-bd5c-723458fabe86
 # ╟─c5e10e47-ec64-4911-8107-487d1ef3f134
 # ╠═2cbc6ddb-210e-41e8-b745-5c41eba4e778
 # ╠═6fcd1377-8364-45a3-9ff6-89d61df1ef42
 # ╟─82a23101-9e1f-4eae-b529-e750a44c98b1
-# ╠═ddd9a95b-735a-4995-8893-542128bb56d6
-# ╠═a0b7fc53-6d0a-47c1-94b9-6b742c014a93
-# ╠═4cba0dcb-5d6e-42d2-baff-134dbe8500ba
-# ╠═bfdf906b-1e54-4a77-820e-0ea43fe67210
-# ╠═82647208-82e1-4e5a-b6f0-8c77db8b230a
-# ╠═b676f75f-51e1-4ea8-acda-67d62607465e
-# ╠═931ce3d5-c4ed-496c-883b-d7ee33e957cc
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
 # ╠═940ebaf2-659a-4319-bbe6-e0290752f1fb
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
