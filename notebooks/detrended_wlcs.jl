@@ -4,6 +4,12 @@
 using Markdown
 using InteractiveUtils
 
+# ╔═╡ 6a9b28b5-bc77-4c9f-86e4-a564d57feb72
+using Latexify, OrderedCollections
+
+# ╔═╡ 4cba0dcb-5d6e-42d2-baff-134dbe8500ba
+using DataFramesMeta
+
 # ╔═╡ 691eddff-f2eb-41a8-ab05-63afb46d15f2
 begin
 	import PlutoUI as pl
@@ -81,6 +87,29 @@ begin
 	load_pickle(s) = py"load_pickle"(s)
 end;
 
+# ╔═╡ 2191791b-df62-4f1b-88bf-060cc47896b2
+cubes = Dict(
+	"Transit $i" => Dict(
+		
+		"samples" => load_pickle(fpath_sample),
+		
+		"models" => load_npz(fpath_model, allow_pickle=true),
+		
+		"results" => CSV.File(
+			fpath_result,
+			comment = "#",
+			delim = ' ',			
+			ignorerepeated=true,
+		) |> DataFrame
+	)
+	
+	for (i, (fpath_sample, fpath_model, fpath_result)) in enumerate(zip(
+		sort(glob("$(DATA_DIR)/w50_*/white-light/BMA_posteriors.pkl")),
+		sort(glob("$(DATA_DIR)/w50_*/white-light/BMA_WLC.npy")),
+		sort(glob("$(DATA_DIR)/w50_*/white-light/results.dat")),
+	))
+)
+
 # ╔═╡ a8cf11e2-796e-45ff-bdc9-e273b927700e
 md"""
 ## Transit curves ⚪
@@ -98,23 +127,13 @@ md"""
 
 # ╔═╡ 30b84501-fdcd-4d83-b929-ff354de69a17
 md"""
-We summarize the Bayesian modeled results by extracting the same parameters from `results` for each night:
+We summarize the Bayesian modeled results for selected parameters for each night:
 """
 
 # ╔═╡ 1bc1110f-e57d-4f31-a309-9b4e1aed1c0a
 md"""
 Finally, we average together each parameter from each night, weighted by its maximum uncertainty per night:
 """
-
-# ╔═╡ ecea9d26-0179-4035-b20e-b06beca290eb
-md"""
-### Helper Functions
-"""
-
-# ╔═╡ 22ebe763-b315-480b-abfd-4229e17407ab
-summary_table(df, parameters) = vcat(
-	(filter(x -> x["Variable"] == param, df) for param in parameters)...
-)
 
 # ╔═╡ 68ec4343-5f6c-4dfd-90b5-6393b4c819b9
 md"""
@@ -127,7 +146,39 @@ The `samples` cube returns the following corner plot for the fitted `PARAMS` bel
 """
 
 # ╔═╡ ed935d16-ddce-4334-a880-005732b38936
-const PARAMS = ["p", "t0", "P", "rho", "aR", "inc", "b", "q1"];
+const PARAMS = OrderedDict(
+	"p" => "Rₚ/Rₛ",
+	"t0" => "t₀",
+	"P" => "P",
+	# "rho" => "ρₛ",
+	# "aR" => "a/Rₛ",
+	# "inc" => "i",
+	# "b" => "b",
+	# "q1" => "u"
+)
+
+# ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
+summary_tables = filter.(
+	row -> row.Variable in keys(PARAMS),
+	(cube["results"] for (transit, cube) in cubes)
+)
+
+# ╔═╡ de0a4468-56aa-4748-80a0-6c9ab6b8579e
+m_results = hcat((
+	summary[!, "Value"] .± maximum((summary[!, "SigmaUp"], summary[!, "SigmaDown"]))
+	for summary in summary_tables
+)...) |> x-> hcat(x, mean(x, dims=2));
+
+# ╔═╡ 19fcaa15-6f01-46a6-8225-4b5cafd89cc1
+BMA = DataFrame(
+	[PARAMS.vals m_results],
+	[:Parameter, :Transit_1, :Transit_2, :Transit_3, :Combined]
+)
+
+# ╔═╡ d279e93e-8665-41b2-bd5c-723458fabe86
+pl.with_terminal() do
+BMA |> latexify |> print
+end
 
 # ╔═╡ c5e10e47-ec64-4911-8107-487d1ef3f134
 md"""
@@ -174,61 +225,28 @@ md"""
 # ╔═╡ ddd9a95b-735a-4995-8893-542128bb56d6
 truths = JSON.parsefile("$(DATA_DIR)/truth.json")
 
-# ╔═╡ ee0fe52a-2ac7-4421-a44d-e1f23e7a36d4
-# Enforce same parameter order in corner plot
-params_symbols = [truths[param]["symbol"] for param in PARAMS];
+# ╔═╡ a0b7fc53-6d0a-47c1-94b9-6b742c014a93
+Measurements.uncertainty.(BMA[!, "Combined"])
+
+# ╔═╡ bfdf906b-1e54-4a77-820e-0ea43fe67210
+@where(BMA, :Parameter .== "P").Combined[1]
+
+# ╔═╡ 82647208-82e1-4e5a-b6f0-8c77db8b230a
+String.(keys(PARAMS))
+
+# ╔═╡ b676f75f-51e1-4ea8-acda-67d62607465e
+
 
 # ╔═╡ 931ce3d5-c4ed-496c-883b-d7ee33e957cc
 function adjust_dict(dict, params, truths)
-	d = filter!(p -> p.first ∈ params, dict)
-	for param in params
+	d = filter!(p -> p.first ∈ keys(params), dict)
+	for param in params_str
 		truth_val = truths[param]["truth"][1]
 		truth_val_err = maximum((truths[param]["truth"][2:3])) 
 		d[param] = @. ((d[param] - truth_val) / truth_val_err)
 	end
 	return d
 end
-
-# ╔═╡ 2191791b-df62-4f1b-88bf-060cc47896b2
-cubes = Dict(
-	"Transit $i" => Dict(
-		
-		"samples" => adjust_dict(load_pickle(fpath_sample), PARAMS, truths),
-		
-		"models" => load_npz(fpath_model, allow_pickle=true),
-		
-		"results" => CSV.File(
-			fpath_result,
-			comment = "#",
-			delim = ' ',			
-			ignorerepeated=true,
-		) |> DataFrame
-	)
-	
-	for (i, (fpath_sample, fpath_model, fpath_result)) in enumerate(zip(
-		sort(glob("$(DATA_DIR)/w50_*/white-light/BMA_posteriors.pkl")),
-		sort(glob("$(DATA_DIR)/w50_*/white-light/BMA_WLC.npy")),
-		sort(glob("$(DATA_DIR)/w50_*/white-light/results.dat")),
-	))
-)
-
-# ╔═╡ 3b5b4f0e-0ac4-40e2-81cb-40c387526d9a
-summary_tables = [
-	summary_table(cube["results"], PARAMS)
-	for (transit, cube) in cubes
-]
-
-# ╔═╡ de0a4468-56aa-4748-80a0-6c9ab6b8579e
-m_results = hcat((
-	summary[!, "Value"] .± maximum((summary[!, "SigmaUp"],summary[!, "SigmaDown"]))
-	for summary in summary_tables
-)...) |> x-> hcat(x, mean(x, dims=2));
-
-# ╔═╡ 19fcaa15-6f01-46a6-8225-4b5cafd89cc1
-BMA = DataFrame(
-	[params_symbols m_results],
-	["Parameter", "Transit 1", "Transit 2", " Transit 3", "Combined"]
-)
 
 # ╔═╡ 30ae3744-0e7e-4c16-b91a-91eb518fba5b
 md"""
@@ -304,16 +322,16 @@ let
 			
 	# Plot corners from each night
 	for (i, (transits, cube)) in enumerate(cubes)
-		plot_corner!(fig, cube["samples"], PARAMS, color=COLORS[i])
+		plot_corner!(fig, cube["samples"], keys(PARAMS), color=COLORS[i])
 	end
 	
 	# Align axes limits and apply labels
 	axs = reshape(copy(fig.content), n_params, n_params)
 	[linkxaxes!(reverse(axs[:, j])...) for j in 1:n_params]	
-	for (j, param) in enumerate(PARAMS)
-		axs[end, j].xlabel = "Δ"*truths[param]["symbol"]
+	for (j, (param, param_latex)) in enumerate(PARAMS)
+		axs[end, j].xlabel = "Δ"*param_latex
 		axs[end, j].xlabelsize = 26
-		axs[j, begin].ylabel = "Δ"*truths[param]["symbol"]
+		axs[j, begin].ylabel = "Δ"*param_latex
 		axs[j, begin].ylabelsize = 26
 	end
 	
@@ -338,22 +356,26 @@ md"""
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
 # ╟─b28bb1b6-c148-41c4-9f94-0833e365cad4
 # ╟─30b84501-fdcd-4d83-b929-ff354de69a17
-# ╠═3b5b4f0e-0ac4-40e2-81cb-40c387526d9a
+# ╠═ee9347b2-e97d-4f66-9c21-7487ca2c2e30
 # ╟─1bc1110f-e57d-4f31-a309-9b4e1aed1c0a
 # ╠═19fcaa15-6f01-46a6-8225-4b5cafd89cc1
 # ╠═de0a4468-56aa-4748-80a0-6c9ab6b8579e
-# ╠═ee0fe52a-2ac7-4421-a44d-e1f23e7a36d4
-# ╟─ecea9d26-0179-4035-b20e-b06beca290eb
-# ╠═22ebe763-b315-480b-abfd-4229e17407ab
 # ╟─68ec4343-5f6c-4dfd-90b5-6393b4c819b9
 # ╟─e452d2b1-1010-4ce3-8d32-9e9f1d0dfa0b
 # ╠═d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
 # ╠═ed935d16-ddce-4334-a880-005732b38936
+# ╠═6a9b28b5-bc77-4c9f-86e4-a564d57feb72
+# ╠═d279e93e-8665-41b2-bd5c-723458fabe86
 # ╟─c5e10e47-ec64-4911-8107-487d1ef3f134
 # ╠═2cbc6ddb-210e-41e8-b745-5c41eba4e778
 # ╠═6fcd1377-8364-45a3-9ff6-89d61df1ef42
 # ╟─82a23101-9e1f-4eae-b529-e750a44c98b1
 # ╠═ddd9a95b-735a-4995-8893-542128bb56d6
+# ╠═a0b7fc53-6d0a-47c1-94b9-6b742c014a93
+# ╠═4cba0dcb-5d6e-42d2-baff-134dbe8500ba
+# ╠═bfdf906b-1e54-4a77-820e-0ea43fe67210
+# ╠═82647208-82e1-4e5a-b6f0-8c77db8b230a
+# ╠═b676f75f-51e1-4ea8-acda-67d62607465e
 # ╠═931ce3d5-c4ed-496c-883b-d7ee33e957cc
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
 # ╠═940ebaf2-659a-4319-bbe6-e0290752f1fb
