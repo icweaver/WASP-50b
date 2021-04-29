@@ -1103,9 +1103,10 @@ def plot_tspec_IMACS(ax, base_dir, data_dict):
     # Compute offset
     depth_wlc_stats = np.array(depth_wlc_stats)
     depth_wlc, depth_wlc_u, depth_wlc_d = depth_wlc_stats.T
-    mean_wlc_depth, mean_wlc_depth_unc = weighted_mean_uneven_errors(
-        depth_wlc, depth_wlc_u, depth_wlc_d
-    )
+    mean_wlc_depth, mean_wlc_depth_unc = np.average(depth_wlc, weights=depth_wlc_u), weighted_err(depth_wlc_u)
+    #mean_wlc_depth, mean_wlc_depth_unc = weighted_mean_uneven_errors(
+    #    depth_wlc, depth_wlc_u, depth_wlc_d
+    #)
 
     wlc_offsets = depth_wlc - mean_wlc_depth
     #for i, (wav, tspec, offs) in enumerate(zip(wavs, tspec_stats, wlc_offsets), start=1):
@@ -1123,6 +1124,7 @@ def plot_tspec_IMACS(ax, base_dir, data_dict):
     print(f"offsets: {wlc_offsets}")
     print(f"offsets (% mean wlc depth): {wlc_offsets*100/mean_wlc_depth}")
     tspec_stats = np.array(tspec_stats)  # transits x (depth, u, d) x wavelength
+    print(wlc_offsets[np.newaxis].T)
     tspec_stats[:, 0, :] -= wlc_offsets[np.newaxis].T
 
     tspec_depths = tspec_stats[:, 0, :]
