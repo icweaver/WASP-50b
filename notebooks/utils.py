@@ -1103,6 +1103,8 @@ def plot_tspec_IMACS(ax, base_dir, data_dict):
     # Compute offset
     depth_wlc_stats = np.array(depth_wlc_stats)
     depth_wlc, depth_wlc_u, depth_wlc_d = depth_wlc_stats.T
+    print("depths", depth_wlc)
+    print(np.mean(depth_wlc))
     mean_wlc_depth, mean_wlc_depth_unc = np.average(depth_wlc, weights=depth_wlc_u), weighted_err(depth_wlc_u)
     #mean_wlc_depth, mean_wlc_depth_unc = weighted_mean_uneven_errors(
     #    depth_wlc, depth_wlc_u, depth_wlc_d
