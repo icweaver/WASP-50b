@@ -339,7 +339,7 @@ let
 	
 	# Align axes limits and apply labels
 	axs = reshape(copy(fig.content), n_params, n_params)
-	[linkxaxes!(reverse(axs[:, j])...) for j in 1:n_params]	
+	[linkxaxes!(reverse(axs[:, j])...) for j in 1:n_params]
 	for (j, (param, param_latex)) in enumerate(PARAMS)
 		axs[end, j].xlabel = "Δ"*param_latex
 		axs[end, j].xlabelsize = 26
@@ -356,7 +356,7 @@ md"""
 """
 
 # ╔═╡ Cell order:
-# ╟─506eeeb2-e56d-436b-91b8-605e52201563
+# ╠═506eeeb2-e56d-436b-91b8-605e52201563
 # ╟─782806a6-efd2-45a9-b898-788a276c282b
 # ╠═3f0f5777-00f1-443d-8ced-d901550010d3
 # ╠═2191791b-df62-4f1b-88bf-060cc47896b2

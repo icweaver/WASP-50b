@@ -5,7 +5,7 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ 1dc0c992-a894-11eb-2eab-f1fccba239f0
-using PlutoUI, CairoMakie, Colors, CSV, DataFrames, DataFramesMeta, Glob, Measurements, Statistics, Latexify
+using CairoMakie, Colors, CSV, DataFrames, DataFramesMeta, Glob, Measurements, Statistics, Latexify
 
 # ╔═╡ c53be9cf-7722-4b43-928a-33e7b0463330
 const DATA_DIR = "data/detrended/out_l/WASP50"
@@ -159,7 +159,20 @@ begin
 	fig
 end
 
+# ╔═╡ e68c4b84-09eb-41e5-a688-36a83fa03625
+import PlutoUI as pl
+
+# ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
+md"""
+# Transmission spectra
+
+In this notebook we will
+
+$(pl.TableOfContents())
+"""
+
 # ╔═╡ Cell order:
+# ╠═e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 # ╠═c53be9cf-7722-4b43-928a-33e7b0463330
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
 # ╠═855095aa-c7e1-4799-9fcb-070a95bf7656
@@ -168,4 +181,5 @@ end
 # ╠═817aac12-13b9-44fe-a7e5-aa5ec7b8939e
 # ╠═5c6d5b2d-3521-4626-b12d-d5685e0b09a5
 # ╠═bef0918c-c645-4557-a2e5-00b6c26573bc
+# ╠═e68c4b84-09eb-41e5-a688-36a83fa03625
 # ╠═1dc0c992-a894-11eb-2eab-f1fccba239f0
