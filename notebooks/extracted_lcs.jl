@@ -125,30 +125,6 @@ end;
 # ╔═╡ bd2cdf33-0c41-4948-82ab-9a28929f72b3
 LC = load_pickle("data/extracted_wlcs/ut131219_a15_25_noflat_fixbadpixels/LCs_w50_bins_ut131219.pkl")
 
-# ╔═╡ 18d58341-0173-4eb1-9f01-cfa893088613
-begin
-	LC_div = LC["oLC"] ./ LC["cLC"]
-	LC_div_norm = LC_div ./ median(LC_div, dims=1)
-end
-
-# ╔═╡ 3b3019a7-955a-49f9-bb67-e1e685edec92
-let
-	fig = Figure(resolution=(1_400, 600))
-	k = 1
-	for j in 1:4, i in 1:2
-		scatter(fig[i, j], LC_div_norm[:, k], label=LC["cNames"][k])
-		k += 1
-	end
-	
-	axs = reshape(copy(fig.content), 2, 4)
-	linkyaxes!.(axs)
-	axislegend.(axs)
-	hidexdecorations!.(axs[begin, :])
-	hideydecorations!.(axs[:, begin+1:end])
-	
-	fig
-end
-
 # ╔═╡ 44808b97-df11-4aff-9e97-f97987fe9939
 cube = load_npz(data_path, allow_pickle=true)
 
@@ -182,6 +158,9 @@ md"""
 ## Stellar spectra 🌟
 """
 
+# ╔═╡ d49afef8-508b-43bb-9c3a-ba89a4212f20
+wav_IMACS = LC["spectra"]["wavelengths"]
+
 # ╔═╡ ed92fff0-6413-4fc2-939e-ecd13430ce75
 md"""
 We now take a look at the extracted flux from each star as a function of wavelength.
@@ -191,16 +170,40 @@ We now take a look at the extracted flux from each star as a function of wavelen
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
 
 # ╔═╡ 1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
-function spec_plot(ax, wav, A; color="", label="")
+function spec_plot(ax, wav, A; color=:blue, label="")
 	μ, σ = med_std(A)
-	lines(ax, wav, μ, label=label)
-	band!(ax, wav, μ .- σ, μ .+ σ, color=color)
+	band(ax, wav, μ .- σ, μ .+ σ, color=(color, 0.25))
+	lines!(ax, wav, μ, color=color, label=label)
 end
 
 # ╔═╡ e3468c61-782b-4f55-a4a1-9d1883655d11
 md"""
 ## White light curves ⚪
 """
+
+# ╔═╡ 18d58341-0173-4eb1-9f01-cfa893088613
+begin
+	LC_div = LC["oLC"] ./ LC["cLC"]
+	LC_div_norm = LC_div ./ median(LC_div, dims=1)
+end
+
+# ╔═╡ 3b3019a7-955a-49f9-bb67-e1e685edec92
+let
+	fig = Figure(resolution=(1_400, 600))
+	k = 1
+	for j in 1:4, i in 1:2
+		scatter(fig[i, j], LC_div_norm[:, k], label=LC["cNames"][k])
+		k += 1
+	end
+	
+	axs = reshape(copy(fig.content), 2, 4)
+	linkyaxes!.(axs)
+	axislegend.(axs)
+	hidexdecorations!.(axs[begin, :])
+	hideydecorations!.(axs[:, begin+1:end])
+	
+	fig
+end
 
 # ╔═╡ 08eafc08-b0fb-4c99-9d4e-7fa5085d386c
 md"""
@@ -403,6 +406,18 @@ const COLORS =  parse.(Colorant,
 	]
 );
 
+# ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
+let
+	fig = Figure()
+	
+	wav = LC["spectra"]["wavelengths"]
+	spec_plot(fig[1, 1], wav_IMACS, LC["spectra"]["WASP50"];
+		color = (COLORS[1]),
+	)
+	
+	fig
+end
+
 # ╔═╡ 2fd7bc68-a6ec-4ccb-ad73-07b031ffef5a
 let
 	fig = Figure(resolution = (1200, 700))
@@ -413,7 +428,7 @@ let
 	k = 1
 	for j in 1:2, i in 1:2
 		spec_plot(fig[i, j], wav, fluxes[k];
-			color = (COLORS[2], 0.5),
+			color = (COLORS[2]),
 			label=labels[k],
 		)
 		k += 1
@@ -467,6 +482,8 @@ md"""
 # ╟─1c3e8cb3-2eff-47c2-8c17-01d0599556b8
 # ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
 # ╟─e774a20f-2d58-486a-ab71-6bde678b26f8
+# ╠═589239fb-319c-40c2-af16-19025e7b28a2
+# ╠═d49afef8-508b-43bb-9c3a-ba89a4212f20
 # ╟─ed92fff0-6413-4fc2-939e-ecd13430ce75
 # ╠═2fd7bc68-a6ec-4ccb-ad73-07b031ffef5a
 # ╠═1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
