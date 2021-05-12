@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.4
+# v0.14.5
 
 using Markdown
 using InteractiveUtils
@@ -115,6 +115,18 @@ md"""
 Plotting the data from the `models` cube returns the following detrended white light curves:
 """
 
+# ╔═╡ 0dd63eaf-1afd-4caf-a74b-7cd217b3c515
+# Returns value `v` from `Variables` columns in results.dat file 
+val(df, v) = @where(df, :Variable .== v)[1, "Value"]
+
+# ╔═╡ d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c
+# Computes orbital phase
+function ϕ(t, t₀, P)
+	phase = ((t - t₀) / P) % 1.0
+    phase ≥ 0.5 && (phase -= 1.0)
+	return phase
+end
+
 # ╔═╡ b28bb1b6-c148-41c4-9f94-0833e365cad4
 md"""
 ## Summary table 📓
@@ -167,11 +179,11 @@ const PARAMS = OrderedDict(
 	"inc" => "i",
 	"b" => "b",
 	"q1" => "u",
-)
+);
 
 # ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
 begin
-	summary_tables = []
+	summary_tables = DataFrame[]
 	
 	for (transit, cube) in cubes
 		param_idxs = [
@@ -204,7 +216,7 @@ latexify(BMA)
 # Will probably just copy-paste directly into paper
 pl.with_terminal() do
 	BMA |> x -> latexify(x, env=:table) |> print
-end
+end;
 
 # ╔═╡ 56d0de38-5639-4196-aafe-79a9ab933980
 begin
@@ -278,7 +290,7 @@ const COLORS =  parse.(Colorant,
 		"#029e73",  # Green
 		"slategray",
 	]
-);
+)
 
 # ╔═╡ 4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
 let
@@ -286,23 +298,40 @@ let
 	
 	i = 1
 	for (i, (transit, cube)) in enumerate(cubes)
-			scatter(
-			fig[i, 1], cube["models"]["t"] .- 2.45e6,
+		t₀ = val(cube["results"], "t0")
+		P = val(cube["results"], "P")
+		
+		scatter(fig[i, 1],
+			ϕ.(cube["models"]["t"], t₀, P),
 			cube["models"]["LC_det"],
 			color = COLORS[i],
 			strokewidth = 0,
-			axis = (title=transit,),
+			#axis = (title=transit,),
 		)
-		lines!(
-			fig[i, 1],
-			cube["models"]["t_interp"] .- 2.45e6,
+		
+		lines!(fig[i, 1],
+			ϕ.(cube["models"]["t_interp"], t₀, P),
 			cube["models"]["LC_det_model_interp"],
 			color = 0.75*COLORS[i],
 			linewidth = 3,
 		)
+
+		text!(fig[i, 1], transit;
+			position = Point2f0(0.05, 0.980),
+			space = :data,
+			textsize = 0.0025,
+			align = (:center, :bottom),
+			color = 0.75*COLORS[i],
+		)
 	end
 	
-	fig
+	axs = reshape(copy(fig.content), (3, 1))
+	linkaxes!(axs...)
+	hidexdecorations!.(axs[begin:end-1], grid=false)
+	axs[end].xlabel = "Phase"
+	axs[2].ylabel = "Relative flux"
+	
+	fig |> pl.as_svg
 end
 
 # ╔═╡ d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
@@ -333,8 +362,18 @@ let
 	end
 			
 	# Plot corners from each night
+	diamond = Point2f0[(0.5, 0), (1, 0.5), (0.5, 1), (0, 0.5), (0.5, 0.0)]
+	elems = LineElement[]
+	elem_labels = String[]
 	for (i, (transit, cube)) in enumerate(cubes)
-		plot_corner!(fig, samples_cube[transit], keys(PARAMS), color=COLORS[i])
+		c = COLORS[i]
+		plot_corner!(fig,
+			samples_cube[transit], keys(PARAMS), color=c
+		)
+		push!(elems,
+			LineElement(color=c, linestyle=nothing, linepoints=diamond,)
+		)
+		push!(elem_labels, transit)
 	end
 	
 	# Align axes limits and apply labels
@@ -347,7 +386,18 @@ let
 		axs[j, begin].ylabelsize = 26
 	end
 	
-	fig
+	Legend(fig[1, n_params],
+		elems,
+		elem_labels,
+		#orientation = :horizontal,
+		#patchsize = (25, 25),
+		tellwidth = false,
+		tellheight = false,
+		rowgap = 10,
+		labelsize = 25,
+	)
+	
+	fig |> pl.as_svg
 end
 
 # ╔═╡ baeadfce-535a-46c3-8cb9-79cf6bde8555
@@ -356,7 +406,7 @@ md"""
 """
 
 # ╔═╡ Cell order:
-# ╠═506eeeb2-e56d-436b-91b8-605e52201563
+# ╟─506eeeb2-e56d-436b-91b8-605e52201563
 # ╟─782806a6-efd2-45a9-b898-788a276c282b
 # ╠═3f0f5777-00f1-443d-8ced-d901550010d3
 # ╠═2191791b-df62-4f1b-88bf-060cc47896b2
@@ -366,6 +416,8 @@ md"""
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
+# ╠═0dd63eaf-1afd-4caf-a74b-7cd217b3c515
+# ╠═d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c
 # ╟─b28bb1b6-c148-41c4-9f94-0833e365cad4
 # ╟─30b84501-fdcd-4d83-b929-ff354de69a17
 # ╠═ee9347b2-e97d-4f66-9c21-7487ca2c2e30
