@@ -344,7 +344,7 @@ let
 	for j in 1:n_params, i in 1:n_params
 		# Create subplot apply global settings
 		ax = Axis(fig[i, j], axis=(aspect=1, xticklabelrotation=π/4),)
-		ax.xticklabelrotation = π/4
+		#ax.xticklabelrotation = π/4
 		ax.aspect = 1.0
 		# Hide upper triangle
 		j > i && (hidedecorations!(ax); hidespines!(ax))
