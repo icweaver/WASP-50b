@@ -21,6 +21,7 @@ begin
 	using PyCall
 	using Statistics
 	using Colors
+	using ImageFiltering
 end
 
 # ╔═╡ ee24f7df-c4db-4065-afe9-10be80cbcd6b
@@ -201,24 +202,6 @@ begin
 	LC_div_norm = LC_div ./ median(LC_div, dims=1)
 end
 
-# ╔═╡ 3b3019a7-955a-49f9-bb67-e1e685edec92
-let
-	fig = Figure(resolution=(1_400, 600))
-	k = 1
-	for j in 1:4, i in 1:2
-		scatter(fig[i, j], LC_div_norm[:, k], label=LC_IMACS["cNames"][k])
-		k += 1
-	end
-	
-	axs = reshape(copy(fig.content), 2, 4)
-	linkyaxes!.(axs)
-	axislegend.(axs)
-	hidexdecorations!.(axs[begin, :])
-	hideydecorations!.(axs[:, begin+1:end])
-	
-	fig |> pl.as_svg
-end
-
 # ╔═╡ 9cf2642e-d436-4078-b4a3-e2a519b6d651
 md"""
 ### LDSS3
@@ -226,13 +209,22 @@ md"""
 
 # ╔═╡ 08eafc08-b0fb-4c99-9d4e-7fa5085d386c
 md"""
-Using the extracted spectra from earlier, we can integrate the flux along the spectral direction to build the white-light curves for each star. This will be stored in the `ntimes` ``\times 1 \times`` `ncomps` array, `f_norm_wlc`.
+Using the extracted spectra from earlier, we can integrate the flux along the spectral direction to build the white-light curves for each star. We store this in the `ntimes` ``\times`` `ncomps` array, `f_div_wlc`:
 """
 
 # ╔═╡ e9bbc964-d4e5-4d60-b188-68807e0a030d
 md"""
+!!! note
+	We also convert the data to Float64 to match the data format for the IMACS data
+
 Dividing the target wlc by each comparison star will eliminate some of the common systematics shared between them (e.g., air mass, local refractive atmospheric effects), and make the shape of the transit white-light curve more apparent.
 """
+
+# ╔═╡ 5e8607aa-766c-4868-a3e2-e161d9854410
+const FERR = 0.002
+
+# ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
+@bind window_width pl.Slider(3:2:21, show_value=true)
 
 # ╔═╡ e98dee2e-a369-448e-bfe4-8fea0f318fa8
 md"""
@@ -298,19 +290,20 @@ comp_fluxes = cat(
 
 # ╔═╡ 756c0e88-393e-404f-b36c-9f861a8172e2
 begin
-	f_wlc = sum(target_fluxes, dims=2) ./ sum(comp_fluxes, dims=2)
-	f_norm_wlc = f_wlc ./ median(f_wlc, dims=1) 
-end;
+	f_wlc = sum(target_fluxes, dims=2) ./ sum(comp_fluxes, dims=2) |>
+		x -> dropdims(x, dims=2)
+	f_div_wlc = f_wlc ./ median(f_wlc, dims=1) |> x -> convert(Matrix{Float64}, x)
+end
 
 # ╔═╡ 76ba54ff-a396-48e2-8837-b839cb62caef
 let
-	fig = Figure(resolution = (1200, 1_000))
+	fig = Figure(resolution = (900, 1_200))
 	
-	for c_i in 1:ncomps
-		scatter(
-			fig[c_i, 1], vcat(f_norm_wlc[:, :, c_i]...),
+	for (i, f) in enumerate(eachcol(f_div_wlc))
+		scatter(fig[i, 1],
+			f,
 			strokewidth=0,
-			label="target / comp $(c_i)"
+			label="target / comp $(i)"
 		)
 	end
 	
@@ -326,6 +319,18 @@ let
 	
 	fig |> pl.as_svg
 end
+
+# ╔═╡ d9f7b19b-9c95-4605-af62-30dad3880070
+f_filt = mapslices(x -> mapwindow(median, x, window_width, border="reflect"), f_div_wlc, dims=1)
+
+# ╔═╡ c82bc4a7-4b81-4c5d-91fa-2e7cb61f17a3
+diff = abs.(f_div_wlc - f_filt)
+
+# ╔═╡ 82745422-8278-4e89-a5cc-79e39b300032
+bad_idxs = ∪(findall.(>(FERR), eachcol(diff))...) |> sort;
+
+# ╔═╡ af1542b0-263f-4420-97d4-7f624e12fff4
+use_idxs = deleteat!(collect(1:ntimes), bad_idxs)
 
 # ╔═╡ 2b20e471-16e5-4b54-abc5-4308af4e60b6
 """
@@ -377,7 +382,7 @@ begin
 end;
 
 # ╔═╡ fbc57d8b-3b1b-44d1-bd7d-0e9749026d4c
-begin
+let
 	fig = Figure(resolution = (400, 700))
 	ax = fig[1, 1] = Axis(fig, title = "target / comp $comp_idx")
 	
@@ -399,6 +404,30 @@ end
 md"""
 ## Plot configs
 """
+
+# ╔═╡ 2b50e77f-0606-4e13-9d8a-c6eb3645d23c
+const FIG_TALL = (900, 1_200)
+
+# ╔═╡ 5e97c57e-a896-4478-a277-e3da1444f8de
+const FIG_WIDE = (1_350, 800)
+
+# ╔═╡ 3b3019a7-955a-49f9-bb67-e1e685edec92
+let
+	fig = Figure(resolution=FIG_WIDE)
+	k = 1
+	for j in 1:4, i in 1:2
+		scatter(fig[i, j], LC_div_norm[:, k], label=LC_IMACS["cNames"][k])
+		k += 1
+	end
+	
+	axs = reshape(copy(fig.content), 2, 4)
+	linkyaxes!.(axs)
+	axislegend.(axs)
+	hidexdecorations!.(axs[begin, :])
+	hideydecorations!.(axs[:, begin+1:end])
+	
+	fig |> pl.as_svg
+end
 
 # ╔═╡ 202667da-d22b-405d-9935-4726c7d41a0b
 const COLORS =  parse.(Colorant,
@@ -429,7 +458,7 @@ end
 
 # ╔═╡ 2fd7bc68-a6ec-4ccb-ad73-07b031ffef5a
 let
-	fig = Figure(resolution = (1200, 700))
+	fig = Figure(resolution=FIG_WIDE)
 		
 	fluxes = [target_fluxes, [comp_fluxes[:, :, i] for i in 1:3]...]
 	labels = ["WASP-50", ["comp $i" for i in 1:3]...]
@@ -454,6 +483,41 @@ let
 	fig[1:2, 0] = Label(fig, "Counts", rotation=π/2)
 	fig[end+1, 2:3] = Label(fig, "Index")
     #textsize = 30, font = noto_sans_bold, color = (:black, 0.25))
+	
+	fig |> pl.as_svg
+end
+
+# ╔═╡ ccabf5d2-5739-4284-a972-23c02a263a5c
+let
+	fig = Figure(resolution=FIG_TALL)
+	
+	idxs = 1:ntimes
+	c = COLORS[end]
+	for i ∈ 1:ncomps
+		ax = Axis(fig[i, 1])
+		
+		# All points
+		scatter!(ax, idxs, f_div_wlc[:, i];
+			color = (c, 0.3),
+			strokewidth = 0,
+		)
+	
+		# Used points
+		scatter!(ax, idxs[use_idxs], f_div_wlc[use_idxs, i];
+			color =c,
+			strokewidth = 0,
+		)
+		
+		lines!(ax, idxs, f_filt[:, i];
+			color = COLORS[end-2],
+			linewidth = 2,
+		)
+	end
+	
+	axs = reshape(fig.content, ncomps, 1)
+	
+	hidexdecorations!.(axs[begin:end-1], grid=false)
+	linkyaxes!(axs...)
 	
 	fig |> pl.as_svg
 end
@@ -500,6 +564,13 @@ md"""
 # ╠═756c0e88-393e-404f-b36c-9f861a8172e2
 # ╟─e9bbc964-d4e5-4d60-b188-68807e0a030d
 # ╠═76ba54ff-a396-48e2-8837-b839cb62caef
+# ╠═d9f7b19b-9c95-4605-af62-30dad3880070
+# ╠═c82bc4a7-4b81-4c5d-91fa-2e7cb61f17a3
+# ╠═5e8607aa-766c-4868-a3e2-e161d9854410
+# ╠═82745422-8278-4e89-a5cc-79e39b300032
+# ╠═af1542b0-263f-4420-97d4-7f624e12fff4
+# ╠═ab058d99-ce5f-4ed3-97bd-a62d2f258773
+# ╠═ccabf5d2-5739-4284-a972-23c02a263a5c
 # ╟─e98dee2e-a369-448e-bfe4-8fea0f318fa8
 # ╟─891add6b-c1c1-4e7c-8a8d-de2421bd6f2d
 # ╟─e844ad0c-c3ce-40cc-840f-7fe6ec454fed
@@ -519,6 +590,8 @@ md"""
 # ╟─a73deaa6-5f45-4920-9796-6aa48e80c3de
 # ╠═fbc57d8b-3b1b-44d1-bd7d-0e9749026d4c
 # ╟─5db4a2f2-1c0d-495a-8688-40fc9e0ccd02
+# ╠═2b50e77f-0606-4e13-9d8a-c6eb3645d23c
+# ╠═5e97c57e-a896-4478-a277-e3da1444f8de
 # ╠═202667da-d22b-405d-9935-4726c7d41a0b
 # ╟─eeb3da97-72d5-4317-acb9-d28637a06d67
 # ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23
