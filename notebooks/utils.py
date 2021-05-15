@@ -772,7 +772,6 @@ def plot_divided_wlcs(
     flux_divs = flux_target / flux_comps_used
     flux_divs /= np.median(flux_divs, axis=0)
 
-    print(flux_divs.shape)
     for flux_div, cName in zip(flux_divs.T, comps_to_use):
         bad_idxs = []
         if comps_to_use[0] in comps_to_highlight:

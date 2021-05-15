@@ -22,6 +22,9 @@ begin
 	using Statistics
 	using Colors
 	using ImageFiltering
+	using CSV
+	using DataFrames
+	using DelimitedFiles
 end
 
 # ╔═╡ ee24f7df-c4db-4065-afe9-10be80cbcd6b
@@ -98,7 +101,7 @@ Next we extract the common wavelength grid, along with the target and comparison
 
 # ╔═╡ 7bfc971c-8737-49ad-adec-ac57d176f10e
 md"""
-We can extract the comparison star flux in a similar way by stacking the ``N \times W`` matrix for each star on top of each other:
+We can extract the comparison star flux in a similar way by stacking the ``N \times W`` matrix for each star:
 """
 
 # ╔═╡ 1c3e8cb3-2eff-47c2-8c17-01d0599556b8
@@ -131,29 +134,39 @@ LC_IMACS = load_pickle(data_path_IMACS)
 LC_LDSS3 = load_npz(data_path, allow_pickle=true)
 
 # ╔═╡ 5b645084-1f21-42a2-8184-e27f8b3000c3
-target_name = LC_LDSS3["target"]
+target_name_LDSS3 = LC_LDSS3["target"]
 
 # ╔═╡ 5d624218-5106-4e3f-a3b1-77ed0d2a02fa
-comp_names = convert(Vector{String}, LC_LDSS3["comparisons"])
+comp_names_LDSS3 = convert(Vector{String}, LC_LDSS3["comparisons"])
 
 # ╔═╡ 639f666b-09fc-488b-982b-01a523278cae
-raw_counts = LC_LDSS3["cubes"]["raw_counts"]
+f_LDSS3 = LC_LDSS3["cubes"]["raw_counts"]
 
 # ╔═╡ 2e503024-65cb-483d-aac7-364f22823bdc
-# Get non-zero wavelength ranges for each star
+# Non-zero wavelength ranges for each star
 idx_lims = [
 	maximum(findfirst.(!=(0.0), eachrow(f))):minimum(findlast.(!=(0.0), eachrow(f)))
-	for (_, f) in raw_counts
+	for (_, f) in f_LDSS3
 ]
 
 # ╔═╡ 993e1e5a-9d78-4042-9aca-bb753af7f647
-common_wav_idxs = ∩(idx_lims...) # Use the intersection for common wavelength range
-
-# ╔═╡ 31bdc830-dfc9-445a-ba7e-76be7627561a
-wav = LC_LDSS3["spectral"]["wavelength"][common_wav_idxs]
+# Use the intersection for common wavelength range
+common_wav_idxs_LDSS3 = ∩(idx_lims...)
 
 # ╔═╡ 7c6a3f88-cdc5-4b56-9bbf-2e9a2fa8ae26
-target_fluxes = raw_counts[target_name][:, common_wav_idxs]
+f_target_LDSS3 = f_LDSS3[target_name_LDSS3][:, common_wav_idxs_LDSS3]
+
+# ╔═╡ bb2c6085-5cb4-4efc-a322-27fda09fb904
+f_comps_LDSS3 = cat(
+	[
+		f_LDSS3[comp_names_LDSS3[c_i]][:, common_wav_idxs_LDSS3]
+		for c_i in 1:length(comp_names_LDSS3)
+	]...,
+	dims=3
+)
+
+# ╔═╡ 31bdc830-dfc9-445a-ba7e-76be7627561a
+wav_LDSS3 = LC_LDSS3["spectral"]["wavelength"][common_wav_idxs_LDSS3]
 
 # ╔═╡ e774a20f-2d58-486a-ab71-6bde678b26f8
 md"""
@@ -172,6 +185,9 @@ md"""
 ### LDSS3
 """
 
+# ╔═╡ 04c1350d-85e8-4d74-a1ff-4db8a5d473cd
+f_target_LDSS3
+
 # ╔═╡ 6fd88483-d005-4186-8dd2-82cea767ce90
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
 
@@ -186,21 +202,34 @@ end
 md"""
 ## White light curves ⚪
 
-Next, we will extract the white light curves for each instrument.
+Next, we will extract the white light curves for each instrument. We divide the target WLC by each comparison star to i)minimize common systematics (e.g., air mass, local refractive atmospheric effects), and ii) make the transit shape more apparent. This allows us to select good comparison stars for that particular night and which timeseries points to include in the rest of the analysis.
 """
 
 # ╔═╡ 731ed0be-a679-4738-a477-56b0ed44338c
 md"""
 ### IMACS
 
-The binned light curves already stored in the pickle file produced by our custom pipeline are directly plotted below:
+First we compute the median normalized, comparison star divided WLCs stored in the pickle file:
 """
 
 # ╔═╡ 18d58341-0173-4eb1-9f01-cfa893088613
 begin
-	LC_div = LC_IMACS["oLC"] ./ LC_IMACS["cLC"]
-	LC_div_norm = LC_div ./ median(LC_div, dims=1)
+	comp_names_IMACS = LC_IMACS["cNames"]
+	sorted_cName_idxs = sortperm(comp_names_IMACS)
+	
+	f_div_WLC_IMACS = LC_IMACS["oLC"] ./ LC_IMACS["cLC"][:, sorted_cName_idxs]
+	f_div_WLC_norm_IMACS = f_div_WLC_IMACS ./ median(f_div_WLC_IMACS, dims=1)
 end
+
+# ╔═╡ 941cd721-07d8-4a8f-9d75-42854e6e8edb
+md"""
+!!! warning
+	In general, the comparison stars names (`cNames`) are not stored in alphanumeric order by default. For convenience, we ensure this sorting with `sortperm`, so that the first column corresponds to the first comparison star, the second to the second comparison star, etc.
+
+	TODO: Identify cNames order for LDSS3 data
+
+We next plot these light curves and identified outliers below:
+"""
 
 # ╔═╡ 9cf2642e-d436-4078-b4a3-e2a519b6d651
 md"""
@@ -209,22 +238,37 @@ md"""
 
 # ╔═╡ 08eafc08-b0fb-4c99-9d4e-7fa5085d386c
 md"""
-Using the extracted spectra from earlier, we can integrate the flux along the spectral direction to build the white-light curves for each star. We store this in the `ntimes` ``\times`` `ncomps` array, `f_div_wlc`:
+Using the extracted spectra from earlier, we can integrate the flux along the binned spectral direction to build the white-light curves for each star. We store this in the `ntimes` ``\times`` `ncomps` array, `f_div_wlc`:
 """
 
 # ╔═╡ e9bbc964-d4e5-4d60-b188-68807e0a030d
 md"""
 !!! note
 	We also convert the data to Float64 to match the data format for the IMACS data
-
-Dividing the target wlc by each comparison star will eliminate some of the common systematics shared between them (e.g., air mass, local refractive atmospheric effects), and make the shape of the transit white-light curve more apparent.
 """
-
-# ╔═╡ 5e8607aa-766c-4868-a3e2-e161d9854410
-const FERR = 0.002
 
 # ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
 @bind window_width pl.Slider(3:2:21, show_value=true)
+
+# ╔═╡ 4b3b0a83-daaf-4339-86cc-24e0ba95ea85
+md"""
+### Helper functions
+"""
+
+# ╔═╡ dc044a72-4706-49e2-94a8-c828a6bf7de0
+function filt(f_div_wlc, window_width; func=median, border="reflect")
+	# Filtered light curves
+	f_filt = mapslices(
+		x -> mapwindow(func, x, window_width, border=border),
+		f_div_wlc,
+		dims=1,
+	)
+	
+	# Residuals
+	diff = abs.(f_div_wlc - f_filt)
+	
+	return f_filt, diff
+end
 
 # ╔═╡ e98dee2e-a369-448e-bfe4-8fea0f318fa8
 md"""
@@ -254,20 +298,39 @@ md"""
 We define the lower and upper bound for each of the `nbins` wavelength bins that the timeseries data will be integrated over, where `nbins` is the total number of wavelength bins used:
 """
 
-# ╔═╡ 84893ece-b867-4e13-a45f-081d4a9a0934
-const λ_start, Δλ, nbins = 5_800, 200, 19
+# ╔═╡ cfe0f1df-fc45-409f-a4ee-34b48a99c90c
+wbins = readdlm("data/reduced/LDSS3/w50_bins_LDSS3.dat", comments=true)
 
-# ╔═╡ 9aa02a13-ec25-40cc-8a54-89a192d228e5
-wbin_idx_start = findfirst(==(λ_start), wav)
+# ╔═╡ 8111e895-57c7-45c9-9ced-a6a55ccafdcf
+diff(wbins, dims=2)
 
-# ╔═╡ 1b550fd4-95a8-4130-972f-8dc963436cdc
-compute_wbins_idxs(c, λ_start_idx, Δλ) = (λ_start_idx:λ_start_idx+Δλ) .+ c
+# ╔═╡ a838a0ec-ee9c-4984-a62c-68810ec731de
+binned_wav_idxs_LDSS3 = [
+	findfirst(==(wbin[1]), wav_LDSS3):findfirst(==(wbin[2]), wav_LDSS3)
+	for wbin in eachrow(wbins)
+]
 
-# ╔═╡ fadb7a1b-d631-493f-97e0-4271599cd480
-wbins_idxs = compute_wbins_idxs.(0:Δλ:Δλ*nbins-1, wbin_idx_start, Δλ)
+# ╔═╡ ee94bd7d-380a-44c4-a8dd-9fd632a96158
+binned_wav_idxs_LDSS3_range = binned_wav_idxs_LDSS3[begin][begin]:binned_wav_idxs_LDSS3[end][end]
 
-# ╔═╡ a0b2cff5-67cd-4ee0-b538-d39fe6c6b67c
-wav[wbins_idxs[begin][begin]], wav[wbins_idxs[end][end]]
+# ╔═╡ c51edf69-b43b-4119-b2ad-f28f6de48c92
+begin
+	f_div_wlc_LDSS3 = sum(f_target_LDSS3[:, binned_wav_idxs_LDSS3_range], dims=2) ./
+		sum(f_comps_LDSS3[:, binned_wav_idxs_LDSS3_range, :], dims=2) |>
+			x -> dropdims(x, dims=2)
+	f_div_WLC_norm_LDSS3 = f_div_wlc_LDSS3 ./ median(f_div_wlc_LDSS3, dims=1) |>
+			x -> convert(Matrix{Float64}, x)
+end
+
+# ╔═╡ 78d4c13c-5c95-4710-b2c0-4bbc9a32e4c0
+wav_LDSS3
+
+# ╔═╡ d0b0559c-1ab2-4a9c-b859-5a96ac17d1f0
+# λ_start, Δλ, nbins = 5_800, 200, 19
+# wbin_idx_start = findfirst(==(λ_start), wav)
+# wav[wbins_idxs[begin][begin]], wav[wbins_idxs[end][end]]
+# compute_wbins_idxs(c, λ_start_idx, Δλ) = (λ_start_idx:λ_start_idx+Δλ) .+ c
+# wbins_idxs = compute_wbins_idxs.(0:Δλ:Δλ*nbins-1, wbin_idx_start, Δλ)
 
 # ╔═╡ f7feb44e-a363-4f8d-bf62-d3541533e4da
 md"""
@@ -279,59 +342,6 @@ md"""
 We will next compute `oLCw` and `cLCw`, where `oLCw` is an `ntimes` ``\times`` `nbins` matrix that holds the binned target flux, where `ntimes` is the number of timeseries points ``N``. Similarly `cLCw` is an `ntimes` ``\times`` `nbins` ``\times`` `ncomps` matrix that holds the comparison star flux, where `ncomps` is the number of comparison stars:
 """
 
-# ╔═╡ 6953f995-86e1-42ee-9591-8c4e372b06fb
-const ntimes, ncomps = size(target_fluxes)[1], length(comp_names)
-
-# ╔═╡ bb2c6085-5cb4-4efc-a322-27fda09fb904
-comp_fluxes = cat(
-	[raw_counts[comp_names[c_i]][:, common_wav_idxs] for c_i in 1:ncomps]...,
-	dims=3
-)
-
-# ╔═╡ 756c0e88-393e-404f-b36c-9f861a8172e2
-begin
-	f_wlc = sum(target_fluxes, dims=2) ./ sum(comp_fluxes, dims=2) |>
-		x -> dropdims(x, dims=2)
-	f_div_wlc = f_wlc ./ median(f_wlc, dims=1) |> x -> convert(Matrix{Float64}, x)
-end
-
-# ╔═╡ 76ba54ff-a396-48e2-8837-b839cb62caef
-let
-	fig = Figure(resolution = (900, 1_200))
-	
-	for (i, f) in enumerate(eachcol(f_div_wlc))
-		scatter(fig[i, 1],
-			f,
-			strokewidth=0,
-			label="target / comp $(i)"
-		)
-	end
-	
-	axs = copy(fig.content)
-	axislegend.(axs, valign=:top)
-	
-	scene = current_axis()
-	linkaxes!(axs...)
-	hidexdecorations!.(axs[1:2], grid = false)
-	axs[end].xlabel = "Index"
-	axs[2].ylabel = "Relative flux"
-	ylims!(scene, 0.97, 1.02)
-	
-	fig |> pl.as_svg
-end
-
-# ╔═╡ d9f7b19b-9c95-4605-af62-30dad3880070
-f_filt = mapslices(x -> mapwindow(median, x, window_width, border="reflect"), f_div_wlc, dims=1)
-
-# ╔═╡ c82bc4a7-4b81-4c5d-91fa-2e7cb61f17a3
-diff = abs.(f_div_wlc - f_filt)
-
-# ╔═╡ 82745422-8278-4e89-a5cc-79e39b300032
-bad_idxs = ∪(findall.(>(FERR), eachcol(diff))...) |> sort;
-
-# ╔═╡ af1542b0-263f-4420-97d4-7f624e12fff4
-use_idxs = deleteat!(collect(1:ntimes), bad_idxs)
-
 # ╔═╡ 2b20e471-16e5-4b54-abc5-4308af4e60b6
 """
 	sum_flux(A::AbstractMatrix, idx_range::AbstractRange, [dims=2])
@@ -342,13 +352,15 @@ sum_flux(A, idx_range, dims=2) = sum(view(A, :, idx_range), dims=dims)[:, 1]
 
 # ╔═╡ a6805e63-bbf4-48bc-8e15-be24da9b0348
 begin
+	nbins = length(binned_wav_idxs_LDSS3)
+	ntimes, ncomps = size(f_div_wlc_LDSS3)
 	oLCw = Matrix{Float64}(undef, ntimes, nbins)
 	cLCw = Array{Float64, 3}(undef, ntimes, nbins, ncomps)
 	
-	for w_i in 1:nbins
-		oLCw[:, w_i] .= sum_flux(target_fluxes, wbins_idxs[w_i])
-		for c_i in 1:ncomps
-			cLCw[:, w_i, c_i] .= sum_flux(comp_fluxes[:, :, c_i], wbins_idxs[w_i])
+	for (j, wav_idxs) in enumerate(binned_wav_idxs_LDSS3)
+		oLCw[:, j] .= sum_flux(f_target_LDSS3, wav_idxs)
+		for k in 1:ncomps
+			cLCw[:, j, k] .= sum_flux(f_comps_LDSS3[:, :, k], wav_idxs)
 		end
 	end
 end
@@ -400,6 +412,62 @@ let
 	fig |> pl.as_svg
 end
 
+# ╔═╡ 12bc210a-03fc-4a85-b281-f129b1877403
+md"""
+## External parameters
+"""
+
+# ╔═╡ d3830a06-de03-41f5-a6f0-003e9a392dbf
+md"""
+### IMACS
+"""
+
+# ╔═╡ 34c8629f-36cc-4b5e-9a56-3f504636b472
+eparams_IMACS = CSV.File(
+	"data/reduced/IMACS/ut131219/eparams.dat",
+	delim = ' ',
+	ignorerepeated=true,
+)
+
+# ╔═╡ a4c356bd-0fcf-4420-bb9b-96c84ad59730
+LC_IMACS["oLC"] |> length
+
+# ╔═╡ ab548920-bebc-4a1c-a964-be02277438b2
+lines(eparams_IMACS.Trace_Center)
+
+# ╔═╡ 1306cf62-857e-4cb3-a841-d87d2d5a995f
+md"""
+### LDSS3
+"""
+
+# ╔═╡ 6097f4c7-ee1a-425a-b84a-3f86f40ded2c
+LC_LDSS3
+
+# ╔═╡ 9b310d6f-b320-4406-a97c-a32620257995
+getindex.(
+	Ref(LC_LDSS3["temporal"].columns),
+	["bjd", "rotatore"]
+)
+
+# ╔═╡ 9265d396-a7c6-4386-9509-dff819e9eedb
+md"""
+* [x] time
+* [] full width at half maximum (FWHM) of the spectra on the CCD
+* [] airmass
+* [] position of the pixel trace through each spectrum on the chip of the CCD
+* [] sky flux
+* [] shift in wavelength space of the trace
+"""
+
+# ╔═╡ 62f0c610-862c-466b-b6ba-387ebc11928c
+LC_LDSS3["cubes"]["width"][target_name_LDSS3][:, common_wav_idxs_LDSS3[290:4159]]
+
+# ╔═╡ ec6b7585-daae-4f66-b071-244e7eac75ab
+binned_wav_idxs_LDSS3[begin][begin]
+
+# ╔═╡ 82bdf403-495b-4a4d-8516-611c438db75b
+binned_wav_idxs_LDSS3[end][end]
+
 # ╔═╡ 5db4a2f2-1c0d-495a-8688-40fc9e0ccd02
 md"""
 ## Plot configs
@@ -410,24 +478,6 @@ const FIG_TALL = (900, 1_200)
 
 # ╔═╡ 5e97c57e-a896-4478-a277-e3da1444f8de
 const FIG_WIDE = (1_350, 800)
-
-# ╔═╡ 3b3019a7-955a-49f9-bb67-e1e685edec92
-let
-	fig = Figure(resolution=FIG_WIDE)
-	k = 1
-	for j in 1:4, i in 1:2
-		scatter(fig[i, j], LC_div_norm[:, k], label=LC_IMACS["cNames"][k])
-		k += 1
-	end
-	
-	axs = reshape(copy(fig.content), 2, 4)
-	linkyaxes!.(axs)
-	axislegend.(axs)
-	hidexdecorations!.(axs[begin, :])
-	hideydecorations!.(axs[:, begin+1:end])
-	
-	fig |> pl.as_svg
-end
 
 # ╔═╡ 202667da-d22b-405d-9935-4726c7d41a0b
 const COLORS =  parse.(Colorant,
@@ -459,19 +509,19 @@ end
 # ╔═╡ 2fd7bc68-a6ec-4ccb-ad73-07b031ffef5a
 let
 	fig = Figure(resolution=FIG_WIDE)
-		
-	fluxes = [target_fluxes, [comp_fluxes[:, :, i] for i in 1:3]...]
+
+	fluxes = [f_target_LDSS3, [f_comps_LDSS3[:, :, i] for i in 1:3]...]
 	labels = ["WASP-50", ["comp $i" for i in 1:3]...]
-	
+
 	k = 1
 	for j in 1:2, i in 1:2
-		spec_plot(fig[i, j], wav, fluxes[k];
+		spec_plot(fig[i, j], wav_LDSS3, fluxes[k];
 			color = (COLORS[2]),
 			label=labels[k],
 		)
 		k += 1
 	end
-	
+
 	axs = reshape(copy(fig.content), 2, 2)
 	axislegend.(axs)
 	linkxaxes!(axs...)
@@ -479,45 +529,85 @@ let
 	linkyaxes!(axs[end, :]...)
 	hidexdecorations!.(axs[begin, :], grid=false)
 	hideydecorations!.(axs[:, end], grid=false)
-		
+
 	fig[1:2, 0] = Label(fig, "Counts", rotation=π/2)
 	fig[end+1, 2:3] = Label(fig, "Index")
-    #textsize = 30, font = noto_sans_bold, color = (:black, 0.25))
-	
+   #textsize = 30, font = noto_sans_bold, color = (:black, 0.25))
+
 	fig |> pl.as_svg
 end
 
 # ╔═╡ ccabf5d2-5739-4284-a972-23c02a263a5c
-let
-	fig = Figure(resolution=FIG_TALL)
+function plot_div_WLCS!(axs, f_div_wlc, window_width, cNames; ferr=0.002)
+	ntimes, ncomps = size(f_div_wlc)
+	
+	f_filt, diff = filt(f_div_wlc, window_width)
+	
+	bad_idxs = ∪(findall.(>(ferr), eachcol(diff))...) |> sort;
+	use_idxs = deleteat!(collect(1:ntimes), bad_idxs)
 	
 	idxs = 1:ntimes
 	c = COLORS[end]
-	for i ∈ 1:ncomps
-		ax = Axis(fig[i, 1])
-		
+	for (i, cName) ∈ enumerate(cNames)		
 		# All points
-		scatter!(ax, idxs, f_div_wlc[:, i];
+		scatter!(axs[i], idxs, f_div_wlc[:, i];
 			color = (c, 0.3),
 			strokewidth = 0,
+			label = cName,
 		)
 	
 		# Used points
-		scatter!(ax, idxs[use_idxs], f_div_wlc[use_idxs, i];
-			color =c,
+		scatter!(axs[i], idxs[use_idxs], f_div_wlc[use_idxs, i];
+			color = c,
 			strokewidth = 0,
 		)
 		
-		lines!(ax, idxs, f_filt[:, i];
+		lines!(axs[i], idxs, f_filt[:, i];
 			color = COLORS[end-2],
 			linewidth = 2,
 		)
+		#axislegend()
 	end
+end
+
+# ╔═╡ 5edd60ee-d246-47f1-9f2a-41b3e6585875
+let
+	fig = Figure(resolution=FIG_TALL)
 	
-	axs = reshape(fig.content, ncomps, 1)
+	ncomps = length(comp_names_IMACS)
 	
+	axs = [Axis(fig[i, j]) for i ∈ 1:ncomps÷2, j ∈ 1:2]
+	
+	plot_div_WLCS!(axs, f_div_WLC_norm_IMACS, window_width, comp_names_IMACS)
+	
+	axs = reshape(copy(fig.content), ncomps÷2, 2)
+	linkaxes!(axs...)
+	hidexdecorations!.(axs[begin:end-1, :], grid=false)
+	hideydecorations!.(axs[:, begin+1:end], grid=false)
+	ylims!(axs[end], 0.97, 1.02)
+	
+	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
+	fig[end+1, 2:end] = Label(fig, "Index")
+	
+	fig |> pl.as_svg
+end
+
+# ╔═╡ b1bd886f-c7dd-4167-b9b8-084b73f7ee9c
+let
+	fig = Figure(resolution=FIG_TALL)
+	
+	ncomps = length(comp_names_LDSS3)
+	
+	axs = [Axis(fig[i, 1]) for i in 1:ncomps]
+	
+	plot_div_WLCS!(axs, f_div_WLC_norm_LDSS3, window_width, comp_names_LDSS3)
+	
+	axs = reshape(copy(fig.content), ncomps, 1)
 	hidexdecorations!.(axs[begin:end-1], grid=false)
-	linkyaxes!(axs...)
+	linkaxes!(axs...)
+	
+	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
+	fig[end+1, 1:end] = Label(fig, "Index")
 	
 	fig |> pl.as_svg
 end
@@ -539,10 +629,10 @@ md"""
 # ╟─7185f603-3e57-42db-9665-c215094776ad
 # ╠═5b645084-1f21-42a2-8184-e27f8b3000c3
 # ╠═5d624218-5106-4e3f-a3b1-77ed0d2a02fa
+# ╠═639f666b-09fc-488b-982b-01a523278cae
 # ╠═2e503024-65cb-483d-aac7-364f22823bdc
 # ╠═993e1e5a-9d78-4042-9aca-bb753af7f647
 # ╠═31bdc830-dfc9-445a-ba7e-76be7627561a
-# ╠═639f666b-09fc-488b-982b-01a523278cae
 # ╠═7c6a3f88-cdc5-4b56-9bbf-2e9a2fa8ae26
 # ╟─7bfc971c-8737-49ad-adec-ac57d176f10e
 # ╠═bb2c6085-5cb4-4efc-a322-27fda09fb904
@@ -553,42 +643,53 @@ md"""
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
 # ╟─0d18676d-5401-44ab-8a95-c45fa7864115
 # ╠═2fd7bc68-a6ec-4ccb-ad73-07b031ffef5a
+# ╠═04c1350d-85e8-4d74-a1ff-4db8a5d473cd
 # ╠═1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
 # ╠═6fd88483-d005-4186-8dd2-82cea767ce90
 # ╟─e3468c61-782b-4f55-a4a1-9d1883655d11
 # ╟─731ed0be-a679-4738-a477-56b0ed44338c
-# ╟─18d58341-0173-4eb1-9f01-cfa893088613
-# ╠═3b3019a7-955a-49f9-bb67-e1e685edec92
+# ╠═18d58341-0173-4eb1-9f01-cfa893088613
+# ╟─941cd721-07d8-4a8f-9d75-42854e6e8edb
+# ╠═5edd60ee-d246-47f1-9f2a-41b3e6585875
 # ╟─9cf2642e-d436-4078-b4a3-e2a519b6d651
 # ╟─08eafc08-b0fb-4c99-9d4e-7fa5085d386c
-# ╠═756c0e88-393e-404f-b36c-9f861a8172e2
+# ╠═c51edf69-b43b-4119-b2ad-f28f6de48c92
+# ╠═ee94bd7d-380a-44c4-a8dd-9fd632a96158
 # ╟─e9bbc964-d4e5-4d60-b188-68807e0a030d
-# ╠═76ba54ff-a396-48e2-8837-b839cb62caef
-# ╠═d9f7b19b-9c95-4605-af62-30dad3880070
-# ╠═c82bc4a7-4b81-4c5d-91fa-2e7cb61f17a3
-# ╠═5e8607aa-766c-4868-a3e2-e161d9854410
-# ╠═82745422-8278-4e89-a5cc-79e39b300032
-# ╠═af1542b0-263f-4420-97d4-7f624e12fff4
 # ╠═ab058d99-ce5f-4ed3-97bd-a62d2f258773
+# ╠═b1bd886f-c7dd-4167-b9b8-084b73f7ee9c
+# ╟─4b3b0a83-daaf-4339-86cc-24e0ba95ea85
+# ╠═dc044a72-4706-49e2-94a8-c828a6bf7de0
 # ╠═ccabf5d2-5739-4284-a972-23c02a263a5c
 # ╟─e98dee2e-a369-448e-bfe4-8fea0f318fa8
 # ╟─891add6b-c1c1-4e7c-8a8d-de2421bd6f2d
 # ╟─e844ad0c-c3ce-40cc-840f-7fe6ec454fed
 # ╟─88dd7d0b-c133-4fd2-b942-520b7e3d0265
-# ╠═84893ece-b867-4e13-a45f-081d4a9a0934
-# ╠═a0b2cff5-67cd-4ee0-b538-d39fe6c6b67c
-# ╠═9aa02a13-ec25-40cc-8a54-89a192d228e5
-# ╠═1b550fd4-95a8-4130-972f-8dc963436cdc
-# ╠═fadb7a1b-d631-493f-97e0-4271599cd480
+# ╠═cfe0f1df-fc45-409f-a4ee-34b48a99c90c
+# ╠═8111e895-57c7-45c9-9ced-a6a55ccafdcf
+# ╠═a838a0ec-ee9c-4984-a62c-68810ec731de
+# ╠═78d4c13c-5c95-4710-b2c0-4bbc9a32e4c0
+# ╠═d0b0559c-1ab2-4a9c-b859-5a96ac17d1f0
 # ╟─f7feb44e-a363-4f8d-bf62-d3541533e4da
 # ╟─eb4f7a92-a9e7-4bf5-8b1c-bca928fcedde
-# ╠═6953f995-86e1-42ee-9591-8c4e372b06fb
 # ╠═2b20e471-16e5-4b54-abc5-4308af4e60b6
 # ╠═a6805e63-bbf4-48bc-8e15-be24da9b0348
 # ╟─f44393ab-2e49-4817-9870-890c9cd556ce
 # ╠═90fec9cf-37b0-4bcf-a6df-85a4cdfc511b
 # ╟─a73deaa6-5f45-4920-9796-6aa48e80c3de
 # ╠═fbc57d8b-3b1b-44d1-bd7d-0e9749026d4c
+# ╟─12bc210a-03fc-4a85-b281-f129b1877403
+# ╟─d3830a06-de03-41f5-a6f0-003e9a392dbf
+# ╠═34c8629f-36cc-4b5e-9a56-3f504636b472
+# ╠═a4c356bd-0fcf-4420-bb9b-96c84ad59730
+# ╠═ab548920-bebc-4a1c-a964-be02277438b2
+# ╟─1306cf62-857e-4cb3-a841-d87d2d5a995f
+# ╠═6097f4c7-ee1a-425a-b84a-3f86f40ded2c
+# ╠═9b310d6f-b320-4406-a97c-a32620257995
+# ╠═9265d396-a7c6-4386-9509-dff819e9eedb
+# ╠═62f0c610-862c-466b-b6ba-387ebc11928c
+# ╠═ec6b7585-daae-4f66-b071-244e7eac75ab
+# ╠═82bdf403-495b-4a4d-8516-611c438db75b
 # ╟─5db4a2f2-1c0d-495a-8688-40fc9e0ccd02
 # ╠═2b50e77f-0606-4e13-9d8a-c6eb3645d23c
 # ╠═5e97c57e-a896-4478-a277-e3da1444f8de
