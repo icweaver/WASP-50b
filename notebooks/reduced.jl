@@ -322,9 +322,6 @@ begin
 			x -> convert(Matrix{Float64}, x)
 end
 
-# ╔═╡ 78d4c13c-5c95-4710-b2c0-4bbc9a32e4c0
-wav_LDSS3
-
 # ╔═╡ d0b0559c-1ab2-4a9c-b859-5a96ac17d1f0
 # λ_start, Δλ, nbins = 5_800, 200, 19
 # wbin_idx_start = findfirst(==(λ_start), wav)
@@ -444,29 +441,35 @@ md"""
 LC_LDSS3
 
 # ╔═╡ 9b310d6f-b320-4406-a97c-a32620257995
-getindex.(
+Times_LDSS3, Airmass_LDSS3 = getindex.(
 	Ref(LC_LDSS3["temporal"].columns),
-	["bjd", "rotatore"]
+	["bjd", "airmass"]
 )
 
-# ╔═╡ 9265d396-a7c6-4386-9509-dff819e9eedb
-md"""
-* [x] time
-* [] full width at half maximum (FWHM) of the spectra on the CCD
-* [] airmass
-* [] position of the pixel trace through each spectrum on the chip of the CCD
-* [] sky flux
-* [] shift in wavelength space of the trace
-"""
-
 # ╔═╡ 62f0c610-862c-466b-b6ba-387ebc11928c
-LC_LDSS3["cubes"]["width"][target_name_LDSS3][:, common_wav_idxs_LDSS3[290:4159]]
+median_eparam(param, cube, obj_name, wav_idxs) = cube[param][obj_name][:, wav_idxs] |>
+	x -> median(x, dims=2) |> vec
 
-# ╔═╡ ec6b7585-daae-4f66-b071-244e7eac75ab
-binned_wav_idxs_LDSS3[begin][begin]
+# ╔═╡ 0dbc118e-943a-479e-9151-495455d9eed7
+FWHM_LDSS3, Trace_Center_LDSS3, Sky_Flux_LDSS3 = median_eparam.(
+	["width", "peak", "sky"],
+	Ref(LC_LDSS3["cubes"]),
+	Ref(target_name_LDSS3),
+	Ref(common_wav_idxs_LDSS3[binned_wav_idxs_LDSS3_range])
+)
 
-# ╔═╡ 82bdf403-495b-4a4d-8516-611c438db75b
-binned_wav_idxs_LDSS3[end][end]
+# ╔═╡ 0caa6353-ee39-4e30-b7b0-c5302f87356c
+specshifts_LDSS3 = load_npz("data/reduced/LDSS3/ut150927_spectralstretch_flat.npy", allow_pickle=true);
+
+# ╔═╡ ec83cd01-ad3b-4c46-a763-828b3f1e0c70
+Delta_Wav_LDSS3 = specshifts_LDSS3["shift"][target_name_LDSS3] |> 
+		sort |> values |> collect |> x -> convert(Vector{Float64}, x)
+
+# ╔═╡ 673e676d-a7f2-4b65-8642-8bd508a61bf0
+eparams_LDSS3 = DataFrame(
+	(Times=Times_LDSS3, Airmass=Airmass_LDSS3, Delta_Wav=Delta_Wav_LDSS3,
+	 FWHM=FWHM_LDSS3, Sky_Flux=Sky_Flux_LDSS3, Trace_Center=Trace_Center_LDSS3)
+)
 
 # ╔═╡ 5db4a2f2-1c0d-495a-8688-40fc9e0ccd02
 md"""
@@ -668,7 +671,6 @@ md"""
 # ╠═cfe0f1df-fc45-409f-a4ee-34b48a99c90c
 # ╠═8111e895-57c7-45c9-9ced-a6a55ccafdcf
 # ╠═a838a0ec-ee9c-4984-a62c-68810ec731de
-# ╠═78d4c13c-5c95-4710-b2c0-4bbc9a32e4c0
 # ╠═d0b0559c-1ab2-4a9c-b859-5a96ac17d1f0
 # ╟─f7feb44e-a363-4f8d-bf62-d3541533e4da
 # ╟─eb4f7a92-a9e7-4bf5-8b1c-bca928fcedde
@@ -686,10 +688,11 @@ md"""
 # ╟─1306cf62-857e-4cb3-a841-d87d2d5a995f
 # ╠═6097f4c7-ee1a-425a-b84a-3f86f40ded2c
 # ╠═9b310d6f-b320-4406-a97c-a32620257995
-# ╠═9265d396-a7c6-4386-9509-dff819e9eedb
 # ╠═62f0c610-862c-466b-b6ba-387ebc11928c
-# ╠═ec6b7585-daae-4f66-b071-244e7eac75ab
-# ╠═82bdf403-495b-4a4d-8516-611c438db75b
+# ╠═0dbc118e-943a-479e-9151-495455d9eed7
+# ╠═0caa6353-ee39-4e30-b7b0-c5302f87356c
+# ╠═ec83cd01-ad3b-4c46-a763-828b3f1e0c70
+# ╠═673e676d-a7f2-4b65-8642-8bd508a61bf0
 # ╟─5db4a2f2-1c0d-495a-8688-40fc9e0ccd02
 # ╠═2b50e77f-0606-4e13-9d8a-c6eb3645d23c
 # ╠═5e97c57e-a896-4478-a277-e3da1444f8de
