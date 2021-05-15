@@ -86,7 +86,7 @@ This data is stored in an `npy` file that contains the following fields:
 	We will use `wavelength` and `raw_counts` for our analysis here, where `raw_counts` is the sky subtracted, cross-dispersion integrated flux from each star.
 
 Each cube can be selected from the following drop-down menu:
-$(@bind data_path pl.Select(sort(glob("data/reduced/LDSS3/*.npy"))))
+$(@bind data_path_LDSS3 pl.Select(sort(glob("data/reduced/LDSS3/*/LC*.npy"))))
 """
 
 # ╔═╡ f2bb15ee-2180-4e0f-b71d-7f9cdc2178ef
@@ -131,7 +131,7 @@ end;
 LC_IMACS = load_pickle(data_path_IMACS)
 
 # ╔═╡ 44808b97-df11-4aff-9e97-f97987fe9939
-LC_LDSS3 = load_npz(data_path, allow_pickle=true)
+LC_LDSS3 = load_npz(data_path_LDSS3, allow_pickle=true)
 
 # ╔═╡ 5b645084-1f21-42a2-8184-e27f8b3000c3
 target_name_LDSS3 = LC_LDSS3["target"]
@@ -301,9 +301,6 @@ We define the lower and upper bound for each of the `nbins` wavelength bins that
 # ╔═╡ cfe0f1df-fc45-409f-a4ee-34b48a99c90c
 wbins = readdlm("data/reduced/LDSS3/w50_bins_LDSS3.dat", comments=true)
 
-# ╔═╡ 8111e895-57c7-45c9-9ced-a6a55ccafdcf
-diff(wbins, dims=2)
-
 # ╔═╡ a838a0ec-ee9c-4984-a62c-68810ec731de
 binned_wav_idxs_LDSS3 = [
 	findfirst(==(wbin[1]), wav_LDSS3):findfirst(==(wbin[2]), wav_LDSS3)
@@ -321,13 +318,6 @@ begin
 	f_div_WLC_norm_LDSS3 = f_div_wlc_LDSS3 ./ median(f_div_wlc_LDSS3, dims=1) |>
 			x -> convert(Matrix{Float64}, x)
 end
-
-# ╔═╡ d0b0559c-1ab2-4a9c-b859-5a96ac17d1f0
-# λ_start, Δλ, nbins = 5_800, 200, 19
-# wbin_idx_start = findfirst(==(λ_start), wav)
-# wav[wbins_idxs[begin][begin]], wav[wbins_idxs[end][end]]
-# compute_wbins_idxs(c, λ_start_idx, Δλ) = (λ_start_idx:λ_start_idx+Δλ) .+ c
-# wbins_idxs = compute_wbins_idxs.(0:Δλ:Δλ*nbins-1, wbin_idx_start, Δλ)
 
 # ╔═╡ f7feb44e-a363-4f8d-bf62-d3541533e4da
 md"""
@@ -421,24 +411,15 @@ md"""
 
 # ╔═╡ 34c8629f-36cc-4b5e-9a56-3f504636b472
 eparams_IMACS = CSV.File(
-	"data/reduced/IMACS/ut131219/eparams.dat",
+	"$(dirname(data_path_IMACS))/eparams.dat",
 	delim = ' ',
 	ignorerepeated=true,
 )
-
-# ╔═╡ a4c356bd-0fcf-4420-bb9b-96c84ad59730
-LC_IMACS["oLC"] |> length
-
-# ╔═╡ ab548920-bebc-4a1c-a964-be02277438b2
-lines(eparams_IMACS.Trace_Center)
 
 # ╔═╡ 1306cf62-857e-4cb3-a841-d87d2d5a995f
 md"""
 ### LDSS3
 """
-
-# ╔═╡ 6097f4c7-ee1a-425a-b84a-3f86f40ded2c
-LC_LDSS3
 
 # ╔═╡ 9b310d6f-b320-4406-a97c-a32620257995
 Times_LDSS3, Airmass_LDSS3 = getindex.(
@@ -459,7 +440,9 @@ FWHM_LDSS3, Trace_Center_LDSS3, Sky_Flux_LDSS3 = median_eparam.(
 )
 
 # ╔═╡ 0caa6353-ee39-4e30-b7b0-c5302f87356c
-specshifts_LDSS3 = load_npz("data/reduced/LDSS3/ut150927_spectralstretch_flat.npy", allow_pickle=true);
+specshifts_LDSS3 = load_npz(
+	"$(dirname(data_path_LDSS3))/specshifts.npy", allow_pickle=true
+);
 
 # ╔═╡ ec83cd01-ad3b-4c46-a763-828b3f1e0c70
 Delta_Wav_LDSS3 = specshifts_LDSS3["shift"][target_name_LDSS3] |> 
@@ -547,6 +530,7 @@ function plot_div_WLCS!(axs, f_div_wlc, window_width, cNames; ferr=0.002)
 	f_filt, diff = filt(f_div_wlc, window_width)
 	
 	bad_idxs = ∪(findall.(>(ferr), eachcol(diff))...) |> sort;
+	println(bad_idxs)
 	use_idxs = deleteat!(collect(1:ntimes), bad_idxs)
 	
 	idxs = 1:ntimes
@@ -608,6 +592,7 @@ let
 	axs = reshape(copy(fig.content), ncomps, 1)
 	hidexdecorations!.(axs[begin:end-1], grid=false)
 	linkaxes!(axs...)
+	ylims!(axs[end], 0.97, 1.02)
 	
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
 	fig[end+1, 1:end] = Label(fig, "Index")
@@ -669,9 +654,7 @@ md"""
 # ╟─e844ad0c-c3ce-40cc-840f-7fe6ec454fed
 # ╟─88dd7d0b-c133-4fd2-b942-520b7e3d0265
 # ╠═cfe0f1df-fc45-409f-a4ee-34b48a99c90c
-# ╠═8111e895-57c7-45c9-9ced-a6a55ccafdcf
 # ╠═a838a0ec-ee9c-4984-a62c-68810ec731de
-# ╠═d0b0559c-1ab2-4a9c-b859-5a96ac17d1f0
 # ╟─f7feb44e-a363-4f8d-bf62-d3541533e4da
 # ╟─eb4f7a92-a9e7-4bf5-8b1c-bca928fcedde
 # ╠═2b20e471-16e5-4b54-abc5-4308af4e60b6
@@ -683,10 +666,7 @@ md"""
 # ╟─12bc210a-03fc-4a85-b281-f129b1877403
 # ╟─d3830a06-de03-41f5-a6f0-003e9a392dbf
 # ╠═34c8629f-36cc-4b5e-9a56-3f504636b472
-# ╠═a4c356bd-0fcf-4420-bb9b-96c84ad59730
-# ╠═ab548920-bebc-4a1c-a964-be02277438b2
 # ╟─1306cf62-857e-4cb3-a841-d87d2d5a995f
-# ╠═6097f4c7-ee1a-425a-b84a-3f86f40ded2c
 # ╠═9b310d6f-b320-4406-a97c-a32620257995
 # ╠═62f0c610-862c-466b-b6ba-387ebc11928c
 # ╠═0dbc118e-943a-479e-9151-495455d9eed7
