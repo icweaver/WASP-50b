@@ -33,7 +33,7 @@ md"""
 
 In this notebook we will examine the stellar spectra, white-light, and wavelength binned light curves from the raw flux extracted from IMACS and LDSS3.
 
-$(pl.TableOfContents())
+$(pl.TableOfContents(depth=4))
 """
 
 # ╔═╡ 9d180c21-e634-4a1e-8430-bdd089262f66
@@ -99,6 +99,12 @@ md"""
 Next we extract the common wavelength grid, along with the target and comparison star flux, and compute the resulting spectrum and light curves:
 """
 
+# ╔═╡ 63f2a355-1f29-4a4c-8f6b-efb2007a8e11
+md"""
+!!! note
+	We convert from Float32 to Float64 to match the format of the IMACS data
+"""
+
 # ╔═╡ 7bfc971c-8737-49ad-adec-ac57d176f10e
 md"""
 We can extract the comparison star flux in a similar way by stacking the ``N \times W`` matrix for each star:
@@ -140,7 +146,10 @@ target_name_LDSS3 = LC_LDSS3["target"]
 comp_names_LDSS3 = convert(Vector{String}, LC_LDSS3["comparisons"])
 
 # ╔═╡ 639f666b-09fc-488b-982b-01a523278cae
-f_LDSS3 = LC_LDSS3["cubes"]["raw_counts"]
+f_LDSS3 = let
+	fluxes = LC_LDSS3["cubes"]["raw_counts"]
+	Dict(k => convert(Matrix{Float64}, v) for (k, v) ∈ fluxes)
+end
 
 # ╔═╡ 2e503024-65cb-483d-aac7-364f22823bdc
 # Non-zero wavelength ranges for each star
@@ -184,9 +193,6 @@ md"""
 md"""
 ### LDSS3
 """
-
-# ╔═╡ 04c1350d-85e8-4d74-a1ff-4db8a5d473cd
-f_target_LDSS3
 
 # ╔═╡ 6fd88483-d005-4186-8dd2-82cea767ce90
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
@@ -241,12 +247,6 @@ md"""
 Using the extracted spectra from earlier, we can integrate the flux along the binned spectral direction to build the white-light curves for each star. We store this in the `ntimes` ``\times`` `ncomps` array, `f_div_wlc`:
 """
 
-# ╔═╡ e9bbc964-d4e5-4d60-b188-68807e0a030d
-md"""
-!!! note
-	We also convert the data to Float64 to match the data format for the IMACS data
-"""
-
 # ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
 @bind window_width pl.Slider(3:2:21, show_value=true)
 
@@ -268,6 +268,15 @@ function filt(f_div_wlc, window_width; func=median, border="reflect")
 	diff = abs.(f_div_wlc - f_filt)
 	
 	return f_filt, diff
+end
+
+# ╔═╡ a4517d69-76e6-462a-9449-b31d80e34a8f
+function filt_idxs(f_div_wlc, window_width; ferr=0.002)
+	ntimes, ncomps = size(f_div_wlc)
+	f_filt, diff = filt(f_div_wlc, window_width)
+	bad_idxs = ∪(findall.(>(ferr), eachcol(diff))...) |> sort;
+	use_idxs = deleteat!(collect(1:size(f_div_wlc, 1)), bad_idxs)
+	return f_filt, use_idxs, bad_idxs
 end
 
 # ╔═╡ e98dee2e-a369-448e-bfe4-8fea0f318fa8
@@ -312,11 +321,12 @@ binned_wav_idxs_LDSS3_range = binned_wav_idxs_LDSS3[begin][begin]:binned_wav_idx
 
 # ╔═╡ c51edf69-b43b-4119-b2ad-f28f6de48c92
 begin
-	f_div_wlc_LDSS3 = sum(f_target_LDSS3[:, binned_wav_idxs_LDSS3_range], dims=2) ./
-		sum(f_comps_LDSS3[:, binned_wav_idxs_LDSS3_range, :], dims=2) |>
-			x -> dropdims(x, dims=2)
-	f_div_WLC_norm_LDSS3 = f_div_wlc_LDSS3 ./ median(f_div_wlc_LDSS3, dims=1) |>
-			x -> convert(Matrix{Float64}, x)
+	f_target_wlc_LDSS3 = sum(f_target_LDSS3[:, binned_wav_idxs_LDSS3_range], dims=2)
+	f_comps_wlc_LDSS3 = sum(
+		f_comps_LDSS3[:, binned_wav_idxs_LDSS3_range, :], dims=2
+	) |> x -> dropdims(x, dims=2)
+	f_div_wlc_LDSS3 = f_target_wlc_LDSS3 ./ f_comps_wlc_LDSS3
+	f_div_WLC_norm_LDSS3 = f_div_wlc_LDSS3 ./ median(f_div_wlc_LDSS3, dims=1)
 end
 
 # ╔═╡ f7feb44e-a363-4f8d-bf62-d3541533e4da
@@ -401,42 +411,32 @@ end
 
 # ╔═╡ 12bc210a-03fc-4a85-b281-f129b1877403
 md"""
-## External parameters
+## GPTS inputs 🔩
 """
 
-# ╔═╡ d3830a06-de03-41f5-a6f0-003e9a392dbf
+# ╔═╡ 45268530-f48a-4fbe-89f7-4a7ea972d2b2
 md"""
 ### IMACS
-"""
 
-# ╔═╡ 34c8629f-36cc-4b5e-9a56-3f504636b472
-eparams_IMACS = CSV.File(
-	"$(dirname(data_path_IMACS))/eparams.dat",
-	delim = ' ',
-	ignorerepeated=true,
-)
+Automatically computed from pickle file
+"""
 
 # ╔═╡ 1306cf62-857e-4cb3-a841-d87d2d5a995f
 md"""
 ### LDSS3
+
+Done manually
+"""
+
+# ╔═╡ dff24ff0-1d5f-4561-b23f-9385c9e73a0c
+md"""
+#### External parameters
 """
 
 # ╔═╡ 9b310d6f-b320-4406-a97c-a32620257995
 Times_LDSS3, Airmass_LDSS3 = getindex.(
 	Ref(LC_LDSS3["temporal"].columns),
 	["bjd", "airmass"]
-)
-
-# ╔═╡ 62f0c610-862c-466b-b6ba-387ebc11928c
-median_eparam(param, cube, obj_name, wav_idxs) = cube[param][obj_name][:, wav_idxs] |>
-	x -> median(x, dims=2) |> vec
-
-# ╔═╡ 0dbc118e-943a-479e-9151-495455d9eed7
-FWHM_LDSS3, Trace_Center_LDSS3, Sky_Flux_LDSS3 = median_eparam.(
-	["width", "peak", "sky"],
-	Ref(LC_LDSS3["cubes"]),
-	Ref(target_name_LDSS3),
-	Ref(common_wav_idxs_LDSS3[binned_wav_idxs_LDSS3_range])
 )
 
 # ╔═╡ 0caa6353-ee39-4e30-b7b0-c5302f87356c
@@ -448,11 +448,94 @@ specshifts_LDSS3 = load_npz(
 Delta_Wav_LDSS3 = specshifts_LDSS3["shift"][target_name_LDSS3] |> 
 		sort |> values |> collect |> x -> convert(Vector{Float64}, x)
 
+# ╔═╡ 784cb90d-e365-4b59-8e4b-9d280bb28d79
+_, use_idxs_LDSS3, bad_idxs_LDSS3 = filt_idxs(f_div_WLC_norm_LDSS3, window_width);
+
+# ╔═╡ 29c61b96-cf27-432f-b5cd-a6192732a8f6
+md"""
+#### WLCs (magnitude space)
+"""
+
+# ╔═╡ abf0021f-6a1e-4a6c-8135-88a0424c3df9
+comps_LDSS3 = let
+	mag = -2.51 * log10.(f_comps_wlc_LDSS3[use_idxs_LDSS3, :])
+	mag .- median(mag, dims=1)
+end
+
+# ╔═╡ 9f401644-bf05-4221-8f69-5742785a79b2
+md"""
+#### Binned LCs (magnitude space)
+"""
+
+# ╔═╡ 4891ae49-0311-415b-bbea-c703a81aaf63
+pl.with_terminal() do
+	println(bad_idxs_LDSS3)
+end
+
+# ╔═╡ 66a04e1c-8fe1-4aac-95b4-7c126f7d0648
+md"""
+### Helper functions
+"""
+
+# ╔═╡ 62f0c610-862c-466b-b6ba-387ebc11928c
+median_eparam(param, cube, obj_name, wav_idxs) = cube[param][obj_name][:, wav_idxs] |>
+	x -> median(x, dims=2) |> vec |> x -> convert(Vector{Float64}, x)
+
+# ╔═╡ 0dbc118e-943a-479e-9151-495455d9eed7
+FWHM_LDSS3, Trace_Center_LDSS3, Sky_Flux_LDSS3 = median_eparam.(
+	["width", "peak", "sky"],
+	Ref(LC_LDSS3["cubes"]),
+	Ref(target_name_LDSS3),
+	Ref(common_wav_idxs_LDSS3[binned_wav_idxs_LDSS3_range])
+)
+
 # ╔═╡ 673e676d-a7f2-4b65-8642-8bd508a61bf0
 eparams_LDSS3 = DataFrame(
 	(Times=Times_LDSS3, Airmass=Airmass_LDSS3, Delta_Wav=Delta_Wav_LDSS3,
 	 FWHM=FWHM_LDSS3, Sky_Flux=Sky_Flux_LDSS3, Trace_Center=Trace_Center_LDSS3)
-)
+)[use_idxs_LDSS3, :]
+
+# ╔═╡ 655247ce-4c50-4a6c-8186-7dad1233cd3b
+CSV.write("$(dirname(data_path_LDSS3))/eparams.dat", eparams_LDSS3, delim="    ")
+
+# ╔═╡ d127c98d-81c0-4133-955f-ae98c07e1152
+function f_to_med_mag(f)
+	mag = -2.51 * log10.(f)
+	return mag .- median(mag)
+end
+
+# ╔═╡ 0e045efd-e9d7-4f03-8128-953c7ad13aba
+lc_LDSS3 = let
+	med_mag = f_to_med_mag(f_target_wlc_LDSS3 |> vec)
+	hcat(Times_LDSS3, med_mag, zeros(length(Times_LDSS3)))[use_idxs_LDSS3, :]
+end
+
+# ╔═╡ e282e1da-0389-42f3-aeef-e732f5f1df95
+let
+	savepath = "$(dirname(data_path_LDSS3))/white-light"
+	rm(savepath, force=true, recursive=true)
+	mkdir(savepath)
+	writedlm("$(savepath)/lc.dat", lc_LDSS3, "    ")
+	writedlm("$(savepath)/comps.dat", comps_LDSS3, "    ")
+end
+
+# ╔═╡ 8576c9d9-29ae-4351-985a-c191a944a4bc
+target_binned_mags = mapslices(f_to_med_mag, oLCw, dims=1)[use_idxs_LDSS3, :]
+
+# ╔═╡ 0a7b6bc2-ed75-49d5-b5ad-ff13f86eae2b
+comp_binned_mags = mapslices(f_to_med_mag, cLCw, dims=1)[use_idxs_LDSS3, :, :]
+
+# ╔═╡ cb5ced41-cc6b-48f4-a532-0a0f0fe31f8c
+let
+	savepath = "$(dirname(data_path_LDSS3))/wavelength"
+	rm(savepath, force=true, recursive=true)
+	for i in 1:nbins
+		save_path_w = "$(savepath)/wbin$(i-1)"
+		mkpath("$(save_path_w)")
+		writedlm("$(save_path_w)/lc.dat", target_binned_mags[:, i])
+		writedlm("$(save_path_w)/comps.dat", comp_binned_mags[:, i, :], "    ")
+	end
+end
 
 # ╔═╡ 5db4a2f2-1c0d-495a-8688-40fc9e0ccd02
 md"""
@@ -526,13 +609,7 @@ end
 # ╔═╡ ccabf5d2-5739-4284-a972-23c02a263a5c
 function plot_div_WLCS!(axs, f_div_wlc, window_width, cNames; ferr=0.002)
 	ntimes, ncomps = size(f_div_wlc)
-	
-	f_filt, diff = filt(f_div_wlc, window_width)
-	
-	bad_idxs = ∪(findall.(>(ferr), eachcol(diff))...) |> sort;
-	println(bad_idxs)
-	use_idxs = deleteat!(collect(1:ntimes), bad_idxs)
-	
+	f_filt, use_idxs, bad_idxs = filt_idxs(f_div_wlc, window_width; ferr=ferr)
 	idxs = 1:ntimes
 	c = COLORS[end]
 	for (i, cName) ∈ enumerate(cNames)		
@@ -587,7 +664,9 @@ let
 	
 	axs = [Axis(fig[i, 1]) for i in 1:ncomps]
 	
-	plot_div_WLCS!(axs, f_div_WLC_norm_LDSS3, window_width, comp_names_LDSS3)
+	bads_idxs_LDSS3 = plot_div_WLCS!(
+		axs, f_div_WLC_norm_LDSS3, window_width, comp_names_LDSS3
+	)
 	
 	axs = reshape(copy(fig.content), ncomps, 1)
 	hidexdecorations!.(axs[begin:end-1], grid=false)
@@ -618,6 +697,7 @@ md"""
 # ╠═5b645084-1f21-42a2-8184-e27f8b3000c3
 # ╠═5d624218-5106-4e3f-a3b1-77ed0d2a02fa
 # ╠═639f666b-09fc-488b-982b-01a523278cae
+# ╟─63f2a355-1f29-4a4c-8f6b-efb2007a8e11
 # ╠═2e503024-65cb-483d-aac7-364f22823bdc
 # ╠═993e1e5a-9d78-4042-9aca-bb753af7f647
 # ╠═31bdc830-dfc9-445a-ba7e-76be7627561a
@@ -631,7 +711,6 @@ md"""
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
 # ╟─0d18676d-5401-44ab-8a95-c45fa7864115
 # ╠═2fd7bc68-a6ec-4ccb-ad73-07b031ffef5a
-# ╠═04c1350d-85e8-4d74-a1ff-4db8a5d473cd
 # ╠═1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
 # ╠═6fd88483-d005-4186-8dd2-82cea767ce90
 # ╟─e3468c61-782b-4f55-a4a1-9d1883655d11
@@ -643,11 +722,11 @@ md"""
 # ╟─08eafc08-b0fb-4c99-9d4e-7fa5085d386c
 # ╠═c51edf69-b43b-4119-b2ad-f28f6de48c92
 # ╠═ee94bd7d-380a-44c4-a8dd-9fd632a96158
-# ╟─e9bbc964-d4e5-4d60-b188-68807e0a030d
 # ╠═ab058d99-ce5f-4ed3-97bd-a62d2f258773
 # ╠═b1bd886f-c7dd-4167-b9b8-084b73f7ee9c
 # ╟─4b3b0a83-daaf-4339-86cc-24e0ba95ea85
 # ╠═dc044a72-4706-49e2-94a8-c828a6bf7de0
+# ╠═a4517d69-76e6-462a-9449-b31d80e34a8f
 # ╠═ccabf5d2-5739-4284-a972-23c02a263a5c
 # ╟─e98dee2e-a369-448e-bfe4-8fea0f318fa8
 # ╟─891add6b-c1c1-4e7c-8a8d-de2421bd6f2d
@@ -664,15 +743,28 @@ md"""
 # ╟─a73deaa6-5f45-4920-9796-6aa48e80c3de
 # ╠═fbc57d8b-3b1b-44d1-bd7d-0e9749026d4c
 # ╟─12bc210a-03fc-4a85-b281-f129b1877403
-# ╟─d3830a06-de03-41f5-a6f0-003e9a392dbf
-# ╠═34c8629f-36cc-4b5e-9a56-3f504636b472
+# ╟─45268530-f48a-4fbe-89f7-4a7ea972d2b2
 # ╟─1306cf62-857e-4cb3-a841-d87d2d5a995f
+# ╟─dff24ff0-1d5f-4561-b23f-9385c9e73a0c
 # ╠═9b310d6f-b320-4406-a97c-a32620257995
-# ╠═62f0c610-862c-466b-b6ba-387ebc11928c
 # ╠═0dbc118e-943a-479e-9151-495455d9eed7
 # ╠═0caa6353-ee39-4e30-b7b0-c5302f87356c
 # ╠═ec83cd01-ad3b-4c46-a763-828b3f1e0c70
 # ╠═673e676d-a7f2-4b65-8642-8bd508a61bf0
+# ╠═655247ce-4c50-4a6c-8186-7dad1233cd3b
+# ╠═784cb90d-e365-4b59-8e4b-9d280bb28d79
+# ╟─29c61b96-cf27-432f-b5cd-a6192732a8f6
+# ╠═0e045efd-e9d7-4f03-8128-953c7ad13aba
+# ╠═abf0021f-6a1e-4a6c-8135-88a0424c3df9
+# ╠═e282e1da-0389-42f3-aeef-e732f5f1df95
+# ╟─9f401644-bf05-4221-8f69-5742785a79b2
+# ╠═8576c9d9-29ae-4351-985a-c191a944a4bc
+# ╠═0a7b6bc2-ed75-49d5-b5ad-ff13f86eae2b
+# ╠═cb5ced41-cc6b-48f4-a532-0a0f0fe31f8c
+# ╠═4891ae49-0311-415b-bbea-c703a81aaf63
+# ╟─66a04e1c-8fe1-4aac-95b4-7c126f7d0648
+# ╠═62f0c610-862c-466b-b6ba-387ebc11928c
+# ╠═d127c98d-81c0-4133-955f-ae98c07e1152
 # ╟─5db4a2f2-1c0d-495a-8688-40fc9e0ccd02
 # ╠═2b50e77f-0606-4e13-9d8a-c6eb3645d23c
 # ╠═5e97c57e-a896-4478-a277-e3da1444f8de
