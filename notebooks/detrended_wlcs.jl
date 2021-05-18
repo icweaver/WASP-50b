@@ -23,7 +23,10 @@ end
 md"""
 # Detrended white light curves
 
-In this notebook we will visualize the detrended white light curves. We used the average orbital and system parameters obtained from these detrended fits to place uniform constraints on the binned wavelength analysis.
+In this notebook we will visualize the detrended white light curves from IMACS and LDSS3. We used the average orbital and system parameters obtained from these detrended fits to place uniform constraints on the binned wavelength analysis **<ADD LINK>.**
+
+!!! note "TODO"
+	Add LDSS3 plots
 
 $(pl.TableOfContents())
 """
@@ -36,7 +39,7 @@ First, let's load the relevant data needed for this notebook:
 """
 
 # ╔═╡ 3f0f5777-00f1-443d-8ced-d901550010d3
-const DATA_DIR = "data/detrended_wlcs/out_l/WASP50"
+const DATA_DIR_IMACS = "data/detrended/IMACS/out_l/WASP50"
 
 # ╔═╡ 579e62da-7ffb-4639-bd73-3826ade1cfa2
 md"""
@@ -99,11 +102,15 @@ cubes = Dict(
 	)
 	
 	for (i, (fpath_sample, fpath_model, fpath_result)) in enumerate(zip(
-		sort(glob("$(DATA_DIR)/w50_*/white-light/BMA_posteriors.pkl")),
-		sort(glob("$(DATA_DIR)/w50_*/white-light/BMA_WLC.npy")),
-		sort(glob("$(DATA_DIR)/w50_*/white-light/results.dat")),
+		sort(glob("$(DATA_DIR_IMACS)/w50_*/white-light/BMA_posteriors.pkl")),
+		sort(glob("$(DATA_DIR_IMACS)/w50_*/white-light/BMA_WLC.npy")),
+		sort(glob("$(DATA_DIR_IMACS)/w50_*/white-light/results.dat")),
 	))
 )
+
+# ╔═╡ d0172076-d245-4246-b35f-49cc6f1cde0b
+# Return `flat` or `noflat` for data organization
+isflat(fpath) = split(split(fpath, "LDSS3_")[2], '/')[1]
 
 # ╔═╡ a8cf11e2-796e-45ff-bdc9-e273b927700e
 md"""
@@ -170,15 +177,16 @@ function scale_samples(samples, param, BMA)
 end
 
 # ╔═╡ ed935d16-ddce-4334-a880-005732b38936
+# Params to show in corner plot
 const PARAMS = OrderedDict(
 	"p" => "Rₚ/Rₛ",
 	"t0" => "t₀",
 	"P" => "P",
-	"rho" => "ρₛ",
-	"aR" => "a/Rₛ",
-	"inc" => "i",
-	"b" => "b",
-	"q1" => "u",
+	 "rho" => "ρₛ",
+	# "aR" => "a/Rₛ",
+	# "inc" => "i",
+	# "b" => "b",
+	# "q1" => "u",
 );
 
 # ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
@@ -236,6 +244,7 @@ md"""
 """
 
 # ╔═╡ 6fcd1377-8364-45a3-9ff6-89d61df1ef42
+# Number of levels `n` to show in contour plots
 levels(A, n) = reverse(
 	range(maximum(A), step=-maximum(A)/(n+1), length=(n+1))
 )
@@ -413,6 +422,7 @@ md"""
 # ╟─579e62da-7ffb-4639-bd73-3826ade1cfa2
 # ╟─583b3377-f4f6-4170-8658-d3ba17a5b86d
 # ╠═39dbca86-a4b9-11eb-1c64-9ddf1a9990ab
+# ╠═d0172076-d245-4246-b35f-49cc6f1cde0b
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
