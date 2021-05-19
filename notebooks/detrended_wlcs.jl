@@ -4,6 +4,9 @@
 using Markdown
 using InteractiveUtils
 
+# ╔═╡ 4e951989-15b0-4273-bbff-e0add41eef4b
+using Unitful
+
 # ╔═╡ 691eddff-f2eb-41a8-ab05-63afb46d15f2
 begin
 	import PlutoUI as pl
@@ -41,6 +44,9 @@ First, let's load the relevant data needed for this notebook:
 # ╔═╡ 3f0f5777-00f1-443d-8ced-d901550010d3
 const DATA_DIR_IMACS = "data/detrended/IMACS/out_l/WASP50"
 
+# ╔═╡ 7161e950-8eb8-4440-adbd-9f1cd26012c5
+const DATA_DIR_LDSS3 = "data/detrended/LDSS3/out_l/WASP50"
+
 # ╔═╡ 579e62da-7ffb-4639-bd73-3826ade1cfa2
 md"""
 The data cube is organized by night as follows:
@@ -60,6 +66,9 @@ cubes
 ```
 
 where `samples` is a dictionary of the Bayesian model averaged posterior samples for each fitted parameter, `models` is a dictionary of the final detrended light curve and associated Gaussian Process parameters, and `results` is a table summarizing the mean and +/- 1σ uncertainty associated with each sample.
+
+!!! note "TODO"
+	Update with LDSS3 paths 
 """
 
 # ╔═╡ 583b3377-f4f6-4170-8658-d3ba17a5b86d
@@ -86,27 +95,55 @@ begin
 end;
 
 # ╔═╡ 2191791b-df62-4f1b-88bf-060cc47896b2
-cubes = Dict(
-	"Transit $i" => Dict(
+begin
+	# Load IMACS
+	cubes = OrderedDict(
+		"Transit $i IMACS" => Dict(
+			
+			"samples" => load_pickle(fpath_sample),
+			
+			"models" => load_npz(fpath_model, allow_pickle=true),
+			
+			"results" => CSV.File(
+				fpath_result,
+				comment = "#",
+				delim = ' ',			
+				ignorerepeated=true,
+			) |> DataFrame
+		)
 		
-		"samples" => load_pickle(fpath_sample),
-		
-		"models" => load_npz(fpath_model, allow_pickle=true),
-		
-		"results" => CSV.File(
-			fpath_result,
-			comment = "#",
-			delim = ' ',			
-			ignorerepeated=true,
-		) |> DataFrame
+		for (i, (fpath_sample, fpath_model, fpath_result)) in enumerate(zip(
+			sort(glob("$(DATA_DIR_IMACS)/w50_*/white-light/BMA_posteriors.pkl")),
+			sort(glob("$(DATA_DIR_IMACS)/w50_*/white-light/BMA_WLC.npy")),
+			sort(glob("$(DATA_DIR_IMACS)/w50_*/white-light/results.dat")),
+		))
 	)
 	
-	for (i, (fpath_sample, fpath_model, fpath_result)) in enumerate(zip(
-		sort(glob("$(DATA_DIR_IMACS)/w50_*/white-light/BMA_posteriors.pkl")),
-		sort(glob("$(DATA_DIR_IMACS)/w50_*/white-light/BMA_WLC.npy")),
-		sort(glob("$(DATA_DIR_IMACS)/w50_*/white-light/results.dat")),
-	))
-)
+	
+	# Load LDSS3
+	for (fpath_sample, fpath_model, fpath_result) in zip(
+			sort(glob("$(DATA_DIR_LDSS3)/w50_*/white-light/BMA_posteriors.pkl")),
+			sort(glob("$(DATA_DIR_LDSS3)/w50_*/white-light/BMA_WLC.npy")),
+			sort(glob("$(DATA_DIR_LDSS3)/w50_*/white-light/results.dat")),
+		)
+				
+		cubes["Transit 2 LDSS3 $(isflat(fpath_sample))"] = OrderedDict(
+			
+			"samples" => load_pickle(fpath_sample),
+			
+			"models" => load_npz(fpath_model, allow_pickle=true),
+			
+			"results" => CSV.File(
+				fpath_result,
+				comment = "#",
+				normalizenames=true,
+			) |> DataFrame
+		)
+	end
+end
+
+# ╔═╡ d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
+cubes
 
 # ╔═╡ d0172076-d245-4246-b35f-49cc6f1cde0b
 # Return `flat` or `noflat` for data organization
@@ -149,6 +186,9 @@ md"""
 Finally, we average together each parameter from each night, weighted by its maximum uncertainty per night:
 """
 
+# ╔═╡ ea9ea1a5-9a45-43f3-8736-b1895fc86368
+
+
 # ╔═╡ c936b76a-636b-4f10-b556-fa19808c1562
 md"""
 ### Save to file
@@ -167,7 +207,7 @@ To visualize the spread of each parameter, we define the dimensionless metric:
 Δx \equiv \frac{x - \overline{\text{BMA}}_μ}{\overline{\text{BMA}}_σ}\quad,
 ```
 
-where $x$ is a sample from the posterior distribution for the given parameter, ``\overline{\text{BMA}}_μ`` is the BMA averaged across nights, and ``\overline{\text{BMA}}_σ`` is the maximum uncertainty, also averaged across nights. These values correspond to the `Combined` column in the table above. ``\Delta x`` is then a measure of the distance of each sample in its posterior distribution from its correspondning average BMA value, scaled by the uncertainty in the average BMA.
+where $x$ is a sample from the posterior distribution for the given parameter, ``\overline{\text{BMA}}_μ`` is the BMA averaged across nights, and ``\overline{\text{BMA}}_σ`` is the maximum uncertainty, also averaged across nights. These values correspond to the `Combined` column in the table above. ``\Delta x`` is then a measure of the displacement of each sample in its posterior distribution from its corresponding average BMA value, scaled by the uncertainty in the average BMA.
 """
 
 # ╔═╡ 706f1fb6-2895-48f6-a315-842fbf35da18
@@ -182,11 +222,11 @@ const PARAMS = OrderedDict(
 	"p" => "Rₚ/Rₛ",
 	"t0" => "t₀",
 	"P" => "P",
-	 "rho" => "ρₛ",
-	# "aR" => "a/Rₛ",
-	# "inc" => "i",
-	# "b" => "b",
-	# "q1" => "u",
+	"rho" => "ρₛ",
+	"aR" => "a/Rₛ",
+	"inc" => "i",
+	"b" => "b",
+	"q1" => "u",
 );
 
 # ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
@@ -211,10 +251,22 @@ BMA_matrix = hcat((
 	for summary in summary_tables
 )...) |> x-> hcat(x, mean(x, dims=2));
 
+# ╔═╡ c6b8855e-ebac-4a68-8d8f-acfe985ea1bb
+t0s = BMA_matrix[2, begin:end-1]
+
+# ╔═╡ 2f29b3ff-9554-4a7a-a454-a3c8ac9c2a51
+(t0s[4] - t0s[3])u"d" |> u"s"
+
+# ╔═╡ 235c6850-3f41-4c82-ab44-f2e34811f4bd
+(t0s[4] - t0s[2])u"d" |> u"s"
+
+# ╔═╡ da0c911a-ce67-48f4-b975-0f8def7e727f
+(t0s[4] - t0s[1])u"d" |> u"s"
+
 # ╔═╡ 19fcaa15-6f01-46a6-8225-4b5cafd89cc1
 BMA = DataFrame(
 	[PARAMS.vals BMA_matrix],
-	[:Parameter, :Transit_1, :Transit_2, :Transit_3, :Combined]
+	["Parameter", keys(cubes)..., "Combined"]
 );
 
 # ╔═╡ c7a179a3-9966-452d-b430-a28b2f004bc5
@@ -252,6 +304,7 @@ levels(A, n) = reverse(
 # ╔═╡ 2cbc6ddb-210e-41e8-b745-5c41eba4e778
 function plot_corner!(fig, samples, params; n_levels=4, color=:blue)
 	for (j, p1) in enumerate(params), (i, p2) in enumerate(params)
+		# 1D plot
 		if i == j
 			density!(fig[i, i], samples[p1];
 				color = (color, 0.125),
@@ -260,11 +313,15 @@ function plot_corner!(fig, samples, params; n_levels=4, color=:blue)
 				strokearound = true,
 			)
 		end
+		# 2D plot
 		if i > j
 			Z = kde((samples[p1], samples[p2]), npoints=(2^4, 2^4),)
 			contourf!(fig[i, j], Z;
 				levels = levels(Z.density, n_levels),
-				colormap = cgrad(range(colorant"white", color), alpha=0.5),
+				colormap = cgrad(
+					range(colorant"white", color, length=n_levels),
+					alpha=0.5
+				),
 			)
 			contour!(fig[i, j], Z;
 				levels = levels(Z.density, n_levels),
@@ -287,17 +344,20 @@ md"""
 """
 
 # ╔═╡ 940ebaf2-659a-4319-bbe6-e0290752f1fb
-const COLORS =  parse.(Colorant,
+#const COLORS = cgrad(:seaborn_colorblind6, categorical=true)
+
+# ╔═╡ feee4fd1-e16d-4d9b-8bc0-2c4f7afb0c43
+const COLORS = parse.(Colorant,
 	[
 		"#5daed9",  # Cyan
 		"plum",
 		"#f7ad4d",  # Yellow
 		"mediumaquamarine",
+		"slategray",
 		"#126399",  # Blue
 		"#956cb4",  # Purple
 		"#ff7f00",  # Orange
 		"#029e73",  # Green
-		"slategray",
 	]
 )
 
@@ -334,13 +394,13 @@ let
 		)
 	end
 	
-	axs = reshape(copy(fig.content), (3, 1))
+	axs = reshape(copy(fig.content), (length(cubes), 1))
 	linkaxes!(axs...)
 	hidexdecorations!.(axs[begin:end-1], grid=false)
 	axs[end].xlabel = "Phase"
 	axs[2].ylabel = "Relative flux"
 	
-	fig |> pl.as_svg
+	fig |> pl.as_png
 end
 
 # ╔═╡ d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
@@ -395,18 +455,17 @@ let
 		axs[j, begin].ylabelsize = 26
 	end
 	
-	Legend(fig[1, n_params],
+	Legend(fig[1+1, n_params-1],
 		elems,
 		elem_labels,
-		#orientation = :horizontal,
-		#patchsize = (25, 25),
+		patchsize = (25, 25),
 		tellwidth = false,
 		tellheight = false,
 		rowgap = 10,
 		labelsize = 25,
 	)
 	
-	fig |> pl.as_svg
+	fig |> pl.as_png
 end
 
 # ╔═╡ baeadfce-535a-46c3-8cb9-79cf6bde8555
@@ -418,7 +477,9 @@ md"""
 # ╟─506eeeb2-e56d-436b-91b8-605e52201563
 # ╟─782806a6-efd2-45a9-b898-788a276c282b
 # ╠═3f0f5777-00f1-443d-8ced-d901550010d3
+# ╠═7161e950-8eb8-4440-adbd-9f1cd26012c5
 # ╠═2191791b-df62-4f1b-88bf-060cc47896b2
+# ╠═d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
 # ╟─579e62da-7ffb-4639-bd73-3826ade1cfa2
 # ╟─583b3377-f4f6-4170-8658-d3ba17a5b86d
 # ╠═39dbca86-a4b9-11eb-1c64-9ddf1a9990ab
@@ -435,6 +496,12 @@ md"""
 # ╠═c7a179a3-9966-452d-b430-a28b2f004bc5
 # ╠═19fcaa15-6f01-46a6-8225-4b5cafd89cc1
 # ╠═de0a4468-56aa-4748-80a0-6c9ab6b8579e
+# ╠═c6b8855e-ebac-4a68-8d8f-acfe985ea1bb
+# ╠═2f29b3ff-9554-4a7a-a454-a3c8ac9c2a51
+# ╠═235c6850-3f41-4c82-ab44-f2e34811f4bd
+# ╠═da0c911a-ce67-48f4-b975-0f8def7e727f
+# ╠═ea9ea1a5-9a45-43f3-8736-b1895fc86368
+# ╠═4e951989-15b0-4273-bbff-e0add41eef4b
 # ╟─c936b76a-636b-4f10-b556-fa19808c1562
 # ╠═d279e93e-8665-41b2-bd5c-723458fabe86
 # ╟─68ec4343-5f6c-4dfd-90b5-6393b4c819b9
@@ -449,5 +516,6 @@ md"""
 # ╟─82a23101-9e1f-4eae-b529-e750a44c98b1
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
 # ╠═940ebaf2-659a-4319-bbe6-e0290752f1fb
+# ╠═feee4fd1-e16d-4d9b-8bc0-2c4f7afb0c43
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
 # ╠═691eddff-f2eb-41a8-ab05-63afb46d15f2

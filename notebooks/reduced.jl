@@ -25,6 +25,7 @@ begin
 	using CSV
 	using DataFrames
 	using DelimitedFiles
+	using OrderedCollections
 end
 
 # ╔═╡ ee24f7df-c4db-4065-afe9-10be80cbcd6b
@@ -99,11 +100,22 @@ md"""
 Next we extract the common wavelength grid, along with the target and comparison star flux, and compute the resulting spectrum and light curves:
 """
 
+# ╔═╡ 2724283b-78c1-47b3-ac17-8c92e9e677d9
+names_LDSS3 = OrderedDict(
+	"WASP50" => "aperture_324_803",
+	"c06" => "aperture_153_1117",
+	"c15" => "aperture_830_689",
+	"c21" => "aperture_28_1189",
+)
+
 # ╔═╡ 63f2a355-1f29-4a4c-8f6b-efb2007a8e11
 md"""
 !!! note
 	We convert from Float32 to Float64 to match the format of the IMACS data
 """
+
+# ╔═╡ fc9ad91e-ab8c-45ad-b8c6-065ac0cb01fe
+
 
 # ╔═╡ 7bfc971c-8737-49ad-adec-ac57d176f10e
 md"""
@@ -139,12 +151,6 @@ LC_IMACS = load_pickle(data_path_IMACS)
 # ╔═╡ 44808b97-df11-4aff-9e97-f97987fe9939
 LC_LDSS3 = load_npz(data_path_LDSS3, allow_pickle=true)
 
-# ╔═╡ 5b645084-1f21-42a2-8184-e27f8b3000c3
-target_name_LDSS3 = LC_LDSS3["target"]
-
-# ╔═╡ 5d624218-5106-4e3f-a3b1-77ed0d2a02fa
-comp_names_LDSS3 = convert(Vector{String}, LC_LDSS3["comparisons"])
-
 # ╔═╡ 639f666b-09fc-488b-982b-01a523278cae
 f_LDSS3 = let
 	fluxes = LC_LDSS3["cubes"]["raw_counts"]
@@ -163,13 +169,13 @@ idx_lims = [
 common_wav_idxs_LDSS3 = ∩(idx_lims...)
 
 # ╔═╡ 7c6a3f88-cdc5-4b56-9bbf-2e9a2fa8ae26
-f_target_LDSS3 = f_LDSS3[target_name_LDSS3][:, common_wav_idxs_LDSS3]
+f_target_LDSS3 = f_LDSS3[names_LDSS3["WASP50"]][:, common_wav_idxs_LDSS3]
 
 # ╔═╡ bb2c6085-5cb4-4efc-a322-27fda09fb904
 f_comps_LDSS3 = cat(
 	[
-		f_LDSS3[comp_names_LDSS3[c_i]][:, common_wav_idxs_LDSS3]
-		for c_i in 1:length(comp_names_LDSS3)
+		f_LDSS3[names_LDSS3[comp_name]][:, common_wav_idxs_LDSS3]
+		for comp_name in ["c06", "c15", "c21"]
 	]...,
 	dims=3
 )
@@ -237,6 +243,12 @@ md"""
 We next plot these light curves and identified outliers below:
 """
 
+# ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
+@bind window_width pl.Slider(3:2:21, show_value=true)
+
+# ╔═╡ 4b763b58-862e-4c88-a7c9-fe0b1271c0b4
+use_comps_IMACS = ["c13", "c15", "c18", "c20", "c21", "c23"]
+
 # ╔═╡ 9cf2642e-d436-4078-b4a3-e2a519b6d651
 md"""
 ### LDSS3
@@ -244,11 +256,8 @@ md"""
 
 # ╔═╡ 08eafc08-b0fb-4c99-9d4e-7fa5085d386c
 md"""
-Using the extracted spectra from earlier, we can integrate the flux along the binned spectral direction to build the white-light curves for each star. We store this in the `ntimes` ``\times`` `ncomps` array, `f_div_wlc`:
+Using the extracted spectra from earlier, we can integrate the flux along the binned spectral direction **<LINK TO BINNED SECTION>** to build the white-light curves for each star. We store this in the `ntimes` ``\times`` `ncomps` array, `f_div_wlc`:
 """
-
-# ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
-@bind window_width pl.Slider(3:2:21, show_value=true)
 
 # ╔═╡ 4b3b0a83-daaf-4339-86cc-24e0ba95ea85
 md"""
@@ -271,12 +280,27 @@ function filt(f_div_wlc, window_width; func=median, border="reflect")
 end
 
 # ╔═╡ a4517d69-76e6-462a-9449-b31d80e34a8f
+# Filter specified WLCs and return superset points
 function filt_idxs(f_div_wlc, window_width; ferr=0.002)
 	ntimes, ncomps = size(f_div_wlc)
 	f_filt, diff = filt(f_div_wlc, window_width)
 	bad_idxs = ∪(findall.(>(ferr), eachcol(diff))...) |> sort;
 	use_idxs = deleteat!(collect(1:size(f_div_wlc, 1)), bad_idxs)
 	return f_filt, use_idxs, bad_idxs
+end
+
+# ╔═╡ 109ab11b-cbb3-4c02-9b7a-5d6047883364
+get_idx(needle, haystack) = findfirst(==(needle), haystack)
+
+# ╔═╡ e8d1cace-ad35-449b-884c-30cdecfcde9c
+pl.with_terminal() do
+	use_comps = use_comps_IMACS
+	use_comps_idxs = get_idx.(use_comps, Ref(comp_names_IMACS))
+	_, use_idxs_IMACS, bad_idxs_IMACS = filt_idxs(
+			f_div_WLC_norm_IMACS[:, use_comps_idxs], window_width
+	)
+	println(bad_idxs_IMACS .- 1)
+	println(use_comps_idxs .- 1)
 end
 
 # ╔═╡ e98dee2e-a369-448e-bfe4-8fea0f318fa8
@@ -327,6 +351,14 @@ begin
 	) |> x -> dropdims(x, dims=2)
 	f_div_wlc_LDSS3 = f_target_wlc_LDSS3 ./ f_comps_wlc_LDSS3
 	f_div_WLC_norm_LDSS3 = f_div_wlc_LDSS3 ./ median(f_div_wlc_LDSS3, dims=1)
+end
+
+# ╔═╡ 390cb536-1ca1-410d-a751-c361b7349ea2
+_, use_idxs_LDSS3, bad_idxs_LDSS3 = filt_idxs(f_div_WLC_norm_LDSS3, window_width);
+
+# ╔═╡ 4891ae49-0311-415b-bbea-c703a81aaf63
+pl.with_terminal() do
+	println(bad_idxs_LDSS3 .- 1)
 end
 
 # ╔═╡ f7feb44e-a363-4f8d-bf62-d3541533e4da
@@ -448,9 +480,6 @@ specshifts_LDSS3 = load_npz(
 Delta_Wav_LDSS3 = specshifts_LDSS3["shift"][target_name_LDSS3] |> 
 		sort |> values |> collect |> x -> convert(Vector{Float64}, x)
 
-# ╔═╡ 784cb90d-e365-4b59-8e4b-9d280bb28d79
-_, use_idxs_LDSS3, bad_idxs_LDSS3 = filt_idxs(f_div_WLC_norm_LDSS3, window_width);
-
 # ╔═╡ 29c61b96-cf27-432f-b5cd-a6192732a8f6
 md"""
 #### WLCs (magnitude space)
@@ -466,11 +495,6 @@ end
 md"""
 #### Binned LCs (magnitude space)
 """
-
-# ╔═╡ 4891ae49-0311-415b-bbea-c703a81aaf63
-pl.with_terminal() do
-	println(bad_idxs_LDSS3)
-end
 
 # ╔═╡ 66a04e1c-8fe1-4aac-95b4-7c126f7d0648
 md"""
@@ -580,7 +604,7 @@ let
 	fig = Figure(resolution=FIG_WIDE)
 
 	fluxes = [f_target_LDSS3, [f_comps_LDSS3[:, :, i] for i in 1:3]...]
-	labels = ["WASP-50", ["comp $i" for i in 1:3]...]
+	labels = keys(names_LDSS3) |> collect
 
 	k = 1
 	for j in 1:2, i in 1:2
@@ -607,51 +631,65 @@ let
 end
 
 # ╔═╡ ccabf5d2-5739-4284-a972-23c02a263a5c
-function plot_div_WLCS!(axs, f_div_wlc, window_width, cNames; ferr=0.002)
-	ntimes, ncomps = size(f_div_wlc)
-	f_filt, use_idxs, bad_idxs = filt_idxs(f_div_wlc, window_width; ferr=ferr)
-	idxs = 1:ntimes
+function plot_div_WLCS!(
+	axs, f_div_wlc, window_width, cNames, use_comp_idxs; ferr=0.002
+)
+	use_comps = cNames[use_comp_idxs]
+	
+	# Only apply filter to specified comp star divided WLCs
+	f_filt, use_idxs, bad_idxs = filt_idxs(
+		f_div_wlc[:, use_comp_idxs], window_width; ferr=ferr
+	)
+	
+	idxs = 1:size(f_div_wlc, 1)
 	c = COLORS[end]
+	k = 1
 	for (i, cName) ∈ enumerate(cNames)		
 		# All points
 		scatter!(axs[i], idxs, f_div_wlc[:, i];
 			color = (c, 0.3),
 			strokewidth = 0,
-			label = cName,
+			label = "$(i-1) $cName",
 		)
-	
 		# Used points
-		scatter!(axs[i], idxs[use_idxs], f_div_wlc[use_idxs, i];
-			color = c,
-			strokewidth = 0,
-		)
+		if cName ∈ use_comps
+			scatter!(axs[i], idxs[use_idxs], f_div_wlc[use_idxs, i];
+				color = c,
+				strokewidth = 0,
+			)
+			lines!(axs[i], idxs, f_filt[:, k];
+				color = COLORS[end-2],
+				linewidth = 2,
+			)
+			k += 1
+		end
 		
-		lines!(axs[i], idxs, f_filt[:, i];
-			color = COLORS[end-2],
-			linewidth = 2,
-		)
-		#axislegend()
+		axislegend(axs[i])
 	end
 end
 
-# ╔═╡ 5edd60ee-d246-47f1-9f2a-41b3e6585875
+# ╔═╡ 13523326-a5f2-480d-9961-d23cd51192b8
 let
 	fig = Figure(resolution=FIG_TALL)
 	
 	ncomps = length(comp_names_IMACS)
+	use_comps = use_comps_IMACS
+	use_comps_idxs = get_idx.(use_comps, Ref(comp_names_IMACS))
 	
 	axs = [Axis(fig[i, j]) for i ∈ 1:ncomps÷2, j ∈ 1:2]
-	
-	plot_div_WLCS!(axs, f_div_WLC_norm_IMACS, window_width, comp_names_IMACS)
-	
 	axs = reshape(copy(fig.content), ncomps÷2, 2)
+	
+	plot_div_WLCS!(
+		axs, f_div_WLC_norm_IMACS, window_width, comp_names_IMACS, use_comps_idxs
+	)
+	
 	linkaxes!(axs...)
 	hidexdecorations!.(axs[begin:end-1, :], grid=false)
 	hideydecorations!.(axs[:, begin+1:end], grid=false)
 	ylims!(axs[end], 0.97, 1.02)
 	
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
-	fig[end+1, 2:end] = Label(fig, "Index")
+	fig[end+1, 1:end] = Label(fig, "Index")
 	
 	fig |> pl.as_svg
 end
@@ -660,15 +698,18 @@ end
 let
 	fig = Figure(resolution=FIG_TALL)
 	
+	comp_names_LDSS3 = collect(keys(names_LDSS3))[begin+1:end]
 	ncomps = length(comp_names_LDSS3)
+	use_comps = comp_names_LDSS3 # use all comps
+	use_comps_idxs = get_idx.(use_comps, Ref(comp_names_LDSS3))
 	
 	axs = [Axis(fig[i, 1]) for i in 1:ncomps]
+	axs = reshape(copy(fig.content), ncomps, 1)
 	
-	bads_idxs_LDSS3 = plot_div_WLCS!(
-		axs, f_div_WLC_norm_LDSS3, window_width, comp_names_LDSS3
+	plot_div_WLCS!(
+		axs, f_div_WLC_norm_LDSS3, window_width, comp_names_LDSS3, use_comps_idxs
 	)
 	
-	axs = reshape(copy(fig.content), ncomps, 1)
 	hidexdecorations!.(axs[begin:end-1], grid=false)
 	linkaxes!(axs...)
 	ylims!(axs[end], 0.97, 1.02)
@@ -694,13 +735,13 @@ md"""
 # ╠═44808b97-df11-4aff-9e97-f97987fe9939
 # ╟─f2bb15ee-2180-4e0f-b71d-7f9cdc2178ef
 # ╟─7185f603-3e57-42db-9665-c215094776ad
-# ╠═5b645084-1f21-42a2-8184-e27f8b3000c3
-# ╠═5d624218-5106-4e3f-a3b1-77ed0d2a02fa
+# ╠═2724283b-78c1-47b3-ac17-8c92e9e677d9
 # ╠═639f666b-09fc-488b-982b-01a523278cae
 # ╟─63f2a355-1f29-4a4c-8f6b-efb2007a8e11
 # ╠═2e503024-65cb-483d-aac7-364f22823bdc
 # ╠═993e1e5a-9d78-4042-9aca-bb753af7f647
 # ╠═31bdc830-dfc9-445a-ba7e-76be7627561a
+# ╠═fc9ad91e-ab8c-45ad-b8c6-065ac0cb01fe
 # ╠═7c6a3f88-cdc5-4b56-9bbf-2e9a2fa8ae26
 # ╟─7bfc971c-8737-49ad-adec-ac57d176f10e
 # ╠═bb2c6085-5cb4-4efc-a322-27fda09fb904
@@ -717,17 +758,22 @@ md"""
 # ╟─731ed0be-a679-4738-a477-56b0ed44338c
 # ╠═18d58341-0173-4eb1-9f01-cfa893088613
 # ╟─941cd721-07d8-4a8f-9d75-42854e6e8edb
-# ╠═5edd60ee-d246-47f1-9f2a-41b3e6585875
+# ╠═ab058d99-ce5f-4ed3-97bd-a62d2f258773
+# ╠═13523326-a5f2-480d-9961-d23cd51192b8
+# ╠═4b763b58-862e-4c88-a7c9-fe0b1271c0b4
+# ╠═e8d1cace-ad35-449b-884c-30cdecfcde9c
 # ╟─9cf2642e-d436-4078-b4a3-e2a519b6d651
 # ╟─08eafc08-b0fb-4c99-9d4e-7fa5085d386c
 # ╠═c51edf69-b43b-4119-b2ad-f28f6de48c92
 # ╠═ee94bd7d-380a-44c4-a8dd-9fd632a96158
-# ╠═ab058d99-ce5f-4ed3-97bd-a62d2f258773
 # ╠═b1bd886f-c7dd-4167-b9b8-084b73f7ee9c
+# ╠═390cb536-1ca1-410d-a751-c361b7349ea2
+# ╠═4891ae49-0311-415b-bbea-c703a81aaf63
 # ╟─4b3b0a83-daaf-4339-86cc-24e0ba95ea85
-# ╠═dc044a72-4706-49e2-94a8-c828a6bf7de0
-# ╠═a4517d69-76e6-462a-9449-b31d80e34a8f
 # ╠═ccabf5d2-5739-4284-a972-23c02a263a5c
+# ╠═a4517d69-76e6-462a-9449-b31d80e34a8f
+# ╠═dc044a72-4706-49e2-94a8-c828a6bf7de0
+# ╠═109ab11b-cbb3-4c02-9b7a-5d6047883364
 # ╟─e98dee2e-a369-448e-bfe4-8fea0f318fa8
 # ╟─891add6b-c1c1-4e7c-8a8d-de2421bd6f2d
 # ╟─e844ad0c-c3ce-40cc-840f-7fe6ec454fed
@@ -752,7 +798,6 @@ md"""
 # ╠═ec83cd01-ad3b-4c46-a763-828b3f1e0c70
 # ╠═673e676d-a7f2-4b65-8642-8bd508a61bf0
 # ╠═655247ce-4c50-4a6c-8186-7dad1233cd3b
-# ╠═784cb90d-e365-4b59-8e4b-9d280bb28d79
 # ╟─29c61b96-cf27-432f-b5cd-a6192732a8f6
 # ╠═0e045efd-e9d7-4f03-8128-953c7ad13aba
 # ╠═abf0021f-6a1e-4a6c-8135-88a0424c3df9
@@ -761,7 +806,6 @@ md"""
 # ╠═8576c9d9-29ae-4351-985a-c191a944a4bc
 # ╠═0a7b6bc2-ed75-49d5-b5ad-ff13f86eae2b
 # ╠═cb5ced41-cc6b-48f4-a532-0a0f0fe31f8c
-# ╠═4891ae49-0311-415b-bbea-c703a81aaf63
 # ╟─66a04e1c-8fe1-4aac-95b4-7c126f7d0648
 # ╠═62f0c610-862c-466b-b6ba-387ebc11928c
 # ╠═d127c98d-81c0-4133-955f-ae98c07e1152
