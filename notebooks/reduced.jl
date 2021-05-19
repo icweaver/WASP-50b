@@ -13,6 +13,9 @@ macro bind(def, element)
     end
 end
 
+# ╔═╡ 442946ba-9561-4223-8223-ba513ac7bc45
+using Printf
+
 # ╔═╡ b1b0690a-a1eb-11eb-1590-396d92c80c23
 begin
 	import PlutoUI as pl
@@ -247,7 +250,7 @@ We next plot these light curves and identified outliers below:
 @bind window_width pl.Slider(3:2:21, show_value=true)
 
 # ╔═╡ 4b763b58-862e-4c88-a7c9-fe0b1271c0b4
-use_comps_IMACS = ["c13", "c15", "c18", "c20", "c21", "c23"]
+use_comps_IMACS = ["c06"]
 
 # ╔═╡ 9cf2642e-d436-4078-b4a3-e2a519b6d651
 md"""
@@ -292,14 +295,13 @@ end
 # ╔═╡ 109ab11b-cbb3-4c02-9b7a-5d6047883364
 get_idx(needle, haystack) = findfirst(==(needle), haystack)
 
-# ╔═╡ e8d1cace-ad35-449b-884c-30cdecfcde9c
+# ╔═╡ df46d106-f186-4900-9d3f-b711bc803707
 pl.with_terminal() do
 	use_comps = use_comps_IMACS
 	use_comps_idxs = get_idx.(use_comps, Ref(comp_names_IMACS))
-	_, use_idxs_IMACS, bad_idxs_IMACS = filt_idxs(
-			f_div_WLC_norm_IMACS[:, use_comps_idxs], window_width
-	)
-	println(bad_idxs_IMACS .- 1)
+	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm_IMACS[:, use_comps_idxs], window_width)
+	# Because python
+	println(bad_idxs .- 1)
 	println(use_comps_idxs .- 1)
 end
 
@@ -358,8 +360,11 @@ _, use_idxs_LDSS3, bad_idxs_LDSS3 = filt_idxs(f_div_WLC_norm_LDSS3, window_width
 
 # ╔═╡ 4891ae49-0311-415b-bbea-c703a81aaf63
 pl.with_terminal() do
-	println(bad_idxs_LDSS3 .- 1)
+	println(bad_idxs_LDSS3 .- 1) # For Python
 end
+
+# ╔═╡ b9367db3-a608-425e-9fc9-92b4b8879e46
+bad_idxs_LDSS3 .- 1 == [0, 2, 3, 4, 5, 7, 9, 10, 12, 14, 15, 18, 21, 22, 23, 24, 25, 26, 28, 31, 32, 34, 37, 38, 39, 40, 41, 42, 43, 44, 46, 48, 51, 52, 53, 54, 55, 63, 75, 76, 78, 79, 82, 196, 201, 208, 209, 210, 213, 215, 217, 233, 235, 247, 254, 264, 270, 279, 283, 289, 304]
 
 # ╔═╡ f7feb44e-a363-4f8d-bf62-d3541533e4da
 md"""
@@ -465,6 +470,9 @@ md"""
 #### External parameters
 """
 
+# ╔═╡ aad465ac-dca8-41a7-a232-c546319dd338
+target_name_LDSS3 = names_LDSS3["WASP50"]
+
 # ╔═╡ 9b310d6f-b320-4406-a97c-a32620257995
 Times_LDSS3, Airmass_LDSS3 = getindex.(
 	Ref(LC_LDSS3["temporal"].columns),
@@ -479,6 +487,9 @@ specshifts_LDSS3 = load_npz(
 # ╔═╡ ec83cd01-ad3b-4c46-a763-828b3f1e0c70
 Delta_Wav_LDSS3 = specshifts_LDSS3["shift"][target_name_LDSS3] |> 
 		sort |> values |> collect |> x -> convert(Vector{Float64}, x)
+
+# ╔═╡ a77a890a-ddaa-41f4-bdd1-1fef4e56b0f1
+fmt_float(x) = @sprintf "%.10f" x
 
 # ╔═╡ 29c61b96-cf27-432f-b5cd-a6192732a8f6
 md"""
@@ -517,10 +528,10 @@ FWHM_LDSS3, Trace_Center_LDSS3, Sky_Flux_LDSS3 = median_eparam.(
 eparams_LDSS3 = DataFrame(
 	(Times=Times_LDSS3, Airmass=Airmass_LDSS3, Delta_Wav=Delta_Wav_LDSS3,
 	 FWHM=FWHM_LDSS3, Sky_Flux=Sky_Flux_LDSS3, Trace_Center=Trace_Center_LDSS3)
-)[use_idxs_LDSS3, :]
+)[use_idxs_LDSS3, :] |> df -> mapcols(col -> fmt_float.(col), df)
 
 # ╔═╡ 655247ce-4c50-4a6c-8186-7dad1233cd3b
-CSV.write("$(dirname(data_path_LDSS3))/eparams.dat", eparams_LDSS3, delim="    ")
+CSV.write("$(dirname(data_path_LDSS3))/eparams.dat", eparams_LDSS3, delim=",    ")
 
 # ╔═╡ d127c98d-81c0-4133-955f-ae98c07e1152
 function f_to_med_mag(f)
@@ -539,8 +550,8 @@ let
 	savepath = "$(dirname(data_path_LDSS3))/white-light"
 	rm(savepath, force=true, recursive=true)
 	mkdir(savepath)
-	writedlm("$(savepath)/lc.dat", lc_LDSS3, "    ")
-	writedlm("$(savepath)/comps.dat", comps_LDSS3, "    ")
+	writedlm("$(savepath)/lc.dat", lc_LDSS3, ",    ")
+	writedlm("$(savepath)/comps.dat", comps_LDSS3, ",    ")
 end
 
 # ╔═╡ 8576c9d9-29ae-4351-985a-c191a944a4bc
@@ -556,8 +567,8 @@ let
 	for i in 1:nbins
 		save_path_w = "$(savepath)/wbin$(i-1)"
 		mkpath("$(save_path_w)")
-		writedlm("$(save_path_w)/lc.dat", target_binned_mags[:, i])
-		writedlm("$(save_path_w)/comps.dat", comp_binned_mags[:, i, :], "    ")
+		writedlm("$(save_path_w)/lc.dat", target_binned_mags[:, i], ",    ")
+		writedlm("$(save_path_w)/comps.dat", comp_binned_mags[:, i, :], ",    ")
 	end
 end
 
@@ -649,7 +660,7 @@ function plot_div_WLCS!(
 		scatter!(axs[i], idxs, f_div_wlc[:, i];
 			color = (c, 0.3),
 			strokewidth = 0,
-			label = "$(i-1) $cName",
+			label = "$cName",
 		)
 		# Used points
 		if cName ∈ use_comps
@@ -676,8 +687,8 @@ let
 	use_comps = use_comps_IMACS
 	use_comps_idxs = get_idx.(use_comps, Ref(comp_names_IMACS))
 	
-	axs = [Axis(fig[i, j]) for i ∈ 1:ncomps÷2, j ∈ 1:2]
-	axs = reshape(copy(fig.content), ncomps÷2, 2)
+	axs = [Axis(fig[i, j]) for i ∈ 1:4, j ∈ 1:2]
+	axs = reshape(copy(fig.content), 4, 2)
 	
 	plot_div_WLCS!(
 		axs, f_div_WLC_norm_IMACS, window_width, comp_names_IMACS, use_comps_idxs
@@ -761,7 +772,7 @@ md"""
 # ╠═ab058d99-ce5f-4ed3-97bd-a62d2f258773
 # ╠═13523326-a5f2-480d-9961-d23cd51192b8
 # ╠═4b763b58-862e-4c88-a7c9-fe0b1271c0b4
-# ╠═e8d1cace-ad35-449b-884c-30cdecfcde9c
+# ╠═df46d106-f186-4900-9d3f-b711bc803707
 # ╟─9cf2642e-d436-4078-b4a3-e2a519b6d651
 # ╟─08eafc08-b0fb-4c99-9d4e-7fa5085d386c
 # ╠═c51edf69-b43b-4119-b2ad-f28f6de48c92
@@ -769,6 +780,7 @@ md"""
 # ╠═b1bd886f-c7dd-4167-b9b8-084b73f7ee9c
 # ╠═390cb536-1ca1-410d-a751-c361b7349ea2
 # ╠═4891ae49-0311-415b-bbea-c703a81aaf63
+# ╠═b9367db3-a608-425e-9fc9-92b4b8879e46
 # ╟─4b3b0a83-daaf-4339-86cc-24e0ba95ea85
 # ╠═ccabf5d2-5739-4284-a972-23c02a263a5c
 # ╠═a4517d69-76e6-462a-9449-b31d80e34a8f
@@ -792,11 +804,14 @@ md"""
 # ╟─45268530-f48a-4fbe-89f7-4a7ea972d2b2
 # ╟─1306cf62-857e-4cb3-a841-d87d2d5a995f
 # ╟─dff24ff0-1d5f-4561-b23f-9385c9e73a0c
+# ╠═aad465ac-dca8-41a7-a232-c546319dd338
 # ╠═9b310d6f-b320-4406-a97c-a32620257995
 # ╠═0dbc118e-943a-479e-9151-495455d9eed7
 # ╠═0caa6353-ee39-4e30-b7b0-c5302f87356c
 # ╠═ec83cd01-ad3b-4c46-a763-828b3f1e0c70
 # ╠═673e676d-a7f2-4b65-8642-8bd508a61bf0
+# ╠═a77a890a-ddaa-41f4-bdd1-1fef4e56b0f1
+# ╠═442946ba-9561-4223-8223-ba513ac7bc45
 # ╠═655247ce-4c50-4a6c-8186-7dad1233cd3b
 # ╟─29c61b96-cf27-432f-b5cd-a6192732a8f6
 # ╠═0e045efd-e9d7-4f03-8128-953c7ad13aba
