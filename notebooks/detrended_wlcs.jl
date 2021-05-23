@@ -4,9 +4,6 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 4e951989-15b0-4273-bbff-e0add41eef4b
-using Unitful
-
 # ╔═╡ 691eddff-f2eb-41a8-ab05-63afb46d15f2
 begin
 	import PlutoUI as pl
@@ -42,10 +39,18 @@ First, let's load the relevant data needed for this notebook:
 """
 
 # ╔═╡ 3f0f5777-00f1-443d-8ced-d901550010d3
-const DATA_DIR_IMACS = "data/detrended/IMACS/out_l/WASP50"
+const DATA_DIR = "data/detrended/out_l_C/WASP50"
 
-# ╔═╡ 7161e950-8eb8-4440-adbd-9f1cd26012c5
-const DATA_DIR_LDSS3 = "data/detrended/LDSS3/out_l/WASP50"
+# ╔═╡ 84e1bf16-2135-4b5e-b59c-0a570281d92c
+pl.with_terminal() do
+	for (i, (fpath_sample, fpath_model, fpath_result)) in enumerate(zip(
+				sort(glob("$(DATA_DIR)/*LDSS3*/white-light/BMA_posteriors.pkl")),
+				sort(glob("$(DATA_DIR)/*LDSS3*/white-light/BMA_WLC.npy")),
+				sort(glob("$(DATA_DIR)/*LDSS3*/white-light/results.dat")),
+		))
+		println(fpath_sample)
+	end
+end
 
 # ╔═╡ 579e62da-7ffb-4639-bd73-3826ade1cfa2
 md"""
@@ -107,24 +112,23 @@ begin
 			"results" => CSV.File(
 				fpath_result,
 				comment = "#",
-				delim = ' ',			
-				ignorerepeated=true,
+				normalizenames=true,
 			) |> DataFrame
 		)
 		
 		for (i, (fpath_sample, fpath_model, fpath_result)) in enumerate(zip(
-			sort(glob("$(DATA_DIR_IMACS)/w50_*/white-light/BMA_posteriors.pkl")),
-			sort(glob("$(DATA_DIR_IMACS)/w50_*/white-light/BMA_WLC.npy")),
-			sort(glob("$(DATA_DIR_IMACS)/w50_*/white-light/results.dat")),
+			sort(glob("$(DATA_DIR)/*IMACS*/white-light/BMA_posteriors.pkl")),
+			sort(glob("$(DATA_DIR)/*IMACS*/white-light/BMA_WLC.npy")),
+			sort(glob("$(DATA_DIR)/*IMACS*/white-light/results.dat")),
 		))
 	)
 	
 	
 	# Load LDSS3
 	for (fpath_sample, fpath_model, fpath_result) in zip(
-			sort(glob("$(DATA_DIR_LDSS3)/w50_*/white-light/BMA_posteriors.pkl")),
-			sort(glob("$(DATA_DIR_LDSS3)/w50_*/white-light/BMA_WLC.npy")),
-			sort(glob("$(DATA_DIR_LDSS3)/w50_*/white-light/results.dat")),
+			sort(glob("$(DATA_DIR)/*LDSS3*/white-light/BMA_posteriors.pkl")),
+			sort(glob("$(DATA_DIR)/*LDSS3*/white-light/BMA_WLC.npy")),
+			sort(glob("$(DATA_DIR)/*LDSS3*/white-light/results.dat")),
 		)
 				
 		cubes["Transit 2 LDSS3 $(isflat(fpath_sample))"] = OrderedDict(
@@ -143,7 +147,7 @@ begin
 end
 
 # ╔═╡ d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
-cubes
+cubes |> keys
 
 # ╔═╡ d0172076-d245-4246-b35f-49cc6f1cde0b
 # Return `flat` or `noflat` for data organization
@@ -186,9 +190,6 @@ md"""
 Finally, we average together each parameter from each night, weighted by its maximum uncertainty per night:
 """
 
-# ╔═╡ ea9ea1a5-9a45-43f3-8736-b1895fc86368
-
-
 # ╔═╡ c936b76a-636b-4f10-b556-fa19808c1562
 md"""
 ### Save to file
@@ -222,11 +223,11 @@ const PARAMS = OrderedDict(
 	"p" => "Rₚ/Rₛ",
 	"t0" => "t₀",
 	"P" => "P",
-	"rho" => "ρₛ",
-	"aR" => "a/Rₛ",
-	"inc" => "i",
-	"b" => "b",
-	"q1" => "u",
+	# "rho" => "ρₛ",
+	# "aR" => "a/Rₛ",
+	# "inc" => "i",
+	# "b" => "b",
+	# "q1" => "u",
 );
 
 # ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
@@ -250,18 +251,6 @@ BMA_matrix = hcat((
 	summary[!, "Value"] .± maximum((summary[!, "SigmaUp"], summary[!, "SigmaDown"]))
 	for summary in summary_tables
 )...) |> x-> hcat(x, mean(x, dims=2));
-
-# ╔═╡ c6b8855e-ebac-4a68-8d8f-acfe985ea1bb
-t0s = BMA_matrix[2, begin:end-1]
-
-# ╔═╡ 2f29b3ff-9554-4a7a-a454-a3c8ac9c2a51
-(t0s[4] - t0s[3])u"d" |> u"s"
-
-# ╔═╡ 235c6850-3f41-4c82-ab44-f2e34811f4bd
-(t0s[4] - t0s[2])u"d" |> u"s"
-
-# ╔═╡ da0c911a-ce67-48f4-b975-0f8def7e727f
-(t0s[4] - t0s[1])u"d" |> u"s"
 
 # ╔═╡ 19fcaa15-6f01-46a6-8225-4b5cafd89cc1
 BMA = DataFrame(
@@ -396,6 +385,7 @@ let
 	
 	axs = reshape(copy(fig.content), (length(cubes), 1))
 	linkaxes!(axs...)
+	#ylims!(axs[end], 0.96, 1.02)
 	hidexdecorations!.(axs[begin:end-1], grid=false)
 	axs[end].xlabel = "Phase"
 	axs[2].ylabel = "Relative flux"
@@ -455,7 +445,8 @@ let
 		axs[j, begin].ylabelsize = 26
 	end
 	
-	Legend(fig[1+1, n_params-1],
+	#Legend(fig[1+1, n_params-1],
+	Legend(fig[1, 3],
 		elems,
 		elem_labels,
 		patchsize = (25, 25),
@@ -468,17 +459,23 @@ let
 	fig |> pl.as_png
 end
 
+# ╔═╡ a9747b5e-adf9-48dd-96c2-f184d873d1ac
+set_theme!(palette = (color=COLORS,),)
+
 # ╔═╡ baeadfce-535a-46c3-8cb9-79cf6bde8555
 md"""
 ## Packages
 """
 
+# ╔═╡ cd6a840c-39e8-4255-9101-21871f42d862
+end
+
 # ╔═╡ Cell order:
 # ╟─506eeeb2-e56d-436b-91b8-605e52201563
 # ╟─782806a6-efd2-45a9-b898-788a276c282b
 # ╠═3f0f5777-00f1-443d-8ced-d901550010d3
-# ╠═7161e950-8eb8-4440-adbd-9f1cd26012c5
 # ╠═2191791b-df62-4f1b-88bf-060cc47896b2
+# ╠═84e1bf16-2135-4b5e-b59c-0a570281d92c
 # ╠═d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
 # ╟─579e62da-7ffb-4639-bd73-3826ade1cfa2
 # ╟─583b3377-f4f6-4170-8658-d3ba17a5b86d
@@ -496,12 +493,6 @@ md"""
 # ╠═c7a179a3-9966-452d-b430-a28b2f004bc5
 # ╠═19fcaa15-6f01-46a6-8225-4b5cafd89cc1
 # ╠═de0a4468-56aa-4748-80a0-6c9ab6b8579e
-# ╠═c6b8855e-ebac-4a68-8d8f-acfe985ea1bb
-# ╠═2f29b3ff-9554-4a7a-a454-a3c8ac9c2a51
-# ╠═235c6850-3f41-4c82-ab44-f2e34811f4bd
-# ╠═da0c911a-ce67-48f4-b975-0f8def7e727f
-# ╠═ea9ea1a5-9a45-43f3-8736-b1895fc86368
-# ╠═4e951989-15b0-4273-bbff-e0add41eef4b
 # ╟─c936b76a-636b-4f10-b556-fa19808c1562
 # ╠═d279e93e-8665-41b2-bd5c-723458fabe86
 # ╟─68ec4343-5f6c-4dfd-90b5-6393b4c819b9
@@ -517,5 +508,7 @@ md"""
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
 # ╠═940ebaf2-659a-4319-bbe6-e0290752f1fb
 # ╠═feee4fd1-e16d-4d9b-8bc0-2c4f7afb0c43
+# ╠═a9747b5e-adf9-48dd-96c2-f184d873d1ac
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
 # ╠═691eddff-f2eb-41a8-ab05-63afb46d15f2
+# ╠═cd6a840c-39e8-4255-9101-21871f42d862

@@ -96,10 +96,7 @@ $(@bind data_path_LDSS3 pl.Select(sort(glob("data/reduced/LDSS3/*/LC*.npy"))))
 # ╔═╡ f2bb15ee-2180-4e0f-b71d-7f9cdc2178ef
 md"""
 #### Common wavelengths
-"""
 
-# ╔═╡ 7185f603-3e57-42db-9665-c215094776ad
-md"""
 Next we extract the common wavelength grid, along with the target and comparison star flux, and compute the resulting spectrum and light curves:
 """
 
@@ -112,13 +109,10 @@ names_LDSS3 = OrderedDict(
 )
 
 # ╔═╡ 63f2a355-1f29-4a4c-8f6b-efb2007a8e11
-md"""
-!!! note
-	We convert from Float32 to Float64 to match the format of the IMACS data
-"""
-
-# ╔═╡ fc9ad91e-ab8c-45ad-b8c6-065ac0cb01fe
-
+	md"""
+	!!! note
+		We convert from Float32 to Float64 to match the format of the IMACS data
+	"""
 
 # ╔═╡ 7bfc971c-8737-49ad-adec-ac57d176f10e
 md"""
@@ -155,10 +149,10 @@ LC_IMACS = load_pickle(data_path_IMACS)
 LC_LDSS3 = load_npz(data_path_LDSS3, allow_pickle=true)
 
 # ╔═╡ 639f666b-09fc-488b-982b-01a523278cae
-f_LDSS3 = let
-	fluxes = LC_LDSS3["cubes"]["raw_counts"]
-	Dict(k => convert(Matrix{Float64}, v) for (k, v) ∈ fluxes)
-end
+f_LDSS3 = Dict(
+	k => convert(Matrix{Float64}, v)
+	for (k, v) ∈ LC_LDSS3["cubes"]["raw_counts"]
+)
 
 # ╔═╡ 2e503024-65cb-483d-aac7-364f22823bdc
 # Non-zero wavelength ranges for each star
@@ -363,9 +357,6 @@ pl.with_terminal() do
 	println(bad_idxs_LDSS3 .- 1) # For Python
 end
 
-# ╔═╡ b9367db3-a608-425e-9fc9-92b4b8879e46
-bad_idxs_LDSS3 .- 1 == [0, 2, 3, 4, 5, 7, 9, 10, 12, 14, 15, 18, 21, 22, 23, 24, 25, 26, 28, 31, 32, 34, 37, 38, 39, 40, 41, 42, 43, 44, 46, 48, 51, 52, 53, 54, 55, 63, 75, 76, 78, 79, 82, 196, 201, 208, 209, 210, 213, 215, 217, 233, 235, 247, 254, 264, 270, 279, 283, 289, 304]
-
 # ╔═╡ f7feb44e-a363-4f8d-bf62-d3541533e4da
 md"""
 #### Compute binned divided LCs
@@ -491,6 +482,23 @@ Delta_Wav_LDSS3 = specshifts_LDSS3["shift"][target_name_LDSS3] |>
 # ╔═╡ a77a890a-ddaa-41f4-bdd1-1fef4e56b0f1
 fmt_float(x) = @sprintf "%.10f" x
 
+# ╔═╡ e5912d73-93d9-4525-b34d-87ab08242dcd
+function template_dir(fpath)
+	base_dir = "$(dirname(dirname(data_path_LDSS3)))/out_LDSS3_template/WASP50"
+	date, flat_status = split(basename(dirname(fpath)), '_')
+	return "$(base_dir)/w50_$(date[3:end])_LDSS3_$(flat_status)"
+end
+
+# ╔═╡ 271fff20-0f02-4cc3-a7f9-53997aacb527
+let
+	savepath = template_dir(data_path_LDSS3)
+	rm(savepath, force=true, recursive=true)
+	mkpath(savepath)
+end
+
+# ╔═╡ 7a29aed7-2564-4b42-a578-3bbb9d2c7fcb
+tdir = "$(template_dir(data_path_LDSS3))"
+
 # ╔═╡ 29c61b96-cf27-432f-b5cd-a6192732a8f6
 md"""
 #### WLCs (magnitude space)
@@ -531,7 +539,7 @@ eparams_LDSS3 = DataFrame(
 )[use_idxs_LDSS3, :] |> df -> mapcols(col -> fmt_float.(col), df)
 
 # ╔═╡ 655247ce-4c50-4a6c-8186-7dad1233cd3b
-CSV.write("$(dirname(data_path_LDSS3))/eparams.dat", eparams_LDSS3, delim=",    ")
+CSV.write("$(tdir)/eparams.dat", eparams_LDSS3, delim=",    ")
 
 # ╔═╡ d127c98d-81c0-4133-955f-ae98c07e1152
 function f_to_med_mag(f)
@@ -547,9 +555,9 @@ end
 
 # ╔═╡ e282e1da-0389-42f3-aeef-e732f5f1df95
 let
-	savepath = "$(dirname(data_path_LDSS3))/white-light"
+	savepath = "$(tdir)/white-light"
 	rm(savepath, force=true, recursive=true)
-	mkdir(savepath)
+	mkpath(savepath)
 	writedlm("$(savepath)/lc.dat", lc_LDSS3, ",    ")
 	writedlm("$(savepath)/comps.dat", comps_LDSS3, ",    ")
 end
@@ -562,7 +570,7 @@ comp_binned_mags = mapslices(f_to_med_mag, cLCw, dims=1)[use_idxs_LDSS3, :, :]
 
 # ╔═╡ cb5ced41-cc6b-48f4-a532-0a0f0fe31f8c
 let
-	savepath = "$(dirname(data_path_LDSS3))/wavelength"
+	savepath = "$(tdir)/wavelength"
 	rm(savepath, force=true, recursive=true)
 	for i in 1:nbins
 		save_path_w = "$(savepath)/wbin$(i-1)"
@@ -737,41 +745,39 @@ md"""
 """
 
 # ╔═╡ Cell order:
-# ╟─ee24f7df-c4db-4065-afe9-10be80cbcd6b
-# ╟─9d180c21-e634-4a1e-8430-bdd089262f66
+# ╠═ee24f7df-c4db-4065-afe9-10be80cbcd6b
+# ╠═9d180c21-e634-4a1e-8430-bdd089262f66
 # ╟─454cab9c-7ea0-4b0a-9622-d29d8ba0395b
 # ╠═bd2cdf33-0c41-4948-82ab-9a28929f72b3
 # ╟─66052b03-35a0-4877-abef-f525766fd332
-# ╟─470c738f-c2c8-4f56-b936-e08c43c161b1
+# ╠═470c738f-c2c8-4f56-b936-e08c43c161b1
 # ╠═44808b97-df11-4aff-9e97-f97987fe9939
 # ╟─f2bb15ee-2180-4e0f-b71d-7f9cdc2178ef
-# ╟─7185f603-3e57-42db-9665-c215094776ad
 # ╠═2724283b-78c1-47b3-ac17-8c92e9e677d9
 # ╠═639f666b-09fc-488b-982b-01a523278cae
-# ╟─63f2a355-1f29-4a4c-8f6b-efb2007a8e11
+# ╠═63f2a355-1f29-4a4c-8f6b-efb2007a8e11
 # ╠═2e503024-65cb-483d-aac7-364f22823bdc
 # ╠═993e1e5a-9d78-4042-9aca-bb753af7f647
 # ╠═31bdc830-dfc9-445a-ba7e-76be7627561a
-# ╠═fc9ad91e-ab8c-45ad-b8c6-065ac0cb01fe
 # ╠═7c6a3f88-cdc5-4b56-9bbf-2e9a2fa8ae26
 # ╟─7bfc971c-8737-49ad-adec-ac57d176f10e
 # ╠═bb2c6085-5cb4-4efc-a322-27fda09fb904
-# ╟─1c3e8cb3-2eff-47c2-8c17-01d0599556b8
+# ╠═1c3e8cb3-2eff-47c2-8c17-01d0599556b8
 # ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
-# ╟─e774a20f-2d58-486a-ab71-6bde678b26f8
+# ╠═e774a20f-2d58-486a-ab71-6bde678b26f8
 # ╟─2bc50f2d-64b4-45e8-83e6-9ae2a948d76a
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
 # ╟─0d18676d-5401-44ab-8a95-c45fa7864115
 # ╠═2fd7bc68-a6ec-4ccb-ad73-07b031ffef5a
 # ╠═1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
 # ╠═6fd88483-d005-4186-8dd2-82cea767ce90
-# ╟─e3468c61-782b-4f55-a4a1-9d1883655d11
+# ╠═e3468c61-782b-4f55-a4a1-9d1883655d11
 # ╟─731ed0be-a679-4738-a477-56b0ed44338c
 # ╠═18d58341-0173-4eb1-9f01-cfa893088613
 # ╟─941cd721-07d8-4a8f-9d75-42854e6e8edb
 # ╠═ab058d99-ce5f-4ed3-97bd-a62d2f258773
-# ╠═13523326-a5f2-480d-9961-d23cd51192b8
 # ╠═4b763b58-862e-4c88-a7c9-fe0b1271c0b4
+# ╠═13523326-a5f2-480d-9961-d23cd51192b8
 # ╠═df46d106-f186-4900-9d3f-b711bc803707
 # ╟─9cf2642e-d436-4078-b4a3-e2a519b6d651
 # ╟─08eafc08-b0fb-4c99-9d4e-7fa5085d386c
@@ -780,7 +786,6 @@ md"""
 # ╠═b1bd886f-c7dd-4167-b9b8-084b73f7ee9c
 # ╠═390cb536-1ca1-410d-a751-c361b7349ea2
 # ╠═4891ae49-0311-415b-bbea-c703a81aaf63
-# ╠═b9367db3-a608-425e-9fc9-92b4b8879e46
 # ╟─4b3b0a83-daaf-4339-86cc-24e0ba95ea85
 # ╠═ccabf5d2-5739-4284-a972-23c02a263a5c
 # ╠═a4517d69-76e6-462a-9449-b31d80e34a8f
@@ -812,7 +817,10 @@ md"""
 # ╠═673e676d-a7f2-4b65-8642-8bd508a61bf0
 # ╠═a77a890a-ddaa-41f4-bdd1-1fef4e56b0f1
 # ╠═442946ba-9561-4223-8223-ba513ac7bc45
+# ╠═271fff20-0f02-4cc3-a7f9-53997aacb527
+# ╠═7a29aed7-2564-4b42-a578-3bbb9d2c7fcb
 # ╠═655247ce-4c50-4a6c-8186-7dad1233cd3b
+# ╠═e5912d73-93d9-4525-b34d-87ab08242dcd
 # ╟─29c61b96-cf27-432f-b5cd-a6192732a8f6
 # ╠═0e045efd-e9d7-4f03-8128-953c7ad13aba
 # ╠═abf0021f-6a1e-4a6c-8135-88a0424c3df9
@@ -824,9 +832,9 @@ md"""
 # ╟─66a04e1c-8fe1-4aac-95b4-7c126f7d0648
 # ╠═62f0c610-862c-466b-b6ba-387ebc11928c
 # ╠═d127c98d-81c0-4133-955f-ae98c07e1152
-# ╟─5db4a2f2-1c0d-495a-8688-40fc9e0ccd02
+# ╠═5db4a2f2-1c0d-495a-8688-40fc9e0ccd02
 # ╠═2b50e77f-0606-4e13-9d8a-c6eb3645d23c
 # ╠═5e97c57e-a896-4478-a277-e3da1444f8de
 # ╠═202667da-d22b-405d-9935-4726c7d41a0b
-# ╟─eeb3da97-72d5-4317-acb9-d28637a06d67
+# ╠═eeb3da97-72d5-4317-acb9-d28637a06d67
 # ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23
