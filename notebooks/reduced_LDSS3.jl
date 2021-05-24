@@ -65,7 +65,7 @@ The data from this instrument is stored in an `npy` file that contains the follo
 	We will use `wavelength` and `raw_counts` for our analysis here, where `raw_counts` is the sky subtracted, cross-dispersion integrated flux from each star.
 
 Each cube (`LC`) can be selected from the following drop-down menu, and will be used for the rest of this analysis:
-$(@bind dirpath Pl.Select(sort(glob("data/reduced/LDSS3/*/LC*.npy"))))
+$(@bind fpath Pl.Select(sort(glob("data/reduced/LDSS3/*/LC*.npy"))))
 """
 
 # ╔═╡ 698ae5b0-7cd3-4055-a13e-e9aa3704ca12
@@ -129,10 +129,10 @@ With the flux extracted for each object, we now turn to analyzing the resulting 
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
 
 # ╔═╡ 7d68ad39-3e39-48fa-939a-e56c6659d2b3
-function spec_plot(ax, wav, A; norm=1.0, color=:blue, label="")
+function spec_plot!(ax, wav, A; norm=1.0, label="")
 	μ, σ = med_std(A) ./ norm
-	band(ax, wav, μ .- σ, μ .+ σ, color=(color, 0.25))
-	lines!(ax, wav, μ, color=color, label=label)
+	p = band!(ax, wav, μ .- σ, μ .+ σ)
+	lines!(ax, wav, μ, linewidth=2, label=label)
 end
 
 # ╔═╡ bd937d51-17e9-4de3-a5d0-4c436d413940
@@ -199,9 +199,6 @@ md"""
 With `oLCw` and `cLCw` now computed, we next compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `nbins` ``\times`` `ncomps`, where for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
 """
 
-# ╔═╡ 4923d0fe-34d2-422a-8c20-c58041fc2594
-wbins[1, :]
-
 # ╔═╡ af07dc54-eeb5-4fbe-8dd0-289dea97502a
 md"""
 ## `GPTransmissionSpectra` inputs 🔩
@@ -233,13 +230,13 @@ end
 
 # ╔═╡ 2aba612a-7599-4a2d-9ff0-2fd398c2a0db
 let
-	savepath = template_dir(dirpath)
+	savepath = template_dir(fpath)
 	rm(savepath, force=true, recursive=true)
 	mkpath(savepath)
 end
 
 # ╔═╡ 4af35a95-99b3-4186-a47d-169b9cbf927b
-tdir = "$(template_dir(dirpath))"
+tdir = "$(template_dir(fpath))"
 
 # ╔═╡ 2341920d-6db8-4f08-b8ed-4907ceab7357
 md"""
@@ -281,7 +278,7 @@ begin
 end;
 
 # ╔═╡ 01e27cf6-0a1b-4741-828a-ef8bf7037ae9
-LC = load_npz(dirpath, allow_pickle=true)
+LC = load_npz(fpath, allow_pickle=true)
 
 # ╔═╡ 9341c427-642a-4782-925a-6e07b91277a0
 fluxes = Dict(
@@ -312,6 +309,41 @@ f_comps = cat(
 # ╔═╡ dc62887d-746b-4503-8547-7a6814de66a8
 wav = LC["spectral"]["wavelength"][common_wav_idxs]
 
+# ╔═╡ 45418bd3-74a3-4758-9fce-adddbeeec076
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1])
+	
+	fluxes = [f_target, [f_comps[:, :, i] for i in 1:3]...]
+	labels = names.vals
+	f_norm = 40362.188283796 # median IMACS WASP-50 flux
+	for (name, f) in zip(labels, fluxes)
+		spec_plot!(ax, wav, f;
+			norm = f_norm,
+			label = name,
+		)
+	end
+	
+	axislegend()
+	
+	xlims!(ax, 3_500, 11_000)
+	ylims!(ax, 0, 2.2)
+
+# 	axs = reshape(copy(fig.content), 2, 2)
+# 	axislegend.(axs)
+# 	linkxaxes!(axs...)
+# 	linkyaxes!(axs[begin, :]...)
+# 	linkyaxes!(axs[end, :]...)
+# 	hidexdecorations!.(axs[begin, :], grid=false)
+# 	hideydecorations!.(axs[:, end], grid=false)
+
+# 	fig[1:2, 0] = Label(fig, "Relative flux", rotation=π/2)
+# 	fig[end+1, 2:3] = Label(fig, "Index")
+   #textsize = 30, font = noto_sans_bold, color = (:black, 0.25))
+
+	fig |> Pl.as_svg
+end
+
 # ╔═╡ 8c82a78d-7382-40d4-a76b-02e7cd061d67
 # Corresponding wav indxs
 binned_wav_idxs = [
@@ -334,6 +366,11 @@ end
 
 # ╔═╡ 470514e7-0f08-44a3-8519-5d704ea6b8d4
 _, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm, window_width);
+
+# ╔═╡ ded63b4b-61b6-41b6-98d4-d13166bce76a
+Pl.with_terminal() do
+	println(bad_idxs .- 1) # For Python
+end
 
 # ╔═╡ bc54942e-38ef-4919-a3d4-28d5f4db8487
 comps = let
@@ -407,15 +444,6 @@ let
 	end
 end
 
-# ╔═╡ 7300b6e4-314b-4a93-b159-57b08badbc51
-binned_wav_idxs
-
-# ╔═╡ 8694695d-2675-4e4b-bae6-32e84c293a34
-wav
-
-# ╔═╡ 2e8ab4bb-bb65-40b0-a695-1c8e60ad2531
-wav[binned_wav_idxs[3]]
-
 # ╔═╡ c03cb527-d16d-47aa-ab63-6970f4ff0b1f
 times, airmass = getindex.(
 	Ref(LC["temporal"].columns),
@@ -447,7 +475,7 @@ fwhm, trace_center, sky_flux = median_eparam.(
 
 # ╔═╡ 079c3915-33af-40db-a544-28453732c372
 specshifts = load_npz(
-	"$(dirname(dirpath))/specshifts.npy", allow_pickle=true
+	"$(dirname(fpath))/specshifts.npy", allow_pickle=true
 );
 
 # ╔═╡ e4960d1a-8e33-478a-8100-d1838782938d
@@ -485,39 +513,6 @@ begin
 			"slategray",
 		]
 	)
-end
-
-# ╔═╡ 45418bd3-74a3-4758-9fce-adddbeeec076
-let
-	fig = Figure(resolution=FIG_WIDE)
-
-	fluxes = [f_target, [f_comps[:, :, i] for i in 1:3]...]
-	labels = names.vals
-	f_med = median(f_target)
-
-	k = 1
-	for j in 1:2, i in 1:2
-		spec_plot(fig[i, j], wav, fluxes[k];
-			norm = f_med,
-			color = (COLORS[1]),
-			label=labels[k],
-		)
-		k += 1
-	end
-
-	axs = reshape(copy(fig.content), 2, 2)
-	axislegend.(axs)
-	linkxaxes!(axs...)
-	linkyaxes!(axs[begin, :]...)
-	linkyaxes!(axs[end, :]...)
-	hidexdecorations!.(axs[begin, :], grid=false)
-	hideydecorations!.(axs[:, end], grid=false)
-
-	fig[1:2, 0] = Label(fig, "Relative flux", rotation=π/2)
-	fig[end+1, 2:3] = Label(fig, "Index")
-   #textsize = 30, font = noto_sans_bold, color = (:black, 0.25))
-
-	fig |> Pl.as_svg
 end
 
 # ╔═╡ 798880fa-1e52-4758-a7f7-d3c6adec244a
@@ -602,9 +597,7 @@ let
 			eachcol(baselines),
 			colors,
 			eachrow(wbins),
-		)
-		@show w
-	
+		)	
 		scatter!(ax_left, f, strokewidth=0, markersize=5, color=c)
 		lines!(ax_left, f_med, linewidth=3, color=0.75*c)
 		
@@ -617,7 +610,6 @@ let
 			offset = Point2f0(0, 2),
 			color = 0.75*c,
 		)
-		
 	end
 	
 	hideydecorations!.(axs[:, 2:3], grid=false)
@@ -661,7 +653,7 @@ md"""
 # ╠═45418bd3-74a3-4758-9fce-adddbeeec076
 # ╠═7d68ad39-3e39-48fa-939a-e56c6659d2b3
 # ╠═a6088ea2-904f-4909-b1be-9470e7ec2010
-# ╟─bd937d51-17e9-4de3-a5d0-4c436d413940
+# ╠═bd937d51-17e9-4de3-a5d0-4c436d413940
 # ╠═9697e26b-b6d9-413b-869f-47bc2ab99919
 # ╠═8c82a78d-7382-40d4-a76b-02e7cd061d67
 # ╠═cf38810c-9b0c-4194-bea3-e0aa26e7cf98
@@ -674,6 +666,7 @@ md"""
 # ╠═470514e7-0f08-44a3-8519-5d704ea6b8d4
 # ╠═f80347e8-dc5a-4b0c-a6c0-db5c12eadcbb
 # ╠═89256633-3c12-4b94-b245-4fdda44d686c
+# ╠═ded63b4b-61b6-41b6-98d4-d13166bce76a
 # ╟─a5e742e5-fcca-40d7-b342-c6112e6899e5
 # ╠═861cb600-5a97-496c-9a4d-8f848654f214
 # ╠═90b26a58-834a-445b-9242-d7b2e04be614
@@ -684,10 +677,6 @@ md"""
 # ╠═852d8bdf-96de-4564-83ec-c83d18893970
 # ╟─bd00ebca-4ed2-479b-b1c6-4ba0a7a1043c
 # ╠═9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
-# ╠═8694695d-2675-4e4b-bae6-32e84c293a34
-# ╠═7300b6e4-314b-4a93-b159-57b08badbc51
-# ╠═2e8ab4bb-bb65-40b0-a695-1c8e60ad2531
-# ╠═4923d0fe-34d2-422a-8c20-c58041fc2594
 # ╟─af07dc54-eeb5-4fbe-8dd0-289dea97502a
 # ╟─88cc640d-b58d-4cde-b793-6c66e74f6b3a
 # ╠═301ff07c-8dd5-403a-bae8-a4c38deeb331
@@ -713,7 +702,7 @@ md"""
 # ╠═123d0c63-f05a-4a7d-be16-6a3b9abac044
 # ╟─3b6b57e2-46ab-46d9-b334-6264daf583f3
 # ╠═2d34e125-548e-41bb-a530-ba212c0ca17c
-# ╟─8b12f760-f294-4212-9b4e-88a886d84156
+# ╠═8b12f760-f294-4212-9b4e-88a886d84156
 # ╠═21cbb4b9-1887-4575-8f4f-5e32b8404c6a
 # ╟─f788835c-8e81-4afe-805e-4caf2d5e5d5b
 # ╠═e06eedec-5a47-4cd1-9f76-272c4c0476f2
