@@ -41,17 +41,6 @@ First, let's load the relevant data needed for this notebook:
 # ╔═╡ 3f0f5777-00f1-443d-8ced-d901550010d3
 const DATA_DIR = "data/detrended/out_l_C/WASP50"
 
-# ╔═╡ 84e1bf16-2135-4b5e-b59c-0a570281d92c
-pl.with_terminal() do
-	for (i, (fpath_sample, fpath_model, fpath_result)) in enumerate(zip(
-				sort(glob("$(DATA_DIR)/*LDSS3*/white-light/BMA_posteriors.pkl")),
-				sort(glob("$(DATA_DIR)/*LDSS3*/white-light/BMA_WLC.npy")),
-				sort(glob("$(DATA_DIR)/*LDSS3*/white-light/results.dat")),
-		))
-		println(fpath_sample)
-	end
-end
-
 # ╔═╡ 579e62da-7ffb-4639-bd73-3826ade1cfa2
 md"""
 The data cube is organized by night as follows:
@@ -117,33 +106,33 @@ begin
 		)
 		
 		for (i, (fpath_sample, fpath_model, fpath_result)) in enumerate(zip(
-			sort(glob("$(DATA_DIR)/*IMACS*/white-light/BMA_posteriors.pkl")),
-			sort(glob("$(DATA_DIR)/*IMACS*/white-light/BMA_WLC.npy")),
-			sort(glob("$(DATA_DIR)/*IMACS*/white-light/results.dat")),
+			sort(glob("$(DATA_DIR)/w50*IMACS*/white-light/BMA_posteriors.pkl")),
+			sort(glob("$(DATA_DIR)/w50*IMACS*/white-light/BMA_WLC.npy")),
+			sort(glob("$(DATA_DIR)/w50*IMACS*/white-light/results.dat")),
 		))
 	)
 	
 	
 	# Load LDSS3
-	for (fpath_sample, fpath_model, fpath_result) in zip(
-			sort(glob("$(DATA_DIR)/*LDSS3*/white-light/BMA_posteriors.pkl")),
-			sort(glob("$(DATA_DIR)/*LDSS3*/white-light/BMA_WLC.npy")),
-			sort(glob("$(DATA_DIR)/*LDSS3*/white-light/results.dat")),
-		)
+# 	for (fpath_sample, fpath_model, fpath_result) in zip(
+# 			sort(glob("$(DATA_DIR)/w50*LDSS3*/white-light/BMA_posteriors.pkl")),
+# 			sort(glob("$(DATA_DIR)/w50*LDSS3*/white-light/BMA_WLC.npy")),
+# 			sort(glob("$(DATA_DIR)/w50*LDSS3*/white-light/results.dat")),
+# 		)
 				
-		cubes["Transit 2 LDSS3 $(isflat(fpath_sample))"] = OrderedDict(
+# 		cubes["Transit 2 LDSS3 $(isflat(fpath_sample))"] = OrderedDict(
 			
-			"samples" => load_pickle(fpath_sample),
+# 			"samples" => load_pickle(fpath_sample),
 			
-			"models" => load_npz(fpath_model, allow_pickle=true),
+# 			"models" => load_npz(fpath_model, allow_pickle=true),
 			
-			"results" => CSV.File(
-				fpath_result,
-				comment = "#",
-				normalizenames=true,
-			) |> DataFrame
-		)
-	end
+# 			"results" => CSV.File(
+# 				fpath_result,
+# 				comment = "#",
+# 				normalizenames=true,
+# 			) |> DataFrame
+# 		)
+# 	end
 end
 
 # ╔═╡ d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
@@ -223,7 +212,7 @@ const PARAMS = OrderedDict(
 	"p" => "Rₚ/Rₛ",
 	"t0" => "t₀",
 	"P" => "P",
-	# "rho" => "ρₛ",
+	"rho" => "ρₛ",
 	# "aR" => "a/Rₛ",
 	# "inc" => "i",
 	# "b" => "b",
@@ -388,7 +377,7 @@ let
 	#ylims!(axs[end], 0.96, 1.02)
 	hidexdecorations!.(axs[begin:end-1], grid=false)
 	axs[end].xlabel = "Phase"
-	axs[2].ylabel = "Relative flux"
+	axs[end].ylabel = "Relative flux"
 	
 	fig |> pl.as_png
 end
@@ -467,16 +456,12 @@ md"""
 ## Packages
 """
 
-# ╔═╡ cd6a840c-39e8-4255-9101-21871f42d862
-end
-
 # ╔═╡ Cell order:
 # ╟─506eeeb2-e56d-436b-91b8-605e52201563
 # ╟─782806a6-efd2-45a9-b898-788a276c282b
 # ╠═3f0f5777-00f1-443d-8ced-d901550010d3
-# ╠═2191791b-df62-4f1b-88bf-060cc47896b2
-# ╠═84e1bf16-2135-4b5e-b59c-0a570281d92c
 # ╠═d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
+# ╠═2191791b-df62-4f1b-88bf-060cc47896b2
 # ╟─579e62da-7ffb-4639-bd73-3826ade1cfa2
 # ╟─583b3377-f4f6-4170-8658-d3ba17a5b86d
 # ╠═39dbca86-a4b9-11eb-1c64-9ddf1a9990ab
@@ -511,4 +496,3 @@ end
 # ╠═a9747b5e-adf9-48dd-96c2-f184d873d1ac
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
 # ╠═691eddff-f2eb-41a8-ab05-63afb46d15f2
-# ╠═cd6a840c-39e8-4255-9101-21871f42d862

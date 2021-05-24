@@ -233,9 +233,7 @@ end
 # ╔═╡ 941cd721-07d8-4a8f-9d75-42854e6e8edb
 md"""
 !!! warning
-	In general, the comparison stars names (`cNames`) are not stored in alphanumeric order by default. For convenience, we ensure this sorting with `sortperm`, so that the first column corresponds to the first comparison star, the second to the second comparison star, etc.
-
-	TODO: Identify cNames order for LDSS3 data
+	In general, the comparison stars names (`cNames`) are not stored in alphanumeric order by default. For convenience, we ensure this sorting with `sortperm`, so that the first column corresponds to the first comparison star, the second to the second comparison star, an so on.
 
 We next plot these light curves and identified outliers below:
 """
@@ -244,7 +242,7 @@ We next plot these light curves and identified outliers below:
 @bind window_width pl.Slider(3:2:21, show_value=true)
 
 # ╔═╡ 4b763b58-862e-4c88-a7c9-fe0b1271c0b4
-use_comps_IMACS = ["c06"]
+use_comps_IMACS = ["c15", "c21"]
 
 # ╔═╡ 9cf2642e-d436-4078-b4a3-e2a519b6d651
 md"""
@@ -498,6 +496,9 @@ end
 
 # ╔═╡ 7a29aed7-2564-4b42-a578-3bbb9d2c7fcb
 tdir = "$(template_dir(data_path_LDSS3))"
+
+# ╔═╡ 5bb10eb3-85c2-4c34-99ad-591ad9974921
+data_path_LDSS3
 
 # ╔═╡ 29c61b96-cf27-432f-b5cd-a6192732a8f6
 md"""
@@ -771,7 +772,7 @@ md"""
 # ╠═2fd7bc68-a6ec-4ccb-ad73-07b031ffef5a
 # ╠═1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
 # ╠═6fd88483-d005-4186-8dd2-82cea767ce90
-# ╠═e3468c61-782b-4f55-a4a1-9d1883655d11
+# ╟─e3468c61-782b-4f55-a4a1-9d1883655d11
 # ╟─731ed0be-a679-4738-a477-56b0ed44338c
 # ╠═18d58341-0173-4eb1-9f01-cfa893088613
 # ╟─941cd721-07d8-4a8f-9d75-42854e6e8edb
@@ -791,24 +792,24 @@ md"""
 # ╠═a4517d69-76e6-462a-9449-b31d80e34a8f
 # ╠═dc044a72-4706-49e2-94a8-c828a6bf7de0
 # ╠═109ab11b-cbb3-4c02-9b7a-5d6047883364
-# ╟─e98dee2e-a369-448e-bfe4-8fea0f318fa8
+# ╠═e98dee2e-a369-448e-bfe4-8fea0f318fa8
 # ╟─891add6b-c1c1-4e7c-8a8d-de2421bd6f2d
-# ╟─e844ad0c-c3ce-40cc-840f-7fe6ec454fed
-# ╟─88dd7d0b-c133-4fd2-b942-520b7e3d0265
+# ╠═e844ad0c-c3ce-40cc-840f-7fe6ec454fed
+# ╠═88dd7d0b-c133-4fd2-b942-520b7e3d0265
 # ╠═cfe0f1df-fc45-409f-a4ee-34b48a99c90c
 # ╠═a838a0ec-ee9c-4984-a62c-68810ec731de
 # ╟─f7feb44e-a363-4f8d-bf62-d3541533e4da
-# ╟─eb4f7a92-a9e7-4bf5-8b1c-bca928fcedde
+# ╠═eb4f7a92-a9e7-4bf5-8b1c-bca928fcedde
 # ╠═2b20e471-16e5-4b54-abc5-4308af4e60b6
 # ╠═a6805e63-bbf4-48bc-8e15-be24da9b0348
-# ╟─f44393ab-2e49-4817-9870-890c9cd556ce
+# ╠═f44393ab-2e49-4817-9870-890c9cd556ce
 # ╠═90fec9cf-37b0-4bcf-a6df-85a4cdfc511b
-# ╟─a73deaa6-5f45-4920-9796-6aa48e80c3de
+# ╠═a73deaa6-5f45-4920-9796-6aa48e80c3de
 # ╠═fbc57d8b-3b1b-44d1-bd7d-0e9749026d4c
-# ╟─12bc210a-03fc-4a85-b281-f129b1877403
+# ╠═12bc210a-03fc-4a85-b281-f129b1877403
 # ╟─45268530-f48a-4fbe-89f7-4a7ea972d2b2
 # ╟─1306cf62-857e-4cb3-a841-d87d2d5a995f
-# ╟─dff24ff0-1d5f-4561-b23f-9385c9e73a0c
+# ╠═dff24ff0-1d5f-4561-b23f-9385c9e73a0c
 # ╠═aad465ac-dca8-41a7-a232-c546319dd338
 # ╠═9b310d6f-b320-4406-a97c-a32620257995
 # ╠═0dbc118e-943a-479e-9151-495455d9eed7
@@ -821,11 +822,12 @@ md"""
 # ╠═7a29aed7-2564-4b42-a578-3bbb9d2c7fcb
 # ╠═655247ce-4c50-4a6c-8186-7dad1233cd3b
 # ╠═e5912d73-93d9-4525-b34d-87ab08242dcd
-# ╟─29c61b96-cf27-432f-b5cd-a6192732a8f6
+# ╠═5bb10eb3-85c2-4c34-99ad-591ad9974921
+# ╠═29c61b96-cf27-432f-b5cd-a6192732a8f6
 # ╠═0e045efd-e9d7-4f03-8128-953c7ad13aba
 # ╠═abf0021f-6a1e-4a6c-8135-88a0424c3df9
 # ╠═e282e1da-0389-42f3-aeef-e732f5f1df95
-# ╟─9f401644-bf05-4221-8f69-5742785a79b2
+# ╠═9f401644-bf05-4221-8f69-5742785a79b2
 # ╠═8576c9d9-29ae-4351-985a-c191a944a4bc
 # ╠═0a7b6bc2-ed75-49d5-b5ad-ff13f86eae2b
 # ╠═cb5ced41-cc6b-48f4-a532-0a0f0fe31f8c

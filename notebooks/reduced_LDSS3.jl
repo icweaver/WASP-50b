@@ -26,6 +26,7 @@ begin
 	using DataFrames
 	using DelimitedFiles
 	using OrderedCollections
+	using Printf
 end
 
 # ╔═╡ 34ef4580-bb95-11eb-34c1-25893217f422
@@ -83,13 +84,13 @@ names = OrderedDict(
 # ╔═╡ b4f4e65b-bd50-4ee2-945f-7c130db21fdf
 md"""
 !!! note
-	These stars were cross-matched with VizieR
+	These stars were cross-matched with VizieR to verify the aperture name assignments
 
 	**Add to paper:** "This research has made use of the VizieR catalogue access tool, CDS, Strasbourg, France (DOI: 10.26093/cds/vizier). The original description of the VizieR service was published in A&AS 143, 23"
 """
 
 # ╔═╡ 0d017105-e3a3-4a0e-9e5f-be4200b8cc2c
-CSV.File("data/reduced/LDSS3/asu.tsv", comment="#")
+CSV.File("data/reduced/LDSS3/catalog.tsv", comment="#")
 
 # ╔═╡ a687fa5d-1d98-4cb4-ae5d-978594d205dd
 md"""
@@ -104,8 +105,6 @@ md"""
 
 # ╔═╡ 839b83b2-97cd-4643-a4ce-9a03f3594b3a
 md"""
-#### Common flux
-
 Next we extract the common wavelength grid (`wav`), along with the associated target `f_target` and comparison star flux (`f_comps`):
 """
 
@@ -140,7 +139,7 @@ end
 md"""
 ## White light curves ⚪
 
-Next, we will extract the integrated white light curves from these spectra. We integrate along the same wavelength binns used in the IMACS analysis:
+Next, we will extract the integrated white light curves from these spectra. We integrate over the same wavelength bins used in the IMACS analysis:
 """
 
 # ╔═╡ 9697e26b-b6d9-413b-869f-47bc2ab99919
@@ -149,10 +148,13 @@ wbins = readdlm("data/reduced/LDSS3/w50_bins_LDSS3.dat", comments=true)
 # ╔═╡ cb805821-5d2e-484c-93a5-10a897d2cfe7
 @bind window_width Pl.Slider(3:2:21, show_value=true)
 
+# ╔═╡ 9372c69a-0aad-4e6e-9ea3-e934fa09b758
+get_idx(needle, haystack) = findfirst(==(needle), haystack)
+
 # ╔═╡ d5c6d058-17c6-4cf0-97b8-d863b1529161
 md"""
 !!! note
-	We divide the target WLC by each comparison star to i)minimize common systematics (e.g., air mass, local refractive atmospheric effects), and ii) make the transit shape more apparent. This allows us to select good comparison stars for that particular night and which timeseries points to include in the rest of the analysis.
+	We divide the target WLC by each comparison star to minimize common systematics (e.g., air mass, local refractive atmospheric effects), and to make the transit shape more apparent. This allows us to select good comparison stars for that particular night and which timeseries points to include in the rest of the analysis.
 """
 
 # ╔═╡ 89256633-3c12-4b94-b245-4fdda44d686c
@@ -180,15 +182,84 @@ function filt_idxs(f_div_wlc, window_width; ferr=0.002)
 	return f_filt, use_idxs, bad_idxs
 end
 
-# ╔═╡ 9372c69a-0aad-4e6e-9ea3-e934fa09b758
-get_idx(needle, haystack) = findfirst(==(needle), haystack)
-
-# ╔═╡ 5fccf396-cd21-410f-9206-db93648b22f2
+# ╔═╡ a5e742e5-fcca-40d7-b342-c6112e6899e5
 md"""
-### Helper functions
+## Binned light curves 🌈
+
+We next integrate the target and comparison star flux within each bin defined above to build the binned light curves. We store these in `oLCw` and `cLCw`, where `oLCw` is an `ntimes` ``\times`` `nbins` matrix that holds the binned target flux, where `ntimes` is the number of timeseries points ``N``. Similarly `cLCw` is an `ntimes` ``\times`` `nbins` ``\times`` `ncomps` matrix that holds the comparison star flux, where `ncomps` is the number of comparison stars:
 """
 
-# ╔═╡ 8ec3c120-96e5-4fb4-b0c1-d8aae89b092f
+# ╔═╡ 90b26a58-834a-445b-9242-d7b2e04be614
+# For columnar data `A`, returns the sum of each row (for default `dims=2`)
+# along the range of columns specified by `idx_range`
+sum_flux(A, idx_range, dims=2) = sum(view(A, :, idx_range), dims=dims)[:, 1]
+
+# ╔═╡ 5837dc0e-3537-4a90-bd2c-494e7b3e6bb7
+md"""
+With `oLCw` and `cLCw` now computed, we next compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `nbins` ``\times`` `ncomps`, where for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
+"""
+
+# ╔═╡ af07dc54-eeb5-4fbe-8dd0-289dea97502a
+md"""
+## `GPTransmissionSpectra` inputs 🔩
+
+Finally, we export the external parameters and light curves (in magnitude space) to be used for detrending in `GPTransmissionSpectra`:
+"""
+
+# ╔═╡ 88cc640d-b58d-4cde-b793-6c66e74f6b3a
+md"""
+#### External parameters
+"""
+
+# ╔═╡ 301ff07c-8dd5-403a-bae8-a4c38deeb331
+target_name = "aperture_324_803"
+
+# ╔═╡ d14ab9de-23b4-4647-a823-9b318bb734e9
+median_eparam(param, cube, obj_name, wav_idxs) = cube[param][obj_name][:, wav_idxs] |>
+	x -> median(x, dims=2) |> vec |> x -> convert(Vector{Float64}, x)
+
+# ╔═╡ e6ed8da6-189a-4931-aac5-a4e8d0291723
+fmt_float(x) = @sprintf "%.10f" x
+
+# ╔═╡ 0be35b52-caea-4000-8cf8-ab99205bdb97
+function template_dir(fpath)
+	base_dir = "$(dirname(dirname(fpath)))/out_LDSS3_template/WASP50"
+	date, flat_status = split(basename(dirname(fpath)), '_')
+	return "$(base_dir)/w50_$(date[3:end])_LDSS3_$(flat_status)"
+end
+
+# ╔═╡ 2aba612a-7599-4a2d-9ff0-2fd398c2a0db
+let
+	savepath = template_dir(dirpath)
+	rm(savepath, force=true, recursive=true)
+	mkpath(savepath)
+end
+
+# ╔═╡ 4af35a95-99b3-4186-a47d-169b9cbf927b
+tdir = "$(template_dir(dirpath))"
+
+# ╔═╡ 2341920d-6db8-4f08-b8ed-4907ceab7357
+md"""
+#### WLCs (magnitude space)
+"""
+
+# ╔═╡ b5ef9d95-1a2a-4828-8e27-89727f2e288b
+md"""
+#### Binned LCs (magnitude space)
+"""
+
+# ╔═╡ 123d0c63-f05a-4a7d-be16-6a3b9abac044
+function f_to_med_mag(f)
+	mag = -2.51 * log10.(f)
+	return mag .- median(mag)
+end
+
+# ╔═╡ 3b6b57e2-46ab-46d9-b334-6264daf583f3
+md"""
+## Helper functions
+"""
+
+# ╔═╡ 2d34e125-548e-41bb-a530-ba212c0ca17c
 begin
 	py"""
 	import numpy as np
@@ -261,6 +332,141 @@ end
 # ╔═╡ 470514e7-0f08-44a3-8519-5d704ea6b8d4
 _, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm, window_width);
 
+# ╔═╡ bc54942e-38ef-4919-a3d4-28d5f4db8487
+comps = let
+	mag = -2.51 * log10.(f_comps_wlc[use_idxs, :])
+	mag .- median(mag, dims=1)
+end
+
+# ╔═╡ 861cb600-5a97-496c-9a4d-8f848654f214
+begin
+	nbins = length(binned_wav_idxs)
+	ntimes, ncomps = size(f_div_wlc)
+	oLCw = Matrix{Float64}(undef, ntimes, nbins)
+	cLCw = Array{Float64, 3}(undef, ntimes, nbins, ncomps)
+	
+	for (j, wav_idxs) in enumerate(binned_wav_idxs)
+		oLCw[:, j] .= sum_flux(f_target, wav_idxs)
+		for k in 1:ncomps
+			cLCw[:, j, k] .= sum_flux(f_comps[:, :, k], wav_idxs)
+		end
+	end
+end
+
+# ╔═╡ 823a4d10-698a-43fb-a4bb-1448670909eb
+oLCw
+
+# ╔═╡ 66b637dd-4a7f-4589-9460-67057f7945fd
+cLCw
+
+# ╔═╡ bd00ebca-4ed2-479b-b1c6-4ba0a7a1043c
+md"""
+We plot these below for each comparison star division. Move the slider to view the plot for the corresponding comparison star:
+
+comp star $(@bind comp_idx Pl.Slider(1:ncomps, show_value=true))
+
+!!! note "Future"
+	Ability to interact with sliders completely in the browser coming soon!
+"""
+
+# ╔═╡ 49d04cf9-2bec-4350-973e-880e376ab428
+begin	
+	f_norm_w = Array{Float64}(undef, ntimes, nbins, ncomps)
+	for c_i in 1:ncomps
+		f_w = oLCw ./ cLCw[:, :, c_i]
+		f_norm_w[:, :, c_i] .= f_w ./ median(f_w, dims=1)
+	end
+	
+	offs = reshape(range(0, 0.3, length=nbins), 1, :) # Arbitrary offsets for clarity
+	f_norm_w .+= offs
+	baselines = ones(size(f_norm_w[:, :, comp_idx])) .+ offs # Reference baselines
+end;
+
+# ╔═╡ 9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
+let
+	comp_names = names.vals[begin+1:end]
+	fig = Figure(resolution = (400, 700))
+	ax = fig[1, 1] = Axis(fig, title = "target / $(comp_names[comp_idx])")
+	
+	cmap = reverse(to_colormap(:Spectral_4, nbins))
+	
+	for (c, f, b) in zip(cmap, eachcol(f_norm_w[:, :, comp_idx]), eachcol(baselines))
+		scatter!(f, color=c, strokewidth=0, markersize=5)
+		lines!(b, color=c)
+	end
+		
+	ylims!(ax, 0.95, 1.34)
+	ax.xlabel = "Index"
+	ax.ylabel = "Relative flux + offset"
+	
+	fig |> Pl.as_svg
+end
+
+# ╔═╡ 5110de9a-3721-4043-b8b7-493daacb4137
+target_binned_mags = mapslices(f_to_med_mag, oLCw, dims=1)[use_idxs, :]
+
+# ╔═╡ 53f5a645-93e0-499a-bb36-e4ff0153a63c
+comp_binned_mags = mapslices(f_to_med_mag, cLCw, dims=1)[use_idxs, :, :]
+
+# ╔═╡ 631c4d02-58cc-4c70-947f-22c8e8b11015
+let
+	savepath = "$(tdir)/wavelength"
+	rm(savepath, force=true, recursive=true)
+	for i in 1:nbins
+		save_path_w = "$(savepath)/wbin$(i-1)"
+		mkpath("$(save_path_w)")
+		writedlm("$(save_path_w)/lc.dat", target_binned_mags[:, i], ",    ")
+		writedlm("$(save_path_w)/comps.dat", comp_binned_mags[:, i, :], ",    ")
+	end
+end
+
+# ╔═╡ c03cb527-d16d-47aa-ab63-6970f4ff0b1f
+times, airmass = getindex.(
+	Ref(LC["temporal"].columns),
+	["bjd", "airmass"]
+)
+
+# ╔═╡ 354580e4-0aa9-496f-b024-665025a2eeda
+lc = let
+	med_mag = f_to_med_mag(f_target_wlc |> vec)
+	hcat(times, med_mag, zeros(length(times)))[use_idxs, :]
+end
+
+# ╔═╡ 898a390b-49f7-45f4-b1a1-b22922d69a29
+let
+	savepath = "$(tdir)/white-light"
+	rm(savepath, force=true, recursive=true)
+	mkpath(savepath)
+	writedlm("$(savepath)/lc.dat", lc, ",    ")
+	writedlm("$(savepath)/comps.dat", comps, ",    ")
+end
+
+# ╔═╡ c65c2298-e3a3-4666-be9d-73ee43d94847
+fwhm, trace_center, sky_flux = median_eparam.(
+	["width", "peak", "sky"],
+	Ref(LC["cubes"]),
+	Ref(target_name),
+	Ref(common_wav_idxs[binned_wav_idxs_range])
+)
+
+# ╔═╡ 079c3915-33af-40db-a544-28453732c372
+specshifts = load_npz(
+	"$(dirname(dirpath))/specshifts.npy", allow_pickle=true
+);
+
+# ╔═╡ e4960d1a-8e33-478a-8100-d1838782938d
+Δwav = specshifts["shift"][target_name] |> 
+		sort |> values |> collect |> x -> convert(Vector{Float64}, x)
+
+# ╔═╡ e4388fba-64ef-4588-a1ed-283da2f52196
+df_eparams = DataFrame(
+	(Times=times, Airmass=airmass, Delta_Wav=Δwav,
+	 FWHM=fwhm, Sky_Flux=sky_flux, Trace_Center=trace_center)
+)[use_idxs, :] |> df -> mapcols(col -> fmt_float.(col), df)
+
+# ╔═╡ af7beb47-ecfa-4d08-b239-c27f7e8bdc4c
+CSV.write("$(tdir)/eparams.dat", df_eparams, delim=",    ")
+
 # ╔═╡ 8b12f760-f294-4212-9b4e-88a886d84156
 md"""
 ## Plot configs
@@ -297,7 +503,7 @@ let
 	for j in 1:2, i in 1:2
 		spec_plot(fig[i, j], wav, fluxes[k];
 			norm = f_med,
-			color = (COLORS[2]),
+			color = (COLORS[1]),
 			label=labels[k],
 		)
 		k += 1
@@ -416,14 +622,46 @@ md"""
 # ╠═13385b21-fbd7-484d-a1ac-0687834f92c7
 # ╠═cb805821-5d2e-484c-93a5-10a897d2cfe7
 # ╠═4b2ed9db-0a17-4e52-a04d-3a6a5bf2c054
+# ╠═9372c69a-0aad-4e6e-9ea3-e934fa09b758
 # ╟─d5c6d058-17c6-4cf0-97b8-d863b1529161
 # ╠═798880fa-1e52-4758-a7f7-d3c6adec244a
+# ╠═470514e7-0f08-44a3-8519-5d704ea6b8d4
 # ╠═f80347e8-dc5a-4b0c-a6c0-db5c12eadcbb
 # ╠═89256633-3c12-4b94-b245-4fdda44d686c
-# ╠═9372c69a-0aad-4e6e-9ea3-e934fa09b758
-# ╠═470514e7-0f08-44a3-8519-5d704ea6b8d4
-# ╟─5fccf396-cd21-410f-9206-db93648b22f2
-# ╠═8ec3c120-96e5-4fb4-b0c1-d8aae89b092f
+# ╟─a5e742e5-fcca-40d7-b342-c6112e6899e5
+# ╠═861cb600-5a97-496c-9a4d-8f848654f214
+# ╠═90b26a58-834a-445b-9242-d7b2e04be614
+# ╠═823a4d10-698a-43fb-a4bb-1448670909eb
+# ╠═66b637dd-4a7f-4589-9460-67057f7945fd
+# ╟─5837dc0e-3537-4a90-bd2c-494e7b3e6bb7
+# ╠═49d04cf9-2bec-4350-973e-880e376ab428
+# ╟─bd00ebca-4ed2-479b-b1c6-4ba0a7a1043c
+# ╠═9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
+# ╟─af07dc54-eeb5-4fbe-8dd0-289dea97502a
+# ╟─88cc640d-b58d-4cde-b793-6c66e74f6b3a
+# ╠═301ff07c-8dd5-403a-bae8-a4c38deeb331
+# ╠═c03cb527-d16d-47aa-ab63-6970f4ff0b1f
+# ╠═c65c2298-e3a3-4666-be9d-73ee43d94847
+# ╠═d14ab9de-23b4-4647-a823-9b318bb734e9
+# ╠═079c3915-33af-40db-a544-28453732c372
+# ╠═e4960d1a-8e33-478a-8100-d1838782938d
+# ╠═e4388fba-64ef-4588-a1ed-283da2f52196
+# ╠═e6ed8da6-189a-4931-aac5-a4e8d0291723
+# ╠═2aba612a-7599-4a2d-9ff0-2fd398c2a0db
+# ╠═4af35a95-99b3-4186-a47d-169b9cbf927b
+# ╠═af7beb47-ecfa-4d08-b239-c27f7e8bdc4c
+# ╠═0be35b52-caea-4000-8cf8-ab99205bdb97
+# ╟─2341920d-6db8-4f08-b8ed-4907ceab7357
+# ╠═354580e4-0aa9-496f-b024-665025a2eeda
+# ╠═bc54942e-38ef-4919-a3d4-28d5f4db8487
+# ╠═898a390b-49f7-45f4-b1a1-b22922d69a29
+# ╟─b5ef9d95-1a2a-4828-8e27-89727f2e288b
+# ╠═5110de9a-3721-4043-b8b7-493daacb4137
+# ╠═53f5a645-93e0-499a-bb36-e4ff0153a63c
+# ╠═631c4d02-58cc-4c70-947f-22c8e8b11015
+# ╠═123d0c63-f05a-4a7d-be16-6a3b9abac044
+# ╟─3b6b57e2-46ab-46d9-b334-6264daf583f3
+# ╠═2d34e125-548e-41bb-a530-ba212c0ca17c
 # ╟─8b12f760-f294-4212-9b4e-88a886d84156
 # ╠═21cbb4b9-1887-4575-8f4f-5e32b8404c6a
 # ╟─f788835c-8e81-4afe-805e-4caf2d5e5d5b
