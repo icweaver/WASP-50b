@@ -167,16 +167,16 @@ function filt(f_div_wlc, window_width; func=median, border="reflect")
 	)
 	
 	# Residuals
-	diff = abs.(f_div_wlc - f_filt)
+	Δf = f_div_wlc - f_filt
 	
-	return f_filt, diff
+	return f_filt, abs.(Δf), Δf
 end
 
 # ╔═╡ f80347e8-dc5a-4b0c-a6c0-db5c12eadcbb
 # Filter specified WLCs and return superset points
 function filt_idxs(f_div_wlc, window_width; ferr=0.002)
 	ntimes, ncomps = size(f_div_wlc)
-	f_filt, diff = filt(f_div_wlc, window_width)
+	f_filt, diff, _ = filt(f_div_wlc, window_width)
 	bad_idxs = ∪(findall.(>(ferr), eachcol(diff))...) |> sort;
 	use_idxs = deleteat!(collect(1:size(f_div_wlc, 1)), bad_idxs)
 	return f_filt, use_idxs, bad_idxs
@@ -198,6 +198,9 @@ sum_flux(A, idx_range, dims=2) = sum(view(A, :, idx_range), dims=dims)[:, 1]
 md"""
 With `oLCw` and `cLCw` now computed, we next compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `nbins` ``\times`` `ncomps`, where for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
 """
+
+# ╔═╡ 4923d0fe-34d2-422a-8c20-c58041fc2594
+wbins[1, :]
 
 # ╔═╡ af07dc54-eeb5-4fbe-8dd0-289dea97502a
 md"""
@@ -382,25 +385,9 @@ begin
 	baselines = ones(size(f_norm_w[:, :, comp_idx])) .+ offs # Reference baselines
 end;
 
-# ╔═╡ 9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
-let
-	comp_names = names.vals[begin+1:end]
-	fig = Figure(resolution = (400, 700))
-	ax = fig[1, 1] = Axis(fig, title = "target / $(comp_names[comp_idx])")
-	
-	cmap = reverse(to_colormap(:Spectral_4, nbins))
-	
-	for (c, f, b) in zip(cmap, eachcol(f_norm_w[:, :, comp_idx]), eachcol(baselines))
-		scatter!(f, color=c, strokewidth=0, markersize=5)
-		lines!(b, color=c)
-	end
-		
-	ylims!(ax, 0.95, 1.34)
-	ax.xlabel = "Index"
-	ax.ylabel = "Relative flux + offset"
-	
-	fig |> Pl.as_svg
-end
+# ╔═╡ 852d8bdf-96de-4564-83ec-c83d18893970
+# Median filtered curves for visualization purposes
+f_med, _, diff = filt(f_norm_w[:, :, comp_idx], window_width)
 
 # ╔═╡ 5110de9a-3721-4043-b8b7-493daacb4137
 target_binned_mags = mapslices(f_to_med_mag, oLCw, dims=1)[use_idxs, :]
@@ -419,6 +406,15 @@ let
 		writedlm("$(save_path_w)/comps.dat", comp_binned_mags[:, i, :], ",    ")
 	end
 end
+
+# ╔═╡ 7300b6e4-314b-4a93-b159-57b08badbc51
+binned_wav_idxs
+
+# ╔═╡ 8694695d-2675-4e4b-bae6-32e84c293a34
+wav
+
+# ╔═╡ 2e8ab4bb-bb65-40b0-a695-1c8e60ad2531
+wav[binned_wav_idxs[3]]
 
 # ╔═╡ c03cb527-d16d-47aa-ab63-6970f4ff0b1f
 times, airmass = getindex.(
@@ -517,7 +513,7 @@ let
 	hidexdecorations!.(axs[begin, :], grid=false)
 	hideydecorations!.(axs[:, end], grid=false)
 
-	fig[1:2, 0] = Label(fig, "Normalized counts", rotation=π/2)
+	fig[1:2, 0] = Label(fig, "Relative flux", rotation=π/2)
 	fig[end+1, 2:3] = Label(fig, "Index")
    #textsize = 30, font = noto_sans_bold, color = (:black, 0.25))
 
@@ -588,6 +584,56 @@ let
 	fig |> Pl.as_svg
 end
 
+# ╔═╡ 9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
+let
+	fig = Figure(resolution=FIG_TALL)
+	comp_names = names.vals[begin+1:end]
+	ax_left = Axis(fig[1, 1], title = "target / $(comp_names[comp_idx])")
+	ax_right = Axis(fig[1, 2], title = "residuals")
+	ax_label = Axis(fig[1, 3])
+	axs = reshape(copy(fig.content), 1, 3)
+	linkaxes!(axs...)
+		
+	colors = to_colormap(:Spectral_4, nbins) |> reverse
+	for (f, f_med, resid, b, c, w) in zip(
+			eachcol(f_norm_w[:, :, comp_idx]),
+			eachcol(f_med),
+			eachcol(diff),
+			eachcol(baselines),
+			colors,
+			eachrow(wbins),
+		)
+		@show w
+	
+		scatter!(ax_left, f, strokewidth=0, markersize=5, color=c)
+		lines!(ax_left, f_med, linewidth=3, color=0.75*c)
+		
+		scatter!(ax_right, b + resid, markersize=5, color=c)
+		lines!(ax_right, b, linewidth=3, color=0.75*c)
+		text!(ax_label, "$(w[1]) - $(w[2]) Å";
+			position = Point2f0(0, b[1]),
+			textsize = 16,
+			align = (:left, :center),
+			offset = Point2f0(0, 2),
+			color = 0.75*c,
+		)
+		
+	end
+	
+	hideydecorations!.(axs[:, 2:3], grid=false)
+	hidespines!(axs[end])
+	hidedecorations!(axs[end])
+	ylims!(ax_left, 0.95, 1.34)
+	
+	fig[1:2, 0] = Label(fig, "Relative flux + offset", rotation=π/2)
+	fig[end, 2:3] = Label(fig, "Index")
+	
+	# ax.xlabel = "Index"
+	# ax.ylabel = "Relative flux + offset"
+	
+	fig |> Pl.as_svg
+end
+
 # ╔═╡ f788835c-8e81-4afe-805e-4caf2d5e5d5b
 md"""
 ## Packages
@@ -635,8 +681,13 @@ md"""
 # ╠═66b637dd-4a7f-4589-9460-67057f7945fd
 # ╟─5837dc0e-3537-4a90-bd2c-494e7b3e6bb7
 # ╠═49d04cf9-2bec-4350-973e-880e376ab428
+# ╠═852d8bdf-96de-4564-83ec-c83d18893970
 # ╟─bd00ebca-4ed2-479b-b1c6-4ba0a7a1043c
 # ╠═9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
+# ╠═8694695d-2675-4e4b-bae6-32e84c293a34
+# ╠═7300b6e4-314b-4a93-b159-57b08badbc51
+# ╠═2e8ab4bb-bb65-40b0-a695-1c8e60ad2531
+# ╠═4923d0fe-34d2-422a-8c20-c58041fc2594
 # ╟─af07dc54-eeb5-4fbe-8dd0-289dea97502a
 # ╟─88cc640d-b58d-4cde-b793-6c66e74f6b3a
 # ╠═301ff07c-8dd5-403a-bae8-a4c38deeb331
