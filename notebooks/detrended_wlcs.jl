@@ -1,12 +1,12 @@
 ### A Pluto.jl notebook ###
-# v0.14.5
+# v0.14.7
 
 using Markdown
 using InteractiveUtils
 
 # ╔═╡ 691eddff-f2eb-41a8-ab05-63afb46d15f2
 begin
-	import PlutoUI as pl
+	import PlutoUI as Pl
 	using CairoMakie
 	using Colors
 	using CSV
@@ -17,6 +17,7 @@ begin
 	using Statistics, KernelDensity
 	using Latexify, OrderedCollections
 	using DataFramesMeta
+	using Printf
 end
 
 # ╔═╡ 506eeeb2-e56d-436b-91b8-605e52201563
@@ -28,7 +29,7 @@ In this notebook we will visualize the detrended white light curves from IMACS a
 !!! note "TODO"
 	Add LDSS3 plots
 
-$(pl.TableOfContents())
+$(Pl.TableOfContents())
 """
 
 # ╔═╡ 782806a6-efd2-45a9-b898-788a276c282b
@@ -39,7 +40,7 @@ First, let's load the relevant data needed for this notebook:
 """
 
 # ╔═╡ 3f0f5777-00f1-443d-8ced-d901550010d3
-const DATA_DIR = "data/detrended/out_l_C/WASP50"
+const DATA_DIR = "data/detrended/out_l/WASP50"
 
 # ╔═╡ 579e62da-7ffb-4639-bd73-3826ade1cfa2
 md"""
@@ -60,9 +61,6 @@ cubes
 ```
 
 where `samples` is a dictionary of the Bayesian model averaged posterior samples for each fitted parameter, `models` is a dictionary of the final detrended light curve and associated Gaussian Process parameters, and `results` is a table summarizing the mean and +/- 1σ uncertainty associated with each sample.
-
-!!! note "TODO"
-	Update with LDSS3 paths 
 """
 
 # ╔═╡ 583b3377-f4f6-4170-8658-d3ba17a5b86d
@@ -91,13 +89,10 @@ end;
 # ╔═╡ 2191791b-df62-4f1b-88bf-060cc47896b2
 begin
 	# Load IMACS
-	cubes = OrderedDict(
+	cubes = Dict(
 		"Transit $i IMACS" => Dict(
-			
 			"samples" => load_pickle(fpath_sample),
-			
 			"models" => load_npz(fpath_model, allow_pickle=true),
-			
 			"results" => CSV.File(
 				fpath_result,
 				comment = "#",
@@ -105,34 +100,34 @@ begin
 			) |> DataFrame
 		)
 		
-		for (i, (fpath_sample, fpath_model, fpath_result)) in enumerate(zip(
+		for (i, (fpath_sample, fpath_model, fpath_result)) ∈ enumerate(zip(
 			sort(glob("$(DATA_DIR)/w50*IMACS*/white-light/BMA_posteriors.pkl")),
 			sort(glob("$(DATA_DIR)/w50*IMACS*/white-light/BMA_WLC.npy")),
 			sort(glob("$(DATA_DIR)/w50*IMACS*/white-light/results.dat")),
 		))
 	)
 	
-	
 	# Load LDSS3
-# 	for (fpath_sample, fpath_model, fpath_result) in zip(
-# 			sort(glob("$(DATA_DIR)/w50*LDSS3*/white-light/BMA_posteriors.pkl")),
-# 			sort(glob("$(DATA_DIR)/w50*LDSS3*/white-light/BMA_WLC.npy")),
-# 			sort(glob("$(DATA_DIR)/w50*LDSS3*/white-light/results.dat")),
-# 		)
+	for (fpath_sample, fpath_model, fpath_result) ∈ zip(
+			sort(glob("$(DATA_DIR)/w50*LDSS3*/white-light/BMA_posteriors.pkl")),
+			sort(glob("$(DATA_DIR)/w50*LDSS3*/white-light/BMA_WLC.npy")),
+			sort(glob("$(DATA_DIR)/w50*LDSS3*/white-light/results.dat")),
+		)
+		
+		occursin("_noflat", fpath_sample) && continue
 				
-# 		cubes["Transit 2 LDSS3 $(isflat(fpath_sample))"] = OrderedDict(
-			
-# 			"samples" => load_pickle(fpath_sample),
-			
-# 			"models" => load_npz(fpath_model, allow_pickle=true),
-			
-# 			"results" => CSV.File(
-# 				fpath_result,
-# 				comment = "#",
-# 				normalizenames=true,
-# 			) |> DataFrame
-# 		)
-# 	end
+		cubes["Transit 2 LDSS3 $(isflat(fpath_sample))"] = Dict(
+			"samples" => load_pickle(fpath_sample),
+			"models" => load_npz(fpath_model, allow_pickle=true),
+			"results" => CSV.File(
+				fpath_result,
+				comment = "#",
+				normalizenames=true,
+			) |> DataFrame
+		)
+	end
+	
+	cubes = sort(cubes)
 end
 
 # ╔═╡ d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
@@ -171,12 +166,7 @@ md"""
 
 # ╔═╡ 30b84501-fdcd-4d83-b929-ff354de69a17
 md"""
-We summarize the Bayesian Model Averag (BMA) results for selected parameters for each night below:
-"""
-
-# ╔═╡ 1bc1110f-e57d-4f31-a309-9b4e1aed1c0a
-md"""
-Finally, we average together each parameter from each night, weighted by its maximum uncertainty per night:
+We summarize the Bayesian Model Averag (BMA) results for selected parameters for each night below, and average together each parameter from each night, weighted by its maximum uncertainty per night:
 """
 
 # ╔═╡ c936b76a-636b-4f10-b556-fa19808c1562
@@ -215,7 +205,7 @@ const PARAMS = OrderedDict(
 	"rho" => "ρₛ",
 	# "aR" => "a/Rₛ",
 	# "inc" => "i",
-	# "b" => "b",
+	"b" => "b",
 	# "q1" => "u",
 );
 
@@ -231,8 +221,6 @@ begin
 		summary_table = cube["results"][param_idxs, :]
 		push!(summary_tables, summary_table)
 	end
-	
-	summary_tables
 end
 
 # ╔═╡ de0a4468-56aa-4748-80a0-6c9ab6b8579e
@@ -250,9 +238,12 @@ BMA = DataFrame(
 # ╔═╡ c7a179a3-9966-452d-b430-a28b2f004bc5
 latexify(BMA)
 
+# ╔═╡ d714cb8c-801c-4afc-9f80-5e8ccac7081e
+[@sprintf "%.10f" v for v in BMA[!, "Combined"]]
+
 # ╔═╡ d279e93e-8665-41b2-bd5c-723458fabe86
 # Will probably just copy-paste directly into paper
-pl.with_terminal() do
+Pl.with_terminal() do
 	BMA |> x -> latexify(x, env=:table) |> print
 end;
 
@@ -298,7 +289,7 @@ function plot_corner!(fig, samples, params; n_levels=4, color=:blue)
 				levels = levels(Z.density, n_levels),
 				colormap = cgrad(
 					range(colorant"white", color, length=n_levels),
-					alpha=0.5
+					alpha=0.5,
 				),
 			)
 			contour!(fig[i, j], Z;
@@ -325,17 +316,32 @@ md"""
 #const COLORS = cgrad(:seaborn_colorblind6, categorical=true)
 
 # ╔═╡ feee4fd1-e16d-4d9b-8bc0-2c4f7afb0c43
+# const COLORS = parse.(Colorant,
+# 	[
+# 		"#5daed9",  # Cyan
+# 		"plum",
+# 		"#f7ad4d",  # Yellow
+# 		"mediumaquamarine",
+# 		"slategray",
+# 		"#126399",  # Blue
+# 		"#956cb4",  # Purple
+# 		"#ff7f00",  # Orange
+# 		"#029e73",  # Green
+# 	]
+# )
+
+# ╔═╡ 1f7b883c-0192-45bd-a206-2a9fde1409ca
 const COLORS = parse.(Colorant,
 	[
-		"#5daed9",  # Cyan
-		"plum",
-		"#f7ad4d",  # Yellow
-		"mediumaquamarine",
-		"slategray",
-		"#126399",  # Blue
-		"#956cb4",  # Purple
+		"#fdbf6f",  # Yellow
+		"#a6cee3",  # Cyan
+		"#1f78b4",  # Blue
 		"#ff7f00",  # Orange
+		"plum",
+		"#956cb4",  # Purple
+		"mediumaquamarine",
 		"#029e73",  # Green
+		"slategray",
 	]
 )
 
@@ -364,10 +370,8 @@ let
 		)
 
 		text!(fig[i, 1], transit;
-			position = Point2f0(0.05, 0.980),
-			space = :data,
-			textsize = 0.0025,
-			align = (:center, :bottom),
+			position = Point2f0(0.06, 0.980),
+			align = (:right, :bottom),
 			color = 0.75*COLORS[i],
 		)
 	end
@@ -379,7 +383,7 @@ let
 	axs[end].xlabel = "Phase"
 	axs[end].ylabel = "Relative flux"
 	
-	fig |> pl.as_png
+	fig |> Pl.as_svg
 end
 
 # ╔═╡ d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
@@ -445,7 +449,7 @@ let
 		labelsize = 25,
 	)
 	
-	fig |> pl.as_png
+	fig |> Pl.as_svg
 end
 
 # ╔═╡ a9747b5e-adf9-48dd-96c2-f184d873d1ac
@@ -473,11 +477,11 @@ md"""
 # ╠═d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c
 # ╟─b28bb1b6-c148-41c4-9f94-0833e365cad4
 # ╟─30b84501-fdcd-4d83-b929-ff354de69a17
-# ╠═ee9347b2-e97d-4f66-9c21-7487ca2c2e30
-# ╟─1bc1110f-e57d-4f31-a309-9b4e1aed1c0a
 # ╠═c7a179a3-9966-452d-b430-a28b2f004bc5
+# ╠═d714cb8c-801c-4afc-9f80-5e8ccac7081e
 # ╠═19fcaa15-6f01-46a6-8225-4b5cafd89cc1
 # ╠═de0a4468-56aa-4748-80a0-6c9ab6b8579e
+# ╠═ee9347b2-e97d-4f66-9c21-7487ca2c2e30
 # ╟─c936b76a-636b-4f10-b556-fa19808c1562
 # ╠═d279e93e-8665-41b2-bd5c-723458fabe86
 # ╟─68ec4343-5f6c-4dfd-90b5-6393b4c819b9
@@ -493,6 +497,7 @@ md"""
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
 # ╠═940ebaf2-659a-4319-bbe6-e0290752f1fb
 # ╠═feee4fd1-e16d-4d9b-8bc0-2c4f7afb0c43
+# ╠═1f7b883c-0192-45bd-a206-2a9fde1409ca
 # ╠═a9747b5e-adf9-48dd-96c2-f184d873d1ac
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
 # ╠═691eddff-f2eb-41a8-ab05-63afb46d15f2

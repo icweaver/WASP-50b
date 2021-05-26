@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.5
+# v0.14.7
 
 using Markdown
 using InteractiveUtils
@@ -31,7 +31,7 @@ end
 
 # ╔═╡ ee24f7df-c4db-4065-afe9-10be80cbcd6b
 md"""
-# Reduced
+# Reduced -- IMACS
 
 In this notebook we will examine the stellar spectra, white-light, and wavelength binned light curves from the raw flux extracted from IMACS.
 
@@ -299,7 +299,7 @@ md"""
 """
 
 # ╔═╡ Cell order:
-# ╠═ee24f7df-c4db-4065-afe9-10be80cbcd6b
+# ╟─ee24f7df-c4db-4065-afe9-10be80cbcd6b
 # ╟─9d180c21-e634-4a1e-8430-bdd089262f66
 # ╠═bd2cdf33-0c41-4948-82ab-9a28929f72b3
 # ╟─66052b03-35a0-4877-abef-f525766fd332

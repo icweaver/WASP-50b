@@ -73,16 +73,16 @@ def detrend_BMA_WLC(
     eparams_path = f"{out_folder}/../eparams.dat"
 
     # Raw data
-    tall, fall, f_index = np.genfromtxt(lc_path, unpack=True)
+    tall, fall, f_index = np.genfromtxt(lc_path, delimiter=',', unpack=True)
     idx = np.where(f_index == 0)[0]
     t, f = tall[idx], fall[idx]
 
     # External params
-    data = np.genfromtxt(eparams_path)
+    data = np.genfromtxt(eparams_path, delimiter=',', skip_header=1)
     X = (data - np.mean(data, axis=0)) / np.std(data, axis=0)
 
     # Comp stars
-    data = np.genfromtxt(comps_path)
+    data = np.genfromtxt(comps_path, delimiter=',')
     Xc = (data - np.mean(data, axis=0)) / np.std(data, axis=0)
     if len(Xc.shape) != 1:
         eigenvectors, eigenvalues, PC = classic_PCA(Xc.T)
@@ -93,11 +93,12 @@ def detrend_BMA_WLC(
     ########################
     # BMA transit model vals
     ########################
-    BMA = pd.read_table(
+    print(BMA_path)
+    BMA = pd.read_csv(
         BMA_path,
         comment="#",
-        sep="\s+",
         index_col="Variable",
+        skipinitialspace=True,
     )
 
     mmeani, t0, P, r1, r2, q1 = (
@@ -137,6 +138,7 @@ def detrend_BMA_WLC(
     mmean = BMA.at["mmean", "Value"]
     xcs = [xci for xci in BMA.index if "xc" in xci]
     xc = np.array([BMA.at[f"{xci}", "Value"] for xci in xcs])
+    print(f"{xc=}")
     comp_model = mmean + np.dot(Xc[idx, :], xc)
 
     ###############

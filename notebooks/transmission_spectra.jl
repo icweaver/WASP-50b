@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.5
+# v0.14.6
 
 using Markdown
 using InteractiveUtils
@@ -8,27 +8,31 @@ using InteractiveUtils
 using CairoMakie, Colors, CSV, DataFrames, DataFramesMeta, Glob, Measurements, Statistics, Latexify
 
 # ╔═╡ c53be9cf-7722-4b43-928a-33e7b0463330
-const DATA_DIR = "data/detrended/out_l/WASP50"
+const DATA_DIR = "data/detrended/out_l_C/WASP50"
 
 # ╔═╡ 5c4fcb25-9a26-43f1-838b-338b33fb9ee6
 cube = Dict(
 	"tspec" => Dict(
 		"Transit $i" => CSV.File(fpath) |> DataFrame
-		for (i, fpath) in enumerate(sort(glob("$(DATA_DIR)/w50_*/transpec.csv")))
+		for (i, fpath) in enumerate(sort(
+			glob("$(DATA_DIR)/w50_*/transpec.csv")
+		))
 	),
 
 	"BMA_WLC" => Dict(
 		"Transit $i" => CSV.File(
 			fpath,
 			comment = "#",
-			delim = ' ',			
-			ignorerepeated = true,
+			normalizenames = true,
 		) |> DataFrame
 		for (i, fpath) in enumerate(sort(glob(
 			"$(DATA_DIR)/w50_*/white-light/results.dat"
 		)))	
 	),
 )
+
+# ╔═╡ d6918a50-f75f-47f5-86c6-e251f7ef1e12
+cube["tspec"] |> keys
 
 # ╔═╡ 855095aa-c7e1-4799-9fcb-070a95bf7656
 begin
@@ -172,8 +176,9 @@ $(pl.TableOfContents())
 """
 
 # ╔═╡ Cell order:
-# ╠═e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
+# ╟─e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 # ╠═c53be9cf-7722-4b43-928a-33e7b0463330
+# ╠═d6918a50-f75f-47f5-86c6-e251f7ef1e12
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
 # ╠═855095aa-c7e1-4799-9fcb-070a95bf7656
 # ╠═8373a47f-9596-43f2-b5c8-bb179de3eec8

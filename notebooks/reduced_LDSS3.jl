@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.5
+# v0.14.7
 
 using Markdown
 using InteractiveUtils
@@ -31,7 +31,7 @@ end
 
 # ╔═╡ 34ef4580-bb95-11eb-34c1-25893217f422
 md"""
-# Reduced
+# Reduced -- LDSS3
 
 In this notebook we will examine the stellar spectra, white-light, and wavelength binned light curves from the raw flux extracted from LDSS3.
 
@@ -374,7 +374,7 @@ end
 
 # ╔═╡ bc54942e-38ef-4919-a3d4-28d5f4db8487
 comps = let
-	mag = -2.51 * log10.(f_comps_wlc[use_idxs, :])
+	mag = -2.51 * log10.(f_comps_wlc)
 	mag .- median(mag, dims=1)
 end
 
@@ -422,27 +422,18 @@ begin
 	baselines = ones(size(f_norm_w[:, :, comp_idx])) .+ offs # Reference baselines
 end;
 
+# ╔═╡ d9bf47dd-e478-4173-a004-420b1550ab30
+f_norm_w
+
 # ╔═╡ 852d8bdf-96de-4564-83ec-c83d18893970
 # Median filtered curves for visualization purposes
 f_med, _, diff = filt(f_norm_w[:, :, comp_idx], window_width)
 
 # ╔═╡ 5110de9a-3721-4043-b8b7-493daacb4137
-target_binned_mags = mapslices(f_to_med_mag, oLCw, dims=1)[use_idxs, :]
+target_binned_mags = mapslices(f_to_med_mag, oLCw, dims=1)
 
 # ╔═╡ 53f5a645-93e0-499a-bb36-e4ff0153a63c
-comp_binned_mags = mapslices(f_to_med_mag, cLCw, dims=1)[use_idxs, :, :]
-
-# ╔═╡ 631c4d02-58cc-4c70-947f-22c8e8b11015
-let
-	savepath = "$(tdir)/wavelength"
-	rm(savepath, force=true, recursive=true)
-	for i in 1:nbins
-		save_path_w = "$(savepath)/wbin$(i-1)"
-		mkpath("$(save_path_w)")
-		writedlm("$(save_path_w)/lc.dat", target_binned_mags[:, i], ",    ")
-		writedlm("$(save_path_w)/comps.dat", comp_binned_mags[:, i, :], ",    ")
-	end
-end
+comp_binned_mags = mapslices(f_to_med_mag, cLCw, dims=1)
 
 # ╔═╡ c03cb527-d16d-47aa-ab63-6970f4ff0b1f
 times, airmass = getindex.(
@@ -453,7 +444,7 @@ times, airmass = getindex.(
 # ╔═╡ 354580e4-0aa9-496f-b024-665025a2eeda
 lc = let
 	med_mag = f_to_med_mag(f_target_wlc |> vec)
-	hcat(times, med_mag, zeros(length(times)))[use_idxs, :]
+	hcat(times, med_mag, zeros(length(times)))
 end
 
 # ╔═╡ 898a390b-49f7-45f4-b1a1-b22922d69a29
@@ -463,6 +454,19 @@ let
 	mkpath(savepath)
 	writedlm("$(savepath)/lc.dat", lc, ",    ")
 	writedlm("$(savepath)/comps.dat", comps, ",    ")
+end
+
+# ╔═╡ 631c4d02-58cc-4c70-947f-22c8e8b11015
+let
+	savepath = "$(tdir)/wavelength"
+	rm(savepath, force=true, recursive=true)
+	for i in 1:nbins
+		save_path_w = "$(savepath)/wbin$(i-1)"
+		mkpath("$(save_path_w)")
+		lc_w = hcat(times, target_binned_mags[:, i], zeros(length(times)))
+		writedlm("$(save_path_w)/lc.dat", lc_w, ",    ")
+		writedlm("$(save_path_w)/comps.dat", comp_binned_mags[:, i, :], ",    ")
+	end
 end
 
 # ╔═╡ c65c2298-e3a3-4666-be9d-73ee43d94847
@@ -486,7 +490,7 @@ specshifts = load_npz(
 df_eparams = DataFrame(
 	(Times=times, Airmass=airmass, Delta_Wav=Δwav,
 	 FWHM=fwhm, Sky_Flux=sky_flux, Trace_Center=trace_center)
-)[use_idxs, :] |> df -> mapcols(col -> fmt_float.(col), df)
+) |> df -> mapcols(col -> fmt_float.(col), df)
 
 # ╔═╡ af7beb47-ecfa-4d08-b239-c27f7e8bdc4c
 CSV.write("$(tdir)/eparams.dat", df_eparams, delim=",    ")
@@ -674,6 +678,7 @@ md"""
 # ╠═66b637dd-4a7f-4589-9460-67057f7945fd
 # ╟─5837dc0e-3537-4a90-bd2c-494e7b3e6bb7
 # ╠═49d04cf9-2bec-4350-973e-880e376ab428
+# ╠═d9bf47dd-e478-4173-a004-420b1550ab30
 # ╠═852d8bdf-96de-4564-83ec-c83d18893970
 # ╟─bd00ebca-4ed2-479b-b1c6-4ba0a7a1043c
 # ╠═9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
