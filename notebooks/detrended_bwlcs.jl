@@ -4,6 +4,15 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        el
+    end
+end
+
 # ╔═╡ b3ce86b4-bd60-11eb-17bf-ff4a35c62058
 begin
 	import PlutoUI as Pl
@@ -34,11 +43,10 @@ const DATA_DIR = "data/detrended/out_l_C/WASP50"
 # ╔═╡ 100af59b-3a24-41d0-9cda-05592bd1778f
 begin
 	# Load IMACS
-	#det_LCs = Matrix{Float64}(undef, 197, 4)
-	cubes = Dict()
+	cubes = Dict{String, Any}()
 	
 	for (i, (dirpath)) ∈ enumerate(sort(glob("$(DATA_DIR)/w50*IMACS*/wavelength")))
-		fpaths = sort!(glob("$(dirpath)/wbin*/PCA_1/detrended_lc.dat"), lt=natural)
+		fpaths = sort!(glob("$(dirpath)/wbin*/PCA_2/detrended_lc.dat"), lt=natural)
 		
 		dirpath_WLC = "$(dirname(dirpath))/white-light"
 		
@@ -77,20 +85,19 @@ begin
 			"fluxes" => det_BLC_fluxes,
 			"models" => det_BLC_models,
 			"t₀" => t₀,
+			"wbins" => readdlm("$(dirname(dirpath_WLC))/wbins.dat", comments=true),
+			"tspec" => CSV.File(
+				"$(dirname(dirpath_WLC))/transpec.csv",
+				normalizenames = true,
+			)
 		)
 	end
 		
 	cubes = sort(cubes)
 end
 
-# ╔═╡ d22366bc-be63-44af-bbdb-e4a9438c9b49
-yee = cubes["Transit 1 IMACS"]
-
-# ╔═╡ e2a8108e-9798-439f-ab6b-5e4277052bf5
-wbins = readdlm("data/reduced/IMACS/w50_bins_ut131219.dat", comments=true)
-
-# ╔═╡ e5832915-f0c3-4c0d-a591-20dfb9c26995
-println()
+# ╔═╡ ded314ba-1ebe-4f01-bd1b-652a0258f955
+@bind transit Pl.Select(cubes.keys)
 
 # ╔═╡ 2c0406e7-96e0-4a87-a91c-02d463e32ebc
 md"""
@@ -140,11 +147,12 @@ begin
 end
 
 # ╔═╡ bec88974-b150-4f53-9497-ddec4883ae17
-function plot_BLCs(datas, models, wbins; offset=0.3)
+function plot_BLCs(datas, models, wbins, errs; offset=0.3)
+	median_prec = round(Int, median(errs))
 	fig = Figure(resolution=FIG_TALL)
-	ax_left = Axis(fig[1, 1], title = "detrended")
-	ax_right = Axis(fig[1, 2], title = "residuals")
-	ax_label = Axis(fig[1, 3])
+	ax_left = Axis(fig[1, 1], title = "Detrended BLCs")
+	ax_right = Axis(fig[1, 2], title = "Residuals")
+	ax_label = Axis(fig[1, 3], title = "Median precision: $(median_prec) ppm")
 	axs = reshape(copy(fig.content), 1, 3)
 	linkaxes!(axs...)
 	
@@ -156,24 +164,25 @@ function plot_BLCs(datas, models, wbins; offset=0.3)
 	# Arbitrary offsets for clarity
 	offs = reshape(range(0, offset, length=N_bins), 1, :)
 	baselines = ones(size(datas))
-	for (data, model, resid, baseline, color, wbin) in zip(
+	for (data, model, resid, baseline, color, wbin, err) in zip(
 			eachcol(datas .+ offs),
 			eachcol(models .+ offs),
 			eachcol(resids),
 			eachcol(baselines .+ offs),
 			colors,
 			eachrow(wbins),
+			errs,
 		)	
 		scatter!(ax_left, data, strokewidth=0, markersize=5, color=color)
 		lines!(ax_left, model, linewidth=3, color=0.75*color)
 		
 		scatter!(ax_right, baseline + resid, markersize=5, color=color)
 		lines!(ax_right, baseline, linewidth=3, color=0.75*color)
-		text!(ax_label, "$(wbin[1]) - $(wbin[2]) Å";
+		text!(ax_label, "$(wbin[1]) - $(wbin[2]) Å, $(err) ppm";
 			position = Point2f0(0, baseline[1]),
 			textsize = 16,
 			align = (:left, :center),
-			offset = Point2f0(0, 2),
+			offset = Point2f0(-10, 2),
 			color = 0.75*color,
 		)
 	end
@@ -191,22 +200,26 @@ end
 
 # ╔═╡ df1a160c-22ff-4c5e-a71f-b903d8a23ef1
 let	
-	wbins = readdlm("data/reduced/IMACS/w50_bins_ut131219.dat", comments=true)
+	tspec = cubes[transit]["tspec"]
+	errs = maximum([tspec.Depthup_ppm_ tspec.DepthDown_ppm_], dims=2)
 	
-	p = plot_BLCs(yee["fluxes"], yee["models"], wbins)
+	p = plot_BLCs(
+		cubes[transit]["fluxes"],
+		cubes[transit]["models"],
+		cubes[transit]["wbins"],
+		round.(Int, errs),
+	)
 		
-	#p |> Pl.as_svg
+	p |> Pl.as_svg
 end
 
 # ╔═╡ Cell order:
 # ╟─0158a760-1229-4089-bf90-7c7b2f1f548a
 # ╠═4b09c729-3395-4cee-bb69-bab59390845c
 # ╠═100af59b-3a24-41d0-9cda-05592bd1778f
-# ╠═d22366bc-be63-44af-bbdb-e4a9438c9b49
-# ╠═e2a8108e-9798-439f-ab6b-5e4277052bf5
+# ╟─ded314ba-1ebe-4f01-bd1b-652a0258f955
 # ╠═df1a160c-22ff-4c5e-a71f-b903d8a23ef1
 # ╠═bec88974-b150-4f53-9497-ddec4883ae17
-# ╠═e5832915-f0c3-4c0d-a591-20dfb9c26995
 # ╟─2c0406e7-96e0-4a87-a91c-02d463e32ebc
 # ╠═f2da7123-cda9-47c3-aa72-4f47f4f8dfda
 # ╟─1dd4968e-959a-4f6e-a0e2-9fe9b8ecdd74

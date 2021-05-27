@@ -422,9 +422,6 @@ begin
 	baselines = ones(size(f_norm_w[:, :, comp_idx])) .+ offs # Reference baselines
 end;
 
-# ╔═╡ d9bf47dd-e478-4173-a004-420b1550ab30
-f_norm_w
-
 # ╔═╡ 852d8bdf-96de-4564-83ec-c83d18893970
 # Median filtered curves for visualization purposes
 f_med, _, diff = filt(f_norm_w[:, :, comp_idx], window_width)
@@ -602,11 +599,11 @@ let
 			colors,
 			eachrow(wbins),
 		)	
-		scatter!(ax_left, f, strokewidth=0, markersize=5, color=c)
-		lines!(ax_left, f_med, linewidth=3, color=0.75*c)
+		scatter!(ax_left, f[use_idxs], strokewidth=0, markersize=5, color=c)
+		lines!(ax_left, f_med[use_idxs], linewidth=3, color=0.75*c)
 		
-		scatter!(ax_right, b + resid, markersize=5, color=c)
-		lines!(ax_right, b, linewidth=3, color=0.75*c)
+		scatter!(ax_right, (b + resid)[use_idxs], markersize=5, color=c)
+		lines!(ax_right, b[use_idxs], linewidth=3, color=0.75*c)
 		text!(ax_label, "$(w[1]) - $(w[2]) Å";
 			position = Point2f0(0, b[1]),
 			textsize = 16,
@@ -678,7 +675,6 @@ md"""
 # ╠═66b637dd-4a7f-4589-9460-67057f7945fd
 # ╟─5837dc0e-3537-4a90-bd2c-494e7b3e6bb7
 # ╠═49d04cf9-2bec-4350-973e-880e376ab428
-# ╠═d9bf47dd-e478-4173-a004-420b1550ab30
 # ╠═852d8bdf-96de-4564-83ec-c83d18893970
 # ╟─bd00ebca-4ed2-479b-b1c6-4ba0a7a1043c
 # ╠═9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
