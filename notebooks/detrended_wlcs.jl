@@ -7,17 +7,22 @@ using InteractiveUtils
 # ╔═╡ 691eddff-f2eb-41a8-ab05-63afb46d15f2
 begin
 	import PlutoUI as Pl
+	using CSV
 	using CairoMakie
 	using Colors
-	using CSV
 	using DataFrames
-	using Glob
-	using Measurements
-	using PyCall
-	using Statistics, KernelDensity
-	using Latexify, OrderedCollections
 	using DataFramesMeta
+	using DelimitedFiles
+	using Glob
+	using ImageFiltering
+	using KernelDensity
+	using Latexify
+	using Measurements
+	using NaturalSort
+	using OrderedCollections
 	using Printf
+	using PyCall
+	using Statistics
 end
 
 # ╔═╡ 506eeeb2-e56d-436b-91b8-605e52201563
@@ -25,9 +30,6 @@ md"""
 # Detrended white light curves
 
 In this notebook we will visualize the detrended white light curves from IMACS and LDSS3. We used the average orbital and system parameters obtained from these detrended fits to place uniform constraints on the binned wavelength analysis **<ADD LINK>.**
-
-!!! note "TODO"
-	Add LDSS3 plots
 
 $(Pl.TableOfContents())
 """
@@ -39,8 +41,22 @@ md"""
 First, let's load the relevant data needed for this notebook:
 """
 
-# ╔═╡ 3f0f5777-00f1-443d-8ced-d901550010d3
-const DATA_DIR = "data/detrended/out_l/WASP50"
+# ╔═╡ a8d91138-73e7-4382-a032-37daec54a9c0
+const DATA_DIR = "data/detrended/out_l_C/WASP50"
+
+# ╔═╡ e72dba55-6a33-462f-aeac-5f62b25cb46a
+dates_to_names = Dict(
+	"131219_IMACS" => "Transit 1 (IMACS)",
+	"150927_IMACS" => "Transit 2 (IMACS)",
+	"150927_LDSS3_flat" => "Transit 2 (LDSS3)",
+	"161211_IMACS" => "Transit 3 (IMACS)",
+ )
+
+# ╔═╡ e873f9c6-fd1a-4227-9df1-70c626e4a0a1
+function name(fpath, data_to_names)
+	date_target = splitpath(split(glob(fpath)[1], "w50_")[2])[1]
+	return dates_to_names[date_target]
+end
 
 # ╔═╡ 579e62da-7ffb-4639-bd73-3826ade1cfa2
 md"""
@@ -48,9 +64,10 @@ The data cube is organized by night as follows:
 
 ```julia
 cubes
-├── Transit_1
-├── Transit_2
-└── Transit_3
+├── Transit 1 (IMACS)
+├── Transit 2 (IMACS)
+├── Transit 2 (LDSS3)
+└── Transit 3 (IMACS)
     ├── samples
     │   └── Dict
     ├── models
@@ -86,56 +103,34 @@ begin
 	load_pickle(s) = py"load_pickle"(s)
 end;
 
+# ╔═╡ f539e06d-a1b5-413a-b90e-91cb0bbd5a4c
+load_data(fpath_sample, fpath_model, fpath_result; allow_pickle=true) = Dict(
+	"samples" => load_pickle(fpath_sample),
+	"models" => load_npz(fpath_model, allow_pickle=allow_pickle),
+	"results" => CSV.File(
+		fpath_result,
+		comment = "#",
+		normalizenames = true,
+	) |> DataFrame
+)
+
 # ╔═╡ 2191791b-df62-4f1b-88bf-060cc47896b2
 begin
-	# Load IMACS
 	cubes = Dict(
-		"Transit $i IMACS" => Dict(
-			"samples" => load_pickle(fpath_sample),
-			"models" => load_npz(fpath_model, allow_pickle=true),
-			"results" => CSV.File(
-				fpath_result,
-				comment = "#",
-				normalizenames=true,
-			) |> DataFrame
+		"$(name(fpath_sample, dates_to_names))" => load_data(
+			fpath_sample, fpath_model, fpath_result
 		)
 		
-		for (i, (fpath_sample, fpath_model, fpath_result)) ∈ enumerate(zip(
-			sort(glob("$(DATA_DIR)/w50*IMACS*/white-light/BMA_posteriors.pkl")),
-			sort(glob("$(DATA_DIR)/w50*IMACS*/white-light/BMA_WLC.npy")),
-			sort(glob("$(DATA_DIR)/w50*IMACS*/white-light/results.dat")),
-		))
+		for (fpath_sample, fpath_model, fpath_result) ∈ zip(
+			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")),
+			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_WLC.npy")),
+			sort(glob("$(DATA_DIR)/w50*/white-light/results.dat")),
+		)
 	)
-	
-	# Load LDSS3
-	for (fpath_sample, fpath_model, fpath_result) ∈ zip(
-			sort(glob("$(DATA_DIR)/w50*LDSS3*/white-light/BMA_posteriors.pkl")),
-			sort(glob("$(DATA_DIR)/w50*LDSS3*/white-light/BMA_WLC.npy")),
-			sort(glob("$(DATA_DIR)/w50*LDSS3*/white-light/results.dat")),
-		)
-		
-		occursin("_noflat", fpath_sample) && continue
-				
-		cubes["Transit 2 LDSS3 $(isflat(fpath_sample))"] = Dict(
-			"samples" => load_pickle(fpath_sample),
-			"models" => load_npz(fpath_model, allow_pickle=true),
-			"results" => CSV.File(
-				fpath_result,
-				comment = "#",
-				normalizenames=true,
-			) |> DataFrame
-		)
-	end
-	
-	cubes = sort(cubes)
 end
 
 # ╔═╡ d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
 cubes |> keys
-
-# ╔═╡ d0172076-d245-4246-b35f-49cc6f1cde0b
-# Return `flat` or `noflat` for data organization
-isflat(fpath) = split(split(fpath, "LDSS3_")[2], '/')[1]
 
 # ╔═╡ a8cf11e2-796e-45ff-bdc9-e273b927700e
 md"""
@@ -203,10 +198,10 @@ const PARAMS = OrderedDict(
 	"t0" => "t₀",
 	"P" => "P",
 	"rho" => "ρₛ",
-	# "aR" => "a/Rₛ",
-	# "inc" => "i",
+	"aR" => "a/Rₛ",
+	"inc" => "i",
 	"b" => "b",
-	# "q1" => "u",
+	"q1" => "u",
 );
 
 # ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
@@ -312,38 +307,24 @@ md"""
 ## Plot configs
 """
 
-# ╔═╡ 940ebaf2-659a-4319-bbe6-e0290752f1fb
-#const COLORS = cgrad(:seaborn_colorblind6, categorical=true)
-
-# ╔═╡ feee4fd1-e16d-4d9b-8bc0-2c4f7afb0c43
-# const COLORS = parse.(Colorant,
-# 	[
-# 		"#5daed9",  # Cyan
-# 		"plum",
-# 		"#f7ad4d",  # Yellow
-# 		"mediumaquamarine",
-# 		"slategray",
-# 		"#126399",  # Blue
-# 		"#956cb4",  # Purple
-# 		"#ff7f00",  # Orange
-# 		"#029e73",  # Green
-# 	]
-# )
-
 # ╔═╡ 1f7b883c-0192-45bd-a206-2a9fde1409ca
-const COLORS = parse.(Colorant,
-	[
-		"#fdbf6f",  # Yellow
-		"#a6cee3",  # Cyan
-		"#1f78b4",  # Blue
-		"#ff7f00",  # Orange
-		"plum",
-		"#956cb4",  # Purple
-		"mediumaquamarine",
-		"#029e73",  # Green
-		"slategray",
-	]
-)
+begin
+	const FIG_TALL = (900, 1_200)
+	const FIG_WIDE = (1_350, 800)
+	const COLORS = parse.(Colorant,
+		[
+			"#fdbf6f",  # Yellow
+			"#a6cee3",  # Cyan
+			"#1f78b4",  # Blue
+			"#ff7f00",  # Orange
+			"plum",
+			"#956cb4",  # Purple
+			"mediumaquamarine",
+			"#029e73",  # Green
+			"slategray",
+		]
+	)
+end
 
 # ╔═╡ 4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
 let
@@ -423,7 +404,7 @@ let
 			samples_cube[transit], keys(PARAMS), color=c
 		)
 		push!(elems,
-			LineElement(color=c, linestyle=nothing, linepoints=diamond,)
+			LineElement(color=c, linewidth=3, linepoints=diamond,)
 		)
 		push!(elem_labels, transit)
 	end
@@ -438,10 +419,8 @@ let
 		axs[j, begin].ylabelsize = 26
 	end
 	
-	#Legend(fig[1+1, n_params-1],
-	Legend(fig[1, 3],
-		elems,
-		elem_labels,
+	Legend(fig[1, end], elems, elem_labels;
+		halign = :right,
 		patchsize = (25, 25),
 		tellwidth = false,
 		tellheight = false,
@@ -463,13 +442,15 @@ md"""
 # ╔═╡ Cell order:
 # ╟─506eeeb2-e56d-436b-91b8-605e52201563
 # ╟─782806a6-efd2-45a9-b898-788a276c282b
-# ╠═3f0f5777-00f1-443d-8ced-d901550010d3
+# ╠═a8d91138-73e7-4382-a032-37daec54a9c0
 # ╠═d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
 # ╠═2191791b-df62-4f1b-88bf-060cc47896b2
+# ╠═f539e06d-a1b5-413a-b90e-91cb0bbd5a4c
+# ╠═e873f9c6-fd1a-4227-9df1-70c626e4a0a1
+# ╠═e72dba55-6a33-462f-aeac-5f62b25cb46a
 # ╟─579e62da-7ffb-4639-bd73-3826ade1cfa2
 # ╟─583b3377-f4f6-4170-8658-d3ba17a5b86d
 # ╠═39dbca86-a4b9-11eb-1c64-9ddf1a9990ab
-# ╠═d0172076-d245-4246-b35f-49cc6f1cde0b
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
@@ -495,8 +476,6 @@ md"""
 # ╠═6fcd1377-8364-45a3-9ff6-89d61df1ef42
 # ╟─82a23101-9e1f-4eae-b529-e750a44c98b1
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
-# ╠═940ebaf2-659a-4319-bbe6-e0290752f1fb
-# ╠═feee4fd1-e16d-4d9b-8bc0-2c4f7afb0c43
 # ╠═1f7b883c-0192-45bd-a206-2a9fde1409ca
 # ╠═a9747b5e-adf9-48dd-96c2-f184d873d1ac
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555

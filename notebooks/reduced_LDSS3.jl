@@ -13,20 +13,25 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ e06eedec-5a47-4cd1-9f76-272c4c0476f2
+# ╔═╡ c911cecd-0747-4cd1-826f-941f2f58091c
 begin
 	import PlutoUI as Pl
-	using CairoMakie
-	using Glob
-	using PyCall
-	using Statistics
-	using Colors
-	using ImageFiltering
 	using CSV
+	using CairoMakie
+	using Colors
 	using DataFrames
+	using DataFramesMeta
 	using DelimitedFiles
+	using Glob
+	using ImageFiltering
+	using KernelDensity
+	using Latexify
+	using Measurements
+	using NaturalSort
 	using OrderedCollections
 	using Printf
+	using PyCall
+	using Statistics
 end
 
 # ╔═╡ 34ef4580-bb95-11eb-34c1-25893217f422
@@ -312,11 +317,12 @@ wav = LC["spectral"]["wavelength"][common_wav_idxs]
 # ╔═╡ 45418bd3-74a3-4758-9fce-adddbeeec076
 let
 	fig = Figure()
-	ax = Axis(fig[1, 1])
+	ax = Axis(fig[1, 1], xlabel="Wavelength Å", ylabel="Relative flux")
 	
 	fluxes = [f_target, [f_comps[:, :, i] for i in 1:3]...]
 	labels = names.vals
-	f_norm = 40362.188283796 # median IMACS WASP-50 flux
+	f_norm = 40362.188283796 # median IMACS WASP-50 flux for comparison
+	
 	for (name, f) in zip(labels, fluxes)
 		spec_plot!(ax, wav, f;
 			norm = f_norm,
@@ -326,21 +332,6 @@ let
 	
 	axislegend()
 	
-	xlims!(ax, 3_500, 11_000)
-	ylims!(ax, 0, 2.2)
-
-# 	axs = reshape(copy(fig.content), 2, 2)
-# 	axislegend.(axs)
-# 	linkxaxes!(axs...)
-# 	linkyaxes!(axs[begin, :]...)
-# 	linkyaxes!(axs[end, :]...)
-# 	hidexdecorations!.(axs[begin, :], grid=false)
-# 	hideydecorations!.(axs[:, end], grid=false)
-
-# 	fig[1:2, 0] = Label(fig, "Relative flux", rotation=π/2)
-# 	fig[end+1, 2:3] = Label(fig, "Index")
-   #textsize = 30, font = noto_sans_bold, color = (:black, 0.25))
-
 	fig |> Pl.as_svg
 end
 
@@ -654,7 +645,7 @@ md"""
 # ╠═45418bd3-74a3-4758-9fce-adddbeeec076
 # ╠═7d68ad39-3e39-48fa-939a-e56c6659d2b3
 # ╠═a6088ea2-904f-4909-b1be-9470e7ec2010
-# ╠═bd937d51-17e9-4de3-a5d0-4c436d413940
+# ╟─bd937d51-17e9-4de3-a5d0-4c436d413940
 # ╠═9697e26b-b6d9-413b-869f-47bc2ab99919
 # ╠═8c82a78d-7382-40d4-a76b-02e7cd061d67
 # ╠═cf38810c-9b0c-4194-bea3-e0aa26e7cf98
@@ -703,7 +694,7 @@ md"""
 # ╠═123d0c63-f05a-4a7d-be16-6a3b9abac044
 # ╟─3b6b57e2-46ab-46d9-b334-6264daf583f3
 # ╠═2d34e125-548e-41bb-a530-ba212c0ca17c
-# ╠═8b12f760-f294-4212-9b4e-88a886d84156
+# ╟─8b12f760-f294-4212-9b4e-88a886d84156
 # ╠═21cbb4b9-1887-4575-8f4f-5e32b8404c6a
 # ╟─f788835c-8e81-4afe-805e-4caf2d5e5d5b
-# ╠═e06eedec-5a47-4cd1-9f76-272c4c0476f2
+# ╠═c911cecd-0747-4cd1-826f-941f2f58091c
