@@ -991,15 +991,11 @@ def plot_params():
         # pallete
         "axes.prop_cycle": mpl.cycler(
             color=[
-                # "#fdbf6f",  # Yellow
-                "#5daed9",  # Cyan
-                "plum",
-                "#f7ad4d",  # Yellow
+                "#fdbf6f",  # Yellow
+                "#a6cee3",  # Cyan
+                "#1f78b4",  # Blue
                 "#ff7f00",  # Orange
-                # "#a6cee3",  # Cyan
-                # "#75bfe6",  # Cyan
-                # "#1f78b4",  # Blue
-                "#126399",  # Blue
+                "plum",
                 "#956cb4",  # Purple
                 "mediumaquamarine",
                 "#029e73",  # Green
@@ -1105,9 +1101,13 @@ def plot_tspec_IMACS(ax, base_dir, data_dict):
     # Compute offset
     depth_wlc_stats = np.array(depth_wlc_stats)
     depth_wlc, depth_wlc_u, depth_wlc_d = depth_wlc_stats.T
+    depth_wlc_unc = np.max(np.c_[depth_wlc_u, depth_wlc_d], axis=1)
     print("depths", depth_wlc)
     print(np.mean(depth_wlc))
-    mean_wlc_depth, mean_wlc_depth_unc = np.average(depth_wlc, weights=depth_wlc_u), weighted_err(depth_wlc_u)
+    print(f"{depth_wlc=}")
+    print(f"{depth_wlc_unc=}")
+    mean_wlc_depth, mean_wlc_depth_unc = np.average(depth_wlc, weights=depth_wlc_unc), weighted_err(depth_wlc_unc)
+    print(f"{mean_wlc_depth=}")
     #mean_wlc_depth, mean_wlc_depth_unc = weighted_mean_uneven_errors(
     #    depth_wlc, depth_wlc_u, depth_wlc_d
     #)
@@ -1139,7 +1139,8 @@ def plot_tspec_IMACS(ax, base_dir, data_dict):
     ## Plot
     #######
 
-    ax.axhline(mean_wlc_depth, color="darkgrey", zorder=0, ls="--")
+    #ax.axhline(mean_wlc_depth, color="darkgrey", zorder=0, ls="--")
+    ax.axhline(0, color="darkgrey", zorder=0, ls="--")
 
     # Species
     species = {
@@ -1153,6 +1154,7 @@ def plot_tspec_IMACS(ax, base_dir, data_dict):
        for name, wav in species.items()
     ]
 
+    yerr = np.max(np.c_[tspec_d, tspec_u], axis=1)
     tspec_tables = {}  # Each entry will hold Table(Transit, Depth, Up , Down)
     # For combining into latex later
     for transit, tspec, tspec_d, tspec_u in zip(
@@ -1160,8 +1162,9 @@ def plot_tspec_IMACS(ax, base_dir, data_dict):
     ):
         ax.errorbar(
             wav,
-            tspec,
-            yerr=[tspec_d, tspec_u],
+            tspec - mean_wlc_depth,
+            #yerr=[tspec_d, tspec_u],
+            yerr=yerr,
             fmt="o",
             alpha=1.0,
             mew=0,
@@ -1200,7 +1203,7 @@ def plot_tspec_IMACS(ax, base_dir, data_dict):
     tspec_combined_unc = np.array(tspec_combined_unc)
     p = ax.errorbar(
         wav,
-        tspec_combined,
+        tspec_combined - mean_wlc_depth,
         yerr=tspec_combined_unc,
         c="w",
         mec="k",

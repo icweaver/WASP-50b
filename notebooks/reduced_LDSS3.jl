@@ -151,7 +151,7 @@ Next, we will extract the integrated white light curves from these spectra. We i
 wbins = readdlm("data/reduced/LDSS3/w50_bins_LDSS3.dat", comments=true)
 
 # ╔═╡ cb805821-5d2e-484c-93a5-10a897d2cfe7
-@bind window_width Pl.Slider(3:2:21, show_value=true)
+@bind window_width Pl.Slider(3:2:21, default=15, show_value=true)
 
 # ╔═╡ 9372c69a-0aad-4e6e-9ea3-e934fa09b758
 get_idx(needle, haystack) = findfirst(==(needle), haystack)
@@ -228,7 +228,7 @@ fmt_float(x) = @sprintf "%.10f" x
 
 # ╔═╡ 0be35b52-caea-4000-8cf8-ab99205bdb97
 function template_dir(fpath)
-	base_dir = "$(dirname(dirname(fpath)))/out_LDSS3_template/WASP50"
+	base_dir = "$(dirname(dirname(fpath)))/LDSS3_template/WASP50"
 	date, flat_status = split(basename(dirname(fpath)), '_')
 	return "$(base_dir)/w50_$(date[3:end])_LDSS3_$(flat_status)"
 end
@@ -366,7 +366,8 @@ end
 # ╔═╡ bc54942e-38ef-4919-a3d4-28d5f4db8487
 comps = let
 	mag = -2.51 * log10.(f_comps_wlc)
-	mag .- median(mag, dims=1)
+	mag .-= median(mag, dims=1)
+	mag[use_idxs, :]
 end
 
 # ╔═╡ 861cb600-5a97-496c-9a4d-8f848654f214
@@ -418,10 +419,10 @@ end;
 f_med, _, diff = filt(f_norm_w[:, :, comp_idx], window_width)
 
 # ╔═╡ 5110de9a-3721-4043-b8b7-493daacb4137
-target_binned_mags = mapslices(f_to_med_mag, oLCw, dims=1)
+target_binned_mags = mapslices(f_to_med_mag, oLCw, dims=1)[use_idxs, :]
 
 # ╔═╡ 53f5a645-93e0-499a-bb36-e4ff0153a63c
-comp_binned_mags = mapslices(f_to_med_mag, cLCw, dims=1)
+comp_binned_mags = mapslices(f_to_med_mag, cLCw, dims=1)[use_idxs, :, :]
 
 # ╔═╡ c03cb527-d16d-47aa-ab63-6970f4ff0b1f
 times, airmass = getindex.(
@@ -432,7 +433,7 @@ times, airmass = getindex.(
 # ╔═╡ 354580e4-0aa9-496f-b024-665025a2eeda
 lc = let
 	med_mag = f_to_med_mag(f_target_wlc |> vec)
-	hcat(times, med_mag, zeros(length(times)))
+	hcat(times, med_mag, zeros(length(times)))[use_idxs, :]
 end
 
 # ╔═╡ 898a390b-49f7-45f4-b1a1-b22922d69a29
@@ -451,7 +452,9 @@ let
 	for i in 1:nbins
 		save_path_w = "$(savepath)/wbin$(i-1)"
 		mkpath("$(save_path_w)")
-		lc_w = hcat(times, target_binned_mags[:, i], zeros(length(times)))
+		lc_w = hcat(
+			times[use_idxs], target_binned_mags[:, i], zeros(length(times[use_idxs]))
+		)
 		writedlm("$(save_path_w)/lc.dat", lc_w, ",    ")
 		writedlm("$(save_path_w)/comps.dat", comp_binned_mags[:, i, :], ",    ")
 	end
@@ -478,7 +481,7 @@ specshifts = load_npz(
 df_eparams = DataFrame(
 	(Times=times, Airmass=airmass, Delta_Wav=Δwav,
 	 FWHM=fwhm, Sky_Flux=sky_flux, Trace_Center=trace_center)
-) |> df -> mapcols(col -> fmt_float.(col), df)
+) |> df -> mapcols(col -> fmt_float.(col), df)[use_idxs, :]
 
 # ╔═╡ af7beb47-ecfa-4d08-b239-c27f7e8bdc4c
 CSV.write("$(tdir)/eparams.dat", df_eparams, delim=",    ")
@@ -651,6 +654,7 @@ md"""
 # ╠═cf38810c-9b0c-4194-bea3-e0aa26e7cf98
 # ╠═13385b21-fbd7-484d-a1ac-0687834f92c7
 # ╠═cb805821-5d2e-484c-93a5-10a897d2cfe7
+# ╠═ded63b4b-61b6-41b6-98d4-d13166bce76a
 # ╠═4b2ed9db-0a17-4e52-a04d-3a6a5bf2c054
 # ╠═9372c69a-0aad-4e6e-9ea3-e934fa09b758
 # ╟─d5c6d058-17c6-4cf0-97b8-d863b1529161
@@ -658,7 +662,6 @@ md"""
 # ╠═470514e7-0f08-44a3-8519-5d704ea6b8d4
 # ╠═f80347e8-dc5a-4b0c-a6c0-db5c12eadcbb
 # ╠═89256633-3c12-4b94-b245-4fdda44d686c
-# ╠═ded63b4b-61b6-41b6-98d4-d13166bce76a
 # ╟─a5e742e5-fcca-40d7-b342-c6112e6899e5
 # ╠═861cb600-5a97-496c-9a4d-8f848654f214
 # ╠═90b26a58-834a-445b-9242-d7b2e04be614

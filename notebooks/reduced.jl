@@ -152,9 +152,11 @@ We next plot these light curves and identified outliers below:
 """
 
 # ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
-@bind window_width Pl.Slider(3:2:21, show_value=true)
+@bind window_width Pl.Slider(3:2:21, default=15, show_value=true)
 
 # ╔═╡ 4b763b58-862e-4c88-a7c9-fe0b1271c0b4
+#use_comps = ["c15", "c18", "c21", "c23"]
+#use_comps = ["c06", "c13"]
 use_comps = ["c15", "c21"]
 
 # ╔═╡ 169197fe-983d-420b-8c56-353a65b28ddc
@@ -199,6 +201,7 @@ Pl.with_terminal() do
 	# Because python
 	println(bad_idxs .- 1)
 	println(use_comps_idxs .- 1)
+	println(length(bad_idxs))
 end
 
 # ╔═╡ e98dee2e-a369-448e-bfe4-8fea0f318fa8
@@ -316,13 +319,13 @@ md"""
 # ╟─941cd721-07d8-4a8f-9d75-42854e6e8edb
 # ╠═ab058d99-ce5f-4ed3-97bd-a62d2f258773
 # ╠═4b763b58-862e-4c88-a7c9-fe0b1271c0b4
+# ╠═df46d106-f186-4900-9d3f-b711bc803707
 # ╠═13523326-a5f2-480d-9961-d23cd51192b8
 # ╠═169197fe-983d-420b-8c56-353a65b28ddc
 # ╟─4bad8b5c-e8b9-4ceb-97f4-41b4401d4f63
 # ╠═ccabf5d2-5739-4284-a972-23c02a263a5c
 # ╠═a4517d69-76e6-462a-9449-b31d80e34a8f
 # ╠═dc044a72-4706-49e2-94a8-c828a6bf7de0
-# ╠═df46d106-f186-4900-9d3f-b711bc803707
 # ╟─e98dee2e-a369-448e-bfe4-8fea0f318fa8
 # ╟─a604260b-902e-44a1-88ea-440438e582ed
 # ╠═5db4a2f2-1c0d-495a-8688-40fc9e0ccd02

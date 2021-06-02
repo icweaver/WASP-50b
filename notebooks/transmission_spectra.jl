@@ -1,170 +1,29 @@
 ### A Pluto.jl notebook ###
-# v0.14.6
+# v0.14.7
 
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 1dc0c992-a894-11eb-2eab-f1fccba239f0
-using CairoMakie, Colors, CSV, DataFrames, DataFramesMeta, Glob, Measurements, Statistics, Latexify
-
-# ╔═╡ c53be9cf-7722-4b43-928a-33e7b0463330
-const DATA_DIR = "data/detrended/out_l_C/WASP50"
-
-# ╔═╡ 5c4fcb25-9a26-43f1-838b-338b33fb9ee6
-cube = Dict(
-	"tspec" => Dict(
-		"Transit $i" => CSV.File(fpath) |> DataFrame
-		for (i, fpath) in enumerate(sort(
-			glob("$(DATA_DIR)/w50_*/transpec.csv")
-		))
-	),
-
-	"BMA_WLC" => Dict(
-		"Transit $i" => CSV.File(
-			fpath,
-			comment = "#",
-			normalizenames = true,
-		) |> DataFrame
-		for (i, fpath) in enumerate(sort(glob(
-			"$(DATA_DIR)/w50_*/white-light/results.dat"
-		)))	
-	),
-)
-
-# ╔═╡ d6918a50-f75f-47f5-86c6-e251f7ef1e12
-cube["tspec"] |> keys
-
-# ╔═╡ 855095aa-c7e1-4799-9fcb-070a95bf7656
+# ╔═╡ ef970c0c-d08a-4856-b10b-531bb5e7e53e
 begin
-	const N_NIGHTS = length(cube["tspec"])
-	const N_BINS = length(cube["tspec"]["Transit 1"][!, "Depth (ppm)"])
-	#wavs = [] # Can be different lengths based on different binning schemes
-	#tspecs = []
-	wavs = zeros(Float64,  N_BINS, N_NIGHTS)
-	tspecs = zeros(Measurement,  N_BINS, N_NIGHTS)
-	ps = Matrix{Measurement}(undef, 1, N_NIGHTS) # Rₚ/Rₛ
-	const IDX_START = 5 # Index where first common row between nights starts
-	
-	for (j, (transit, df)) in enumerate(cube["tspec"])
-		# Unpack tspec data
-		wav, depth, depth_u, depth_d = eachcol(
-			df[!, ["Wav_d", "Depth (ppm)", "Depthup (ppm)", "DepthDown (ppm)"]]
-		)
-		# Adopt max uncertainty
-		max_depth_err = maximum(hcat(depth_u, depth_d), dims=2) |> vec
-		#push!(wavs, wav)
-		#push!(tspecs, depth .± max_depth_err)
-		if transit == "Transit 1"
-			wavs[:, j] .= wav
-			tspecs[:, j] .= depth .± max_depth_err
-		else
-			wavs[IDX_START:end, j] .= wav
-			tspecs[IDX_START:end, j] .= depth .± max_depth_err
-		end
-		# Extract BMA p ≡ Rₚ/Rₛ for each night
-		symbol, p, p_u, p_d = eachcol(
-			@where(cube["BMA_WLC"][transit], :Variable .== "p")
-		)
-		ps[1, j] = p[1] ± maximum((p_u[1], p_d[1]))
-	end
-	
-	# Compute offsets from mean BMA WLC depth
-	wlc_depths = ps.^2 * 1e6
-	mean_wlc_depth = weightedmean(wlc_depths)
-	wlc_offsets = (wlc_depths .- mean_wlc_depth)
-	
-	# Extract common subset of transmission spectra
-	tspecs_common = tspecs[IDX_START:end, :]
-	
-	# Combine
-	tspecs_wlc_adj = @. tspecs_common - wlc_offsets
-	tspec_combined = mapslices(weightedmean, tspecs_wlc_adj, dims=2)
-end;
-
-# ╔═╡ 8373a47f-9596-43f2-b5c8-bb179de3eec8
-begin
-	wav_common = wavs[IDX_START:end, end]
-	df_wav = DataFrame([wav_common], [:Wavelength])
-	
-	df_tspecs = DataFrame(
-		hcat(tspecs_wlc_adj, tspec_combined),
-		[keys(cube["tspec"])..., "Combined"]
-	)
-	
-	hcat(df_wav, df_tspecs) |> latexify
+	import PlutoUI as Pl
+	using CSV
+	using CairoMakie
+	using Colors
+	using DataFrames
+	using DataFramesMeta
+	using DelimitedFiles
+	using Glob
+	using ImageFiltering
+	using KernelDensity
+	using Latexify
+	using Measurements
+	using NaturalSort
+	using OrderedCollections
+	using Printf
+	using PyCall
+	using Statistics
 end
-
-# ╔═╡ 64fd6b14-028f-4396-8a6d-240c73896174
-Measurements.uncertainty.(tspec_combined) |> mean
-
-# ╔═╡ 817aac12-13b9-44fe-a7e5-aa5ec7b8939e
-mean_wlc_depth
-
-# ╔═╡ bef0918c-c645-4557-a2e5-00b6c26573bc
-const COLORS =  parse.(Colorant,
-	[
-		"#5daed9",  # Cyan
-		"plum",
-		"#f7ad4d",  # Yellow
-		"mediumaquamarine",
-		"#126399",  # Blue
-		"#956cb4",  # Purple
-		"#ff7f00",  # Orange
-		"#029e73",  # Green
-		"slategray",
-	]
-);
-
-# ╔═╡ 5c6d5b2d-3521-4626-b12d-d5685e0b09a5
-begin
-	fig = Figure()
-	
-	ax = Axis(fig[1, 1], xlabel="Wavelength (Å)", ylabel="Relative depth")
-	
-	hlines!(ax, 0, color=:grey, linestyle=:dash)
-	
-	for (i, tspec) in enumerate(eachcol(tspecs_wlc_adj))
-		depth = Measurements.value.(tspec)
-		depth_err = Measurements.uncertainty.(tspec)
-		errorbars!(ax, wav_common, depth .- mean_wlc_depth.val, depth_err;
-			color = COLORS[i],
-			whiskerwidth = 0,
-			linewidth = 3,
-		)
-		scatter!(ax, wav_common, depth .- mean_wlc_depth.val;
-			color = COLORS[i],
-			strokewidth = 0,
-			markersize = 12,
-			label = "Transit $i",
-		)
-	end
-
-	f_combined = Measurements.value.(tspec_combined) |> vec
-	f_combined_err = Measurements.uncertainty.(tspec_combined) |> vec
-
-	errorbars!(ax, wav_common, f_combined .- mean_wlc_depth.val, f_combined_err;
-		linewidth = 3,
-	)
-	scatter!(ax, wav_common, f_combined .- mean_wlc_depth.val;
-		color = :white,
-		strokewidth = 2,
-		label = "Combined",
-	)
-	
-	# Plot blue points from Transit 1
-	wav_blue = wavs[begin:IDX_START-1, begin] |> vec
-	f_blue = Measurements.value.(tspecs[begin:IDX_START-1, begin]) |> vec
-	f_blue_err = Measurements.uncertainty.(tspecs[begin:IDX_START-1, begin]) |> vec
-	errorbars!(ax, wav_blue, f_blue .- mean_wlc_depth.val, f_blue_err)
-	scatter!(ax, wav_blue, f_blue .- mean_wlc_depth.val, strokewidth=0)
-
-	axislegend(orientation=:horizontal, valign=:bottom, labelsize=16)
-		
-	fig
-end
-
-# ╔═╡ e68c4b84-09eb-41e5-a688-36a83fa03625
-import PlutoUI as pl
 
 # ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 md"""
@@ -172,19 +31,210 @@ md"""
 
 In this notebook we will
 
-$(pl.TableOfContents())
+$(Pl.TableOfContents())
 """
+
+# ╔═╡ c53be9cf-7722-4b43-928a-33e7b0463330
+const DATA_DIR = "data/detrended/out_l/WASP50"
+
+# ╔═╡ 1decb49e-a875-412c-938f-74b4fa0e2e85
+maxmeasure(x, x_u, x_d) = x ± max(x_u, x_d)
+
+# ╔═╡ 7b6d3a33-cb3b-4776-86f6-3af1663b9e49
+dates_to_names = Dict(
+	"131219_IMACS" => "Transit 1 (IMACS)",
+	"150927_IMACS" => "Transit 2 (IMACS)",
+	"150927_LDSS3_flat" => "Transit 2 (LDSS3)",
+	"161211_IMACS" => "Transit 3 (IMACS)",
+ )
+
+# ╔═╡ 1e8524c4-a732-4e2f-80a9-b5e7548ef2b2
+function name(fpath, data_to_names)
+	date_target = splitpath(split(glob(fpath)[1], "w50_")[2])[1]
+	return dates_to_names[date_target]
+end
+
+# ╔═╡ 5c4fcb25-9a26-43f1-838b-338b33fb9ee6
+begin
+	cubes = Dict{String, Dict}()
+	
+	for dirpath in sort(glob("$(DATA_DIR)/w50_*"))
+		# Read tspec file
+		fpath = "$(dirpath)/transpec.csv"
+		transit = name(fpath, dates_to_names)
+		
+		cubes[transit] = Dict()
+		
+		df = cubes[transit]["tspec"] = CSV.File(
+			fpath,
+			normalizenames = true,
+		) |> DataFrame
+		
+		# Add wav bins for external instruments
+		if occursin("LDSS3", dirpath)
+			wbins = readdlm("$(dirpath)/wbins.dat", comments=true)
+			@show wbins
+			cubes[transit]["tspec"][:, [:Wav_d, :Wav_u]] .= wbins
+		end
+		
+		# For plotting later
+		df.wav = mean([df.Wav_u, df.Wav_d])
+		df.δ = maxmeasure.(df.Depth_ppm_, df.Depthup_ppm_, df.DepthDown_ppm_)
+		
+		fpath_WLC = "$(dirpath)/white-light/results.dat"
+		df_WLC = CSV.File(
+			fpath_WLC,
+			comment = "#",
+			normalizenames = true,
+		) |> DataFrame
+		
+		symbol, p, p_u, p_d = eachcol(
+			@where(df_WLC, :Variable .== "p")
+		)
+	 	
+		cubes[transit]["δ_WLC"] = maxmeasure(p[1], p_u[1], p_d[1])^2 * 1e6
+	end
+	
+	cubes = sort(cubes)
+end
+
+# ╔═╡ d6918a50-f75f-47f5-86c6-e251f7ef1e12
+cubes.keys
+
+# ╔═╡ cb1b277b-aa92-44de-91ce-88122bc34bb9
+df_common = innerjoin(
+	(cube["tspec"] for (transit, cube) in cubes)...,
+	on = :wav,
+	makeunique = true,
+)
+
+# ╔═╡ 84055852-1b9f-4221-95a7-ab48110bf78c
+depths_common = df_common[!, r"δ"] |>  x -> rename!(x, cubes.keys)
+
+# ╔═╡ 2f377692-2abf-404e-99ea-a18c7af1a840
+wlc_depths = [cube["δ_WLC"] for (transit, cube) in cubes]
+
+# ╔═╡ c405941d-bdcc-458f-b0bf-01abf02982e0
+mean_wlc_depth = mean(wlc_depths)
+
+# ╔═╡ a915f236-8dae-4c91-8f96-fb9a805a0a7f
+wlc_offsets = reshape(wlc_depths .- mean_wlc_depth, 1, :)
+
+# ╔═╡ 4b9cfc02-5e18-422d-b18e-6301a659561a
+begin
+	depths_adj = (depths_common .- wlc_offsets) .- mean_wlc_depth
+	depths_adj.Combined = weightedmean.(eachrow(depths_adj))
+	insertcols!(depths_adj, 1,
+		:Wav_d => df_common.Wav_d,
+		:Wav_u => df_common.Wav_u,
+		:Wav_cen => df_common.wav,
+	)
+end
+
+# ╔═╡ 5d25caa3-916a-40b1-ba7c-ea1295afb775
+getproperty.(depths_adj[!, :Combined], :err) |> median
+
+# ╔═╡ bef0918c-c645-4557-a2e5-00b6c26573bc
+begin
+	const FIG_TALL = (900, 1_200)
+	const FIG_WIDE = (1_350, 800)
+	const COLORS = parse.(Colorant,
+		[
+			"#fdbf6f",  # Yellow
+			"#a6cee3",  # Cyan
+			"#1f78b4",  # Blue
+			"#ff7f00",  # Orange
+			"plum",
+			"#956cb4",  # Purple
+			"mediumaquamarine",
+			"#029e73",  # Green
+			"slategray",
+		]
+	)
+end
+
+# ╔═╡ 8c077881-fc5f-4fad-8497-1cb6106c6ed5
+let
+	fig = Figure(resolution=(1_000, 6_00))
+		
+	ax = Axis(
+		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Relative depth (ppm)",
+		limits=(nothing, (-4_000, 4_000)),
+	)
+	
+	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash)
+	hlines!(ax, 0, color=:grey, linestyle=:dash, linewidth=3)
+	
+	wav = depths_adj.Wav_cen
+	
+	# Individual nights
+	for (i, transit) in enumerate(keys(cubes))
+		tspec = depths_adj[!, transit]
+		depth = Measurements.value.(tspec)
+		depth_err = Measurements.uncertainty.(tspec)
+		
+		errorbars!(ax, wav, depth, depth_err;
+			color = COLORS[i],
+			linewidth = 3,
+		)
+		scatter!(ax, wav, depth;
+			color = COLORS[i],
+			strokewidth = 0,
+			markersize = 12,
+			label = transit,
+		)
+	end
+	
+	# Combined
+	tspec_combined = depths_adj.Combined
+	depth_combined = Measurements.value.(tspec_combined)
+	depth_combined_err = Measurements.uncertainty.(tspec_combined)
+
+	errorbars!(ax, wav, depth_combined, depth_combined_err;
+		linewidth = 5,
+		whiskerwidth = 10,
+	)
+	
+	scatter!(ax, wav, depth_combined;
+		color = :white,
+		strokewidth = 3,
+		markersize = 12,
+		label = "Combined",
+	)
+		
+	# Plot blue points from Transit 1
+	# wav_blue = wavs[begin:IDX_START-1, begin] |> vec
+	# f_blue = Measurements.value.(tspecs[begin:IDX_START-1, begin]) |> vec
+	# f_blue_err = Measurements.uncertainty.(tspecs[begin:IDX_START-1, begin]) |> vec
+	# errorbars!(ax, wav_blue, f_blue .- mean_wlc_depth.val, f_blue_err;
+	# 	linewidth = 3,
+	# 	color = (COLORS[1], 0.5),
+	# )
+	# scatter!(ax, wav_blue, f_blue .- mean_wlc_depth.val;
+	# 	color = (COLORS[1], 0.5),
+	# 	markersize = 12,
+	# )
+
+	axislegend(orientation=:horizontal, valign=:bottom, labelsize=16)
+		
+	fig |> Pl.as_svg
+end
 
 # ╔═╡ Cell order:
 # ╟─e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 # ╠═c53be9cf-7722-4b43-928a-33e7b0463330
 # ╠═d6918a50-f75f-47f5-86c6-e251f7ef1e12
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
-# ╠═855095aa-c7e1-4799-9fcb-070a95bf7656
-# ╠═8373a47f-9596-43f2-b5c8-bb179de3eec8
-# ╠═64fd6b14-028f-4396-8a6d-240c73896174
-# ╠═817aac12-13b9-44fe-a7e5-aa5ec7b8939e
-# ╠═5c6d5b2d-3521-4626-b12d-d5685e0b09a5
+# ╠═1decb49e-a875-412c-938f-74b4fa0e2e85
+# ╠═1e8524c4-a732-4e2f-80a9-b5e7548ef2b2
+# ╠═7b6d3a33-cb3b-4776-86f6-3af1663b9e49
+# ╠═cb1b277b-aa92-44de-91ce-88122bc34bb9
+# ╠═84055852-1b9f-4221-95a7-ab48110bf78c
+# ╠═2f377692-2abf-404e-99ea-a18c7af1a840
+# ╠═c405941d-bdcc-458f-b0bf-01abf02982e0
+# ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
+# ╠═4b9cfc02-5e18-422d-b18e-6301a659561a
+# ╠═5d25caa3-916a-40b1-ba7c-ea1295afb775
+# ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
 # ╠═bef0918c-c645-4557-a2e5-00b6c26573bc
-# ╠═e68c4b84-09eb-41e5-a688-36a83fa03625
-# ╠═1dc0c992-a894-11eb-2eab-f1fccba239f0
+# ╠═ef970c0c-d08a-4856-b10b-531bb5e7e53e

@@ -44,19 +44,23 @@ First, let's load the relevant data needed for this notebook:
 # ╔═╡ a8d91138-73e7-4382-a032-37daec54a9c0
 const DATA_DIR = "data/detrended/out_l_C/WASP50"
 
+# ╔═╡ 105762e1-15a2-4e7f-bff3-7740a5f53492
+glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")
+
+# ╔═╡ e873f9c6-fd1a-4227-9df1-70c626e4a0a1
+function name(fpath, dates_to_names)
+	date_instr = splitpath(split(glob(fpath)[1], "w50_")[2])[1]
+	return dates_to_names[date_instr]
+end
+
 # ╔═╡ e72dba55-6a33-462f-aeac-5f62b25cb46a
 dates_to_names = Dict(
 	"131219_IMACS" => "Transit 1 (IMACS)",
 	"150927_IMACS" => "Transit 2 (IMACS)",
-	"150927_LDSS3_flat" => "Transit 2 (LDSS3)",
+	"150927_LDSS3_flat" => "Transit 2 (LDSS3 flat)",
+	"150927_LDSS3_noflat" => "Transit 2 (LDSS3 noflat)",
 	"161211_IMACS" => "Transit 3 (IMACS)",
  )
-
-# ╔═╡ e873f9c6-fd1a-4227-9df1-70c626e4a0a1
-function name(fpath, data_to_names)
-	date_target = splitpath(split(glob(fpath)[1], "w50_")[2])[1]
-	return dates_to_names[date_target]
-end
 
 # ╔═╡ 579e62da-7ffb-4639-bd73-3826ade1cfa2
 md"""
@@ -117,7 +121,7 @@ load_data(fpath_sample, fpath_model, fpath_result; allow_pickle=true) = Dict(
 # ╔═╡ 2191791b-df62-4f1b-88bf-060cc47896b2
 begin
 	cubes = Dict(
-		"$(name(fpath_sample, dates_to_names))" => load_data(
+		name(fpath_sample, dates_to_names) => load_data(
 			fpath_sample, fpath_model, fpath_result
 		)
 		
@@ -127,6 +131,8 @@ begin
 			sort(glob("$(DATA_DIR)/w50*/white-light/results.dat")),
 		)
 	)
+	
+	cubes = sort(cubes)
 end
 
 # ╔═╡ d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
@@ -141,6 +147,14 @@ md"""
 md"""
 Plotting the data from the `models` cube returns the following detrended white light curves:
 """
+
+# ╔═╡ 6cfb1541-62af-4884-9c74-d19b56c3b02e
+detLC = CSV.File(
+	"data/detrended/out_l_C/WASP50/w50_150927_LDSS3_flat/white-light/PCA_3/detrended_lc.dat",
+	header = ["Time", "DetFlux", "DetFluxErr", "Model"],
+	comment = "#",
+	#normalizenames = true,
+) |> DataFrame
 
 # ╔═╡ 0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # Returns value `v` from `Variables` columns in results.dat file 
@@ -198,10 +212,10 @@ const PARAMS = OrderedDict(
 	"t0" => "t₀",
 	"P" => "P",
 	"rho" => "ρₛ",
-	"aR" => "a/Rₛ",
-	"inc" => "i",
+	# "aR" => "a/Rₛ",
+	# "inc" => "i",
 	"b" => "b",
-	"q1" => "u",
+	# "q1" => "u",
 );
 
 # ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
@@ -428,7 +442,7 @@ let
 		labelsize = 25,
 	)
 	
-	fig |> Pl.as_svg
+	fig# |> Pl.as_svg
 end
 
 # ╔═╡ a9747b5e-adf9-48dd-96c2-f184d873d1ac
@@ -445,6 +459,7 @@ md"""
 # ╠═a8d91138-73e7-4382-a032-37daec54a9c0
 # ╠═d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
 # ╠═2191791b-df62-4f1b-88bf-060cc47896b2
+# ╠═105762e1-15a2-4e7f-bff3-7740a5f53492
 # ╠═f539e06d-a1b5-413a-b90e-91cb0bbd5a4c
 # ╠═e873f9c6-fd1a-4227-9df1-70c626e4a0a1
 # ╠═e72dba55-6a33-462f-aeac-5f62b25cb46a
@@ -454,6 +469,7 @@ md"""
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
+# ╠═6cfb1541-62af-4884-9c74-d19b56c3b02e
 # ╠═0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # ╠═d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c
 # ╟─b28bb1b6-c148-41c4-9f94-0833e365cad4

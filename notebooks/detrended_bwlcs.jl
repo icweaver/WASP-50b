@@ -13,21 +13,25 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ b3ce86b4-bd60-11eb-17bf-ff4a35c62058
+# ╔═╡ 818783f8-7164-466e-b5a7-b75eaefe6bb4
 begin
 	import PlutoUI as Pl
+	using CSV
 	using CairoMakie
 	using Colors
-	using CSV
 	using DataFrames
-	using Glob
-	using Measurements
-	using PyCall
-	using Statistics, KernelDensity
-	using Latexify, OrderedCollections
 	using DataFramesMeta
-	using NaturalSort
 	using DelimitedFiles
+	using Glob
+	using ImageFiltering
+	using KernelDensity
+	using Latexify
+	using Measurements
+	using NaturalSort
+	using OrderedCollections
+	using Printf
+	using PyCall
+	using Statistics
 end
 
 # ╔═╡ 0158a760-1229-4089-bf90-7c7b2f1f548a
@@ -40,12 +44,26 @@ First, let's load the relevant data needed for this notebook:
 # ╔═╡ 4b09c729-3395-4cee-bb69-bab59390845c
 const DATA_DIR = "data/detrended/out_l_C/WASP50"
 
+# ╔═╡ 737c135a-7412-4b87-a718-642472d4bf4b
+function name(dirpath, dates_to_names)
+	date_target = splitpath(split(glob(dirpath)[1], "w50_")[2])[1]
+	return dates_to_names[date_target]
+end
+
+# ╔═╡ f3e9100a-ec8e-425f-9081-e457ad9b1515
+dates_to_names = Dict(
+	"131219_IMACS" => "Transit 1 (IMACS)",
+	"150927_IMACS" => "Transit 2 (IMACS)",
+	"150927_LDSS3_flat" => "Transit 2 (LDSS3)",
+	"161211_IMACS" => "Transit 3 (IMACS)",
+ )
+
 # ╔═╡ 100af59b-3a24-41d0-9cda-05592bd1778f
 begin
 	# Load IMACS
 	cubes = Dict{String, Any}()
 	
-	for (i, (dirpath)) ∈ enumerate(sort(glob("$(DATA_DIR)/w50*IMACS*/wavelength")))
+	for dirpath ∈ sort(glob("$(DATA_DIR)/w50*/wavelength"))
 		fpaths = sort!(glob("$(dirpath)/wbin*/PCA_2/detrended_lc.dat"), lt=natural)
 		
 		dirpath_WLC = "$(dirname(dirpath))/white-light"
@@ -65,7 +83,7 @@ begin
 		N_bins = length(fpaths)
 		det_BLC_fluxes = Matrix{Float64}(undef, N_time, N_bins)
 		det_BLC_models = copy(det_BLC_fluxes)
-		
+	
 		# Populate each matrix
 		for (fpath, lc, model) in zip(
 			fpaths, eachcol(det_BLC_fluxes), eachcol(det_BLC_models)
@@ -76,15 +94,15 @@ begin
 				comment = "#",
 				select=[:DetFlux, :Model],
 			)
-			lc .= df.DetFlux
-			model .= df.Model
+			# lc .= df.DetFlux
+			# model .= df.Model
 		end
 				
 		# Save
-		cubes["Transit $i IMACS"] = Dict(
-			"fluxes" => det_BLC_fluxes,
-			"models" => det_BLC_models,
-			"t₀" => t₀,
+		cubes[name(dirpath, dates_to_names)] = Dict(
+			# "fluxes" => det_BLC_fluxes,
+			# "models" => det_BLC_models,
+			# "t₀" => t₀,
 			"wbins" => readdlm("$(dirname(dirpath_WLC))/wbins.dat", comments=true),
 			"tspec" => CSV.File(
 				"$(dirname(dirpath_WLC))/transpec.csv",
@@ -95,6 +113,9 @@ begin
 		
 	cubes = sort(cubes)
 end
+
+# ╔═╡ b6007d1d-fb9e-4f56-a38a-febb80ea7f09
+cubes |> keys
 
 # ╔═╡ ded314ba-1ebe-4f01-bd1b-652a0258f955
 @bind transit Pl.Select(cubes.keys)
@@ -131,15 +152,15 @@ md"""
 begin
 	const FIG_TALL = (900, 1_200)
 	const FIG_WIDE = (1_350, 800)
-	const COLORS =  parse.(Colorant,
+	const COLORS = parse.(Colorant,
 		[
-			"#5daed9",  # Cyan
-			"plum",
-			"#f7ad4d",  # Yellow
-			"mediumaquamarine",
-			"#126399",  # Blue
-			"#956cb4",  # Purple
+			"#fdbf6f",  # Yellow
+			"#a6cee3",  # Cyan
+			"#1f78b4",  # Blue
 			"#ff7f00",  # Orange
+			"plum",
+			"#956cb4",  # Purple
+			"mediumaquamarine",
 			"#029e73",  # Green
 			"slategray",
 		]
@@ -216,7 +237,10 @@ end
 # ╔═╡ Cell order:
 # ╟─0158a760-1229-4089-bf90-7c7b2f1f548a
 # ╠═4b09c729-3395-4cee-bb69-bab59390845c
+# ╠═b6007d1d-fb9e-4f56-a38a-febb80ea7f09
 # ╠═100af59b-3a24-41d0-9cda-05592bd1778f
+# ╠═737c135a-7412-4b87-a718-642472d4bf4b
+# ╠═f3e9100a-ec8e-425f-9081-e457ad9b1515
 # ╟─ded314ba-1ebe-4f01-bd1b-652a0258f955
 # ╠═df1a160c-22ff-4c5e-a71f-b903d8a23ef1
 # ╠═bec88974-b150-4f53-9497-ddec4883ae17
@@ -224,4 +248,4 @@ end
 # ╠═f2da7123-cda9-47c3-aa72-4f47f4f8dfda
 # ╟─1dd4968e-959a-4f6e-a0e2-9fe9b8ecdd74
 # ╠═0af97a94-cb08-40e2-8011-11c8696684fa
-# ╠═b3ce86b4-bd60-11eb-17bf-ff4a35c62058
+# ╠═818783f8-7164-466e-b5a7-b75eaefe6bb4
