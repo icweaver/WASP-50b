@@ -42,7 +42,7 @@ First, let's load the relevant data needed for this notebook:
 """
 
 # ╔═╡ a8d91138-73e7-4382-a032-37daec54a9c0
-const DATA_DIR = "data/detrended/out_l_C/WASP50"
+const DATA_DIR = "data/detrended/out_l/WASP50"
 
 # ╔═╡ 105762e1-15a2-4e7f-bff3-7740a5f53492
 glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")
@@ -330,12 +330,12 @@ begin
 			"#fdbf6f",  # Yellow
 			"#a6cee3",  # Cyan
 			"#1f78b4",  # Blue
+			"slategray",
 			"#ff7f00",  # Orange
 			"plum",
 			"#956cb4",  # Purple
 			"mediumaquamarine",
 			"#029e73",  # Green
-			"slategray",
 		]
 	)
 end
@@ -442,7 +442,7 @@ let
 		labelsize = 25,
 	)
 	
-	fig# |> Pl.as_svg
+	fig |> Pl.as_svg
 end
 
 # ╔═╡ a9747b5e-adf9-48dd-96c2-f184d873d1ac

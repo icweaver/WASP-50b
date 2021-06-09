@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.7
+# v0.14.8
 
 using Markdown
 using InteractiveUtils
@@ -84,6 +84,12 @@ names = OrderedDict(
 	"aperture_153_1117" => "c06",
 	"aperture_830_689" => "c15",
 	"aperture_28_1189" => "c21",
+	
+	
+	"aperture_325_803" => "WASP50",
+	"aperture_157_1116" => "c06",
+	"aperture_830_693" => "c15",
+	"aperture_35_1188" => "c21",
 )
 
 # ╔═╡ b4f4e65b-bd50-4ee2-945f-7c130db21fdf
@@ -512,13 +518,13 @@ end
 
 # ╔═╡ 798880fa-1e52-4758-a7f7-d3c6adec244a
 function plot_div_WLCS!(
-	axs, f_div_wlc, window_width, cNames, use_comp_idxs; ferr=0.002
+	axs, f_div_wlc, window_width, cNames, use_comps_idxs; ferr=0.002
 )
-	use_comps = cNames[use_comp_idxs]
+	use_comps = cNames[use_comps_idxs]
 	
 	# Only apply filter to specified comp star divided WLCs
 	f_filt, use_idxs, bad_idxs = filt_idxs(
-		f_div_wlc[:, use_comp_idxs], window_width; ferr=ferr
+		f_div_wlc[:, use_comps_idxs], window_width; ferr=ferr
 	)
 	
 	idxs = 1:size(f_div_wlc, 1)
@@ -552,7 +558,7 @@ end
 let
 	fig = Figure(resolution=FIG_TALL)
 	
-	comp_names = names.vals[begin+1:end]
+	comp_names = names.vals[2:4]
 	ncomps = length(comp_names)
 	use_comps = comp_names # use all comps
 	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
