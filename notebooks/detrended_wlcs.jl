@@ -1,12 +1,12 @@
 ### A Pluto.jl notebook ###
-# v0.14.7
+# v0.14.8
 
 using Markdown
 using InteractiveUtils
 
 # ╔═╡ 691eddff-f2eb-41a8-ab05-63afb46d15f2
 begin
-	import PlutoUI as Pl
+	using AlgebraOfGraphics
 	using CSV
 	using CairoMakie
 	using Colors
@@ -23,15 +23,16 @@ begin
 	using Printf
 	using PyCall
 	using Statistics
+	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
 end
 
 # ╔═╡ 506eeeb2-e56d-436b-91b8-605e52201563
 md"""
-# Detrended white light curves
+# Detrended White Light Curves
 
 In this notebook we will visualize the detrended white light curves from IMACS and LDSS3. We used the average orbital and system parameters obtained from these detrended fits to place uniform constraints on the binned wavelength analysis **<ADD LINK>.**
 
-$(Pl.TableOfContents())
+$(TableOfContents(title="📖 Table of Contents"))
 """
 
 # ╔═╡ 782806a6-efd2-45a9-b898-788a276c282b
@@ -140,7 +141,7 @@ cubes |> keys
 
 # ╔═╡ a8cf11e2-796e-45ff-bdc9-e273b927700e
 md"""
-## Transit curves ⚪
+## Transit curves 🌅
 """
 
 # ╔═╡ ae82d3c1-3912-4a5e-85f5-6383af42291e
@@ -170,7 +171,7 @@ end
 
 # ╔═╡ b28bb1b6-c148-41c4-9f94-0833e365cad4
 md"""
-## Summary table 📓
+## Summary table 📋
 """
 
 # ╔═╡ 30b84501-fdcd-4d83-b929-ff354de69a17
@@ -208,14 +209,14 @@ end
 # ╔═╡ ed935d16-ddce-4334-a880-005732b38936
 # Params to show in corner plot
 const PARAMS = OrderedDict(
-	"p" => "Rₚ/Rₛ",
+	"p" => "Rp/Rs",
 	"t0" => "t₀",
 	"P" => "P",
-	"rho" => "ρₛ",
-	# "aR" => "a/Rₛ",
-	# "inc" => "i",
+	"rho" => "ρs",
+	"aR" => "a/Rs",
+	"inc" => "i",
 	"b" => "b",
-	# "q1" => "u",
+	"q1" => "u",
 );
 
 # ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
@@ -252,7 +253,7 @@ latexify(BMA)
 
 # ╔═╡ d279e93e-8665-41b2-bd5c-723458fabe86
 # Will probably just copy-paste directly into paper
-Pl.with_terminal() do
+with_terminal() do
 	BMA |> x -> latexify(x, env=:table) |> print
 end;
 
@@ -267,11 +268,6 @@ begin
 		)
 	end
 end
-
-# ╔═╡ c5e10e47-ec64-4911-8107-487d1ef3f134
-md"""
-### Helper functions
-"""
 
 # ╔═╡ 6fcd1377-8364-45a3-9ff6-89d61df1ef42
 # Number of levels `n` to show in contour plots
@@ -325,60 +321,78 @@ md"""
 begin
 	const FIG_TALL = (900, 1_200)
 	const FIG_WIDE = (1_350, 800)
+	#const COLORS = to_colormap(:seaborn_colorblind6, 8)[[8, 6, 4, 1]]
 	const COLORS = parse.(Colorant,
 		[
-			"#fdbf6f",  # Yellow
 			"#a6cee3",  # Cyan
+			"#fdbf6f",  # Yellow
+			"#ff7f00",  # Orange
 			"#1f78b4",  # Blue
 			"slategray",
-			"#ff7f00",  # Orange
-			"plum",
-			"#956cb4",  # Purple
-			"mediumaquamarine",
-			"#029e73",  # Green
+			# "plum",
+			# "#956cb4",  # Purple
+			# "mediumaquamarine",
+			# "#029e73",  # Green
 		]
 	)
+	
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,),
+			Lines = (linewidth=3,),
+			Scatter = (linewidth=10,),
+			palette = (color=COLORS, patchcolor=COLORS,),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
+	
+	COLORS
 end
 
 # ╔═╡ 4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
 let
-	fig = Figure(resolution=(700, 800))
+	fig = Figure(resolution=(1250, 500))
 	
-	i = 1
+	grid = CartesianIndices((2, 2))
 	for (i, (transit, cube)) in enumerate(cubes)
 		t₀ = val(cube["results"], "t0")
 		P = val(cube["results"], "P")
 		
-		scatter(fig[i, 1],
+		ax = Axis(fig[Tuple(grid[i])...])
+		scatter!(ax,
 			ϕ.(cube["models"]["t"], t₀, P),
 			cube["models"]["LC_det"],
 			color = COLORS[i],
-			strokewidth = 0,
-			#axis = (title=transit,),
 		)
-		
-		lines!(fig[i, 1],
+		lines!(ax,
 			ϕ.(cube["models"]["t_interp"], t₀, P),
 			cube["models"]["LC_det_model_interp"],
 			color = 0.75*COLORS[i],
-			linewidth = 3,
 		)
-
-		text!(fig[i, 1], transit;
+		resids = cube["models"]["LC_det"] - cube["models"]["LC_transit_model"]
+		resid_σ = round(Int, std(resids) * 1e6)
+		text!(ax, "$transit\n$resid_σ ppm";
 			position = Point2f0(0.06, 0.980),
 			align = (:right, :bottom),
 			color = 0.75*COLORS[i],
 		)
 	end
 	
-	axs = reshape(copy(fig.content), (length(cubes), 1))
+	axs = reshape(copy(fig.content), (2, 2))
 	linkaxes!(axs...)
+	hidexdecorations!.(axs[1, :], grid=false)
+	hideydecorations!.(axs[:, 2], grid=false)
+
 	#ylims!(axs[end], 0.96, 1.02)
-	hidexdecorations!.(axs[begin:end-1], grid=false)
-	axs[end].xlabel = "Phase"
-	axs[end].ylabel = "Relative flux"
+	Label(fig[3, 1:2], "Phase")
+	Label(fig[1:2, 0], "Relative flux", rotation=π/2)
+	#axs[end].ylabel = "Relative flux"
 	
-	fig |> Pl.as_svg
+	fig |> as_svg
 end
 
 # ╔═╡ d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
@@ -390,22 +404,33 @@ let
 	
 	for j in 1:n_params, i in 1:n_params
 		# Create subplot apply global settings
-		ax = Axis(fig[i, j], axis=(aspect=1, xticklabelrotation=π/4),)
-		#ax.xticklabelrotation = π/4
-		ax.aspect = 1.0
+		ax = Axis(fig[i, j];
+			aspect = 1,
+			xticklabelrotation = π/4,
+			xticks = LinearTicks(3),
+			yticks = LinearTicks(3),
+			limits = ((-14, 14), (-14, 14)),
+		)
 		# Hide upper triangle
 		j > i && (hidedecorations!(ax); hidespines!(ax))
 		# Hide y ticks on diagonals
-		j == i && hideydecorations!(ax)
-		# Hide x ticks on all diagonals except the bottom one
-		j == i && i != n_params && hidexdecorations!(ax, grid=false)
+		j == i && (hideydecorations!(ax); ylims!(0, 0.4))
+		# Hide x ticks on all diagonal elements except the bottom one
+		j == i && i != n_params && (
+			hidexdecorations!(ax, grid=false);
+		)
 		# Hide ticks on interior lower triangle
 		j < i && i != n_params && j != 1 && (
 			hideydecorations!(ax, grid=false);
-			hidexdecorations!(ax, grid=false))
+			hidexdecorations!(ax, grid=false);
+		)
 		# Hide remaining xyticks
-		j < i && j == 1 && i != n_params && hidexdecorations!(ax, grid=false)
-		j < i && i == n_params && j != 1 && hideydecorations!(ax, grid=false) 
+		j < i && j == 1 && i != n_params && (
+			hidexdecorations!(ax, grid=false);
+		)
+		j < i && i == n_params && j != 1 && (
+			hideydecorations!(ax, grid=false);
+		)
 	end
 			
 	# Plot corners from each night
@@ -428,25 +453,23 @@ let
 	[linkxaxes!(reverse(axs[:, j])...) for j in 1:n_params]
 	for (j, (param, param_latex)) in enumerate(PARAMS)
 		axs[end, j].xlabel = "Δ"*param_latex
-		axs[end, j].xlabelsize = 26
 		axs[j, begin].ylabel = "Δ"*param_latex
-		axs[j, begin].ylabelsize = 26
 	end
 	
 	Legend(fig[1, end], elems, elem_labels;
 		halign = :right,
+		valign = :top,
 		patchsize = (25, 25),
 		tellwidth = false,
 		tellheight = false,
 		rowgap = 10,
 		labelsize = 25,
+		nbanks = 2,
+		orientation = :horizontal,
 	)
 	
-	fig |> Pl.as_svg
+	fig |> as_svg
 end
-
-# ╔═╡ a9747b5e-adf9-48dd-96c2-f184d873d1ac
-set_theme!(palette = (color=COLORS,),)
 
 # ╔═╡ baeadfce-535a-46c3-8cb9-79cf6bde8555
 md"""
@@ -487,12 +510,10 @@ md"""
 # ╠═706f1fb6-2895-48f6-a315-842fbf35da18
 # ╠═d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
 # ╠═ed935d16-ddce-4334-a880-005732b38936
-# ╟─c5e10e47-ec64-4911-8107-487d1ef3f134
 # ╠═2cbc6ddb-210e-41e8-b745-5c41eba4e778
 # ╠═6fcd1377-8364-45a3-9ff6-89d61df1ef42
 # ╟─82a23101-9e1f-4eae-b529-e750a44c98b1
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
 # ╠═1f7b883c-0192-45bd-a206-2a9fde1409ca
-# ╠═a9747b5e-adf9-48dd-96c2-f184d873d1ac
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
 # ╠═691eddff-f2eb-41a8-ab05-63afb46d15f2

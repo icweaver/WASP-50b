@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.7
+# v0.14.8
 
 using Markdown
 using InteractiveUtils
@@ -15,7 +15,7 @@ end
 
 # ╔═╡ 818783f8-7164-466e-b5a7-b75eaefe6bb4
 begin
-	import PlutoUI as Pl
+	using AlgebraOfGraphics
 	using CSV
 	using CairoMakie
 	using Colors
@@ -32,7 +32,15 @@ begin
 	using Printf
 	using PyCall
 	using Statistics
+	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
 end
+
+# ╔═╡ ebef52bc-2acf-4cf8-aca7-90cd6684c061
+md"""
+# Detrended Binned Light Curves
+
+$(TableOfContents(title="📖 Table of Contents"))
+"""
 
 # ╔═╡ 0158a760-1229-4089-bf90-7c7b2f1f548a
 md"""
@@ -64,7 +72,7 @@ begin
 	cubes = Dict{String, Any}()
 	
 	for dirpath ∈ sort(glob("$(DATA_DIR)/w50*/wavelength"))
-		fpaths = sort!(glob("$(dirpath)/wbin*/PCA_2/detrended_lc.dat"), lt=natural)
+		fpaths = sort!(glob("$(dirpath)/wbin*/PCA_1/detrended_lc.dat"), lt=natural)
 		
 		dirpath_WLC = "$(dirname(dirpath))/white-light"
 		
@@ -94,15 +102,15 @@ begin
 				comment = "#",
 				select=[:DetFlux, :Model],
 			)
-			# lc .= df.DetFlux
-			# model .= df.Model
+			lc .= df.DetFlux
+			model .= df.Model
 		end
 				
 		# Save
 		cubes[name(dirpath, dates_to_names)] = Dict(
-			# "fluxes" => det_BLC_fluxes,
-			# "models" => det_BLC_models,
-			# "t₀" => t₀,
+			"fluxes" => det_BLC_fluxes,
+			"models" => det_BLC_models,
+			"t₀" => t₀,
 			"wbins" => readdlm("$(dirname(dirpath_WLC))/wbins.dat", comments=true),
 			"tspec" => CSV.File(
 				"$(dirname(dirpath_WLC))/transpec.csv",
@@ -118,7 +126,7 @@ end
 cubes |> keys
 
 # ╔═╡ ded314ba-1ebe-4f01-bd1b-652a0258f955
-@bind transit Pl.Select(cubes.keys)
+@bind transit Select(cubes.keys)
 
 # ╔═╡ 2c0406e7-96e0-4a87-a91c-02d463e32ebc
 md"""
@@ -152,19 +160,36 @@ md"""
 begin
 	const FIG_TALL = (900, 1_200)
 	const FIG_WIDE = (1_350, 800)
+	#const COLORS = to_colormap(:seaborn_colorblind6, 8)[[8, 6, 4, 1]]
 	const COLORS = parse.(Colorant,
 		[
-			"#fdbf6f",  # Yellow
 			"#a6cee3",  # Cyan
-			"#1f78b4",  # Blue
+			"#fdbf6f",  # Yellow
 			"#ff7f00",  # Orange
-			"plum",
-			"#956cb4",  # Purple
-			"mediumaquamarine",
-			"#029e73",  # Green
+			"#1f78b4",  # Blue
 			"slategray",
+			# "plum",
+			# "#956cb4",  # Purple
+			# "mediumaquamarine",
+			# "#029e73",  # Green
 		]
 	)
+	
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,),
+			Lines = (linewidth=3,),
+			Scatter = (linewidth=10,),
+			palette = (color=COLORS, patchcolor=COLORS,),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
+	
+	COLORS
 end
 
 # ╔═╡ bec88974-b150-4f53-9497-ddec4883ae17
@@ -213,8 +238,8 @@ function plot_BLCs(datas, models, wbins, errs; offset=0.3)
 	hidedecorations!(axs[end])
 	#ylims!(ax_left, 0.95, 1.34)
 	
-	fig[1:2, 0] = Label(fig, "Relative flux + offset", rotation=π/2)
-	fig[end, 2:3] = Label(fig, "Index")
+	Label(fig[1:2, 0], "Relative flux + offset", rotation=π/2)
+	Label(fig[end, 2:3], "Index")
 	
 	return fig
 end
@@ -231,10 +256,11 @@ let
 		round.(Int, errs),
 	)
 		
-	p |> Pl.as_svg
+	p |> as_svg
 end
 
 # ╔═╡ Cell order:
+# ╟─ebef52bc-2acf-4cf8-aca7-90cd6684c061
 # ╟─0158a760-1229-4089-bf90-7c7b2f1f548a
 # ╠═4b09c729-3395-4cee-bb69-bab59390845c
 # ╠═b6007d1d-fb9e-4f56-a38a-febb80ea7f09

@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.7
+# v0.14.8
 
 using Markdown
 using InteractiveUtils
@@ -15,27 +15,33 @@ end
 
 # ╔═╡ b1b0690a-a1eb-11eb-1590-396d92c80c23
 begin
-	import PlutoUI as Pl
-	using CairoMakie
-	using Glob
-	using PyCall
-	using Statistics
-	using Colors
-	using ImageFiltering
+	using AlgebraOfGraphics
 	using CSV
+	using CairoMakie
+	using Colors
 	using DataFrames
+	using DataFramesMeta
 	using DelimitedFiles
+	using Glob
+	using ImageFiltering
+	using KernelDensity
+	using Latexify
+	using Measurements
+	using NaturalSort
 	using OrderedCollections
 	using Printf
+	using PyCall
+	using Statistics
+	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
 end
 
 # ╔═╡ ee24f7df-c4db-4065-afe9-10be80cbcd6b
 md"""
-# Reduced -- IMACS
+# Reduced Data -- IMACS
 
 In this notebook we will examine the stellar spectra, white-light, and wavelength binned light curves from the raw flux extracted from IMACS.
 
-$(Pl.TableOfContents(depth=4))
+$(TableOfContents(depth=4))
 """
 
 # ╔═╡ 9d180c21-e634-4a1e-8430-bdd089262f66
@@ -45,7 +51,7 @@ md"""
 The main data product from our custom pipeline for this instrument is a pickle file with the following naming scheme: `LCs_<target>_<wavelength bin scheme>.pkl`. 
 
 Each cube (`LC`) can be selected from the following drop-down menu, and will be used for the rest of this analysis:
-$(@bind fpath Pl.Select(sort(glob("data/reduced/IMACS/*/*.pkl"))))
+$(@bind fpath Select(sort(glob("data/reduced/IMACS/*/*.pkl"))))
 """
 
 # ╔═╡ 66052b03-35a0-4877-abef-f525766fd332
@@ -87,7 +93,7 @@ LC = load_pickle(fpath)
 
 # ╔═╡ e774a20f-2d58-486a-ab71-6bde678b26f8
 md"""
-## Stellar spectra 🌟
+## Stellar spectra ⭐
 
 With the flux extracted for each object, we now turn to analyzing the resulting stellar spectra:
 """
@@ -124,12 +130,12 @@ let
 	xlims!(ax, 3_500, 11_000)
 	ylims!(ax, 0, 2.2)
 	
-	fig |> Pl.as_svg
+	fig |> as_svg
 end
 
 # ╔═╡ e3468c61-782b-4f55-a4a1-9d1883655d11
 md"""
-## White light curves ⚪
+## White light curves 🌅
 
 Next, we will extract the integrated white light curves from these spectra, integrated over the specified wavelength bins:
 """
@@ -151,13 +157,13 @@ md"""
 We next plot these light curves and identified outliers below:
 """
 
-# ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
-@bind window_width Pl.Slider(3:2:21, default=15, show_value=true)
-
 # ╔═╡ 4b763b58-862e-4c88-a7c9-fe0b1271c0b4
-#use_comps = ["c15", "c18", "c21", "c23"]
+use_comps = ["c15", "c18", "c21", "c23"]
 #use_comps = ["c06", "c13"]
-use_comps = ["c15", "c21"]
+#use_comps = ["c15", "c21"]
+
+# ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
+@bind window_width Slider(3:2:21, default=15, show_value=true)
 
 # ╔═╡ 169197fe-983d-420b-8c56-353a65b28ddc
 get_idx(needle, haystack) = findfirst(==(needle), haystack)
@@ -194,7 +200,7 @@ function filt_idxs(f_div_wlc, window_width; ferr=0.002)
 end
 
 # ╔═╡ df46d106-f186-4900-9d3f-b711bc803707
-Pl.with_terminal() do
+with_terminal() do
 	use_comps = use_comps
 	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
 	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
@@ -218,19 +224,36 @@ md"""
 begin
 	const FIG_TALL = (900, 1_200)
 	const FIG_WIDE = (1_350, 800)
-	const COLORS =  parse.(Colorant,
+	#const COLORS = to_colormap(:seaborn_colorblind6, 8)[[8, 6, 4, 1]]
+	const COLORS = parse.(Colorant,
 		[
-			"#5daed9",  # Cyan
-			"plum",
-			"#f7ad4d",  # Yellow
-			"mediumaquamarine",
-			"#126399",  # Blue
-			"#956cb4",  # Purple
+			"#a6cee3",  # Cyan
+			"#fdbf6f",  # Yellow
 			"#ff7f00",  # Orange
-			"#029e73",  # Green
+			"#1f78b4",  # Blue
 			"slategray",
+			# "plum",
+			# "#956cb4",  # Purple
+			# "mediumaquamarine",
+			# "#029e73",  # Green
 		]
 	)
+	
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,),
+			Lines = (linewidth=3,),
+			Scatter = (linewidth=10,),
+			palette = (color=COLORS,),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
+	
+	COLORS
 end
 
 # ╔═╡ ccabf5d2-5739-4284-a972-23c02a263a5c
@@ -293,7 +316,7 @@ let
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
 	fig[end+1, 1:end] = Label(fig, "Index")
 	
-	fig |> Pl.as_svg
+	fig |> as_svg
 end
 
 # ╔═╡ eeb3da97-72d5-4317-acb9-d28637a06d67
@@ -317,9 +340,9 @@ md"""
 # ╟─e3468c61-782b-4f55-a4a1-9d1883655d11
 # ╠═18d58341-0173-4eb1-9f01-cfa893088613
 # ╟─941cd721-07d8-4a8f-9d75-42854e6e8edb
-# ╠═ab058d99-ce5f-4ed3-97bd-a62d2f258773
 # ╠═4b763b58-862e-4c88-a7c9-fe0b1271c0b4
 # ╠═df46d106-f186-4900-9d3f-b711bc803707
+# ╠═ab058d99-ce5f-4ed3-97bd-a62d2f258773
 # ╠═13523326-a5f2-480d-9961-d23cd51192b8
 # ╠═169197fe-983d-420b-8c56-353a65b28ddc
 # ╟─4bad8b5c-e8b9-4ceb-97f4-41b4401d4f63

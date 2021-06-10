@@ -1,12 +1,12 @@
 ### A Pluto.jl notebook ###
-# v0.14.7
+# v0.14.8
 
 using Markdown
 using InteractiveUtils
 
 # ╔═╡ ef970c0c-d08a-4856-b10b-531bb5e7e53e
 begin
-	import PlutoUI as Pl
+	using AlgebraOfGraphics
 	using CSV
 	using CairoMakie
 	using Colors
@@ -23,6 +23,7 @@ begin
 	using Printf
 	using PyCall
 	using Statistics
+	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
 end
 
 # ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
@@ -31,7 +32,7 @@ md"""
 
 In this notebook we will load in the individual transmission spectra from each night, and combine them on a common wavelength basis.
 
-$(Pl.TableOfContents())
+$(TableOfContents(title="📖 Table of Contents"))
 """
 
 # ╔═╡ 9413e640-22d9-4bfc-b4ea-f41c02a3bfde
@@ -177,7 +178,6 @@ wlc_offsets = reshape(wlc_depths .- mean_wlc_depth, 1, :)
 # ╔═╡ 4b9cfc02-5e18-422d-b18e-6301a659561a
 begin
 	depths_adj = depths_common .- Measurements.value.(wlc_offsets)
-	#depths_adj = depths_common .- wlc_offsets
 	depths_adj.Combined = weightedmean.(eachrow(depths_adj))
 	insertcols!(depths_adj, 1,
 		:Wav_d => df_common.Wav_d,
@@ -185,6 +185,11 @@ begin
 		:Wav_cen => df_common.wav,
 	)
 end;
+
+# ╔═╡ ba6fce7f-8a4d-45de-96db-f5e842df0951
+md"""
+## Plot
+"""
 
 # ╔═╡ 5d25caa3-916a-40b1-ba7c-ea1295afb775
 md"""
@@ -195,19 +200,36 @@ Average precision per bin: $(round(Int, getproperty.(depths_adj[!, :Combined], :
 begin
 	const FIG_TALL = (900, 1_200)
 	const FIG_WIDE = (1_350, 800)
+	#const COLORS = to_colormap(:seaborn_colorblind6, 8)[[8, 6, 4, 1]]
 	const COLORS = parse.(Colorant,
 		[
-			"#fdbf6f",  # Yellow
 			"#a6cee3",  # Cyan
-			"#1f78b4",  # Blue
+			"#fdbf6f",  # Yellow
 			"#ff7f00",  # Orange
-			"plum",
-			"#956cb4",  # Purple
-			"mediumaquamarine",
-			"#029e73",  # Green
+			"#1f78b4",  # Blue
 			"slategray",
+			# "plum",
+			# "#956cb4",  # Purple
+			# "mediumaquamarine",
+			# "#029e73",  # Green
 		]
 	)
+	
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,),
+			Lines = (linewidth=3,),
+			Scatter = (linewidth=10,),
+			palette = (color=COLORS, patchcolor=COLORS,),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
+	
+	COLORS
 end
 
 # ╔═╡ 8c077881-fc5f-4fad-8497-1cb6106c6ed5
@@ -216,7 +238,7 @@ let
 		
 	ax = Axis(
 		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
-		limits = (nothing, (mean_wlc_depth.val - 4_000, mean_wlc_depth.val + 4_000)),
+		limits = (nothing, (15_500, 22_500)),
 		grid = (linewidth=(0, 0),),
 	)
 	
@@ -281,7 +303,7 @@ let
 
 	axislegend(orientation=:horizontal, valign=:bottom, labelsize=16)
 		
-	fig |> Pl.as_svg
+	fig |> as_svg
 end
 
 # ╔═╡ Cell order:
@@ -304,6 +326,7 @@ end
 # ╠═c405941d-bdcc-458f-b0bf-01abf02982e0
 # ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
 # ╠═4b9cfc02-5e18-422d-b18e-6301a659561a
+# ╟─ba6fce7f-8a4d-45de-96db-f5e842df0951
 # ╟─5d25caa3-916a-40b1-ba7c-ea1295afb775
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
 # ╠═bef0918c-c645-4557-a2e5-00b6c26573bc

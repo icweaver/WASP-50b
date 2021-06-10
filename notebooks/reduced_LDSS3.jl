@@ -15,7 +15,7 @@ end
 
 # ╔═╡ c911cecd-0747-4cd1-826f-941f2f58091c
 begin
-	import PlutoUI as Pl
+	using AlgebraOfGraphics
 	using CSV
 	using CairoMakie
 	using Colors
@@ -32,15 +32,16 @@ begin
 	using Printf
 	using PyCall
 	using Statistics
+	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
 end
 
 # ╔═╡ 34ef4580-bb95-11eb-34c1-25893217f422
 md"""
-# Reduced -- LDSS3
+# Reduced Data -- LDSS3
 
 In this notebook we will examine the stellar spectra, white-light, and wavelength binned light curves from the raw flux extracted from LDSS3.
 
-$(Pl.TableOfContents(depth=4))
+$(TableOfContents(depth=4))
 """
 
 # ╔═╡ a8e3b170-3fc2-4d12-b117-07bd37d27710
@@ -70,7 +71,7 @@ The data from this instrument is stored in an `npy` file that contains the follo
 	We will use `wavelength` and `raw_counts` for our analysis here, where `raw_counts` is the sky subtracted, cross-dispersion integrated flux from each star.
 
 Each cube (`LC`) can be selected from the following drop-down menu, and will be used for the rest of this analysis:
-$(@bind fpath Pl.Select(sort(glob("data/reduced/LDSS3/*/LC*.npy"))))
+$(@bind fpath Select(sort(glob("data/reduced/LDSS3/*/LC*.npy"))))
 """
 
 # ╔═╡ 698ae5b0-7cd3-4055-a13e-e9aa3704ca12
@@ -131,7 +132,7 @@ end
 
 # ╔═╡ 299dda0e-a214-45ca-9a68-947f60fcf404
 md"""
-## Stellar spectra 🌟
+## Stellar spectra ⭐
 
 With the flux extracted for each object, we now turn to analyzing the resulting stellar spectra:
 """
@@ -140,15 +141,15 @@ With the flux extracted for each object, we now turn to analyzing the resulting 
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
 
 # ╔═╡ 7d68ad39-3e39-48fa-939a-e56c6659d2b3
-function spec_plot!(ax, wav, A; norm=1.0, label="")
+function spec_plot!(ax, wav, A; color=:blue, norm=1.0, label="")
 	μ, σ = med_std(A) ./ norm
-	p = band!(ax, wav, μ .- σ, μ .+ σ)
-	lines!(ax, wav, μ, linewidth=2, label=label)
+	band!(ax, wav, μ .- σ, μ .+ σ, color=(color, 0.125))
+	lines!(ax, wav, μ, color=color, linewidth=2, label=label)
 end
 
 # ╔═╡ bd937d51-17e9-4de3-a5d0-4c436d413940
 md"""
-## White light curves ⚪
+## White light curves 🌅
 
 Next, we will extract the integrated white light curves from these spectra. We integrate over the same wavelength bins used in the IMACS analysis:
 """
@@ -157,7 +158,7 @@ Next, we will extract the integrated white light curves from these spectra. We i
 wbins = readdlm("data/reduced/LDSS3/w50_bins_LDSS3.dat", comments=true)
 
 # ╔═╡ cb805821-5d2e-484c-93a5-10a897d2cfe7
-@bind window_width Pl.Slider(3:2:21, default=15, show_value=true)
+@bind window_width Slider(3:2:21, default=15, show_value=true)
 
 # ╔═╡ 9372c69a-0aad-4e6e-9ea3-e934fa09b758
 get_idx(needle, haystack) = findfirst(==(needle), haystack)
@@ -320,27 +321,6 @@ f_comps = cat(
 # ╔═╡ dc62887d-746b-4503-8547-7a6814de66a8
 wav = LC["spectral"]["wavelength"][common_wav_idxs]
 
-# ╔═╡ 45418bd3-74a3-4758-9fce-adddbeeec076
-let
-	fig = Figure()
-	ax = Axis(fig[1, 1], xlabel="Wavelength Å", ylabel="Relative flux")
-	
-	fluxes = [f_target, [f_comps[:, :, i] for i in 1:3]...]
-	labels = names.vals
-	f_norm = 40362.188283796 # median IMACS WASP-50 flux for comparison
-	
-	for (name, f) in zip(labels, fluxes)
-		spec_plot!(ax, wav, f;
-			norm = f_norm,
-			label = name,
-		)
-	end
-	
-	axislegend()
-	
-	fig |> Pl.as_svg
-end
-
 # ╔═╡ 8c82a78d-7382-40d4-a76b-02e7cd061d67
 # Corresponding wav indxs
 binned_wav_idxs = [
@@ -365,7 +345,7 @@ end
 _, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm, window_width);
 
 # ╔═╡ ded63b4b-61b6-41b6-98d4-d13166bce76a
-Pl.with_terminal() do
+with_terminal() do
 	println(bad_idxs .- 1) # For Python
 end
 
@@ -401,7 +381,7 @@ cLCw
 md"""
 We plot these below for each comparison star division. Move the slider to view the plot for the corresponding comparison star:
 
-comp star $(@bind comp_idx Pl.Slider(1:ncomps, show_value=true))
+comp star $(@bind comp_idx Slider(1:ncomps, show_value=true))
 
 !!! note "Future"
 	Ability to interact with sliders completely in the browser coming soon!
@@ -480,12 +460,12 @@ specshifts = load_npz(
 );
 
 # ╔═╡ e4960d1a-8e33-478a-8100-d1838782938d
-Δwav = specshifts["shift"][target_name] |> 
+delta_wav = specshifts["shift"][target_name] |> 
 		sort |> values |> collect |> x -> convert(Vector{Float64}, x)
 
 # ╔═╡ e4388fba-64ef-4588-a1ed-283da2f52196
 df_eparams = DataFrame(
-	(Times=times, Airmass=airmass, Delta_Wav=Δwav,
+	(Times=times, Airmass=airmass, Delta_Wav=delta_wav,
 	 FWHM=fwhm, Sky_Flux=sky_flux, Trace_Center=trace_center)
 ) |> df -> mapcols(col -> fmt_float.(col), df)[use_idxs, :]
 
@@ -501,19 +481,58 @@ md"""
 begin
 	const FIG_TALL = (900, 1_200)
 	const FIG_WIDE = (1_350, 800)
-	const COLORS =  parse.(Colorant,
+	#const COLORS = to_colormap(:seaborn_colorblind6, 8)[[8, 6, 4, 1]]
+	const COLORS = parse.(Colorant,
 		[
-			"#5daed9",  # Cyan
-			"plum",
-			"#f7ad4d",  # Yellow
-			"mediumaquamarine",
-			"#126399",  # Blue
-			"#956cb4",  # Purple
+			"#a6cee3",  # Cyan
+			"#fdbf6f",  # Yellow
 			"#ff7f00",  # Orange
-			"#029e73",  # Green
+			"#1f78b4",  # Blue
 			"slategray",
+			# "plum",
+			# "#956cb4",  # Purple
+			# "mediumaquamarine",
+			# "#029e73",  # Green
 		]
 	)
+	
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,),
+			Lines = (linewidth=3,),
+			Scatter = (linewidth=10,),
+			palette = (color=COLORS, patchcolor=COLORS,),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
+	
+	COLORS
+end
+
+# ╔═╡ 45418bd3-74a3-4758-9fce-adddbeeec076
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1], xlabel="Wavelength Å", ylabel="Relative flux")
+	
+	fluxes = [f_target, [f_comps[:, :, i] for i in 1:3]...]
+	labels = names.vals
+	f_norm = 40362.188283796 # median IMACS WASP-50 flux for comparison
+	
+	for (i, (name, f)) in enumerate(zip(labels, fluxes))
+		spec_plot!(ax, wav, f;
+			color = COLORS[i],
+			norm = f_norm,
+			label = name,
+		)
+	end
+	
+	#axislegend()
+	
+	fig |> as_svg
 end
 
 # ╔═╡ 798880fa-1e52-4758-a7f7-d3c6adec244a
@@ -577,7 +596,7 @@ let
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
 	fig[end+1, 1:end] = Label(fig, "Index")
 	
-	fig |> Pl.as_svg
+	fig |> as_svg
 end
 
 # ╔═╡ 9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
@@ -624,7 +643,7 @@ let
 	# ax.xlabel = "Index"
 	# ax.ylabel = "Relative flux + offset"
 	
-	fig |> Pl.as_svg
+	fig |> as_svg
 end
 
 # ╔═╡ f788835c-8e81-4afe-805e-4caf2d5e5d5b
@@ -703,7 +722,7 @@ md"""
 # ╠═123d0c63-f05a-4a7d-be16-6a3b9abac044
 # ╟─3b6b57e2-46ab-46d9-b334-6264daf583f3
 # ╠═2d34e125-548e-41bb-a530-ba212c0ca17c
-# ╟─8b12f760-f294-4212-9b4e-88a886d84156
+# ╠═8b12f760-f294-4212-9b4e-88a886d84156
 # ╠═21cbb4b9-1887-4575-8f4f-5e32b8404c6a
 # ╟─f788835c-8e81-4afe-805e-4caf2d5e5d5b
 # ╠═c911cecd-0747-4cd1-826f-941f2f58091c
