@@ -85,6 +85,9 @@ begin
 	scatter!(p, ta)
 end
 
+# ╔═╡ 7f7b5097-b420-4779-b5ef-3c82d12309f5
+moving(median, TimeArray(t, f), 17)
+
 # ╔═╡ cba385b1-7d69-408a-a622-97e6498ae978
 md"""
 ## Packages
@@ -103,5 +106,6 @@ md"""
 # ╠═8fca400e-09bc-4fb8-8219-3450bf1e16d4
 # ╠═7cb85f49-b3c6-4145-add2-6719e2c7201e
 # ╠═126a6afa-6959-4a88-bb19-d37249468778
+# ╠═7f7b5097-b420-4779-b5ef-3c82d12309f5
 # ╟─cba385b1-7d69-408a-a622-97e6498ae978
 # ╠═fbed4840-cada-11eb-0c6c-d38d9654159f
