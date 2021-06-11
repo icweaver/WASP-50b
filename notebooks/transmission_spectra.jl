@@ -178,6 +178,7 @@ wlc_offsets = reshape(wlc_depths .- mean_wlc_depth, 1, :)
 # ╔═╡ 4b9cfc02-5e18-422d-b18e-6301a659561a
 begin
 	depths_adj = depths_common .- Measurements.value.(wlc_offsets)
+	#depths_adj = copy(depths_common)
 	depths_adj.Combined = weightedmean.(eachrow(depths_adj))
 	insertcols!(depths_adj, 1,
 		:Wav_d => df_common.Wav_d,

@@ -248,6 +248,9 @@ BMA = DataFrame(
 # ╔═╡ c7a179a3-9966-452d-b430-a28b2f004bc5
 latexify(BMA)
 
+# ╔═╡ 1a6427d9-dcc5-4149-883f-e428bfe43eb1
+BMA
+
 # ╔═╡ d714cb8c-801c-4afc-9f80-5e8ccac7081e
 [@sprintf "%.10f" v for v in BMA[!, "Combined"]]
 
@@ -498,6 +501,7 @@ md"""
 # ╟─b28bb1b6-c148-41c4-9f94-0833e365cad4
 # ╟─30b84501-fdcd-4d83-b929-ff354de69a17
 # ╠═c7a179a3-9966-452d-b430-a28b2f004bc5
+# ╠═1a6427d9-dcc5-4149-883f-e428bfe43eb1
 # ╠═d714cb8c-801c-4afc-9f80-5e8ccac7081e
 # ╠═19fcaa15-6f01-46a6-8225-4b5cafd89cc1
 # ╠═de0a4468-56aa-4748-80a0-6c9ab6b8579e

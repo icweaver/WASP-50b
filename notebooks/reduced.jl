@@ -35,6 +35,9 @@ begin
 	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
 end
 
+# ╔═╡ a45f9a40-be0f-4b37-8851-f4dc8da561d2
+weightedmean([1.0 ± 2.0, 3.0 ± 4.0, 5.0 ± 6.0])
+
 # ╔═╡ ee24f7df-c4db-4065-afe9-10be80cbcd6b
 md"""
 # Reduced Data -- IMACS
@@ -325,6 +328,7 @@ md"""
 """
 
 # ╔═╡ Cell order:
+# ╠═a45f9a40-be0f-4b37-8851-f4dc8da561d2
 # ╟─ee24f7df-c4db-4065-afe9-10be80cbcd6b
 # ╟─9d180c21-e634-4a1e-8430-bdd089262f66
 # ╠═bd2cdf33-0c41-4948-82ab-9a28929f72b3
