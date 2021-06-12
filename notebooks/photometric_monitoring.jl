@@ -4,12 +4,6 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 89e9971c-7e84-43d5-95c7-b9cfc3b1b91f
-using TimeSeries
-
-# ╔═╡ 5de1e52e-8074-4d38-9143-f8f3cd14f4c5
-using Plots
-
 # ╔═╡ 75624bac-af3f-47d1-9462-7840bac427a8
 using Dates
 
@@ -17,7 +11,7 @@ using Dates
 begin
 	using AlgebraOfGraphics
 	using CSV
-	#using CairoMakie
+	using CairoMakie
 	using Colors
 	using DataFrames
 	using DataFramesMeta
@@ -69,46 +63,8 @@ begin
 	t, f, f_err = eachcol(df_sorted[!, [:hjd, :mag, :mag_err]])
 end
 
-# ╔═╡ 1f62da17-8e2b-4420-ab50-7d28c80ebfed
-plotly()
-
 # ╔═╡ 886fe663-ea95-47e1-97d2-7a467ab41394
 dates = Date(2018, 1, 1):Day(1):Date(2018, 12, 31)
-
-# ╔═╡ 2d43eb74-1f56-4a0f-bd96-865cb9dc35c5
-ta = TimeArray(julian2datetime.(t), f)
-
-# ╔═╡ 8ee19677-e72b-441d-9429-687ea246cf60
-begin
-	p = scatter(ta)
-	scatter!(p, moving(mean, ta, 13))
-end
-
-# ╔═╡ 9f99c140-a1ba-488c-8736-af30db45cc02
-moving(mean, ta, 5) |> length
-
-# ╔═╡ 3ae4c79f-649e-4055-932f-a8870a335134
-julian2datetime.(t)
-
-# ╔═╡ a8b37aba-7613-4019-a051-6fda0f8d8686
-plot
-
-# ╔═╡ 53ec6a2a-1f7e-44f8-b5c5-2f90a4960542
-diff(t) |> mean
-
-# ╔═╡ 726571bd-0d4b-453e-92f5-a5a123974f02
-t_roll = rolling(mean, t, 2)
-
-# ╔═╡ d94e6e76-3e78-45f6-9681-0f5b345b0831
-f_roll = rolling(mean, f, 2)
-
-# ╔═╡ 278701a9-5503-4bde-9416-af8e84f13923
-@which mean
-
-# ╔═╡ be05a66d-bc4f-42ef-9734-98c9a8ff2b88
-let
-	fig = figure
-end
 
 # ╔═╡ 2eb8be9c-bf51-45c3-b44d-3028344bd13e
 utc_transit_dates = ["2013-12-19", "2015-09-27", "2016-12-11"]
@@ -146,6 +102,8 @@ begin
 			)
 	end
 		
+	save("phot_mon.png", fig, px_per_unit=3)
+	
 	fig |> as_svg
 end
 
@@ -190,19 +148,6 @@ begin
 	COLORS
 end
 
-# ╔═╡ 225deb3e-71a5-4fd2-b49e-64ae55c1bf05
-let
-	fig = Figure()
-	ax = Axis(fig[1, 1], xlabel="Time (HJD)", ylabel="Magnitude")
-	
-	errorbars!(ax, t, f, f_err, color=COLORS[1])
-	scatter!(ax, t, f)
-	
-	scatter!(ax, t_roll, f_roll)
-	
-	fig
-end
-
 # ╔═╡ ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd
 md"""
 ## Packages
@@ -215,22 +160,8 @@ md"""
 # ╠═2b2dd83b-ce99-4551-b8aa-79ca6db5dd06
 # ╟─6eaf882c-0cb5-415f-b8fe-c071ee25a895
 # ╠═92548af3-9a26-4202-88f2-ba3a31181686
-# ╠═225deb3e-71a5-4fd2-b49e-64ae55c1bf05
-# ╠═89e9971c-7e84-43d5-95c7-b9cfc3b1b91f
-# ╠═1f62da17-8e2b-4420-ab50-7d28c80ebfed
-# ╠═8ee19677-e72b-441d-9429-687ea246cf60
-# ╠═9f99c140-a1ba-488c-8736-af30db45cc02
 # ╠═886fe663-ea95-47e1-97d2-7a467ab41394
-# ╠═2d43eb74-1f56-4a0f-bd96-865cb9dc35c5
-# ╠═3ae4c79f-649e-4055-932f-a8870a335134
-# ╠═a8b37aba-7613-4019-a051-6fda0f8d8686
-# ╠═5de1e52e-8074-4d38-9143-f8f3cd14f4c5
-# ╠═53ec6a2a-1f7e-44f8-b5c5-2f90a4960542
-# ╠═726571bd-0d4b-453e-92f5-a5a123974f02
-# ╠═d94e6e76-3e78-45f6-9681-0f5b345b0831
-# ╠═278701a9-5503-4bde-9416-af8e84f13923
 # ╠═8e6008ca-a762-4450-a09e-bd0c2bbac4f2
-# ╠═be05a66d-bc4f-42ef-9734-98c9a8ff2b88
 # ╠═2eb8be9c-bf51-45c3-b44d-3028344bd13e
 # ╠═7dd2f68b-8f30-405d-bfa6-ca6542dd64b1
 # ╠═94506bca-159c-4783-82c5-9837527f1c6e
