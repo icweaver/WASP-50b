@@ -108,22 +108,24 @@ We produced the above plot by performing a rolling average over sub-groups of th
 	TODO: Find a good Δt to use
 """
 
-# ╔═╡ 81a40d75-0880-47fa-b2c6-5b79c887d227
-# Given a vector `v`, return the set of groups satisfying the condition that all points in that group are ≤ Δv of the first point
-function group_vector(v, Δv)
-	groups = Vector{Float64}[]
-	current_idx = 0
-	group_idxs = Vector{Int}[]
-	v_idxs = 1:length(v)
-	while current_idx < length(v)
-		is_group = @. 0.0 ≤ v - v[begin+current_idx] ≤ Δv
-		group = v[is_group]
-		group_idx = v_idxs[is_group]
-		push!(groups, group)
-		push!(group_idxs, group_idx)
-		current_idx += length(group)
+# ╔═╡ 9d25f884-71ee-4bb1-bb70-179fc1175fac
+# Given a sorted vector `v`, return the set of groups (by idx) satisfying the condition that all points in that group are ≤ Δv of the first point
+function idxs_of_groups(v, Δv)
+	idx_start = 1
+	groups = Vector{Int}[]
+	group = [idx_start]
+	for i in 2:length(v)
+		if v[i] - v[idx_start] ≤ Δv
+			push!(group, i)
+		else
+			push!(groups, group)
+			idx_start = i
+			group = [i]
+		end
 	end
-	return groups, group_idxs
+	push!(groups, group)
+	
+	return groups
 end
 
 # ╔═╡ 3a53aee7-a4fb-4275-aa80-9d836f84c795
@@ -134,15 +136,14 @@ Once the grouping was complete, we then averaged over each group to produce the 
 # ╔═╡ decb01e5-16d7-4c88-a202-5ad93acfbcdf
 # Averages the xs and associated ys in each grouping of x
 function bin_data(x, y; Δ=0.1)
-	x_groups, group_idxs = group_vector(x, Δ)
-	y_groups = [y[idxs] for idxs in group_idxs]
-	x_binned = mean.(x_group for x_group ∈ x_groups)
-	y_binned = mean.(y_group for y_group ∈ y_groups)
-	return x_binned, y_binned
+	idxs = idxs_of_groups(x, Δ)
+	groups = [(x[idx], y[idx]) for idx in idxs]
+	binned = [(mean(group[1]), weightedmean(group[2]).val) for group ∈ groups]
+	return binned
 end
 
 # ╔═╡ 7b11cbfa-1f56-41cf-b622-fdf779a61a98
-t_binned, f_binned = bin_data(t, f, Δ=Δt);
+binned_vals = bin_data(t, f .± f_err, Δ=Δt);
 
 # ╔═╡ 0fba0bbf-1290-47ef-904a-5b576b70d07c
 md"""
@@ -156,27 +157,24 @@ begin
 	#const COLORS = to_colormap(:seaborn_colorblind6, 8)[[8, 6, 4, 1]]
 	const COLORS = parse.(Colorant,
 		[
-			"#a6cee3",  # Cyan
-			"#fdbf6f",  # Yellow
-			"#ff7f00",  # Orange
-			"#1f78b4",  # Blue
+			"#a6cee3", # Cyan
+			"#fdbf6f", # Yellow
+			"#ff7f00", # Orange
+			"#1f78b4", # Blue
+			"#CD74A1", # Purple
 			"slategray",
-			# "plum",
-			# "#956cb4",  # Purple
-			# "mediumaquamarine",
-			# "#029e73",  # Green
 		]
 	)
 	
+	const FS = 18
 	set_aog_theme!()
 	update_theme!(
 		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,),
+			Axis = (xlabelsize=FS, ylabelsize=18,),
+			Label = (textsize=FS,),
 			Lines = (linewidth=3,),
-			Scatter = (linewidth=10,),
 			palette = (color=COLORS,),
-			fontsize = 18,
+			fontsize = FS,
 			rowgap = 0,
 			colgap = 0,
 		)
@@ -190,10 +188,15 @@ let
 	fig = Figure()
 	ax = Axis(fig[1, 1], xlabel="Time (HJD)", ylabel="Magnitude")
 	
-	scatter!(ax, t, f, markersize=15, color=(COLORS[end], 0.5))
-	scatter!(ax, t_binned, f_binned, color=COLORS[3])
+	# Original data
+	data_alpha = 0.25
+	errorbars!(ax, t, f, f_err, color=(COLORS[end], data_alpha))
+	scatter!(ax, t, f, color=(COLORS[end], data_alpha))
 	
-	fig
+	# Averaged data
+	scatter!(ax, binned_vals, markersize=14, color=COLORS[end-1])
+	
+	fig |> as_svg
 end
 
 # ╔═╡ cba385b1-7d69-408a-a622-97e6498ae978
@@ -217,7 +220,7 @@ md"""
 # ╠═7b11cbfa-1f56-41cf-b622-fdf779a61a98
 # ╟─71de9258-8b02-4a88-951a-846736cd4407
 # ╟─6db1d39c-c03c-461b-9f1e-4353948dd83a
-# ╠═81a40d75-0880-47fa-b2c6-5b79c887d227
+# ╠═9d25f884-71ee-4bb1-bb70-179fc1175fac
 # ╟─3a53aee7-a4fb-4275-aa80-9d836f84c795
 # ╠═decb01e5-16d7-4c88-a202-5ad93acfbcdf
 # ╟─0fba0bbf-1290-47ef-904a-5b576b70d07c
