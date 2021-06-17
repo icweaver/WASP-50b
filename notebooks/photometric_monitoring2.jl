@@ -75,10 +75,10 @@ $(join(name.(extrema(df_phot_mon.hjd)), " - ")) from two cameras (bd: 2013 Decem
 """
 
 # ╔═╡ 881a2bbf-cb5b-4242-af71-19e876720dec
-begin
-	df_sorted = sort(df_phot_mon, :hjd)
-	t, f, f_err = eachcol(df_sorted[!, [:hjd, :mag, :mag_err]])
-end
+df_sorted = sort(df_phot_mon, :hjd)
+
+# ╔═╡ bfe64b7b-0436-4e0e-98cd-990711b7cb2d
+t_ASASSN, f_ASASSN, f_err_ASASSN = eachcol(df_sorted[!, [:hjd, :mag, :mag_err]])
 
 # ╔═╡ 533d8696-425a-4788-95ef-1370d548ada3
 md"""
@@ -94,6 +94,34 @@ We show the original and averaged data below:
 md"""
 Δt = $(@bind Δt Slider(1:10, default=7, show_value=true)) days
 """
+
+# ╔═╡ 313b54ee-7f62-4839-a24c-b7900d404e89
+md"""
+## TESS
+"""
+
+# ╔═╡ 853f7ff5-c838-4f75-9f5e-ab36ed695ab3
+df_TESS_S04 = CSV.File(
+	"data/photometric/TESS_baseline_sector_04.csv",
+) |> DataFrame
+
+# ╔═╡ b9b7f3c4-13cf-4d26-8082-60d03e6d5570
+df_TESS_S31 = CSV.File(
+	"data/photometric/TESS_baseline_sector_31.csv",
+) |> DataFrame
+
+# ╔═╡ 5831bd28-c8bd-4cd3-81e9-897429baa027
+Δ_TESS = 200.0 * (1/86_400) * 10
+
+# ╔═╡ 9ff08d0a-b36f-4f4b-a580-bf8271e795e9
+t_TESS_S04, f_TESS_S04, f_err_TESS_S04 = eachcol(
+	df_TESS_S04[!, [:time, :flux, :flux_err]]
+)
+
+# ╔═╡ fc822757-39cb-4147-ac74-dddeb71df4be
+t_TESS_S31, f_TESS_S31, f_err_TESS_S31 = eachcol(
+	df_TESS_S31[!, [:time, :flux, :flux_err]]
+)
 
 # ╔═╡ 71de9258-8b02-4a88-951a-846736cd4407
 md"""
@@ -143,7 +171,17 @@ function bin_data(x, y; Δ=0.1)
 end
 
 # ╔═╡ 7b11cbfa-1f56-41cf-b622-fdf779a61a98
-binned_vals = bin_data(t, f .± f_err, Δ=Δt);
+binned_vals_ASAS_SN = bin_data(t_ASASSN, f_ASASSN .± f_err_ASASSN, Δ=Δt)
+
+# ╔═╡ 42145ccc-4740-4e08-9675-c42686bc185e
+binned_vals_TESS_S04 = bin_data(
+	t_TESS_S04, f_TESS_S04 .± f_err_TESS_S04, Δ=Δ_TESS
+)
+
+# ╔═╡ 2e9b8069-30c3-4008-a0c3-036716bd3603
+binned_vals_TESS_S31 = bin_data(
+	t_TESS_S31, f_TESS_S31 .± f_err_TESS_S31, Δ=Δ_TESS
+)
 
 # ╔═╡ 0fba0bbf-1290-47ef-904a-5b576b70d07c
 md"""
@@ -183,18 +221,28 @@ begin
 	COLORS
 end
 
-# ╔═╡ 81ff1d9b-f4e4-4c18-8570-9584f04cecef
-let
-	fig = Figure()
-	ax = Axis(fig[1, 1], xlabel="Time (HJD)", ylabel="Magnitude")
+# ╔═╡ d1e0e7fb-dbd6-4bad-a74f-1400153d4c08
+function plot_phot(ax, t, f, f_err, binned_vals)
 	
 	# Original data
-	data_alpha = 0.25
-	errorbars!(ax, t, f, f_err, color=(COLORS[end], data_alpha))
-	scatter!(ax, t, f, color=(COLORS[end], data_alpha))
+	errorbars!(ax, t, f, f_err, color=(COLORS[end], 0.25))
+	scatter!(ax, t, f, color=(COLORS[end], 0.25))
 	
 	# Averaged data
 	scatter!(ax, binned_vals, markersize=14, color=COLORS[end-1])
+end
+
+# ╔═╡ 20ec3875-d522-4604-88ef-25e4adfc0bf0
+plot_phot(t_ASASSN, f_ASASSN, f_err_ASASSN, binned_vals_ASAS_SN)
+
+# ╔═╡ d2cccb57-4b7c-45f5-8654-59c778a57064
+let
+	fig = Figure()
+	ax_top = Axis(fig[1, 1],)
+	ax_bottom = Axis(fig[2, 1])
+
+	plot_phot(ax_top, t_TESS_S04, f_TESS_S04, f_err_TESS_S04, binned_vals_TESS_S04)
+	plot_phot(ax_bottom, t_TESS_S31, f_TESS_S31, f_err_TESS_S31, binned_vals_TESS_S31)
 	
 	fig |> as_svg
 end
@@ -802,9 +850,9 @@ version = "1.42.0+0"
 
 [[Libiconv_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "8d22e127ea9a0917bc98ebd3755c8bd31989381e"
+git-tree-sha1 = "42b62845d70a619f063a7da093d995ec8e15e778"
 uuid = "94ce4f54-9a6c-5748-9c1c-f9c7231a4531"
-version = "1.16.1+0"
+version = "1.16.1+1"
 
 [[Libmount_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1414,11 +1462,22 @@ version = "3.5.0+0"
 # ╟─04761ee0-2f91-4b4c-9100-412f150d3cf2
 # ╟─771bb36b-affa-491b-b732-2bfabd76d8ef
 # ╠═881a2bbf-cb5b-4242-af71-19e876720dec
+# ╠═bfe64b7b-0436-4e0e-98cd-990711b7cb2d
+# ╠═7b11cbfa-1f56-41cf-b622-fdf779a61a98
 # ╟─533d8696-425a-4788-95ef-1370d548ada3
 # ╟─1d789b40-8fa1-4983-aac2-7275e5a0e29c
 # ╟─7cb85f49-b3c6-4145-add2-6719e2c7201e
-# ╠═81ff1d9b-f4e4-4c18-8570-9584f04cecef
-# ╠═7b11cbfa-1f56-41cf-b622-fdf779a61a98
+# ╠═20ec3875-d522-4604-88ef-25e4adfc0bf0
+# ╟─313b54ee-7f62-4839-a24c-b7900d404e89
+# ╠═853f7ff5-c838-4f75-9f5e-ab36ed695ab3
+# ╠═b9b7f3c4-13cf-4d26-8082-60d03e6d5570
+# ╠═5831bd28-c8bd-4cd3-81e9-897429baa027
+# ╠═9ff08d0a-b36f-4f4b-a580-bf8271e795e9
+# ╠═42145ccc-4740-4e08-9675-c42686bc185e
+# ╠═fc822757-39cb-4147-ac74-dddeb71df4be
+# ╠═2e9b8069-30c3-4008-a0c3-036716bd3603
+# ╠═d2cccb57-4b7c-45f5-8654-59c778a57064
+# ╠═d1e0e7fb-dbd6-4bad-a74f-1400153d4c08
 # ╟─71de9258-8b02-4a88-951a-846736cd4407
 # ╟─6db1d39c-c03c-461b-9f1e-4353948dd83a
 # ╠═9d25f884-71ee-4bb1-bb70-179fc1175fac
