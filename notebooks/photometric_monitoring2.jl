@@ -223,7 +223,6 @@ end
 
 # ╔═╡ d1e0e7fb-dbd6-4bad-a74f-1400153d4c08
 function plot_phot(ax, t, f, f_err, binned_vals)
-	
 	# Original data
 	errorbars!(ax, t, f, f_err, color=(COLORS[end], 0.25))
 	scatter!(ax, t, f, color=(COLORS[end], 0.25))
@@ -233,7 +232,12 @@ function plot_phot(ax, t, f, f_err, binned_vals)
 end
 
 # ╔═╡ 20ec3875-d522-4604-88ef-25e4adfc0bf0
-plot_phot(t_ASASSN, f_ASASSN, f_err_ASASSN, binned_vals_ASAS_SN)
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1])
+	plot_phot(ax, t_ASASSN, f_ASASSN, f_err_ASASSN, binned_vals_ASAS_SN)
+	fig
+end
 
 # ╔═╡ d2cccb57-4b7c-45f5-8654-59c778a57064
 let
@@ -244,7 +248,7 @@ let
 	plot_phot(ax_top, t_TESS_S04, f_TESS_S04, f_err_TESS_S04, binned_vals_TESS_S04)
 	plot_phot(ax_bottom, t_TESS_S31, f_TESS_S31, f_err_TESS_S31, binned_vals_TESS_S31)
 	
-	fig |> as_svg
+	fig
 end
 
 # ╔═╡ cba385b1-7d69-408a-a622-97e6498ae978
