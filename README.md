@@ -7,3 +7,4 @@
 * [Transmission Spectra](https://icweaver.github.io/WASP-50b/html/transmission_spectra.jl.html)
 * [Photometric Monitoring](https://icweaver.github.io/WASP-50b/html/photometric_monitoring.jl.html)
 * [Photometric Monitoring 2](https://icweaver.github.io/WASP-50b/html/photometric_monitoring2.jl.html)
+* [Corner Test](https://icweaver.github.io/WASP-50b/html/corner_test.jl.html)
