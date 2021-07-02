@@ -1,10 +1,9 @@
 # WASP-50b
 
-* [Reduced Data -- IMACS](https://icweaver.github.io/WASP-50b/html/reduced.jl.html)
-* [Reduced Data -- LDSS3](https://icweaver.github.io/WASP-50b/html/reduced_LDSS3.jl.html)
-* [Detrended White Light Curves](https://icweaver.github.io/WASP-50b/html/detrended_wlcs.jl.html)
-* [Detrended Binned Light Curves](https://icweaver.github.io/WASP-50b/html/detrended_bwlcs.jl.html)
-* [Transmission Spectra](https://icweaver.github.io/WASP-50b/html/transmission_spectra.jl.html)
-* [Photometric Monitoring](https://icweaver.github.io/WASP-50b/html/photometric_monitoring.jl.html)
-* [Photometric Monitoring 2](https://icweaver.github.io/WASP-50b/html/photometric_monitoring2.jl.html)
-* [Corner Test](https://icweaver.github.io/WASP-50b/html/corner_test.jl.html)
+1. [Raw Frames](https://icweaver.github.io/WASP-50b/html/01_raw_frames.html)
+1. [Reduced Data -- IMACS](https://icweaver.github.io/WASP-50b/html/02_reduced.html)
+1. [Reduced Data -- LDSS3](https://icweaver.github.io/WASP-50b/html/03_reduced_LDSS3.html)
+1. [Detrended White Light Curves](https://icweaver.github.io/WASP-50b/html/04_detrended_wlcs.html)
+1. [Detrended Binned Light Curves](https://icweaver.github.io/WASP-50b/html/05_detrended_bwlcs.html)
+1. [Photometric Monitoring](https://icweaver.github.io/WASP-50b/html/06_photometric_monitoring.html)
+1. [Transmission Spectra](https://icweaver.github.io/WASP-50b/html/07_transmission_spectra.html)
