@@ -35,9 +35,6 @@ begin
 	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
 end
 
-# ╔═╡ a45f9a40-be0f-4b37-8851-f4dc8da561d2
-weightedmean([1.0 ± 2.0, 3.0 ± 4.0, 5.0 ± 6.0])
-
 # ╔═╡ ee24f7df-c4db-4065-afe9-10be80cbcd6b
 md"""
 # Reduced Data -- IMACS
@@ -133,7 +130,7 @@ let
 	xlims!(ax, 3_500, 11_000)
 	ylims!(ax, 0, 2.2)
 	
-	fig |> as_svg
+	fig #|> as_svg
 end
 
 # ╔═╡ e3468c61-782b-4f55-a4a1-9d1883655d11
@@ -154,7 +151,7 @@ end
 
 # ╔═╡ 941cd721-07d8-4a8f-9d75-42854e6e8edb
 md"""
-!!! warning
+!!! note
 	In general, the comparison stars names (`cNames`) are not stored in alphanumeric order by default. For convenience, we ensure this sorting with `sortperm`, so that the first column corresponds to the first comparison star, the second to the second comparison star, an so on.
 
 We next plot these light curves and identified outliers below:
@@ -322,9 +319,9 @@ let
 	ylims!(axs[end], 0.97, 1.02)
 	
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
-	fig[end+1, 1:end] = Label(fig, "Index")
+	fig[end+1, 2:end] = Label(fig, "Index")
 	
-	fig |> as_svg
+	fig #|> as_svg
 end
 
 # ╔═╡ aafc9ee5-327a-40a7-bcf6-5078eac20740
@@ -362,7 +359,7 @@ let
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
 	fig[end+1, 1:end] = Label(fig, "Index")
 	
-	fig |> as_svg
+	fig #|> as_svg
 end
 
 # ╔═╡ eeb3da97-72d5-4317-acb9-d28637a06d67
@@ -370,25 +367,27 @@ md"""
 ## Packages
 """
 
+# ╔═╡ 03af71ac-673b-459b-a931-a600b13d7ee6
+html"""
+<style>
+#launch_binder {
+	display: none;
+}
+body.disable_ui main {
+		max-width : 95%;
+	}
+@media screen and (min-width: 1081px) {
+	body.disable_ui main {
+		margin-left : 10px;
+		max-width : 72%;
+		align-self: flex-start;
+	}
+}
+</style>
+"""
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
-[compat]
-AlgebraOfGraphics = "~0.4.4"
-CSV = "~0.8.5"
-CairoMakie = "~0.5.10"
-Colors = "~0.12.8"
-DataFrames = "~1.1.1"
-DataFramesMeta = "~0.6.1"
-Glob = "~1.3.0"
-ImageFiltering = "~0.6.22"
-KernelDensity = "~0.6.3"
-Latexify = "~0.15.6"
-Measurements = "~2.6.0"
-NaturalSort = "~1.0.0"
-OrderedCollections = "~1.4.1"
-PlutoUI = "~0.7.9"
-PyCall = "~1.92.3"
-
 [deps]
 AlgebraOfGraphics = "cbdf2221-f076-402e-a563-3d30da359d67"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
@@ -408,6 +407,23 @@ PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[compat]
+AlgebraOfGraphics = "~0.4.4"
+CSV = "~0.8.5"
+CairoMakie = "~0.5.10"
+Colors = "~0.12.8"
+DataFrames = "~1.1.1"
+DataFramesMeta = "~0.6.1"
+Glob = "~1.3.0"
+ImageFiltering = "~0.6.22"
+KernelDensity = "~0.6.3"
+Latexify = "~0.15.6"
+Measurements = "~2.6.0"
+NaturalSort = "~1.0.0"
+OrderedCollections = "~1.4.1"
+PlutoUI = "~0.7.9"
+PyCall = "~1.92.3"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -685,9 +701,9 @@ version = "1.4.2"
 
 [[FFTW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "5a0d4b6a22a34d17d53543bd124f4b08ed78e8b0"
+git-tree-sha1 = "3676abafff7e4ff07bbd2c42b3d8201f31653dcc"
 uuid = "f5851436-0d7a-5f13-b9de-f02708fd171a"
-version = "3.3.9+7"
+version = "3.3.9+8"
 
 [[FileIO]]
 deps = ["Pkg", "Requires", "UUIDs"]
@@ -967,9 +983,9 @@ version = "1.42.0+0"
 
 [[Libiconv_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "8d22e127ea9a0917bc98ebd3755c8bd31989381e"
+git-tree-sha1 = "42b62845d70a619f063a7da093d995ec8e15e778"
 uuid = "94ce4f54-9a6c-5748-9c1c-f9c7231a4531"
-version = "1.16.1+0"
+version = "1.16.1+1"
 
 [[Libmount_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1571,7 +1587,6 @@ version = "3.5.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═a45f9a40-be0f-4b37-8851-f4dc8da561d2
 # ╟─ee24f7df-c4db-4065-afe9-10be80cbcd6b
 # ╟─9d180c21-e634-4a1e-8430-bdd089262f66
 # ╠═bd2cdf33-0c41-4948-82ab-9a28929f72b3
@@ -1603,5 +1618,6 @@ version = "3.5.0+0"
 # ╠═5db4a2f2-1c0d-495a-8688-40fc9e0ccd02
 # ╟─eeb3da97-72d5-4317-acb9-d28637a06d67
 # ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23
+# ╟─03af71ac-673b-459b-a931-a600b13d7ee6
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

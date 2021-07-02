@@ -163,11 +163,6 @@ wbins = readdlm("data/reduced/LDSS3/w50_bins_LDSS3.dat", comments=true)
 # ╔═╡ 9372c69a-0aad-4e6e-9ea3-e934fa09b758
 get_idx(needle, haystack) = findfirst(==(needle), haystack)
 
-# ╔═╡ 97191c55-f673-46b4-82fd-147e7d150623
-md"""
-### Raw flux
-"""
-
 # ╔═╡ d5c6d058-17c6-4cf0-97b8-d863b1529161
 md"""
 !!! note
@@ -198,6 +193,11 @@ function filt_idxs(f_div_wlc, window_width; ferr=0.002)
 	use_idxs = deleteat!(collect(1:size(f_div_wlc, 1)), bad_idxs)
 	return f_filt, use_idxs, bad_idxs
 end
+
+# ╔═╡ 97191c55-f673-46b4-82fd-147e7d150623
+md"""
+### Raw flux
+"""
 
 # ╔═╡ a5e742e5-fcca-40d7-b342-c6112e6899e5
 md"""
@@ -459,6 +459,9 @@ fwhm, trace_center, sky_flux = median_eparam.(
 	Ref(common_wav_idxs[binned_wav_idxs_range])
 )
 
+# ╔═╡ 7c92ea01-d871-4952-8364-bc007df427fc
+LC["cubes"]["width"] |> keys
+
 # ╔═╡ 079c3915-33af-40db-a544-28453732c372
 specshifts = load_npz(
 	"$(dirname(fpath))/specshifts.npy", allow_pickle=true
@@ -537,7 +540,7 @@ let
 	
 	#axislegend()
 	
-	fig |> as_svg
+	fig #|> as_svg
 end
 
 # ╔═╡ 798880fa-1e52-4758-a7f7-d3c6adec244a
@@ -600,7 +603,7 @@ let
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
 	fig[end+1, 1:end] = Label(fig, "Index")
 	
-	fig |> as_svg
+	fig #|> as_svg
 end
 
 # ╔═╡ 1f731b1d-188f-445b-b2d8-0f4e63616ecd
@@ -635,7 +638,7 @@ let
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
 	fig[end+1, 1:end] = Label(fig, "Index")
 	
-	fig |> as_svg
+	fig #|> as_svg
 end
 
 # ╔═╡ 9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
@@ -682,7 +685,7 @@ let
 	# ax.xlabel = "Index"
 	# ax.ylabel = "Relative flux + offset"
 	
-	fig |> as_svg
+	fig #|> as_svg
 end
 
 # ╔═╡ f788835c-8e81-4afe-805e-4caf2d5e5d5b
@@ -690,25 +693,27 @@ md"""
 ## Packages
 """
 
+# ╔═╡ b2c61d08-6fcf-4b0c-a21a-c0c5e3205210
+html"""
+<style>
+#launch_binder {
+	display: none;
+}
+body.disable_ui main {
+		max-width : 95%;
+	}
+@media screen and (min-width: 1081px) {
+	body.disable_ui main {
+		margin-left : 10px;
+		max-width : 72%;
+		align-self: flex-start;
+	}
+}
+</style>
+"""
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
-[compat]
-AlgebraOfGraphics = "~0.4.4"
-CSV = "~0.8.5"
-CairoMakie = "~0.5.10"
-Colors = "~0.12.8"
-DataFrames = "~1.1.1"
-DataFramesMeta = "~0.6.1"
-Glob = "~1.3.0"
-ImageFiltering = "~0.6.22"
-KernelDensity = "~0.6.3"
-Latexify = "~0.15.6"
-Measurements = "~2.6.0"
-NaturalSort = "~1.0.0"
-OrderedCollections = "~1.4.1"
-PlutoUI = "~0.7.9"
-PyCall = "~1.92.3"
-
 [deps]
 AlgebraOfGraphics = "cbdf2221-f076-402e-a563-3d30da359d67"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
@@ -728,6 +733,23 @@ PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[compat]
+AlgebraOfGraphics = "~0.4.4"
+CSV = "~0.8.5"
+CairoMakie = "~0.5.10"
+Colors = "~0.12.8"
+DataFrames = "~1.1.1"
+DataFramesMeta = "~0.6.1"
+Glob = "~1.3.0"
+ImageFiltering = "~0.6.22"
+KernelDensity = "~0.6.3"
+Latexify = "~0.15.6"
+Measurements = "~2.6.0"
+NaturalSort = "~1.0.0"
+OrderedCollections = "~1.4.1"
+PlutoUI = "~0.7.9"
+PyCall = "~1.92.3"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -1005,9 +1027,9 @@ version = "1.4.2"
 
 [[FFTW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "5a0d4b6a22a34d17d53543bd124f4b08ed78e8b0"
+git-tree-sha1 = "3676abafff7e4ff07bbd2c42b3d8201f31653dcc"
 uuid = "f5851436-0d7a-5f13-b9de-f02708fd171a"
-version = "3.3.9+7"
+version = "3.3.9+8"
 
 [[FileIO]]
 deps = ["Pkg", "Requires", "UUIDs"]
@@ -1287,9 +1309,9 @@ version = "1.42.0+0"
 
 [[Libiconv_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "8d22e127ea9a0917bc98ebd3755c8bd31989381e"
+git-tree-sha1 = "42b62845d70a619f063a7da093d995ec8e15e778"
 uuid = "94ce4f54-9a6c-5748-9c1c-f9c7231a4531"
-version = "1.16.1+0"
+version = "1.16.1+1"
 
 [[Libmount_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1943,6 +1965,7 @@ version = "3.5.0+0"
 # ╠═301ff07c-8dd5-403a-bae8-a4c38deeb331
 # ╠═c03cb527-d16d-47aa-ab63-6970f4ff0b1f
 # ╠═c65c2298-e3a3-4666-be9d-73ee43d94847
+# ╠═7c92ea01-d871-4952-8364-bc007df427fc
 # ╠═d14ab9de-23b4-4647-a823-9b318bb734e9
 # ╠═079c3915-33af-40db-a544-28453732c372
 # ╠═e4960d1a-8e33-478a-8100-d1838782938d
@@ -1967,5 +1990,6 @@ version = "3.5.0+0"
 # ╠═21cbb4b9-1887-4575-8f4f-5e32b8404c6a
 # ╟─f788835c-8e81-4afe-805e-4caf2d5e5d5b
 # ╠═c911cecd-0747-4cd1-826f-941f2f58091c
+# ╟─b2c61d08-6fcf-4b0c-a21a-c0c5e3205210
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

@@ -248,12 +248,31 @@ let
 	plot_phot(ax_top, t_TESS_S04, f_TESS_S04, f_err_TESS_S04, binned_vals_TESS_S04)
 	plot_phot(ax_bottom, t_TESS_S31, f_TESS_S31, f_err_TESS_S31, binned_vals_TESS_S31)
 	
-	fig
+	fig #|> as_svg
 end
 
 # ╔═╡ cba385b1-7d69-408a-a622-97e6498ae978
 md"""
 ## Packages
+"""
+
+# ╔═╡ 1f11d40d-3735-4167-b9ed-36e58a01dae1
+html"""
+<style>
+#launch_binder {
+	display: none;
+}
+body.disable_ui main {
+		max-width : 95%;
+	}
+@media screen and (min-width: 1081px) {
+	body.disable_ui main {
+		margin-left : 10px;
+		max-width : 72%;
+		align-self: flex-start;
+	}
+}
+</style>
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -572,9 +591,9 @@ version = "1.4.2"
 
 [[FFTW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "5a0d4b6a22a34d17d53543bd124f4b08ed78e8b0"
+git-tree-sha1 = "3676abafff7e4ff07bbd2c42b3d8201f31653dcc"
 uuid = "f5851436-0d7a-5f13-b9de-f02708fd171a"
-version = "3.3.9+7"
+version = "3.3.9+8"
 
 [[FileIO]]
 deps = ["Pkg", "Requires", "UUIDs"]
@@ -1491,5 +1510,6 @@ version = "3.5.0+0"
 # ╠═02277a5e-efba-48a5-996e-ba639574e3f2
 # ╟─cba385b1-7d69-408a-a622-97e6498ae978
 # ╠═fbed4840-cada-11eb-0c6c-d38d9654159f
+# ╟─1f11d40d-3735-4167-b9ed-36e58a01dae1
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
