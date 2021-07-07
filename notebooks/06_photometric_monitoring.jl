@@ -48,7 +48,7 @@ $(TableOfContents(title="📖 Table of Contents"))
 
 # ╔═╡ 0cbe4263-799f-4ee3-9a94-3ba879528b01
 md"""
-## ASAS-SN
+## ASAS-SN 🌠
 """
 
 # ╔═╡ fa233a2c-7e89-4e71-85b8-824c5c341650
@@ -85,6 +85,9 @@ begin
 	julian_transit_dates = datetime2julian.(transit_dates) |> collect
 end;
 
+# ╔═╡ 41a5e487-d55c-4d80-aae8-2f6904c60f8b
+julian_transit_dates
+
 # ╔═╡ 8e6008ca-a762-4450-a09e-bd0c2bbac4f2
 let
 	phot_mon = data(df_phot_mon) * mapping(
@@ -96,20 +99,20 @@ let
 	fig = draw(phot_mon)
 	ax = current_axis()
 	
-# 	vlines!(ax, julian_transit_dates .- 2.457e7;
-# 		linestyle = :dash,
-# 		color = :darkgrey,
-# 	)
+	vlines!(ax, julian_transit_dates .- 2.457e6;
+		linestyle = :dash,
+		color = :darkgrey,
+	)
 	
-# 	for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, julian_transit_dates))
-# 		text!(ax, "Transit $i\n$utc";
-# 			position = Point2f0(jd - 2.457e6, 11.8),
-# 			textsize = 14,
-# 			align = (:left, :center),
-# 			offset = Point2f0(10, 0),
-# 			color = :grey,
-# 		)
-# 	end
+	for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, julian_transit_dates))
+		text!(ax, "Transit $i\n$utc";
+			position = Point2f0(jd - 2.457e6, 0.05),
+			textsize = 14,
+			align = (:left, :center),
+			offset = Point2f0(10, 0),
+			color = :grey,
+		)
+	end
 		
 	#save("phot_mon.png", fig, px_per_unit=3)
 	
@@ -118,7 +121,7 @@ end
 
 # ╔═╡ dbe317fe-540d-44e8-b8e7-6c465c79559f
 md"""
-``t_\text{window}`` = $(@bind t_window Slider(1:10, default=7, show_value=true)) days
+``t_\text{window}`` = $(@bind t_window Slider(1:20, default=7, show_value=true)) days
 """
 
 # ╔═╡ 682499cb-af79-48f7-9e74-0185894f65fe
@@ -260,7 +263,7 @@ function plot_phot!(ax, t_window, t, f, f_err; t_offset=0.0, relative_flux=false
 	
 	# Averaged data
 	binned_vals = bin_data(t_rel, Δf .± Δf_err, Δ=t_window);
-	scatter!(ax, binned_vals, markersize=14, color=COLORS[end-2])
+	scatter!(ax, binned_vals, color=COLORS[end-2])
 	
 	return ax
 end
@@ -351,6 +354,7 @@ body.disable_ui main {
 # ╠═2b2dd83b-ce99-4551-b8aa-79ca6db5dd06
 # ╟─6eaf882c-0cb5-415f-b8fe-c071ee25a895
 # ╠═92548af3-9a26-4202-88f2-ba3a31181686
+# ╠═41a5e487-d55c-4d80-aae8-2f6904c60f8b
 # ╠═8e6008ca-a762-4450-a09e-bd0c2bbac4f2
 # ╟─dbe317fe-540d-44e8-b8e7-6c465c79559f
 # ╠═682499cb-af79-48f7-9e74-0185894f65fe

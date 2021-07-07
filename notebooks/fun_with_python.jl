@@ -57,7 +57,56 @@ neg_norm(3, 4)
 
 # ╔═╡ 8d512b4c-a0ad-453f-8b51-c09cc63c6a49
 md"""
-Looks good!
+Looks good! Now let's try a module from `batman`:
+"""
+
+# ╔═╡ 97b525a0-cbca-4ca7-a415-23a8090eb7ac
+begin
+	py"""
+	import numpy as np
+	from batman import _rsky
+		
+	# Compute distance between centers
+	def r_batman(t_0, period, aR_star, incl, ecc, omega):
+		return _rsky._rsky(
+		np.linspace(0, period, 500),
+		t_0,
+		period,
+		aR_star,
+		incl,
+		ecc,
+		omega,
+		1,
+		1,
+	)
+	"""
+	r_batman(;t_0, period, aR_star, incl, ecc, omega) = py"r_batman"(
+		t_0=t_0, period=period, aR_star=aR_star, incl=incl, ecc=ecc, omega=omega
+	)
+end
+
+# ╔═╡ abd5ec08-7a8c-45c8-89f6-65d5b34a42cf
+md"""
+!!! note
+	The `f(;arg1, arg2)` syntax is used to explicitly specify keyword arguments in Julia. Similarly, `f(args...)` is Julia's version of `f(**kwargs)`
+"""
+
+# ╔═╡ 68649e6a-d26d-405f-9754-e7902407f866
+transit_params = (
+	t_0 = 0.0,
+	period = 2.0,
+	aR_star = 7.0,
+	incl = 1.5,
+	ecc = 0.0,
+	omega = 0.0,
+)
+
+# ╔═╡ d212844e-b382-4c89-a0f0-809313d0b8db
+r = r_batman(;transit_params...)
+
+# ╔═╡ 4cb0f5a5-d448-4d69-a92a-8f044c07d1a2
+md"""
+Not bad 🍉
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -154,5 +203,10 @@ version = "1.2.0"
 # ╠═2be60363-fed7-4146-ada6-bb287ab94678
 # ╠═bb7aaa9e-1b22-4706-a582-dcb090c85b99
 # ╟─8d512b4c-a0ad-453f-8b51-c09cc63c6a49
+# ╠═97b525a0-cbca-4ca7-a415-23a8090eb7ac
+# ╟─abd5ec08-7a8c-45c8-89f6-65d5b34a42cf
+# ╠═68649e6a-d26d-405f-9754-e7902407f866
+# ╠═d212844e-b382-4c89-a0f0-809313d0b8db
+# ╟─4cb0f5a5-d448-4d69-a92a-8f044c07d1a2
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
