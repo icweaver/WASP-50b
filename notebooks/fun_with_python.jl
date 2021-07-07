@@ -21,15 +21,25 @@ Interfacing with Python is very seamless, thanks to the wonderful package *PyCal
 md"""!!! note
 	We have also used the [`Conda.jl`](https://github.com/JuliaPy/Conda.jl) package here to install `batman` from the conda-forge channel. If there is an issue running the above cell, try un-plugging it and plugging it back in by running the following in a fresh REPL (which can be copy-and-pasted at once):
 
-```julia
-using Pkg
-Pkg.add("Conda")
-ENV["PYTHON"] = ""
-Pkg.add("PyCall")
-Pkg.build("PyCall")
-using Conda
-Conda.add(["batman-package"]; channel="conda-forge")
-```
+	```julia
+	using Pkg
+	Pkg.add("Conda")
+	ENV["PYTHON"] = ""
+	Pkg.add("PyCall")
+	Pkg.build("PyCall")
+	using Conda
+	Conda.add(["batman-package"]; channel="conda-forge")
+	```
+	Similarly, `PyCall` can be pointed to an exisiting conda environment as well:
+
+
+	```julia	
+	using Pkg
+	ENV["PYTHON"] = "/home/mango/miniconda3/envs/batman/bin/python"
+	Pkg.add("PyCall")
+	Pkg.build("PyCall")
+	using PyCall
+	```
 """
 
 # ╔═╡ 793a51ba-f589-42f4-b562-bfcc0291243d
@@ -45,6 +55,7 @@ Now let's see it in action by using numpy to define a function `neg_norm` that t
 begin
 	py"""
 	import numpy as np
+	import juliet
 	
 	def neg_norm(x, y):
 		return -np.linalg.norm([x, y])
@@ -199,7 +210,7 @@ version = "1.2.0"
 # ╟─7c4c556c-7399-4585-a9c4-428734b9a9b2
 # ╠═ab57c20d-542c-4079-8d7d-21e523f7bdaa
 # ╟─ca74eea8-26de-4ecf-9e08-75658a3ae56a
-# ╟─793a51ba-f589-42f4-b562-bfcc0291243d
+# ╠═793a51ba-f589-42f4-b562-bfcc0291243d
 # ╠═2be60363-fed7-4146-ada6-bb287ab94678
 # ╠═bb7aaa9e-1b22-4706-a582-dcb090c85b99
 # ╟─8d512b4c-a0ad-453f-8b51-c09cc63c6a49
