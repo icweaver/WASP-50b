@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.15.0
+# v0.15.1
 
 using Markdown
 using InteractiveUtils
@@ -34,79 +34,90 @@ begin
 	using NaturalSort
 	using OrderedCollections
 	using Printf
-	using PyCall
+	#using PyCall
 	using Statistics
 	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
+	
+	# Python setup
+	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP50/bin/python"
+	Pkg.build("PyCall")
+	using PyCall
 end
 
 # ╔═╡ 670b88e4-1e96-494d-bfcc-235092bb6e96
 md"""
 # Photometric Monitoring
 
+In this notebook we gather and analyze the available photometric data for this target.
+
 $(TableOfContents(title="📖 Table of Contents"))
 """
 
 # ╔═╡ 0cbe4263-799f-4ee3-9a94-3ba879528b01
 md"""
-## ASAS-SN 🌠
+## ASAS-SN 🌍
+
+We start by downloading [all photometric monitoring data](https://asas-sn.osu.edu/photometry/7df0eb29-0b68-57ef-8ce2-83dc7b5684da) gathered by the [ASAS-SN](https://asas-sn.osu.edu/) survey, which we include below.
+"""
+
+# ╔═╡ b00c28a2-26b1-442e-a347-39fb66b825a0
+md"""
+### Data inspection
 """
 
 # ╔═╡ fa233a2c-7e89-4e71-85b8-824c5c341650
-df_phot_mon = CSV.File(
-	"data/photometric/AP37847073_BJD.csv",
+df_ASASSN = CSV.File(
+	"data/photometric/ASAS-SN/AP37847073.csv",
 	normalizenames = true,
 ) |> DataFrame
 
-# ╔═╡ 8cb04eac-9057-445f-a697-dbfb512e15c4
-df_phot_mon.hjd[1]
+# ╔═╡ 62730b5b-3c3f-42e6-84ac-dfd2e09d392f
+md"""
+Let's next check the data for any corrupted or missing data points:
+"""
 
 # ╔═╡ 9094c4a4-3b75-4e21-97a7-600de734867b
-describe(df_phot_mon, :all)
+describe(df_ASASSN, :all)
 
 # ╔═╡ 2b2dd83b-ce99-4551-b8aa-79ca6db5dd06
-function name(dt_bjd)
-	dt = julian2datetime(dt_bjd)
+function name(dt_julian)
+	dt = julian2datetime(dt_julian)
 	return "$(year(dt)) $(monthname(dt)) $(day(dt))"
 end
 
 # ╔═╡ 6eaf882c-0cb5-415f-b8fe-c071ee25a895
 md"""
-According to the table above, the data spans from
-$(join(name.(extrema(df_phot_mon.hjd)), " - ")) from two cameras (bd: 2013 December, bh: 2015 July), both in the V band. Since we will be using both cameras, let's sort the entire dataframe by time and plot the results next:
+Looks good. According to the table above, the data spans from
+**$(join(name.(extrema(df_ASASSN.hjd)), " - "))** from two cameras (**bd**, commissioned 2013 December at Haleakala; **bh**, commissioned 2015 July at CTIO), both in the V band:
 """
 
-# ╔═╡ 92548af3-9a26-4202-88f2-ba3a31181686
+# ╔═╡ 98704543-8cb7-4fca-b601-2a8d2dfa4833
 begin
-	df_sorted = sort(df_phot_mon, :bjd)
-	t_ASASSN, f_ASASSN, f_err_ASASSN = eachcol(df_sorted[!, [:bjd, :mag, :mag_err]])
-	
+	# Define transit epochs
 	utc_transit_dates = ["2013-12-19", "2015-09-27", "2016-12-11"]
 	transit_dates = DateTime.(utc_transit_dates)
 	julian_transit_dates = datetime2julian.(transit_dates) |> collect
 end;
 
-# ╔═╡ 41a5e487-d55c-4d80-aae8-2f6904c60f8b
-julian_transit_dates
-
 # ╔═╡ 8e6008ca-a762-4450-a09e-bd0c2bbac4f2
 let
-	phot_mon = data(df_phot_mon) * mapping(
-	    :bjd => (x -> x - 2.457e6) => "Time (BTJD)",
-	    :mag => (x -> x - mean(f_ASASSN)) => "Δ Mag",
+	phot_mon = data(df_ASASSN) * mapping(
+	    :hjd => "Time (HJD)",
+	    :mag => "Magnitude",
 		color = :camera,
 	)
 	
 	fig = draw(phot_mon)
 	ax = current_axis()
 	
-	vlines!(ax, julian_transit_dates .- 2.457e6;
+	vlines!(ax, julian_transit_dates;
 		linestyle = :dash,
 		color = :darkgrey,
 	)
 	
 	for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, julian_transit_dates))
 		text!(ax, "Transit $i\n$utc";
-			position = Point2f0(jd - 2.457e6, 0.05),
+			position = Point2f0(jd, 11.83),
 			textsize = 14,
 			align = (:left, :center),
 			offset = Point2f0(10, 0),
@@ -119,17 +130,182 @@ let
 	fig #|> as_svg
 end
 
+# ╔═╡ 7e5ea835-8eb2-44d5-905d-433767b6b91a
+md"""
+Since these observations share the same filter, we will treat them as if they came from a single instrument. Next, we will convert the recorded HJD times to BTJD (BJD - 2457000), to place them on the same time axis as the TESS data.
+"""
+
+# ╔═╡ 5bc41820-3782-4f82-80b6-6da62805ca8f
+md"""
+### Time conversion
+
+We will make use of astropy's coordinates and time modules to first make the conversion from HJD to BJD:
+"""
+
+# ╔═╡ 5bf1136b-2d13-4463-8d74-9ade1e2cee96
+begin
+	py"""
+	from astropy.coordinates import SkyCoord, EarthLocation
+	from astropy import units as u
+	from astropy.time import Time
+	
+	
+	# https://gist.github.com/StuartLittlefair/4ab7bb8cf21862e250be8cb25f72bb7a
+	def helio_to_bary(coords, hjd, obs_name):
+	    helio = Time(hjd, scale="utc", format="jd")
+	    obs = EarthLocation.of_site(obs_name)
+	    star = SkyCoord(coords, unit=(u.hour, u.deg)) 
+	    ltt = helio.light_travel_time(star, "heliocentric", location=obs)
+	    guess = helio - ltt
+	    
+	    # If we assume guess is correct - how far is heliocentric time away
+	    # from true value?
+	    delta = (
+	    guess + guess.light_travel_time(star, "heliocentric", obs)
+	    ).jd - helio.jd
+	    
+	    # Apply this correction
+	    guess -= delta * u.d
+	    ltt = guess.light_travel_time(star, 'barycentric', obs)
+	    
+	    return guess.tdb + ltt
+	"""
+	helio_to_bary(coords, hjd, obs_name) = py"helio_to_bary"(
+		coords, hjd, obs_name
+	).value
+end
+
+# ╔═╡ c86f5adc-6e17-44c4-b754-1b5c42557809
+const coords_W50 = "1:12:43.2 +31:12:43" # RA, Dec of WASP-50
+
+# ╔═╡ 5f1ca89d-61e8-4ade-93e1-13716dc5fd46
+loc_to_BJD(t, coords, camera) = camera == "Haleakala" ?
+	helio_to_bary(coords, t, "Haleakala") :
+	helio_to_bary(coords, t, "CTIO")
+
+# ╔═╡ 42b72605-f89e-42c4-a159-d43e4620140f
+df_ASASSN[!, :bjd] = loc_to_BJD.(df_ASASSN.hjd, coords_W50, df_ASASSN.camera);
+
+# ╔═╡ 92548af3-9a26-4202-88f2-ba3a31181686
+begin
+	df_sorted = sort(df_ASASSN, :bjd)
+	t_ASASSN, f_ASASSN, f_err_ASASSN = eachcol(df_sorted[!, [:bjd, :mag, :mag_err]])
+end;
+
 # ╔═╡ dbe317fe-540d-44e8-b8e7-6c465c79559f
 md"""
 ``t_\text{window}`` = $(@bind t_window Slider(1:20, default=7, show_value=true)) days
 """
 
+# ╔═╡ 9a195365-e68f-43e2-8870-c09153e2ce91
+md"""
+### Plot
+
+With the BJD times computed, we can now plot the ASAS-SN photometry, binned to **$(t_window) days**:
+"""
+
 # ╔═╡ 682499cb-af79-48f7-9e74-0185894f65fe
-t_ASASSN |> diff |> mean
+md"""
+For comparison, the cadence for this data has an average of $(t_ASASSN |> diff |> mean) days.
+"""
 
 # ╔═╡ 78d85c7c-da06-41ab-915b-48d93a010967
 md"""
-## TESS
+## TESS 🌌
+We next turn to the TESS photometry, before finally combining with the ASAS-SN data.
+"""
+
+# ╔═╡ 97e7feee-11b2-4a35-9327-b5c0d05b2a23
+md"""
+### Light curve collection
+
+First we use [`lightkurve`](https://docs.lightkurve.org/whats-new-v2.html) to view the available data products from TESS:
+"""
+
+# ╔═╡ 7952b639-d10f-4d2d-9289-4b92b2d1c60d
+begin
+	py"""
+	import transitleastsquares as tls
+	import lightkurve as lk
+	
+	def search_results(target, kwargs):
+		return lk.search_lightcurve(target, **kwargs)
+	"""
+	search_results(target; kwargs...) = py"search_results"(target; kwargs)
+end
+
+# ╔═╡ cc76af35-a066-4d42-be49-eefec91f7d96
+all_srs = search_results("WASP-50")
+
+# ╔═╡ dff46359-7aec-4fa1-bc7a-89785dfca0e8
+srs = search_results("WASP-50"; author=["TESS-SPOC", "SPOC"])
+
+# ╔═╡ 34fcd73d-a49c-4597-8e63-cfe2495eee48
+md"""
+From the $(length(all_srs)) data products found, we see that $(length(srs)) are available from the [Science Processing Operations Center (SPOC)](https://heasarc.gsfc.nasa.gov/docs/tess/pipeline.html):
+"""
+
+# ╔═╡ 6e62b3cc-96ce-43fd-811b-4b2b102cfd61
+lcs = srs.download_all();
+
+# ╔═╡ bf01b1c2-e4c6-4bed-8e79-a20f273cc387
+function plot_photometry(lcs, yfield)
+	fig = Figure()
+	
+	for (i, lc) in enumerate(lcs)
+		lines(
+			fig[i, 1],
+			lc.time.value,
+			getproperty(lc, yfield).value,
+			label = """
+			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
+			$(lc.meta["EXPOSURE"]) s
+			"""
+		)
+		
+		axislegend()
+	end
+	
+	linkyaxes!(filter(x -> x isa Axis, fig.content)...)
+			
+	if yfield == :sap_flux
+		ylabel = "SAP Flux (e⁻/s)"
+	elseif yfield == :pdcsap_flux
+		ylabel = "PDCSAP Flux (e⁻/s)"
+	else
+		ylabel = "Flux"
+	end
+	
+	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
+	Label(fig[1:end-1, 0], ylabel, rotation=π/2, padding=(0,10,0,0))
+	
+	fig
+end
+
+# ╔═╡ d736f108-d5d1-4602-a63a-83739489c57f
+plot_photometry(lcs, :sap_flux)
+
+# ╔═╡ 1daca7b2-ceed-423b-b00c-683f9b6d6ebd
+plot_photometry(lcs, :pdcsap_flux)
+
+# ╔═╡ f38767cc-6a5f-4ff9-80fb-1f47fe37303f
+round(3.2)
+
+# ╔═╡ 56aaa28a-5a04-426d-82cb-1982c2a44db7
+# df = DataFrame(:t => 1:5, :location => rand(["locA", "locB"], 5))
+
+# ╔═╡ b4f82bf2-e9d7-4ef7-96d1-6d055335c7bb
+loc_to_BJD2(t, loc) = loc == "locA" ? t^2 : -t^2
+
+# ╔═╡ 05020b4a-956b-4e03-bd16-efcad63006da
+# gdf = groupby(df, :location);
+
+# ╔═╡ 574378c0-bcee-42b4-86bb-5a561d244f93
+gdf |> keys
+
+# ╔═╡ 3327596c-56f1-4024-9490-ee69bd514007
+md"""
+### Light curve binning
 """
 
 # ╔═╡ e7eba854-3846-4ba4-bbdb-c5f7dbdf08a7
@@ -273,23 +449,23 @@ let
 	fig = Figure()
 	ax = Axis(fig[1, 1], xlabel="Time (BTJD)", ylabel="ΔMag")
 	
-# 	# Mark transit epochs
-# 	Δjulian_transit_dates = julian_transit_dates .- 2.457e6
-# 	vlines!(ax, Δjulian_transit_dates;
-# 		linestyle = :dash,
-# 		color = :darkgrey,
-# 	)
+	# Mark transit epochs
+	Δjulian_transit_dates = julian_transit_dates .- 2.457e6
+	vlines!(ax, Δjulian_transit_dates;
+		linestyle = :dash,
+		color = :darkgrey,
+	)
 	
-# 	# Label transit epochs
-# 	for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, Δjulian_transit_dates))
-# 		text!(ax, "Transit $i\n$utc";
-# 			position = Point2f0(jd, 0.08),
-# 			textsize = 14,
-# 			align = (:left, :center),
-# 			offset = Point2f0(10, 0),
-# 			color = :grey,
-# 		)
-# 	end
+	# Label transit epochs
+	for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, Δjulian_transit_dates))
+		text!(ax, "Transit $i\n$utc";
+			position = Point2f0(jd, 0.08),
+			textsize = 14,
+			align = (:left, :center),
+			offset = Point2f0(10, 0),
+			color = :grey,
+		)
+	end
 	
 	# Plot photometry measurements
 	plot_phot!(
@@ -301,7 +477,7 @@ let
 end
 
 # ╔═╡ 8906a2a2-65c9-4dc1-aaef-078a6ddaaff2
-begin
+let
 	fig = Figure()
 	
 	ax_top = Axis(fig[1, 1],)
@@ -348,18 +524,41 @@ body.disable_ui main {
 # ╔═╡ Cell order:
 # ╟─670b88e4-1e96-494d-bfcc-235092bb6e96
 # ╟─0cbe4263-799f-4ee3-9a94-3ba879528b01
+# ╟─b00c28a2-26b1-442e-a347-39fb66b825a0
 # ╠═fa233a2c-7e89-4e71-85b8-824c5c341650
-# ╠═8cb04eac-9057-445f-a697-dbfb512e15c4
+# ╟─62730b5b-3c3f-42e6-84ac-dfd2e09d392f
 # ╠═9094c4a4-3b75-4e21-97a7-600de734867b
-# ╠═2b2dd83b-ce99-4551-b8aa-79ca6db5dd06
 # ╟─6eaf882c-0cb5-415f-b8fe-c071ee25a895
-# ╠═92548af3-9a26-4202-88f2-ba3a31181686
-# ╠═41a5e487-d55c-4d80-aae8-2f6904c60f8b
+# ╟─2b2dd83b-ce99-4551-b8aa-79ca6db5dd06
+# ╠═98704543-8cb7-4fca-b601-2a8d2dfa4833
 # ╠═8e6008ca-a762-4450-a09e-bd0c2bbac4f2
+# ╟─7e5ea835-8eb2-44d5-905d-433767b6b91a
+# ╟─5bc41820-3782-4f82-80b6-6da62805ca8f
+# ╠═5bf1136b-2d13-4463-8d74-9ade1e2cee96
+# ╠═c86f5adc-6e17-44c4-b754-1b5c42557809
+# ╠═5f1ca89d-61e8-4ade-93e1-13716dc5fd46
+# ╠═42b72605-f89e-42c4-a159-d43e4620140f
+# ╟─9a195365-e68f-43e2-8870-c09153e2ce91
+# ╠═92548af3-9a26-4202-88f2-ba3a31181686
 # ╟─dbe317fe-540d-44e8-b8e7-6c465c79559f
-# ╠═682499cb-af79-48f7-9e74-0185894f65fe
 # ╠═2ee9b0ca-f6a2-47db-abfc-9a44e64b2e42
+# ╟─682499cb-af79-48f7-9e74-0185894f65fe
 # ╟─78d85c7c-da06-41ab-915b-48d93a010967
+# ╟─97e7feee-11b2-4a35-9327-b5c0d05b2a23
+# ╠═7952b639-d10f-4d2d-9289-4b92b2d1c60d
+# ╠═cc76af35-a066-4d42-be49-eefec91f7d96
+# ╟─34fcd73d-a49c-4597-8e63-cfe2495eee48
+# ╠═dff46359-7aec-4fa1-bc7a-89785dfca0e8
+# ╠═6e62b3cc-96ce-43fd-811b-4b2b102cfd61
+# ╠═d736f108-d5d1-4602-a63a-83739489c57f
+# ╠═1daca7b2-ceed-423b-b00c-683f9b6d6ebd
+# ╠═bf01b1c2-e4c6-4bed-8e79-a20f273cc387
+# ╠═f38767cc-6a5f-4ff9-80fb-1f47fe37303f
+# ╠═56aaa28a-5a04-426d-82cb-1982c2a44db7
+# ╠═b4f82bf2-e9d7-4ef7-96d1-6d055335c7bb
+# ╠═05020b4a-956b-4e03-bd16-efcad63006da
+# ╠═574378c0-bcee-42b4-86bb-5a561d244f93
+# ╟─3327596c-56f1-4024-9490-ee69bd514007
 # ╠═e7eba854-3846-4ba4-bbdb-c5f7dbdf08a7
 # ╠═e1648b37-b52b-4c46-a5fb-4e5bc2743cd4
 # ╠═09c666f7-a8b4-4b47-b9fd-1351e8bd28f9
