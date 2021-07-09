@@ -219,7 +219,7 @@ We next turn to the TESS photometry, before finally combining with the ASAS-SN d
 md"""
 ### Light curve collection
 
-First we use [`lightkurve`](https://docs.lightkurve.org/whats-new-v2.html) to view the available data products from TESS:
+First we use [`lightkurve`](https://docs.lightkurve.org/whats-new-v2.html) to download the available data products from TESS:
 """
 
 # ╔═╡ 7952b639-d10f-4d2d-9289-4b92b2d1c60d
@@ -248,60 +248,10 @@ From the $(length(all_srs)) data products found, we see that $(length(srs)) are 
 # ╔═╡ 6e62b3cc-96ce-43fd-811b-4b2b102cfd61
 lcs = srs.download_all();
 
-# ╔═╡ bf01b1c2-e4c6-4bed-8e79-a20f273cc387
-function plot_photometry(lcs, yfield)
-	fig = Figure()
-	
-	for (i, lc) in enumerate(lcs)
-		lines(
-			fig[i, 1],
-			lc.time.value,
-			getproperty(lc, yfield).value,
-			label = """
-			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
-			$(lc.meta["EXPOSURE"]) s
-			"""
-		)
-		
-		axislegend()
-	end
-	
-	linkyaxes!(filter(x -> x isa Axis, fig.content)...)
-			
-	if yfield == :sap_flux
-		ylabel = "SAP Flux (e⁻/s)"
-	elseif yfield == :pdcsap_flux
-		ylabel = "PDCSAP Flux (e⁻/s)"
-	else
-		ylabel = "Flux"
-	end
-	
-	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
-	Label(fig[1:end-1, 0], ylabel, rotation=π/2, padding=(0,10,0,0))
-	
-	fig
-end
-
-# ╔═╡ d736f108-d5d1-4602-a63a-83739489c57f
-plot_photometry(lcs, :sap_flux)
-
-# ╔═╡ 1daca7b2-ceed-423b-b00c-683f9b6d6ebd
-plot_photometry(lcs, :pdcsap_flux)
-
-# ╔═╡ f38767cc-6a5f-4ff9-80fb-1f47fe37303f
-round(3.2)
-
-# ╔═╡ 56aaa28a-5a04-426d-82cb-1982c2a44db7
-# df = DataFrame(:t => 1:5, :location => rand(["locA", "locB"], 5))
-
-# ╔═╡ b4f82bf2-e9d7-4ef7-96d1-6d055335c7bb
-loc_to_BJD2(t, loc) = loc == "locA" ? t^2 : -t^2
-
-# ╔═╡ 05020b4a-956b-4e03-bd16-efcad63006da
-# gdf = groupby(df, :location);
-
-# ╔═╡ 574378c0-bcee-42b4-86bb-5a561d244f93
-gdf |> keys
+# ╔═╡ 241c462c-3cd9-402d-b948-b9b1f608b727
+md"""
+We show the normalized PDCSAP flux below for each sector: 
+"""
 
 # ╔═╡ 3327596c-56f1-4024-9490-ee69bd514007
 md"""
@@ -420,6 +370,105 @@ begin
 	)
 	
 	COLORS
+end
+
+# ╔═╡ a4f47f9c-f4ff-4a52-9a4f-b7b3cfcc9e75
+let
+	fig = Figure(resolution=FIG_TALL)
+		
+	for (i, lc) in enumerate((lcs[1], lcs[2]))
+		lines(
+			fig[i, 1],
+			lc.normalize().remove_nans().time.value,
+			lc.normalize().remove_nans().flux,
+			label = """
+			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
+			$(lc.meta["EXPOSURE"]) s
+			$(srs[i].exptime)
+			"""
+		)
+		# lines!(
+		# 	fig[i, 1],
+		# 	lc.normalize().remove_nans().time.value,
+		# 	lc.normalize().remove_nans().flux.value,
+		# )
+
+		axislegend()
+	end
+
+	linkyaxes!(filter(x -> x isa Axis, fig.content)...)
+
+	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
+	Label(fig[1:end-1, 0], "Flux (e⁻/s)", rotation=π/2, padding=(0,10,0,0))
+	
+	fig
+end
+
+# ╔═╡ 82222ee8-f759-499d-a072-c219cc33ccad
+let
+	fig = Figure(resolution=FIG_TALL, title="yee")
+		
+	for (i, lc) in enumerate((lcs[3], lcs[4], lcs[5]))
+		lines(
+			fig[i, 1],
+			lc.normalize().remove_nans().time.value,
+			lc.normalize().remove_nans().flux,
+			label = """
+			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
+			$(lc.meta["EXPOSURE"]) s
+			$(srs[i].exptime)
+			"""
+		)
+		# lines!(
+		# 	fig[i, 1],
+		# 	lc.normalize().remove_nans().time.value,
+		# 	lc.normalize().remove_nans().flux.value,
+		# )
+
+		axislegend()
+	end
+
+	#linkyaxes!(filter(x -> x isa Axis, fig.content)...)
+
+	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
+	Label(fig[1:end-1, 0], "Flux (e⁻/s)", rotation=π/2, padding=(0,10,0,0))
+	
+	fig
+end
+
+# ╔═╡ bf01b1c2-e4c6-4bed-8e79-a20f273cc387
+function plot_photometry(lcs, yfield)
+	fig = Figure(resolution=FIG_TALL)
+	
+	for (i, lc) in enumerate(lcs)
+		lines(
+			fig[i, 1],
+			lc.time.value,
+			getproperty(lc, yfield).value,
+			label = """
+			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
+			$(lc.meta["EXPOSURE"]) s
+			$(srs[i].exptime)
+			"""
+		)
+		
+		axislegend()
+	end
+	
+	linkyaxes!(filter(x -> x isa Axis, fig.content)...)
+			
+	if yfield == :sap_flux
+		ylabel = "SAP Flux (e⁻/s)"
+	elseif yfield == :pdcsap_flux
+		ylabel = "PDCSAP Flux (e⁻/s)"
+	else
+		ylabel = "Flux"
+	end
+	
+	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
+	Label(fig[1:end-1, 0], ylabel, rotation=π/2, padding=(0,10,0,0))
+	
+	fig
 end
 
 # ╔═╡ 7370a1d9-4f8e-4788-adac-b8be2bcc9643
@@ -550,14 +599,10 @@ body.disable_ui main {
 # ╟─34fcd73d-a49c-4597-8e63-cfe2495eee48
 # ╠═dff46359-7aec-4fa1-bc7a-89785dfca0e8
 # ╠═6e62b3cc-96ce-43fd-811b-4b2b102cfd61
-# ╠═d736f108-d5d1-4602-a63a-83739489c57f
-# ╠═1daca7b2-ceed-423b-b00c-683f9b6d6ebd
+# ╟─241c462c-3cd9-402d-b948-b9b1f608b727
+# ╠═a4f47f9c-f4ff-4a52-9a4f-b7b3cfcc9e75
+# ╠═82222ee8-f759-499d-a072-c219cc33ccad
 # ╠═bf01b1c2-e4c6-4bed-8e79-a20f273cc387
-# ╠═f38767cc-6a5f-4ff9-80fb-1f47fe37303f
-# ╠═56aaa28a-5a04-426d-82cb-1982c2a44db7
-# ╠═b4f82bf2-e9d7-4ef7-96d1-6d055335c7bb
-# ╠═05020b4a-956b-4e03-bd16-efcad63006da
-# ╠═574378c0-bcee-42b4-86bb-5a561d244f93
 # ╟─3327596c-56f1-4024-9490-ee69bd514007
 # ╠═e7eba854-3846-4ba4-bbdb-c5f7dbdf08a7
 # ╠═e1648b37-b52b-4c46-a5fb-4e5bc2743cd4
