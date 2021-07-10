@@ -31,6 +31,7 @@ begin
 	using KernelDensity
 	using Latexify
 	using Measurements
+	using Measurements: value, uncertainty
 	using NaturalSort
 	using OrderedCollections
 	using Printf
@@ -63,6 +64,8 @@ We start by downloading [all photometric monitoring data](https://asas-sn.osu.ed
 # ╔═╡ b00c28a2-26b1-442e-a347-39fb66b825a0
 md"""
 ### Data inspection
+
+Let's start by checking the data for any corrupted or missing data points:
 """
 
 # ╔═╡ fa233a2c-7e89-4e71-85b8-824c5c341650
@@ -70,11 +73,6 @@ df_ASASSN = CSV.File(
 	"data/photometric/ASAS-SN/AP37847073.csv",
 	normalizenames = true,
 ) |> DataFrame
-
-# ╔═╡ 62730b5b-3c3f-42e6-84ac-dfd2e09d392f
-md"""
-Let's next check the data for any corrupted or missing data points:
-"""
 
 # ╔═╡ 9094c4a4-3b75-4e21-97a7-600de734867b
 describe(df_ASASSN, :all)
@@ -238,7 +236,7 @@ end
 all_srs = search_results("WASP-50")
 
 # ╔═╡ dff46359-7aec-4fa1-bc7a-89785dfca0e8
-srs = search_results("WASP-50"; author=["TESS-SPOC", "SPOC"])
+srs = search_results("WASP-50"; author=["TESS-SPOC"])
 
 # ╔═╡ 34fcd73d-a49c-4597-8e63-cfe2495eee48
 md"""
@@ -295,6 +293,17 @@ md"""
 ## Helper Functions
 """
 
+# ╔═╡ 682c3732-e68f-4fdb-bd63-553223308364
+begin
+	Makie.convert_arguments(
+		P::PointBased, v::Vector, m::AbstractVector{<:Measurement}
+	) = convert_arguments(P, v, value.(m))
+	
+	Makie.convert_arguments(
+		P::Type{<:Errorbars}, v::Vector, m::AbstractVector{<:Measurement}
+	) = convert_arguments(P, v, value.(m), uncertainty.(m))	
+end
+
 # ╔═╡ 976bd30f-2bae-4c5d-93dc-70b4df303840
 md"""
 We produced the above plots by performing a rolling average over sub-groups of the data. Each sub-group contains timeseries points within $Δt$ of the first point in that sub-group. We then move on to the next group and perform the same grouping operation:
@@ -328,9 +337,23 @@ end
 function bin_data(x, y; Δ=0.1)
 	idxs = idxs_of_groups(x, Δ)
 	groups = [(x[idx], y[idx]) for idx in idxs]
-	binned = [(mean(group[1]), weightedmean(group[2]).val) for group ∈ groups]
-	return binned
+	x_avg, y_avg = Float64[], Measurement{Float64}[]
+	for group in groups
+		push!(x_avg, mean(group[1]))
+		push!(y_avg, weightedmean(group[2]))
+	end
+		
+	return x_avg, y_avg
 end
+
+# ╔═╡ 844bd095-0dfe-4dbd-babc-88f46f61704f
+t_avg, f_avg = bin_data([6, 7, 8.], [1,2,3.] .± [4,5,6.], Δ=1)
+
+# ╔═╡ 750484fb-2adc-49f8-87c7-f5fad6ee6805
+uncertainty.(f_avg) |> mean
+
+# ╔═╡ 5f7a0554-4ae5-4d08-99df-7a0c1f182c5d
+t_avg |> typeof
 
 # ╔═╡ 7ffcd329-91ce-4936-b86c-b9c11aa07a2b
 md"""
@@ -372,43 +395,11 @@ begin
 	COLORS
 end
 
-# ╔═╡ a4f47f9c-f4ff-4a52-9a4f-b7b3cfcc9e75
-let
-	fig = Figure(resolution=FIG_TALL)
-		
-	for (i, lc) in enumerate((lcs[1], lcs[2]))
-		lines(
-			fig[i, 1],
-			lc.normalize().remove_nans().time.value,
-			lc.normalize().remove_nans().flux,
-			label = """
-			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
-			$(lc.meta["EXPOSURE"]) s
-			$(srs[i].exptime)
-			"""
-		)
-		# lines!(
-		# 	fig[i, 1],
-		# 	lc.normalize().remove_nans().time.value,
-		# 	lc.normalize().remove_nans().flux.value,
-		# )
-
-		axislegend()
-	end
-
-	linkyaxes!(filter(x -> x isa Axis, fig.content)...)
-
-	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
-	Label(fig[1:end-1, 0], "Flux (e⁻/s)", rotation=π/2, padding=(0,10,0,0))
-	
-	fig
-end
-
 # ╔═╡ 82222ee8-f759-499d-a072-c219cc33ccad
 let
 	fig = Figure(resolution=FIG_TALL, title="yee")
 		
-	for (i, lc) in enumerate((lcs[3], lcs[4], lcs[5]))
+	for (i, lc) in enumerate(lcs)
 		lines(
 			fig[i, 1],
 			lc.normalize().remove_nans().time.value,
@@ -487,8 +478,12 @@ function plot_phot!(ax, t_window, t, f, f_err; t_offset=0.0, relative_flux=false
 	scatter!(ax, t_rel, Δf, color=(:darkgrey, 0.25))
 	
 	# Averaged data
-	binned_vals = bin_data(t_rel, Δf .± Δf_err, Δ=t_window);
-	scatter!(ax, binned_vals, color=COLORS[end-2])
+	t_avg, f_avg = bin_data(t_rel, Δf .± Δf_err, Δ=t_window)
+	f_unc_avg = uncertainty.(f_avg) |> mean
+	errorbars!(ax, t_avg, f_avg)
+	scatter!(ax, t_avg, f_avg, color=COLORS[end-2], label="avg err: $(f_unc_avg)")
+	
+	axislegend(ax)
 	
 	return ax
 end
@@ -575,7 +570,6 @@ body.disable_ui main {
 # ╟─0cbe4263-799f-4ee3-9a94-3ba879528b01
 # ╟─b00c28a2-26b1-442e-a347-39fb66b825a0
 # ╠═fa233a2c-7e89-4e71-85b8-824c5c341650
-# ╟─62730b5b-3c3f-42e6-84ac-dfd2e09d392f
 # ╠═9094c4a4-3b75-4e21-97a7-600de734867b
 # ╟─6eaf882c-0cb5-415f-b8fe-c071ee25a895
 # ╟─2b2dd83b-ce99-4551-b8aa-79ca6db5dd06
@@ -600,7 +594,6 @@ body.disable_ui main {
 # ╠═dff46359-7aec-4fa1-bc7a-89785dfca0e8
 # ╠═6e62b3cc-96ce-43fd-811b-4b2b102cfd61
 # ╟─241c462c-3cd9-402d-b948-b9b1f608b727
-# ╠═a4f47f9c-f4ff-4a52-9a4f-b7b3cfcc9e75
 # ╠═82222ee8-f759-499d-a072-c219cc33ccad
 # ╠═bf01b1c2-e4c6-4bed-8e79-a20f273cc387
 # ╟─3327596c-56f1-4024-9490-ee69bd514007
@@ -614,8 +607,12 @@ body.disable_ui main {
 # ╠═faff66de-c844-49be-81a0-d019780a49ed
 # ╠═ea8d87e4-4254-4e4e-a6ab-a2ef39d9a756
 # ╟─18223d42-66d8-40d1-9d89-be8af46853e2
+# ╠═682c3732-e68f-4fdb-bd63-553223308364
 # ╟─976bd30f-2bae-4c5d-93dc-70b4df303840
 # ╠═7370a1d9-4f8e-4788-adac-b8be2bcc9643
+# ╠═844bd095-0dfe-4dbd-babc-88f46f61704f
+# ╠═750484fb-2adc-49f8-87c7-f5fad6ee6805
+# ╠═5f7a0554-4ae5-4d08-99df-7a0c1f182c5d
 # ╠═ed0feb32-85a2-4d3b-bb96-47eb18e29dd3
 # ╠═28ce86fd-9679-4775-80ff-75479baa8a0c
 # ╟─7ffcd329-91ce-4936-b86c-b9c11aa07a2b
