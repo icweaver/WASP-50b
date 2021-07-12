@@ -16,7 +16,7 @@ end
 # ╔═╡ 9e2ce576-c9bd-11eb-0699-47af13e79589
 begin
 	import Pkg
-	Pkg.activate(joinpath(@__DIR__, ".."))
+	Pkg.activate(Base.current_project())
 	
 	using AlgebraOfGraphics
 	using CSV
@@ -48,7 +48,7 @@ begin
 	##############
 	const FIG_TALL = (900, 1_200)
 	const FIG_WIDE = (1_350, 800)
-	#const COLORS = to_colormap(:seaborn_colorblind6, 8)[[8, 6, 4, 1]]
+	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Colorant,
 		[
 			"#a6cee3",  # Cyan

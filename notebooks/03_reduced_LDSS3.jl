@@ -48,7 +48,7 @@ begin
 	##############
 	const FIG_TALL = (900, 1_200)
 	const FIG_WIDE = (1_350, 800)
-	#const COLORS = to_colormap(:seaborn_colorblind6, 8)[[8, 6, 4, 1]]
+	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Colorant,
 		[
 			"#a6cee3",  # Cyan
@@ -185,10 +185,14 @@ With the flux extracted for each object, we now turn to analyzing the resulting 
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
 
 # ╔═╡ 7d68ad39-3e39-48fa-939a-e56c6659d2b3
-function spec_plot!(ax, wav, A; norm=1.0, label="")
+function spec_plot!(ax, wav, A; color=:blue, norm=1.0, label="")
 	μ, σ = med_std(A) ./ norm
-	band!(ax, wav, μ .- σ, μ .+ σ)
-	lines!(ax, wav, μ, linewidth=2, label=label)
+	band!(ax, wav, μ .- σ, μ .+ σ, color=(color, 0.25))
+	lines!(ax, wav, μ;
+		color = color,
+		cycle = Cycle(:linestyle),
+		label = label,
+	)
 end
 
 # ╔═╡ bd937d51-17e9-4de3-a5d0-4c436d413940
@@ -418,6 +422,7 @@ let
 	
 	for (i, (name, f)) in enumerate(zip(labels, fluxes))
 		spec_plot!(ax, wav, f;
+			color=COLORS_SERIES[i],
 			norm = f_norm,
 			label = name,
 		)

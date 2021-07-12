@@ -48,7 +48,7 @@ begin
 	##############
 	const FIG_TALL = (900, 1_200)
 	const FIG_WIDE = (1_350, 800)
-	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 8)
+	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Colorant,
 		[
 			"#a6cee3",  # Cyan
@@ -149,10 +149,14 @@ median(LC["spectra"]["WASP50"])
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
 
 # ╔═╡ 1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
-function spec_plot!(ax, wav, A; norm=1.0, label="")
+function spec_plot!(ax, wav, A; color=:blue, norm=1.0, label="")
 	μ, σ = med_std(A) ./ norm
-	band!(ax, wav, μ .- σ, μ .+ σ)
-	lines!(ax, wav, μ, label=label)
+	band!(ax, wav, μ .- σ, μ .+ σ, color=(color, 0.25))
+	lines!(ax, wav, μ;
+		color = color,
+		cycle = Cycle(:linestyle),
+		label = label,
+	)
 end
 
 # ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
@@ -163,9 +167,11 @@ let
 	wav = LC["spectra"]["wavelengths"]
 	f_norm = median(LC["spectra"]["WASP50"])
 	
+	i = 1
 	for (name, f) in sort(LC["spectra"])
 		if name != "wavelengths"
-			spec_plot!(ax, wav, f, norm=f_norm, label=name)
+			spec_plot!(ax, wav, f, color=COLORS_SERIES[i], norm=f_norm, label=name)
+			i += 1
 		end
 	end
 	
