@@ -21,6 +21,7 @@ begin
 	using AlgebraOfGraphics
 	using CSV
 	using CairoMakie
+	using CCDReduction
 	using Colors
 	using DataFrames
 	using DataFramesMeta
