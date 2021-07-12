@@ -16,8 +16,8 @@ end
 # ╔═╡ b1b0690a-a1eb-11eb-1590-396d92c80c23
 begin
 	import Pkg
-	Pkg.activate(joinpath(@__DIR__, ".."))
-
+	Pkg.activate(Base.current_project())
+	
 	using AlgebraOfGraphics
 	using CSV
 	using CairoMakie
@@ -26,18 +26,57 @@ begin
 	using DataFramesMeta
 	using Dates
 	using DelimitedFiles
-	using FITSIO
 	using Glob
 	using ImageFiltering
 	using KernelDensity
 	using Latexify
 	using Measurements
+	using Measurements: value, uncertainty
 	using NaturalSort
 	using OrderedCollections
 	using Printf
-	using PyCall
 	using Statistics
 	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
+	
+	# Python setup
+	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP50/bin/python"
+	Pkg.build("PyCall")
+	using PyCall
+	
+	##############
+	# PLOT CONFIGS
+	##############
+	const FIG_TALL = (900, 1_200)
+	const FIG_WIDE = (1_350, 800)
+	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 8)
+	const COLORS = parse.(Colorant,
+		[
+			"#a6cee3",  # Cyan
+			"#fdbf6f",  # Yellow
+			"#ff7f00",  # Orange
+			"#1f78b4",  # Blue
+			# "plum",
+			# "#956cb4",  # Purple
+			# "mediumaquamarine",
+			# "#029e73",  # Green,
+		]
+	)
+	
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Scatter = (linewidth=10,),
+			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
+	
+	COLORS
 end
 
 # ╔═╡ ee24f7df-c4db-4065-afe9-10be80cbcd6b
@@ -140,9 +179,9 @@ end
 
 # ╔═╡ e3468c61-782b-4f55-a4a1-9d1883655d11
 md"""
-## White light curves 🌅
+## White-light curves 🌅
 
-Next, we will extract the integrated white light curves from these spectra, integrated over the specified wavelength bins:
+Next, we will extract the integrated white-light curves from these spectra, divided by each comparison star:
 """
 
 # ╔═╡ 18d58341-0173-4eb1-9f01-cfa893088613
@@ -179,27 +218,30 @@ md"""
 	We divide the target WLC by each comparison star to minimize common systematics (e.g., air mass, local refractive atmospheric effects), and to make the transit shape more apparent. This allows us to select good comparison stars for that particular night and which timeseries points to include in the rest of the analysis.
 """
 
-# ╔═╡ dc044a72-4706-49e2-94a8-c828a6bf7de0
+# ╔═╡ 22b57aad-e886-4d36-bab8-baef5f3fabe6
+f_div_WLC_norm
+
+# ╔═╡ ad5b07e5-75d0-4e03-a5d6-9ce4f1efd949
 function filt(f_div_wlc, window_width; func=median, border="reflect")
 	# Filtered light curves
 	f_filt = mapslices(
 		x -> mapwindow(func, x, window_width, border=border),
 		f_div_wlc,
-		dims=1,
+		dims = 1,
 	)
 	
 	# Residuals
-	diff = abs.(f_div_wlc - f_filt)
+	Δf = f_div_wlc - f_filt
 	
-	return f_filt, diff
+	return f_filt, abs.(Δf), Δf
 end
 
 # ╔═╡ a4517d69-76e6-462a-9449-b31d80e34a8f
 # Filter specified WLCs and return superset points
 function filt_idxs(f_div_wlc, window_width; ferr=0.002)
 	ntimes, ncomps = size(f_div_wlc)
-	f_filt, diff = filt(f_div_wlc, window_width)
-	bad_idxs = ∪(findall.(>(ferr), eachcol(diff))...) |> sort;
+	f_filt, f_diff, _ = filt(f_div_wlc, window_width)
+	bad_idxs = ∪(findall.(>(ferr), eachcol(f_diff))...) |> sort;
 	use_idxs = deleteat!(collect(1:size(f_div_wlc, 1)), bad_idxs)
 	return f_filt, use_idxs, bad_idxs
 end
@@ -215,67 +257,16 @@ with_terminal() do
 	println(length(bad_idxs))
 end
 
-# ╔═╡ 0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
-md"""
-### Raw flux
-"""
-
-# ╔═╡ e98dee2e-a369-448e-bfe4-8fea0f318fa8
-md"""
-## Binned light curves 🌈
-"""
-
-# ╔═╡ a604260b-902e-44a1-88ea-440438e582ed
-md"""
-## Plot configs
-"""
-
-# ╔═╡ 5db4a2f2-1c0d-495a-8688-40fc9e0ccd02
-begin
-	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (1_350, 800)
-	#const COLORS = to_colormap(:seaborn_colorblind6, 8)[[8, 6, 4, 1]]
-	const COLORS = parse.(Colorant,
-		[
-			"#a6cee3",  # Cyan
-			"#fdbf6f",  # Yellow
-			"#ff7f00",  # Orange
-			"#1f78b4",  # Blue
-			# "plum",
-			# "#956cb4",  # Purple
-			# "mediumaquamarine",
-			# "#029e73",  # Green
-		]
-	)
-	
-	set_aog_theme!()
-	update_theme!(
-		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
-			Scatter = (linewidth=10,),
-			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
-			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
-		)
-	)
-	
-	COLORS
-end
-
 # ╔═╡ ccabf5d2-5739-4284-a972-23c02a263a5c
 function plot_div_WLCS!(
-	axs, f_div_wlc, window_width, cNames, use_comp_idxs; ferr=0.002
+	axs, f_div_wlc, window_width, cNames, use_comps_idxs; ferr=0.002
 )
-	use_comps = cNames[use_comp_idxs]
+	use_comps = cNames[use_comps_idxs]
 	
 	# Only apply filter to specified comp star divided WLCs
 	f_filt, use_idxs, bad_idxs = filt_idxs(
-		f_div_wlc[:, use_comp_idxs], window_width; ferr=ferr
+		f_div_wlc[:, use_comps_idxs], window_width; ferr=ferr
 	)
-	
 	idxs = 1:size(f_div_wlc, 1)
 	c = :darkgrey
 	k = 1
@@ -283,14 +274,12 @@ function plot_div_WLCS!(
 		# All points
 		scatter!(axs[i], idxs, f_div_wlc[:, i];
 			color = (c, 0.3),
-			strokewidth = 0,
 			label = "$cName",
 		)
 		# Used points
 		if cName ∈ use_comps
 			scatter!(axs[i], idxs[use_idxs], f_div_wlc[use_idxs, i];
 				color = c,
-				strokewidth = 0,
 			)
 			lines!(axs[i], idxs, f_filt[:, k];
 				color = COLORS[end-2],
@@ -328,47 +317,141 @@ let
 	fig #|> as_svg
 end
 
-# ╔═╡ aafc9ee5-327a-40a7-bcf6-5078eac20740
-let
-	fig = Figure(resolution=FIG_TALL)
-	
-	ncomps = length(comp_names)
-	use_comps = comp_names # use all comps
+# ╔═╡ 4e4cb513-1e88-4414-aa4d-a14d934874ce
+begin
 	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
-	
-	axs = [Axis(fig[i, j]) for i ∈ 1:4, j ∈ 1:2]
-	axs = reshape(copy(fig.content), 4, 2)
-	
-	# Target
-	ax_targ = Axis(fig[0, 1])
-	f_wlc_targ = LC["oLC"] ./ mean(LC["oLC"], dims=1)
-	lines!(
-		ax_targ, f_wlc_targ ./ mean(f_wlc_targ, dims=1), color=COLORS[3], linewidth=2,
+	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
+end;
+
+# ╔═╡ 0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
+md"""
+### Raw flux
+"""
+
+# ╔═╡ e6e1ea18-216a-41ae-8a1a-590793fcb669
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1];
+		xlabel="Index",
+		ylabel="Relative flux",
+		limits=(nothing, nothing, 0.975, 1.02),
 	)
-	scatter!(ax_targ, f_wlc_targ ./ mean(f_wlc_targ, dims=1), label="WASP-50")
-	hidexdecorations!.(ax_targ, grid=false)
-	axislegend(ax_targ)
+	
+	f_wlc_targ = LC["oLC"] ./ mean(LC["oLC"], dims=1)
+	f_wlc_comps = LC["cLC"][:, sorted_cName_idxs] ./ mean(
+		LC["cLC"][:, sorted_cName_idxs], dims=1
+	)
 	
 	f_wlc_comps = LC["cLC"][:, sorted_cName_idxs] ./ mean(
 		LC["cLC"][:, sorted_cName_idxs], dims=1
 	)
-	plot_div_WLCS!(
-		axs, f_wlc_comps, window_width, comp_names, use_comps_idxs
+	
+	for (i, (cName, col)) in enumerate(zip(sort(comp_names), eachcol(f_wlc_comps)))
+		lines!(ax, col; label=cName)
+	end
+	
+	lines!(ax, f_wlc_targ ./ mean(f_wlc_targ, dims=1);
+		linewidth = 5,
+		color = :darkgrey,
+		label = "WASP-50",
 	)
 	
-	linkaxes!(axs...)
-	hidexdecorations!.(axs[begin:end-1, :], grid=false)
-	hideydecorations!.(axs[:, begin+1:end], grid=false)
+	axislegend()
 	
-	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
-	fig[end+1, 1:end] = Label(fig, "Index")
+	fig #|> as_svg
+		
+end
+
+# ╔═╡ e98dee2e-a369-448e-bfe4-8fea0f318fa8
+md"""
+## Binned light curves 🌈
+
+We first compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `ncomps` ``\times`` `nbins`, where for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
+"""
+
+# ╔═╡ d06ef854-7503-4801-97ae-65d2f1883a0d
+wbins_name = occursin("131219", fpath) ? "w50_bins_ut131219.dat" : "w50_bins.dat"
+
+# ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
+wbins = readdlm("data/reduced/IMACS/$(wbins_name)", comments=true)
+
+# ╔═╡ 793c4d08-e2ee-4c9d-b7a0-11eaaddba895
+md"""
+We plot these below for each comparison star division. Move the slider to view the plot for the corresponding comparison star:
+
+comp star $(@bind comp_idx Slider(1:length(comp_names), default=2, show_value=true))
+
+!!! note "Future"
+	Ability to interact with sliders completely in the browser coming soon!
+"""
+
+# ╔═╡ 3ca393d6-01c0-4f77-88ff-7c4f6388670e
+begin
+	oLCw, cLCw = LC["oLCw"], LC["cLCw"]
+	(ntimes, nbins), ncomps = size(oLCw), length(comp_names)
+	offs = reshape(range(0, 0.3, length=nbins), 1, :) # Arbitrary offsets for clarity
+	f_norm_w = Array{Float64}(undef, ntimes, ncomps, nbins)
+	for c_i in 1:ncomps
+		f_w = oLCw ./ cLCw[:, c_i, :]
+		f_norm_w[:, c_i, :] .= f_w ./ median(f_w, dims=1) .+ offs
+	end
+	baselines = ones(size(f_norm_w[:, comp_idx, :])) .+ offs # Reference baselines
+end;
+
+# ╔═╡ 2768623f-7904-4674-a2ee-ad809cdd508b
+# Median filtered curves for visualization purposes
+f_med, _, f_diff = filt(f_norm_w[:, comp_idx, :], window_width)
+
+# ╔═╡ 684c026a-b5d0-4694-8d29-a44b7cb0fd6c
+let
+	fig = Figure(resolution=FIG_TALL)
+	
+	ax_left = Axis(fig[1, 1], title = "target / $(comp_names[comp_idx])")
+	ax_right = Axis(fig[1, 2], title = "residuals")
+	ax_label = Axis(fig[1, 3])
+	axs = reshape(copy(fig.content), 1, 3)
+	linkaxes!(axs...)
+		
+	colors = to_colormap(:Spectral_4, nbins) |> reverse
+	for (f, f_med, resid, b, c, w) in zip(
+			eachcol(f_norm_w[:, comp_idx, :]),
+			eachcol(f_med),
+			eachcol(f_diff),
+			eachcol(baselines),
+			colors,
+			eachrow(wbins),
+		)	
+		scatter!(ax_left, f[use_idxs], markersize=5, color=c)
+		lines!(ax_left, f_med[use_idxs], linewidth=3, color=0.75*c)
+		
+		scatter!(ax_right, (b + resid)[use_idxs], markersize=5, color=c)
+		lines!(ax_right, b[use_idxs], linewidth=3, color=0.75*c)
+		text!(ax_label, "$(w[1]) - $(w[2]) Å";
+			position = Point2f0(0, b[1]),
+			textsize = 16,
+			align = (:left, :center),
+			offset = Point2f0(0, 2),
+			color = 0.75*c,
+		)
+	end
+	
+	hideydecorations!.(axs[:, 2:3], grid=false)
+	hidespines!(axs[end])
+	hidedecorations!(axs[end])
+	ylims!(ax_left, 0.95, 1.34)
+	
+	fig[1:2, 0] = Label(fig, "Relative flux + offset", rotation=π/2)
+	fig[end, 2:3] = Label(fig, "Index")
+	
+	# ax.xlabel = "Index"
+	# ax.ylabel = "Relative flux + offset"
 	
 	fig #|> as_svg
 end
 
 # ╔═╡ eeb3da97-72d5-4317-acb9-d28637a06d67
 md"""
-## Packages
+## Notebook setup
 """
 
 # ╔═╡ 03af71ac-673b-459b-a931-a600b13d7ee6
@@ -413,13 +496,19 @@ body.disable_ui main {
 # ╠═169197fe-983d-420b-8c56-353a65b28ddc
 # ╟─4bad8b5c-e8b9-4ceb-97f4-41b4401d4f63
 # ╠═ccabf5d2-5739-4284-a972-23c02a263a5c
+# ╠═4e4cb513-1e88-4414-aa4d-a14d934874ce
+# ╠═22b57aad-e886-4d36-bab8-baef5f3fabe6
 # ╠═a4517d69-76e6-462a-9449-b31d80e34a8f
-# ╠═dc044a72-4706-49e2-94a8-c828a6bf7de0
+# ╠═ad5b07e5-75d0-4e03-a5d6-9ce4f1efd949
 # ╟─0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
-# ╠═aafc9ee5-327a-40a7-bcf6-5078eac20740
+# ╠═e6e1ea18-216a-41ae-8a1a-590793fcb669
 # ╟─e98dee2e-a369-448e-bfe4-8fea0f318fa8
-# ╟─a604260b-902e-44a1-88ea-440438e582ed
-# ╠═5db4a2f2-1c0d-495a-8688-40fc9e0ccd02
+# ╠═3ca393d6-01c0-4f77-88ff-7c4f6388670e
+# ╠═2768623f-7904-4674-a2ee-ad809cdd508b
+# ╠═d06ef854-7503-4801-97ae-65d2f1883a0d
+# ╠═6471fc66-47a5-455e-9611-c6fd9d56e9dc
+# ╟─793c4d08-e2ee-4c9d-b7a0-11eaaddba895
+# ╠═684c026a-b5d0-4694-8d29-a44b7cb0fd6c
 # ╟─eeb3da97-72d5-4317-acb9-d28637a06d67
 # ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23
 # ╟─03af71ac-673b-459b-a931-a600b13d7ee6

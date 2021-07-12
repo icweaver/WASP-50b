@@ -35,7 +35,7 @@ end
 md"""
 # Detrended White Light Curves
 
-In this notebook we will visualize the detrended white light curves from IMACS and LDSS3. We used the average orbital and system parameters obtained from these detrended fits to place uniform constraints on the binned wavelength analysis **<ADD LINK>.**
+In this notebook we will visualize the detrended white-light curves from IMACS and LDSS3. We used the average orbital and system parameters obtained from these detrended fits to place uniform constraints on the binned wavelength analysis **<ADD LINK>.**
 
 $(TableOfContents(title="📖 Table of Contents"))
 """
@@ -100,10 +100,10 @@ begin
 	py"""
 	import numpy as np
 	import pickle
-	
+
 	def load_npz(fpath, allow_pickle=False):
 		return np.load(fpath, allow_pickle=allow_pickle)[()]
-	
+
 	def load_pickle(fpath):
 		with open(fpath, "rb") as f:
 			data = pickle.load(f)
@@ -130,14 +130,14 @@ begin
 		name(fpath_sample, dates_to_names) => load_data(
 			fpath_sample, fpath_model, fpath_result
 		)
-		
+
 		for (fpath_sample, fpath_model, fpath_result) ∈ zip(
 			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")),
 			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_WLC.npy")),
 			sort(glob("$(DATA_DIR)/w50*/white-light/results.dat")),
 		)
 	)
-	
+
 	cubes = sort(cubes)
 end
 
@@ -151,7 +151,7 @@ md"""
 
 # ╔═╡ ae82d3c1-3912-4a5e-85f5-6383af42291e
 md"""
-Plotting the data from the `models` cube returns the following detrended white light curves:
+Plotting the data from the `models` cube returns the following detrended white-light curves:
 """
 
 # ╔═╡ 6cfb1541-62af-4884-9c74-d19b56c3b02e

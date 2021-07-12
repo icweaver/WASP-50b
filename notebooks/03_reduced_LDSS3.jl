@@ -16,8 +16,8 @@ end
 # ╔═╡ c911cecd-0747-4cd1-826f-941f2f58091c
 begin
 	import Pkg
-	Pkg.activate(joinpath(@__DIR__, ".."))
-
+	Pkg.activate(Base.current_project())
+	
 	using AlgebraOfGraphics
 	using CSV
 	using CairoMakie
@@ -26,18 +26,57 @@ begin
 	using DataFramesMeta
 	using Dates
 	using DelimitedFiles
-	using FITSIO
 	using Glob
 	using ImageFiltering
 	using KernelDensity
 	using Latexify
 	using Measurements
+	using Measurements: value, uncertainty
 	using NaturalSort
 	using OrderedCollections
 	using Printf
-	using PyCall
 	using Statistics
 	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
+	
+	# Python setup
+	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP50/bin/python"
+	Pkg.build("PyCall")
+	using PyCall
+	
+	##############
+	# PLOT CONFIGS
+	##############
+	const FIG_TALL = (900, 1_200)
+	const FIG_WIDE = (1_350, 800)
+	#const COLORS = to_colormap(:seaborn_colorblind6, 8)[[8, 6, 4, 1]]
+	const COLORS = parse.(Colorant,
+		[
+			"#a6cee3",  # Cyan
+			"#fdbf6f",  # Yellow
+			"#ff7f00",  # Orange
+			"#1f78b4",  # Blue
+			# "plum",
+			# "#956cb4",  # Purple
+			# "mediumaquamarine",
+			# "#029e73",  # Green,
+		]
+	)
+	
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Scatter = (linewidth=10,),
+			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
+	
+	COLORS
 end
 
 # ╔═╡ 34ef4580-bb95-11eb-34c1-25893217f422
@@ -154,9 +193,9 @@ end
 
 # ╔═╡ bd937d51-17e9-4de3-a5d0-4c436d413940
 md"""
-## White light curves 🌅
+## White-light curves 🌅
 
-Next, we will extract the integrated white light curves from these spectra. We integrate over the same wavelength bins used in the IMACS analysis:
+Next, we will extract the integrated white-light curves from these spectra. We integrate over the same wavelength bins used in the IMACS analysis:
 """
 
 # ╔═╡ 9697e26b-b6d9-413b-869f-47bc2ab99919
@@ -180,7 +219,7 @@ function filt(f_div_wlc, window_width; func=median, border="reflect")
 	f_filt = mapslices(
 		x -> mapwindow(func, x, window_width, border=border),
 		f_div_wlc,
-		dims=1,
+		dims = 1,
 	)
 	
 	# Residuals
@@ -193,10 +232,47 @@ end
 # Filter specified WLCs and return superset points
 function filt_idxs(f_div_wlc, window_width; ferr=0.002)
 	ntimes, ncomps = size(f_div_wlc)
-	f_filt, diff, _ = filt(f_div_wlc, window_width)
-	bad_idxs = ∪(findall.(>(ferr), eachcol(diff))...) |> sort;
+	f_filt, f_diff, _ = filt(f_div_wlc, window_width)
+	bad_idxs = ∪(findall.(>(ferr), eachcol(f_diff))...) |> sort;
 	use_idxs = deleteat!(collect(1:size(f_div_wlc, 1)), bad_idxs)
 	return f_filt, use_idxs, bad_idxs
+end
+
+# ╔═╡ 798880fa-1e52-4758-a7f7-d3c6adec244a
+function plot_div_WLCS!(
+	axs, f_div_wlc, window_width, cNames, use_comps_idxs; ferr=0.002
+)
+	# Using all comp stars for this instrument
+	use_comps = cNames[use_comps_idxs]
+	
+	# Only apply filter to specified comp star divided WLCs
+	f_filt, use_idxs, bad_idxs = filt_idxs(
+		f_div_wlc[:, use_comps_idxs], window_width; ferr=ferr
+	)
+	
+	idxs = 1:size(f_div_wlc, 1)
+	c = :darkgrey
+	k = 1
+	for (i, cName) ∈ enumerate(cNames)		
+		# All points
+		scatter!(axs[i], idxs, f_div_wlc[:, i];
+			color = (c, 0.3),
+			label = "$cName",
+		)
+		# Used points
+		if cName ∈ use_comps
+			scatter!(axs[i], idxs[use_idxs], f_div_wlc[use_idxs, i];
+				color = c,
+			)
+			lines!(axs[i], idxs, f_filt[:, k];
+				color = COLORS[end-2],
+				linewidth = 2,
+			)
+			k += 1
+		end
+		
+		axislegend(axs[i])
+	end
 end
 
 # ╔═╡ 97191c55-f673-46b4-82fd-147e7d150623
@@ -208,7 +284,7 @@ md"""
 md"""
 ## Binned light curves 🌈
 
-We next integrate the target and comparison star flux within each bin defined above to build the binned light curves. We store these in `oLCw` and `cLCw`, where `oLCw` is an `ntimes` ``\times`` `nbins` matrix that holds the binned target flux, where `ntimes` is the number of timeseries points ``N``. Similarly `cLCw` is an `ntimes` ``\times`` `nbins` ``\times`` `ncomps` matrix that holds the comparison star flux, where `ncomps` is the number of comparison stars:
+We next integrate the target and comparison star flux within each bin defined above to build the binned light curves. We store these in `oLCw` and `cLCw`, where `oLCw` is an `ntimes` ``\times`` `nbins` matrix that holds the binned target flux, where `ntimes` is the number of timeseries points ``N``. Similarly `cLCw` is an `ntimes` ``\times`` `ncomps` ``\times`` `nbins` matrix that holds the comparison star flux, where `ncomps` is the number of comparison stars:
 """
 
 # ╔═╡ 90b26a58-834a-445b-9242-d7b2e04be614
@@ -218,7 +294,7 @@ sum_flux(A, idx_range, dims=2) = sum(view(A, :, idx_range), dims=dims)[:, 1]
 
 # ╔═╡ 5837dc0e-3537-4a90-bd2c-494e7b3e6bb7
 md"""
-With `oLCw` and `cLCw` now computed, we next compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `nbins` ``\times`` `ncomps`, where for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
+With `oLCw` and `cLCw` now computed, we next compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `ncomps` ``\times`` `nbins`, where for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
 """
 
 # ╔═╡ af07dc54-eeb5-4fbe-8dd0-289dea97502a
@@ -372,12 +448,66 @@ begin
 	f_div_WLC_norm = f_div_wlc ./ median(f_div_wlc, dims=1)
 end
 
+# ╔═╡ 4b2ed9db-0a17-4e52-a04d-3a6a5bf2c054
+let
+	fig = Figure(resolution=FIG_TALL)
+	
+	comp_names = names.vals[2:4]
+	ncomps = length(comp_names)
+	use_comps = comp_names # use all comps
+	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
+	
+	axs = [Axis(fig[i, 1]) for i in 1:ncomps]
+	axs = reshape(copy(fig.content), ncomps, 1)
+	
+	plot_div_WLCS!(
+		axs, f_div_WLC_norm, window_width, comp_names, use_comps_idxs
+	)
+	
+	hidexdecorations!.(axs[begin:end-1], grid=false)
+	linkaxes!(axs...)
+	ylims!(axs[end], 0.97, 1.02)
+	
+	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
+	fig[end+1, 1:end] = Label(fig, "Index")
+	
+	fig #|> as_svg
+end
+
 # ╔═╡ 470514e7-0f08-44a3-8519-5d704ea6b8d4
 _, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm, window_width);
 
 # ╔═╡ ded63b4b-61b6-41b6-98d4-d13166bce76a
 with_terminal() do
 	println(bad_idxs .- 1) # For Python
+end
+
+# ╔═╡ 56efa000-a943-4256-94f4-f0ae4764f634
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1];
+		xlabel="Index",
+		ylabel="Relative flux",
+	)
+	
+	comp_names = names.vals[2:4]
+	f_wlc_targ = f_target_wlc[:]
+	f_wlc_comps = f_comps_wlc ./ mean(f_comps_wlc, dims=1)
+	
+	for (cName, col) in zip(sort(comp_names), eachcol(f_wlc_comps))
+		lines!(ax, col; label=cName)
+	end
+	
+	lines!(ax, f_wlc_targ ./ mean(f_wlc_targ, dims=1);
+		linewidth = 5,
+		color = :darkgrey,
+		label = "WASP-50",
+	)
+	
+	axislegend()
+	
+
+	fig #|> as_svg
 end
 
 # ╔═╡ bc54942e-38ef-4919-a3d4-28d5f4db8487
@@ -400,7 +530,9 @@ begin
 			cLCw[:, j, k] .= sum_flux(f_comps[:, :, k], wav_idxs)
 		end
 	end
-end
+	
+	cLCw = permutedims(cLCw, [1, 3, 2]) # Match convention used in tepspec 
+end;
 
 # ╔═╡ 823a4d10-698a-43fb-a4bb-1448670909eb
 oLCw
@@ -420,20 +552,71 @@ comp star $(@bind comp_idx Slider(1:ncomps, show_value=true))
 
 # ╔═╡ 49d04cf9-2bec-4350-973e-880e376ab428
 begin	
-	f_norm_w = Array{Float64}(undef, ntimes, nbins, ncomps)
-	for c_i in 1:ncomps
-		f_w = oLCw ./ cLCw[:, :, c_i]
-		f_norm_w[:, :, c_i] .= f_w ./ median(f_w, dims=1)
-	end
-	
 	offs = reshape(range(0, 0.3, length=nbins), 1, :) # Arbitrary offsets for clarity
-	f_norm_w .+= offs
-	baselines = ones(size(f_norm_w[:, :, comp_idx])) .+ offs # Reference baselines
+	f_norm_w = Array{Float64}(undef, ntimes, ncomps, nbins)
+	for c_i in 1:ncomps
+		f_w = oLCw ./ cLCw[:, c_i, :]
+		f_norm_w[:, c_i, :] .= f_w ./ median(f_w, dims=1) .+ offs
+	end
+	baselines = ones(size(f_norm_w[:, comp_idx, :])) .+ offs # Reference baselines
 end;
 
 # ╔═╡ 852d8bdf-96de-4564-83ec-c83d18893970
 # Median filtered curves for visualization purposes
-f_med, _, diff = filt(f_norm_w[:, :, comp_idx], window_width)
+f_med, _, f_diff = filt(f_norm_w[:, comp_idx, :], window_width)
+
+# ╔═╡ af8109e7-aac2-480d-a83b-c6dd8c53d380
+filt(f_norm_w[:, comp_idx, :], window_width)
+
+# ╔═╡ 97d7166f-bcb2-4ecf-80ed-15d185580cf3
+f_norm_w[:, comp_idx, :], window_width
+
+# ╔═╡ 9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
+let
+	fig = Figure(resolution=FIG_TALL)
+	comp_names = names.vals[begin+1:end]
+	ax_left = Axis(fig[1, 1], title = "target / $(comp_names[comp_idx])")
+	ax_right = Axis(fig[1, 2], title = "residuals")
+	ax_label = Axis(fig[1, 3])
+	axs = reshape(copy(fig.content), 1, 3)
+	linkaxes!(axs...)
+		
+	colors = to_colormap(:Spectral_4, nbins) |> reverse
+	for (f, f_med, resid, b, c, w) in zip(
+			eachcol(f_norm_w[:, comp_idx, :]),
+			eachcol(f_med),
+			eachcol(f_diff),
+			eachcol(baselines),
+			colors,
+			eachrow(wbins),
+		)	
+		scatter!(ax_left, f[use_idxs], markersize=5, color=c)
+		lines!(ax_left, f_med[use_idxs], linewidth=3, color=0.75*c)
+		
+		scatter!(ax_right, (b + resid)[use_idxs], markersize=5, color=c)
+		lines!(ax_right, b[use_idxs], linewidth=3, color=0.75*c)
+		text!(ax_label, "$(w[1]) - $(w[2]) Å";
+			position = Point2f0(0, b[1]),
+			textsize = 16,
+			align = (:left, :center),
+			offset = Point2f0(0, 2),
+			color = 0.75*c,
+		)
+	end
+	
+	hideydecorations!.(axs[:, 2:3], grid=false)
+	hidespines!(axs[end])
+	hidedecorations!(axs[end])
+	ylims!(ax_left, 0.95, 1.34)
+	
+	fig[1:2, 0] = Label(fig, "Relative flux + offset", rotation=π/2)
+	fig[end, 2:3] = Label(fig, "Index")
+	
+	# ax.xlabel = "Index"
+	# ax.ylabel = "Relative flux + offset"
+	
+	fig #|> as_svg
+end
 
 # ╔═╡ 5110de9a-3721-4043-b8b7-493daacb4137
 target_binned_mags = mapslices(f_to_med_mag, oLCw, dims=1)[use_idxs, :]
@@ -473,7 +656,7 @@ let
 			times[use_idxs], target_binned_mags[:, i], zeros(length(times[use_idxs]))
 		)
 		writedlm("$(save_path_w)/lc.dat", lc_w, ",    ")
-		writedlm("$(save_path_w)/comps.dat", comp_binned_mags[:, i, :], ",    ")
+		writedlm("$(save_path_w)/comps.dat", comp_binned_mags[:, :, i], ",    ")
 	end
 end
 
@@ -506,194 +689,9 @@ df_eparams = DataFrame(
 # ╔═╡ af7beb47-ecfa-4d08-b239-c27f7e8bdc4c
 CSV.write("$(tdir)/eparams.dat", df_eparams, delim=",    ")
 
-# ╔═╡ 8b12f760-f294-4212-9b4e-88a886d84156
-md"""
-## Plot configs
-"""
-
-# ╔═╡ 21cbb4b9-1887-4575-8f4f-5e32b8404c6a
-begin
-	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (1_350, 800)
-	#const COLORS = to_colormap(:seaborn_colorblind6, 8)[[8, 6, 4, 1]]
-	const COLORS = parse.(Colorant,
-		[
-			"#a6cee3",  # Cyan
-			"#fdbf6f",  # Yellow
-			"#ff7f00",  # Orange
-			"#1f78b4",  # Blue
-			# "plum",
-			# "#956cb4",  # Purple
-			# "mediumaquamarine",
-			# "#029e73",  # Green
-		]
-	)
-	
-	set_aog_theme!()
-	update_theme!(
-		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
-			Scatter = (linewidth=10,),
-			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
-			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
-		)
-	)
-	
-	COLORS
-end
-
-# ╔═╡ 798880fa-1e52-4758-a7f7-d3c6adec244a
-function plot_div_WLCS!(
-	axs, f_div_wlc, window_width, cNames, use_comps_idxs; ferr=0.002
-)
-	# Using all comp stars for this instrument
-	use_comps = cNames[use_comps_idxs]
-	
-	# Only apply filter to specified comp star divided WLCs
-	f_filt, use_idxs, bad_idxs = filt_idxs(
-		f_div_wlc[:, use_comps_idxs], window_width; ferr=ferr
-	)
-	
-	idxs = 1:size(f_div_wlc, 1)
-	c = :darkgrey
-	k = 1
-	for (i, cName) ∈ enumerate(cNames)		
-		# All points
-		scatter!(axs[i], idxs, f_div_wlc[:, i];
-			color = (c, 0.3),
-			label = "$cName",
-		)
-		# Used points
-		if cName ∈ use_comps
-			scatter!(axs[i], idxs[use_idxs], f_div_wlc[use_idxs, i];
-				color = c,
-			)
-			lines!(axs[i], idxs, f_filt[:, k];
-				color = COLORS[end-2],
-				linewidth = 2,
-			)
-			k += 1
-		end
-		
-		axislegend(axs[i])
-	end
-end
-
-# ╔═╡ 4b2ed9db-0a17-4e52-a04d-3a6a5bf2c054
-let
-	fig = Figure(resolution=FIG_TALL)
-	
-	comp_names = names.vals[2:4]
-	ncomps = length(comp_names)
-	use_comps = comp_names # use all comps
-	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
-	
-	axs = [Axis(fig[i, 1]) for i in 1:ncomps]
-	axs = reshape(copy(fig.content), ncomps, 1)
-	
-	plot_div_WLCS!(
-		axs, f_div_WLC_norm, window_width, comp_names, use_comps_idxs
-	)
-	
-	hidexdecorations!.(axs[begin:end-1], grid=false)
-	linkaxes!(axs...)
-	ylims!(axs[end], 0.97, 1.02)
-	
-	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
-	fig[end+1, 1:end] = Label(fig, "Index")
-	
-	fig #|> as_svg
-end
-
-# ╔═╡ 1f731b1d-188f-445b-b2d8-0f4e63616ecd
-let
-	fig = Figure(resolution=FIG_TALL)
-	
-	comp_names = names.vals[2:4]
-	ncomps = length(comp_names)
-	use_comps = comp_names # use all comps
-	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
-	
-	axs = [Axis(fig[i, 1]) for i in 1:ncomps + 1]
-	axs = reshape(copy(fig.content), ncomps+1, 1)
-	
-	# Target
-	f_wlc_targ = f_target_wlc[:]
-	lines!(
-		axs[1], f_wlc_targ ./ mean(f_wlc_targ, dims=1), color=COLORS[3], linewidth=2,
-	)
-	scatter!(axs[1], f_wlc_targ ./ mean(f_wlc_targ, dims=1), label="WASP-50")
-	axislegend(axs[1])
-	
-	f_wlc_comps = f_comps_wlc ./ mean(f_comps_wlc, dims=1)
-	plot_div_WLCS!(
-		axs[2:end], f_wlc_comps, window_width, comp_names, use_comps_idxs
-	)
-	
-	hidexdecorations!.(axs[begin:end-1], grid=false)
-	linkaxes!(axs...)
-	#ylims!(axs[end], 0.97, 1.02)
-	
-	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
-	fig[end+1, 1:end] = Label(fig, "Index")
-	
-	fig #|> as_svg
-end
-
-# ╔═╡ 9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
-let
-	fig = Figure(resolution=FIG_TALL)
-	comp_names = names.vals[begin+1:end]
-	ax_left = Axis(fig[1, 1], title = "target / $(comp_names[comp_idx])")
-	ax_right = Axis(fig[1, 2], title = "residuals")
-	ax_label = Axis(fig[1, 3])
-	axs = reshape(copy(fig.content), 1, 3)
-	linkaxes!(axs...)
-		
-	colors = to_colormap(:Spectral_4, nbins) |> reverse
-	for (f, f_med, resid, b, c, w) in zip(
-			eachcol(f_norm_w[:, :, comp_idx]),
-			eachcol(f_med),
-			eachcol(diff),
-			eachcol(baselines),
-			colors,
-			eachrow(wbins),
-		)	
-		scatter!(ax_left, f[use_idxs], strokewidth=0, markersize=5, color=c)
-		lines!(ax_left, f_med[use_idxs], linewidth=3, color=0.75*c)
-		
-		scatter!(ax_right, (b + resid)[use_idxs], markersize=5, color=c)
-		lines!(ax_right, b[use_idxs], linewidth=3, color=0.75*c)
-		text!(ax_label, "$(w[1]) - $(w[2]) Å";
-			position = Point2f0(0, b[1]),
-			textsize = 16,
-			align = (:left, :center),
-			offset = Point2f0(0, 2),
-			color = 0.75*c,
-		)
-	end
-	
-	hideydecorations!.(axs[:, 2:3], grid=false)
-	hidespines!(axs[end])
-	hidedecorations!(axs[end])
-	ylims!(ax_left, 0.95, 1.34)
-	
-	fig[1:2, 0] = Label(fig, "Relative flux + offset", rotation=π/2)
-	fig[end, 2:3] = Label(fig, "Index")
-	
-	# ax.xlabel = "Index"
-	# ax.ylabel = "Relative flux + offset"
-	
-	fig #|> as_svg
-end
-
 # ╔═╡ f788835c-8e81-4afe-805e-4caf2d5e5d5b
 md"""
-## Packages
+## Notebook setup
 """
 
 # ╔═╡ b2c61d08-6fcf-4b0c-a21a-c0c5e3205210
@@ -752,7 +750,7 @@ body.disable_ui main {
 # ╠═f80347e8-dc5a-4b0c-a6c0-db5c12eadcbb
 # ╠═89256633-3c12-4b94-b245-4fdda44d686c
 # ╟─97191c55-f673-46b4-82fd-147e7d150623
-# ╠═1f731b1d-188f-445b-b2d8-0f4e63616ecd
+# ╠═56efa000-a943-4256-94f4-f0ae4764f634
 # ╟─a5e742e5-fcca-40d7-b342-c6112e6899e5
 # ╠═861cb600-5a97-496c-9a4d-8f848654f214
 # ╠═90b26a58-834a-445b-9242-d7b2e04be614
@@ -761,6 +759,8 @@ body.disable_ui main {
 # ╟─5837dc0e-3537-4a90-bd2c-494e7b3e6bb7
 # ╠═49d04cf9-2bec-4350-973e-880e376ab428
 # ╠═852d8bdf-96de-4564-83ec-c83d18893970
+# ╠═af8109e7-aac2-480d-a83b-c6dd8c53d380
+# ╠═97d7166f-bcb2-4ecf-80ed-15d185580cf3
 # ╟─bd00ebca-4ed2-479b-b1c6-4ba0a7a1043c
 # ╠═9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
 # ╟─af07dc54-eeb5-4fbe-8dd0-289dea97502a
@@ -789,8 +789,6 @@ body.disable_ui main {
 # ╠═123d0c63-f05a-4a7d-be16-6a3b9abac044
 # ╟─3b6b57e2-46ab-46d9-b334-6264daf583f3
 # ╠═2d34e125-548e-41bb-a530-ba212c0ca17c
-# ╟─8b12f760-f294-4212-9b4e-88a886d84156
-# ╠═21cbb4b9-1887-4575-8f4f-5e32b8404c6a
 # ╟─f788835c-8e81-4afe-805e-4caf2d5e5d5b
 # ╠═c911cecd-0747-4cd1-826f-941f2f58091c
 # ╟─b2c61d08-6fcf-4b0c-a21a-c0c5e3205210
