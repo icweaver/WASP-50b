@@ -136,9 +136,6 @@ obs_cols = [:TIMESTAMP, :JD, :EXPTIME, :AIRMASS, :FILTER, :SLITMASK, :DISPERSR]
 # ╔═╡ fbb58e2e-6dd4-42f5-acb1-037b2cc231c6
 df_sci = df[occursin.("sci", lowercase.(df[!, :OBJECT])), obs_cols];
 
-# ╔═╡ c96a30a3-3612-4105-b124-db261e7eebf0
-datetime2julian.(df_sci.TIMESTAMP) .- 2.456e6
-
 # ╔═╡ 3ca865bb-078a-4bd5-a632-a4b4b9d6e1e9
 combine(
 	groupby(
@@ -268,7 +265,6 @@ body.disable_ui main {
 # ╔═╡ Cell order:
 # ╟─fb39c593-86bd-4d4c-b9ec-e5e212a4de98
 # ╠═7e111d10-0aa8-47bd-9ea8-186c1aecc321
-# ╠═c96a30a3-3612-4105-b124-db261e7eebf0
 # ╠═1e0db1d5-86b7-475c-897b-b0054575a5fa
 # ╠═9257eef5-c18a-4226-9ff3-fc0ea90a1262
 # ╠═c3def15d-d41a-4e3f-bb49-d57d46a6474e
