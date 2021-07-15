@@ -8,5 +8,5 @@
 1. [Photometric Monitoring](https://icweaver.github.io/WASP-50b/html/06_photometric_monitoring.jl.html)
 1. [Transmission Spectra](https://icweaver.github.io/WASP-50b/html/07_transmission_spectra.jl.html)
 
-[Python example](https://icweaver.github.io/WASP-50b/html/fun_with_python.jl.html)
+[Python example](https://icweaver.github.io/WASP-50b/html/fun_with_python.jl.html) \
 [corner example](https://icweaver.github.io/WASP-50b/html/corner_example.jl.html)
