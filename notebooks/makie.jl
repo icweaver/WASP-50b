@@ -182,6 +182,14 @@ md"""
 	We are mutating the axes now, so gotta bang it
 """
 
+# ╔═╡ 8487ba67-7de2-4156-b8fe-0d062e3c7bf8
+md"""
+But it's blurry 😤
+"""
+
+# ╔═╡ eeb3d107-3005-4858-9837-ee632def6997
+# You can slap on raindrop_drop_top() |> as_svg, but warning, this will increase the final size of the exported html substantially. I'd just save it for publication ready figures, or better yet, just save it as a pdf: save("<FILE PATH>", fig)
+
 # ╔═╡ 899d5c18-f4da-401d-aa45-8b7dc3d1d118
 md"""
 Hmm, ok, but specifiying the same plot attributes for each subplot gets kind of repetitive. Why can't all my lines have a width of 4 by default!
@@ -214,6 +222,70 @@ Ok, that dark theme is pretty snazzy¹. Where can I find out more about what att
 with_terminal() do
 	help_attributes(lines) # Can replace with other plot types to learn more
 	# More info at: http://makie.juliaplots.org/stable/plotting_functions/lines.html
+end
+
+# ╔═╡ e94629e0-d681-4b09-bc33-f4bf4badbd9d
+md"""
+### Histograms?
+
+But I neeeed histograms
+
+!!! note
+	We have histrograms, but not stephists... yet. There's an [open issue](https://github.com/JuliaPlots/Makie.jl/issues/368) for it. In the meantime, density plots can be used to get a similar effect
+"""
+
+# ╔═╡ d0231967-cc0c-40cc-b33a-0aceb8d97a36
+begin
+	N = 100
+	clear = randn(N) .+ 4.0
+	cloudy_without_rain = randn(N) .+ 2.0
+	cloudy_with_rain = randn(N)
+end
+
+# ╔═╡ 7b9a117d-3181-48e6-aa07-6f9c1b838f5f
+# Making another function to save some typing
+dens_plot!(ax, x; color=:blue, alpha=0.5, label="x") = density!(ax, x;
+	strokecolor=color, color=(color, alpha), label=label
+)
+
+# ╔═╡ 847944ff-8b4e-497a-9a10-4b697a6d2759
+# Un-filled
+with_theme(Theme(Density=(strokewidth=5,))) do
+	fig = Figure()
+	ax = Axis(fig[1, 1], xlabel="steady state probability", ylabel="PDF []")
+	
+	dens_plot!(ax, clear;
+		color=:red, alpha=0.0, label="clear"
+	)
+	dens_plot!(ax, cloudy_without_rain;
+		color=:green, alpha=0.0, label="cloudy without rain"
+	)
+	dens_plot!(ax, cloudy_with_rain;
+		color=:blue, alpha=0.0, label="cloudy with rain")
+	
+	axislegend()
+	
+	fig
+end
+
+# ╔═╡ abc5f633-6f63-4537-95ba-0ec01d9c0b94
+# Fulfilled 🧘 
+with_theme(Theme(Density=(strokewidth=5,))) do
+	fig = Figure()
+	ax = Axis(fig[1, 1], xlabel="steady state probability", ylabel="PDF []")
+	
+	dens_plot!(ax, clear;
+		color=:red, label="clear"
+	)
+	dens_plot!(ax, cloudy_without_rain;
+		color=:green, label="cloudy without rain"
+	)
+	dens_plot!(ax, cloudy_with_rain;
+		color=:blue, label="cloudy with rain")
+	
+	axislegend()
+	
+	fig
 end
 
 # ╔═╡ 9474e58a-3f5e-420b-a3f6-c6a30efd5deb
@@ -1782,12 +1854,19 @@ version = "3.5.0+0"
 # ╠═54ad23fb-a0fd-468b-9588-613cac2be7ed
 # ╠═2dcf03f2-3c85-43c9-ae09-be1382bb0cfe
 # ╟─8adf5e56-3d41-4265-be50-035eba9f5213
+# ╟─8487ba67-7de2-4156-b8fe-0d062e3c7bf8
+# ╠═eeb3d107-3005-4858-9837-ee632def6997
 # ╟─899d5c18-f4da-401d-aa45-8b7dc3d1d118
 # ╠═704310a8-9f35-4c62-972b-6f80e2d51554
 # ╟─987f51ad-a55b-438d-83d2-b3194263024d
 # ╠═96bafb2c-1977-4d0f-b0a7-8783938772f6
 # ╟─99f11b9a-f2cc-428e-a60d-b5123c18ac7e
 # ╠═0594ca46-2412-47b7-bbf2-9c135747e75b
+# ╟─e94629e0-d681-4b09-bc33-f4bf4badbd9d
+# ╠═d0231967-cc0c-40cc-b33a-0aceb8d97a36
+# ╠═7b9a117d-3181-48e6-aa07-6f9c1b838f5f
+# ╠═847944ff-8b4e-497a-9a10-4b697a6d2759
+# ╠═abc5f633-6f63-4537-95ba-0ec01d9c0b94
 # ╟─9474e58a-3f5e-420b-a3f6-c6a30efd5deb
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
