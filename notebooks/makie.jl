@@ -219,12 +219,6 @@ end
 # ╔═╡ 9474e58a-3f5e-420b-a3f6-c6a30efd5deb
 html"""
 <style>
-#launch_binder {
-	display: none;
-}
-body.disable_ui main {
-		max-width : 95%;
-	}
 @media screen and (min-width: 1081px) {
 	body.disable_ui main {
 		margin-left : 10px;
