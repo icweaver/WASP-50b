@@ -31,6 +31,7 @@ begin
 	using ImageFiltering
 	using KernelDensity
 	using Latexify
+	using LaTeXStrings
 	using Measurements
 	using Measurements: value, uncertainty
 	using NaturalSort
@@ -51,18 +52,18 @@ begin
 	const FIG_TALL = (900, 1_200)
 	const FIG_WIDE = (1_350, 800)
 	
-	# set_aog_theme!()
-	# update_theme!(
-	# 	Theme(
-	# 		Axis = (xlabelsize=18, ylabelsize=18,),
-	# 		Label = (textsize=18,  padding=(0, 10, 0, 0)),
-	# 		Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
-	# 		Scatter = (linewidth=10,),
-	# 		fontsize = 18,
-	# 		rowgap = 0,
-	# 		colgap = 0,
-	# 	)
-	# )
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Scatter = (linewidth=10,),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
 end
 
 # ╔═╡ 670b88e4-1e96-494d-bfcc-235092bb6e96
@@ -207,26 +208,17 @@ df_ASASSN[!, :bjd] = loc_to_BJD.(df_ASASSN.hjd, coords_W50, df_ASASSN.camera);
 # ╔═╡ 79d08932-66f3-4ed9-bc13-f1ac3229e95d
 df_ASASSN
 
-# ╔═╡ ebf9fef2-8be0-4993-92c9-4b661741c380
-let
-	t = df_ASASSN.bjd .- 2.457e6
-	f = df_ASASSN.flux_mJy_
-	f_norm = (f .- mean(f)) ./ f .+ 1.0
-	f_err = df_ASASSN.flux_err ./ f
-	#errorbars(t, f_norm, f_err)
-	
-	CSV.write(
-		"/home/mango/Desktop/WASP50LC_ASASSN.txt",
-		DataFrame(:t=>t, :f =>f_norm, :f_err=>f_err),
-		delim = "\t",
-	)		
-end
-
 # ╔═╡ 92548af3-9a26-4202-88f2-ba3a31181686
 begin
 	df_sorted = sort(df_ASASSN, :bjd)
-	t_ASASSN, f_ASASSN, f_err_ASASSN = eachcol(df_sorted[!, [:bjd, :mag, :mag_err]])
+	t_ASASSN, f_ASASSN, f_err_ASASSN = eachcol(
+		df_sorted[!, [:bjd, :flux_mJy_, :flux_err]]
+	)
+	#t_ASASSN .-= 2.457e6
 end;
+
+# ╔═╡ 7f864c2d-e6a2-4774-b56e-6131041c3a00
+df_sorted |> describe
 
 # ╔═╡ dbe317fe-540d-44e8-b8e7-6c465c79559f
 md"""
@@ -238,12 +230,6 @@ md"""
 ### Plot
 
 With the BJD times computed, we can now plot the ASAS-SN photometry, binned to **$(t_window) days**:
-"""
-
-# ╔═╡ da96bd4e-b755-4577-9f2f-783a3f5d619f
-md"""
-!!! warning
-	Put back BTJD
 """
 
 # ╔═╡ 682499cb-af79-48f7-9e74-0185894f65fe
@@ -393,15 +379,6 @@ t_TESS_S31, f_TESS_S31, f_err_TESS_S31 = eachcol(
 	df_TESS_S31[!, [:time, :flux, :flux_err]]
 )
 
-# ╔═╡ fe062294-c575-451c-935d-0d75194b5137
-const TESSMAG = 11.05290031
-
-# ╔═╡ faff66de-c844-49be-81a0-d019780a49ed
-flux_to_mag(f, M=TESSMAG) = M - 2.5*log10(f)
-
-# ╔═╡ ea8d87e4-4254-4e4e-a6ab-a2ef39d9a756
-flux_to_mag_err(f) = -2.5*log10(1.0 - f)
-
 # ╔═╡ 99fcf959-665b-44cf-9b5f-fd68a919f846
 md"""
 ### Periodogram
@@ -419,16 +396,27 @@ begin
 		lcs = srs.download_all()
 		r = SIP(lcs, **sip_kwargs)
 		return r, srs
+	
+	def bin_lc(t, f, f_err, binsize):
+		lc = lk.LightCurve(time=t, flux=f, flux_err=f_err).bin(time_bin_size=binsize)
+		return lc.time.value, lc.flux.value, lc.flux_err.value
 	"""
 	run_sip(target; srs_kwargs, sip_kwargs) = py"run_sip"(
 		target; srs_kwargs, sip_kwargs
 	)
-end
+	bin_lc(t, f, f_err, binsize) = py"bin_lc"(t, f, f_err, binsize)
+end;
+
+# ╔═╡ e36d1322-5aa4-4513-bb89-410a4bb6b750
+t_ASASSN_binned, f_ASASSN_binned, f_ASASSN_binned_err = bin_lc(
+	t_ASASSN, f_ASASSN, f_err_ASASSN, t_window
+);
 
 # ╔═╡ 8f382cc4-2c3b-4d40-83e7-044fbb6efb2e
 sip_kwargs = Dict(
+	"min_period" => 5.0,
 	"max_period" => 30.0,
-	"nperiods" => 400,
+	"nperiods" => 600,
 	"bin_kwargs" => Dict("time_bin_size"=>(12.0u"hr" |> u"d").val),
 )
 
@@ -474,7 +462,9 @@ function plot_periodogram!(ax, r, P)
 	
 	P_max = periods[argmax(power_relative)]
 	vlines!(ax, P, linestyle=:dash, color=:darkgrey, label="P_rot (Gillon+ 2011)")
+	vlines!(ax, P/3.0, linestyle=:dash, color=:darkgrey, label="P_rot/3")
 	vlines!(ax, P_max, color=:darkgrey, label="P_max")
+	
 	text!(ax, "P_max = $(round(P_max, digits=2)) days";
 		position = (30, 2),
 		textsize = 16,
@@ -506,9 +496,17 @@ let
 	hidexdecorations!.(axs[1:2])
 	
 	Legend(fig[1:end, 2], axs[1], margin=(10, 0, 0, 0))
-	Label(fig[1:end, 0], "Power", rotation=π/2)
+	Label(fig[end+1, 1], "Period (days)", tellwidth=false)
+	Label(fig[1:end, 0], "log10 Power", rotation=π/2)
 	
 	fig
+end
+
+# ╔═╡ de8e6634-f9a2-468b-a7d7-b374b2421de0
+begin
+	scatter(r_combined["corr_lc"].flux)
+	#ylims!(0.99, 1.01)
+	current_figure()
 end
 
 # ╔═╡ 18223d42-66d8-40d1-9d89-be8af46853e2
@@ -527,20 +525,13 @@ begin
 	) = convert_arguments(P, v, value.(m), uncertainty.(m))	
 end
 
-# ╔═╡ 976bd30f-2bae-4c5d-93dc-70b4df303840
-md"""
-We produced the above plots by performing a rolling average over sub-groups of the data. Each sub-group contains timeseries points within $Δt$ of the first point in that sub-group. We then move on to the next group and perform the same grouping operation:
-
-!!! note
-	TODO: Find a good Δt to use
-"""
-
 # ╔═╡ 7370a1d9-4f8e-4788-adac-b8be2bcc9643
-function plot_phot!(ax, t_window, t, f, f_err; t_offset=0.0, relative_flux=false)
+function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=1.0)
 	t_rel = t .- t_offset
 	
 	if relative_flux
-		Δf, Δf_err = f .- mean(f), f_err
+		f_med = median(f)
+		Δf, Δf_err = (f .- f_med) / f_med , f_err / f_med
 		
 	else
 		Δf, Δf_err = f, f_err
@@ -550,51 +541,71 @@ function plot_phot!(ax, t_window, t, f, f_err; t_offset=0.0, relative_flux=false
 	errorbars!(ax, t_rel, Δf, Δf_err, color=(:darkgrey, 0.25))
 	scatter!(ax, t_rel, Δf, color=(:darkgrey, 0.25))
 	
-	# Averaged data
-	t_avg, f_avg = bin_data(t_rel, Δf .± Δf_err, Δ=t_window)
-	f_unc_avg = uncertainty.(f_avg) |> mean
-	errorbars!(ax, t_avg, f_avg)
-	scatter!(ax, t_avg, f_avg, label="avg err: $(f_unc_avg)")
+	# Binned data
+	t_binned, f_binned, f_err_binned = bin_lc(t_rel, Δf, Δf_err, binsize)
+	f_binned_err_med = median(filter(!isnan, f_err_binned))
 	
-	axislegend(ax)
+	errorbars!(ax, t_binned, f_binned, f_err_binned;
+		color=:grey
+	)
+	scatter!(ax, t_binned, f_binned;
+		color=:grey, label="avg err: $(f_binned_err_med)",
+	)
 	
-	return ax, t_avg, value.(f_avg), uncertainty.(f_avg)
+	axislegend(ax, position=:rb)
+	
+	return ax, t_binned, f_binned, f_err_binned
 end
 
-# ╔═╡ 2ee9b0ca-f6a2-47db-abfc-9a44e64b2e42
+# ╔═╡ f3425d9c-861e-4b26-b352-bd0669c7f1f9
 let
 	fig = Figure()
-	ax = Axis(fig[1, 1], xlabel="Time (BTJD)", ylabel="ΔMag")
+	ax = Axis(fig[1, 1])
 	
-	# Mark transit epochs
-	Δjulian_transit_dates = julian_transit_dates .- 2.45e6
-	vlines!(ax, Δjulian_transit_dates;
-		linestyle = :dash,
-		color = :darkgrey,
+# 	# Mark transit epochs
+# 	Δjulian_transit_dates = julian_transit_dates .- 2.457e6
+# 	vlines!(ax, Δjulian_transit_dates;
+# 		linestyle = :dash,
+# 		color = :darkgrey,
+# 	)
+	
+# 	# Label transit epochs
+# 	for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, Δjulian_transit_dates))
+# 		text!(ax, "Transit $i\n$utc";
+# 			position = Point2f0(jd, 0.08),
+# 			textsize = 14,
+# 			align = (:left, :center),
+# 			offset = Point2f0(10, 0),
+# 			color = :grey,
+# 		)
+# 	end
+	
+	ax_phot, t_binned, f_binned, f_err_binned = plot_phot!(
+		ax, t_ASASSN, f_ASASSN, f_err_ASASSN;
+		t_offset=2.457e6, relative_flux=true, binsize=t_window
 	)
 	
-	# Label transit epochs
-	for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, Δjulian_transit_dates))
-		text!(ax, "Transit $i\n$utc";
-			position = Point2f0(jd, 0.08),
-			textsize = 14,
-			align = (:left, :center),
-			offset = Point2f0(10, 0),
-			color = :grey,
-		)
-	end
+# 	CSV.write(
+# 		"/home/mango/Desktop/WASP50LC_ASASSN_binned.csv",
+# 		DataFrame(:t=>t_binned, :f=>f_binned, :f_err=>f_err_binned),
+# 	)
 	
-	# Plot photometry measurements
-	ax, t, f, f_err = plot_phot!(
-		ax, t_window, t_ASASSN, f_ASASSN, f_err_ASASSN;
-		t_offset=2.45e6, relative_flux=true,
+	plan = LombScargle.plan(
+		t_binned,
+		f_binned,
+		f_err_binned;
+		fast=false,
+		minimum_frequency = 1.0 / 30.0,
+		maximum_frequency = 1.0 / 5.0,
+		
 	)
+	ls = lombscargle(plan)
 	
-	CSV.write(
-		"/home/mango/Desktop/WASP50LC_ASASSN_binned.txt",
-		DataFrame(:t=>t, :f =>f, :f_err=>f_err),
-		delim = "\t",
-	)
+	Plots.plot(periodpower(ls)...)
+	
+	#lines(fig[2, 1], 1 ./ ls.freq, ls.power)
+	
+	#fig
 end
 
 # ╔═╡ 8906a2a2-65c9-4dc1-aaef-078a6ddaaff2
@@ -605,25 +616,22 @@ let
 	ax_bottom = Axis(fig[2, 1])
 
 	a_ax, t, f, f_err = plot_phot!(
-		ax_top, t_window_TESS, t_TESS_S04,
-		f_TESS_S04, f_err_TESS_S04;
-		relative_flux=true,
+		ax_top, t_TESS_S04, f_TESS_S04, f_err_TESS_S04;
+		relative_flux=true, binsize=t_window_TESS,
 	)
 	CSV.write(
-		"/home/mango/Desktop/WASP50LC_S04_binned.txt",
+		"/home/mango/Desktop/WASP50LC_S04_binned.csv",
 		DataFrame(:t=>t, :f=>f, :f_err=>f_err),
-		delim = "\t",
 	)
 	
 	b_ax, t, f, f_err = plot_phot!(
-		ax_bottom, t_window_TESS, t_TESS_S31,
+		ax_bottom, t_TESS_S31,
 		f_TESS_S31, f_err_TESS_S31;
-		relative_flux=false,
+		relative_flux=false, binsize=t_window_TESS,
 	)
 	CSV.write(
-		"/home/mango/Desktop/WASP50LC_S31_binned.txt",
+		"/home/mango/Desktop/WASP50LC_S31_binned.csv",
 		DataFrame(:t=>t, :f=>f, :f_err=>f_err),
-		delim = "\t",
 	)
 	
 	fig #|> as_svg
@@ -634,15 +642,24 @@ md"""
 ## Notebook setup
 """
 
+# ╔═╡ 70fc8493-42a9-4eca-a990-c810f61b9e95
+begin
+	# Can remove this after tess_sip is updated
+	py"""
+	import sys
+	import os
+	
+	def update_sys():
+		sys.path.insert(0, os.getcwd())
+		return sys.path
+	"""
+	update_sys!() = py"update_sys"()
+	update_sys!()
+end
+
 # ╔═╡ f8e37bb8-bdd8-4eea-82c3-1b1f3a5617a1
 html"""
 <style>
-#launch_binder {
-	display: none;
-}
-body.disable_ui main {
-		max-width : 95%;
-	}
 @media screen and (min-width: 1081px) {
 	body.disable_ui main {
 		margin-left : 10px;
@@ -652,129 +669,6 @@ body.disable_ui main {
 }
 </style>
 """
-
-# ╔═╡ 23e9940b-15fe-4120-9a17-1b3dcd043441
-md"""
-!!! note
-	Can remove this after `tess_sip` is updated
-"""
-
-# ╔═╡ 210abd28-0759-47c2-88ed-b5bf86a004e5
-begin
-	py"""
-	import sys
-	import os
-	
-	def update_sys():
-		sys.path.insert(0, os.getcwd())
-	"""
-	update_sys() = py"update_sys"()
-end
-
-# ╔═╡ 8aef8c07-51db-4004-b9af-64484f488b0b
-function corner_plot!(fig; n_params=3)
-	for j in 1:n_params, i in 1:n_params
-		# Create subplot apply global settings
-		ax = Axis(fig[i, j];
-			aspect = 1,
-			# xticklabelrotation = π/4,
-			# xticks = LinearTicks(3),
-			# yticks = LinearTicks(3),
-			# limits = ((-14, 14), (-14, 14)),
-		)
-		# Hide upper triangle
-		j > i && (hidedecorations!(ax); hidespines!(ax))
-		# Hide y ticks on diagonals
-		j == i && (hideydecorations!(ax); ylims!(0, 0.4))
-		# Hide x ticks on all diagonal elements except the bottom one
-		j == i && i != n_params && (
-			hidexdecorations!(ax, grid=false);
-		)
-		# Hide ticks on interior lower triangle
-		j < i && i != n_params && j != 1 && (
-			hideydecorations!(ax, grid=false);
-			hidexdecorations!(ax, grid=false);
-		)
-		# Hide remaining xyticks
-		j < i && j == 1 && i != n_params && (
-			hidexdecorations!(ax, grid=false);
-		)
-		j < i && i == n_params && j != 1 && (
-			hideydecorations!(ax, grid=false);
-		)
-	end
-			
-	# Plot corners from each night
-	#for (i, (transit, cube)) in enumerate(cubes)		
-	#end
-	
-	# Align axes limits and apply labels
-	# axs = reshape(copy(fig.content), n_params, n_params)
-	# [linkxaxes!(reverse(axs[:, j])...) for j in 1:n_params]
-	# for (j, (param, param_latex)) in enumerate(PARAMS)
-	# 	axs[end, j].xlabel = "Δ"*param_latex
-	# 	axs[j, begin].ylabel = "Δ"*param_latex
-	# end
-	
-	# Legend(fig[1, end], elems, elem_labels;
-	# 	halign = :right,
-	# 	valign = :top,
-	# 	patchsize = (25, 25),
-	# 	tellwidth = false,
-	# 	tellheight = false,
-	# 	rowgap = 10,
-	# 	labelsize = 25,
-	# 	nbanks = 2,
-	# 	orientation = :horizontal,
-	# )
-	
-	#fig #|> as_svg
-end
-
-# ╔═╡ be2db165-b5b9-43f2-940b-0add949927d2
-begin
-	# Create empty corner plot grid
-	fig = Figure(resolution=(1_400, 1_400))
-	
-	corner_plot!(fig; n_params=3)
-	
-	fig
-end
-
-# ╔═╡ a0489258-8e71-4677-84a4-d67fe6a2b9c6
-samples = Dict(
-	"params_$i" => rand(100)
-	for i in 1:3
-)
-
-# ╔═╡ 00bd40fc-89b1-4f10-a433-fb12720950c3
-function plot_corner!(fig, samples, params; color=:blue)
-	for (j, p1) in enumerate(params), (i, p2) in enumerate(params)
-		# 1D plot
-		if i == j
-			histogram!(fig[i, i], samples[p1])
-			
-			# density!(fig[i, i], samples[p1];
-			# 	color = (color, 0.125),
-			# 	strokewidth = 3,
-			# 	strokecolor = color,
-			# 	strokearound = true,
-			# )
-		end
-		# 2D plot
-		if i > j
-			Z = kde((samples[p1], samples[p2]), npoints=(2^4, 2^4),)
-			contour!(fig[i, j], Z;
-				# levels = levels(Z.density, n_levels),
-				# color = color,
-				# linewidth = 3,
-			)
-		end
-	end
-end
-
-# ╔═╡ 2adec440-0422-4dc9-80ef-ba7a3ebdf847
-
 
 # ╔═╡ Cell order:
 # ╟─670b88e4-1e96-494d-bfcc-235092bb6e96
@@ -793,12 +687,12 @@ end
 # ╠═5f1ca89d-61e8-4ade-93e1-13716dc5fd46
 # ╠═42b72605-f89e-42c4-a159-d43e4620140f
 # ╠═79d08932-66f3-4ed9-bc13-f1ac3229e95d
-# ╠═ebf9fef2-8be0-4993-92c9-4b661741c380
 # ╟─9a195365-e68f-43e2-8870-c09153e2ce91
 # ╠═92548af3-9a26-4202-88f2-ba3a31181686
+# ╠═e36d1322-5aa4-4513-bb89-410a4bb6b750
+# ╠═7f864c2d-e6a2-4774-b56e-6131041c3a00
 # ╟─dbe317fe-540d-44e8-b8e7-6c465c79559f
-# ╠═2ee9b0ca-f6a2-47db-abfc-9a44e64b2e42
-# ╟─da96bd4e-b755-4577-9f2f-783a3f5d619f
+# ╟─f3425d9c-861e-4b26-b352-bd0669c7f1f9
 # ╟─682499cb-af79-48f7-9e74-0185894f65fe
 # ╟─78d85c7c-da06-41ab-915b-48d93a010967
 # ╟─97e7feee-11b2-4a35-9327-b5c0d05b2a23
@@ -818,9 +712,6 @@ end
 # ╠═5cca08d9-e035-4a15-b575-069e6b89b6db
 # ╠═a87d6163-4fd9-49c3-a83b-ab9c727edf99
 # ╠═8906a2a2-65c9-4dc1-aaef-078a6ddaaff2
-# ╠═fe062294-c575-451c-935d-0d75194b5137
-# ╠═faff66de-c844-49be-81a0-d019780a49ed
-# ╠═ea8d87e4-4254-4e4e-a6ab-a2ef39d9a756
 # ╟─99fcf959-665b-44cf-9b5f-fd68a919f846
 # ╠═ec12acb8-9124-4cc0-8c9f-6525c1565dfd
 # ╠═f287c0a6-e5d9-43be-b0b9-ded9273bdfc1
@@ -830,17 +721,11 @@ end
 # ╠═8f382cc4-2c3b-4d40-83e7-044fbb6efb2e
 # ╠═ed93fd1f-79bd-4c5a-b822-680c6f6591d6
 # ╠═4fcb3ea1-bec6-4c30-82a6-4689077cdc14
+# ╠═de8e6634-f9a2-468b-a7d7-b374b2421de0
 # ╟─18223d42-66d8-40d1-9d89-be8af46853e2
 # ╠═682c3732-e68f-4fdb-bd63-553223308364
-# ╟─976bd30f-2bae-4c5d-93dc-70b4df303840
 # ╠═7370a1d9-4f8e-4788-adac-b8be2bcc9643
 # ╟─ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd
 # ╠═9e2ce576-c9bd-11eb-0699-47af13e79589
+# ╠═70fc8493-42a9-4eca-a990-c810f61b9e95
 # ╟─f8e37bb8-bdd8-4eea-82c3-1b1f3a5617a1
-# ╟─23e9940b-15fe-4120-9a17-1b3dcd043441
-# ╠═210abd28-0759-47c2-88ed-b5bf86a004e5
-# ╠═be2db165-b5b9-43f2-940b-0add949927d2
-# ╠═8aef8c07-51db-4004-b9af-64484f488b0b
-# ╠═a0489258-8e71-4677-84a4-d67fe6a2b9c6
-# ╠═00bd40fc-89b1-4f10-a433-fb12720950c3
-# ╠═2adec440-0422-4dc9-80ef-ba7a3ebdf847
