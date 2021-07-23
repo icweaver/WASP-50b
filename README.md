@@ -1,6 +1,6 @@
 # WASP-50b
 
-1. [Raw Frames](https://icweaver.github.io/WASP-50b/html/01_raw_frames.jl.html)
+1. [Raw Frames](https://icweaver.github.io/WASP-50b/html/01_raw_data.jl.html)
 1. [Reduced Data -- IMACS](https://icweaver.github.io/WASP-50b/html/02_reduced.jl.html)
 1. [Reduced Data -- LDSS3](https://icweaver.github.io/WASP-50b/html/03_reduced_LDSS3.jl.html)
 1. [Detrended White Light Curves](https://icweaver.github.io/WASP-50b/html/04_detrended_wlcs.jl.html)
