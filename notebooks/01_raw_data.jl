@@ -4,7 +4,7 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 38304fe1-5acb-4785-b7c3-bb08fa5481a6
+# ╔═╡ 3433ed02-c27c-4fe5-bfda-a5108a58407c
 begin
 	import Pkg
 	Pkg.activate(Base.current_project())
@@ -12,7 +12,7 @@ begin
 	using AlgebraOfGraphics
 	using CSV
 	using CairoMakie
-	using CCDReduction: fitscollection
+	using CCDReduction: fitscollection, getdata, CCDData
 	using Colors
 	using DataFrames
 	using DataFramesMeta
@@ -22,6 +22,7 @@ begin
 	using ImageFiltering
 	using KernelDensity
 	using Latexify
+	using LaTeXStrings
 	using Measurements
 	using Measurements: value, uncertainty
 	using NaturalSort
@@ -29,6 +30,7 @@ begin
 	using Printf
 	using Statistics
 	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
+	using Unitful
 	
 	# Python setup
 	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP50/bin/python"
@@ -40,19 +42,6 @@ begin
 	##############
 	const FIG_TALL = (900, 1_200)
 	const FIG_WIDE = (1_350, 800)
-	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
-	const COLORS = parse.(Colorant,
-		[
-			"#a6cee3",  # Cyan
-			"#fdbf6f",  # Yellow
-			"#ff7f00",  # Orange
-			"#1f78b4",  # Blue
-			# "plum",
-			# "#956cb4",  # Purple
-			# "mediumaquamarine",
-			# "#029e73",  # Green,
-		]
-	)
 	
 	set_aog_theme!()
 	update_theme!(
@@ -61,14 +50,13 @@ begin
 			Label = (textsize=18,  padding=(0, 10, 0, 0)),
 			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
 			Scatter = (linewidth=10,),
-			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
 			fontsize = 18,
 			rowgap = 0,
 			colgap = 0,
 		)
 	)
 	
-	COLORS
+	COLORS = Makie.wong_colors()
 end
 
 # ╔═╡ fb39c593-86bd-4d4c-b9ec-e5e212a4de98
@@ -190,12 +178,10 @@ begin
 	# Load science frames and perform bias subtraction
 	cube = Array{Float64}(undef, 2048, 1024, 8);	
 	for (i, fpath) in enumerate(fpaths)
-		FITS(fpath, "r") do f
-			data = read(f[1]) |> permutedims
-			dxsec, dysec = read_key(f[1], "DATASEC")[1] |> Meta.parse |> eval
-			oxsec, oysec = read_key(f[1], "BIASSEC")[1] |> Meta.parse |> eval
-			cube[:, :, i] .= data[dysec, dxsec] .- median(data[oysec, oxsec])
-		end
+		ccd = CCDData(fpath)
+		dxsec, dysec = ccd.hdr["DATASEC"] |> Meta.parse |> eval
+		oxsec, oysec = ccd.hdr["BIASSEC"] |> Meta.parse |> eval
+		cube[:, :, i] .= ccd[dysec, dxsec] .- median(ccd[oysec, oxsec])
 	end
 end
 
@@ -240,7 +226,7 @@ end
 
 # ╔═╡ 4480ae72-3bb2-4e17-99be-28afc756332a
 md"""
-## Packages
+## Notebook setup
 """
 
 # ╔═╡ 6000db3d-0798-4f76-be31-617d43406b54
@@ -264,7 +250,7 @@ body.disable_ui main {
 
 # ╔═╡ Cell order:
 # ╟─fb39c593-86bd-4d4c-b9ec-e5e212a4de98
-# ╠═7e111d10-0aa8-47bd-9ea8-186c1aecc321
+# ╟─7e111d10-0aa8-47bd-9ea8-186c1aecc321
 # ╠═1e0db1d5-86b7-475c-897b-b0054575a5fa
 # ╠═9257eef5-c18a-4226-9ff3-fc0ea90a1262
 # ╠═c3def15d-d41a-4e3f-bb49-d57d46a6474e
@@ -277,5 +263,5 @@ body.disable_ui main {
 # ╠═86b4ace1-a891-41e5-a29f-f7eee5f8fb17
 # ╠═3a6ab0c0-ba08-4151-9646-c19d45749b9f
 # ╟─4480ae72-3bb2-4e17-99be-28afc756332a
-# ╠═38304fe1-5acb-4785-b7c3-bb08fa5481a6
+# ╠═3433ed02-c27c-4fe5-bfda-a5108a58407c
 # ╟─6000db3d-0798-4f76-be31-617d43406b54
