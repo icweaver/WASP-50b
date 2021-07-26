@@ -64,6 +64,23 @@ begin
 			colgap = 0,
 		)
 	)
+	
+	COLORS = Makie.wong_colors()
+end
+
+# ╔═╡ 70fc8493-42a9-4eca-a990-c810f61b9e95
+begin
+	# Can remove this after tess_sip is updated
+	py"""
+	import sys
+	import os
+	
+	def update_sys():
+		sys.path.insert(0, os.getcwd())
+		return sys.path
+	"""
+	update_sys!() = py"update_sys"()
+	update_sys!()
 end
 
 # ╔═╡ 670b88e4-1e96-494d-bfcc-235092bb6e96
@@ -222,7 +239,7 @@ df_sorted |> describe
 
 # ╔═╡ dbe317fe-540d-44e8-b8e7-6c465c79559f
 md"""
-``t_\text{window}`` = $(@bind t_window Slider(1:20, default=7, show_value=true)) days
+``t_\text{window}`` = $(@bind t_window Slider(1:30, default=7, show_value=true)) days
 """
 
 # ╔═╡ 9a195365-e68f-43e2-8870-c09153e2ce91
@@ -281,38 +298,6 @@ md"""
 We show the normalized PDCSAP flux below for each sector: 
 """
 
-# ╔═╡ 82222ee8-f759-499d-a072-c219cc33ccad
-let
-	fig = Figure(resolution=FIG_TALL, title="yee")
-		
-	for (i, lc) in enumerate(lcs)
-		lines(
-			fig[i, 1],
-			lc.normalize().remove_nans().time.value,
-			lc.normalize().remove_nans().flux,
-			label = """
-			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
-			$(lc.meta["EXPOSURE"]) s
-			$(srs[i].exptime)
-			"""
-		)
-		# lines!(
-		# 	fig[i, 1],
-		# 	lc.normalize().remove_nans().time.value,
-		# 	lc.normalize().remove_nans().flux.value,
-		# )
-
-		axislegend()
-	end
-
-	#linkyaxes!(filter(x -> x isa Axis, fig.content)...)
-
-	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
-	Label(fig[1:end-1, 0], "Flux (e⁻/s)", rotation=π/2)
-	
-	fig
-end
-
 # ╔═╡ bf01b1c2-e4c6-4bed-8e79-a20f273cc387
 function plot_photometry(lcs, yfield)
 	fig = Figure(resolution=FIG_TALL)
@@ -353,35 +338,23 @@ md"""
 ### Light curve binning
 """
 
-# ╔═╡ e7eba854-3846-4ba4-bbdb-c5f7dbdf08a7
-df_TESS_S04 = CSV.File(
-	"data/photometric/TESS_baseline_sector_04.csv",
-) |> DataFrame
-
-# ╔═╡ e1648b37-b52b-4c46-a5fb-4e5bc2743cd4
-df_TESS_S31 = CSV.File(
-	"data/photometric/TESS_baseline_sector_31.csv",
-) |> DataFrame
+# ╔═╡ e08075c7-ed2c-4b11-90d3-ded69e673717
+md"""
+!!! note
+	This is just a quick test to see how the binsize impacts the periodogram before applying any detrending/corrections to the individual sectors:
+"""
 
 # ╔═╡ 09c666f7-a8b4-4b47-b9fd-1351e8bd28f9
-t_window_TESS = 200.0 * (1/86_400) * 10
-
-# ╔═╡ 5cca08d9-e035-4a15-b575-069e6b89b6db
-t_TESS_S04, f_TESS_S04, f_err_TESS_S04 = eachcol(
-	df_TESS_S04[!, [:time, :flux, :flux_err]]
-)
-
-# ╔═╡ 8da5f6ed-f0d2-484e-a5ae-4a6ac603f0df
-(t_TESS_S04[end] + 2.457e6) |> julian2datetime
-
-# ╔═╡ a87d6163-4fd9-49c3-a83b-ab9c727edf99
-t_TESS_S31, f_TESS_S31, f_err_TESS_S31 = eachcol(
-	df_TESS_S31[!, [:time, :flux, :flux_err]]
-)
+t_window_TESS = 100.0 * (1/86_400) * 10;
 
 # ╔═╡ 99fcf959-665b-44cf-9b5f-fd68a919f846
 md"""
 ### Periodogram
+"""
+
+# ╔═╡ a62cae71-f73f-49bc-992c-ba7dbf4792d9
+md"""
+With the TESS data in hand, we now run it through [TESS_SIP](https://github.com/christinahedges/TESS-SIP) to analyze the final periodogram:
 """
 
 # ╔═╡ ec12acb8-9124-4cc0-8c9f-6525c1565dfd
@@ -389,6 +362,7 @@ begin
 	py"""
 	import lightkurve as lk
 	import astropy.units as u
+	import transitleastsquares as tls
 	from tess_sip import SIP
 	
 	def run_sip(target, srs_kwargs, sip_kwargs):
@@ -399,18 +373,75 @@ begin
 	
 	def bin_lc(t, f, f_err, binsize):
 		lc = lk.LightCurve(time=t, flux=f, flux_err=f_err).bin(time_bin_size=binsize)
-		return lc.time.value, lc.flux.value, lc.flux_err.value
+		return lc.time.value, lc.flux.value, lc.flux_err.value, lc
+	
+	def compute_pg(lc, min_P, max_P, probabilities=[0.1, 0.05, 0.01]):
+		pg = lc.to_periodogram(minimum_period=min_P, maximum_period=max_P)
+		faps = pg._LS_object.false_alarm_level(probabilities)
+		return pg.period.value, pg.power.value, faps
+	
+	def compute_baseline(lc, P, dur, t_0):
+		in_transit = tls.transit_mask(lc.time.jd, P, dur, t_0)
+		lc_baseline = lc[~in_transit]
+		return lc_baseline
 	"""
 	run_sip(target; srs_kwargs, sip_kwargs) = py"run_sip"(
 		target; srs_kwargs, sip_kwargs
 	)
 	bin_lc(t, f, f_err, binsize) = py"bin_lc"(t, f, f_err, binsize)
+	compute_pg(lc, min_P, max_P; probabilities=[0.1, 0.05, 0.01]) = py"compute_pg"(
+		lc, min_P, max_P; probabilities=[0.1, 0.05, 0.01]
+	)
+	compute_baseline(lc, P, dur, t_0) = py"compute_baseline"(lc, P, dur, t_0)
 end;
 
 # ╔═╡ e36d1322-5aa4-4513-bb89-410a4bb6b750
 t_ASASSN_binned, f_ASASSN_binned, f_ASASSN_binned_err = bin_lc(
 	t_ASASSN, f_ASASSN, f_err_ASASSN, t_window
 );
+
+# ╔═╡ 82222ee8-f759-499d-a072-c219cc33ccad
+let
+	fig = Figure(resolution=FIG_TALL)
+		
+	for (i, lc) in enumerate(lcs)
+		lc = lc.remove_nans().normalize()
+		lines(
+			fig[i, 1],
+			lc.time.value,
+			lc.flux,
+			label = """
+			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
+			"""
+			#$(lc.meta["EXPOSURE"]) s
+			#$(srs[i].exptime)
+			#"""
+		)
+		
+		P = 1.9550931258
+		dur = 1.83 * (1.0 / 24.0)
+		t_0 = 2455558.61237
+		df_TESS_SX = compute_baseline(lc, P, dur, t_0)
+		t_TESS_SX, f_TESS_SX, f_err_TESS_SX = (
+			df_TESS_SX.time.value, df_TESS_SX.flux, df_TESS_SX.flux_err
+		)
+		CSV.write(
+			"/home/mango/Desktop/WASP50LC_S$(lc.meta["SECTOR"]).csv",
+			DataFrame(:t=>t_TESS_SX, :f=>f_TESS_SX, :f_err=>f_err_TESS_SX),
+		)
+		
+		errorbars!(fig[i, 1], t_TESS_SX, f_TESS_SX, f_err_TESS_SX, color=COLORS[2])
+
+		axislegend()
+	end
+
+	#linkyaxes!(filter(x -> x isa Axis, fig.content)...)
+
+	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
+	Label(fig[1:end-1, 0], "Relative flux", rotation=π/2)
+	
+	fig
+end
 
 # ╔═╡ 8f382cc4-2c3b-4d40-83e7-044fbb6efb2e
 sip_kwargs = Dict(
@@ -477,7 +508,7 @@ end
 let
 	fig = Figure(resolution=FIG_TALL)
 	
-	P = 16.3
+	P = 16.3 # Gillon+ 2011
 	
 	axs = []
 	for (i, (sector, r)) in enumerate(data_dict)
@@ -502,13 +533,6 @@ let
 	fig
 end
 
-# ╔═╡ de8e6634-f9a2-468b-a7d7-b374b2421de0
-begin
-	scatter(r_combined["corr_lc"].flux)
-	#ylims!(0.99, 1.01)
-	current_figure()
-end
-
 # ╔═╡ 18223d42-66d8-40d1-9d89-be8af46853e2
 md"""
 ## Helper Functions
@@ -528,12 +552,12 @@ end
 # ╔═╡ 7370a1d9-4f8e-4788-adac-b8be2bcc9643
 function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=1.0)
 	t_rel = t .- t_offset
-	
 	if relative_flux
 		f_med = median(f)
-		Δf, Δf_err = (f .- f_med) / f_med , f_err / f_med
+		Δf, Δf_err = 1e6*(f .- f_med) / f_med , 1e6*f_err / f_med
 		
 	else
+		f_med = 1.0
 		Δf, Δf_err = f, f_err
 	end
 	
@@ -542,7 +566,7 @@ function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=
 	scatter!(ax, t_rel, Δf, color=(:darkgrey, 0.25))
 	
 	# Binned data
-	t_binned, f_binned, f_err_binned = bin_lc(t_rel, Δf, Δf_err, binsize)
+	t_binned, f_binned, f_err_binned, lc_binned = bin_lc(t_rel, Δf, Δf_err, binsize)
 	f_binned_err_med = median(filter(!isnan, f_err_binned))
 	
 	errorbars!(ax, t_binned, f_binned, f_err_binned;
@@ -554,86 +578,103 @@ function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=
 	
 	axislegend(ax, position=:rb)
 	
-	return ax, t_binned, f_binned, f_err_binned
+	return ax, t_binned, f_binned, f_err_binned, lc_binned, f_med
 end
 
 # ╔═╡ f3425d9c-861e-4b26-b352-bd0669c7f1f9
 let
-	fig = Figure()
-	ax = Axis(fig[1, 1])
+	fig = Figure(resolution=(800, 800))
 	
-# 	# Mark transit epochs
-# 	Δjulian_transit_dates = julian_transit_dates .- 2.457e6
-# 	vlines!(ax, Δjulian_transit_dates;
-# 		linestyle = :dash,
-# 		color = :darkgrey,
-# 	)
+	### Photometry plot ####
+	ax = Axis(fig[1, 1], xlabel="Time (BTJD)", ylabel="Relative flux (ppm)")
 	
-# 	# Label transit epochs
-# 	for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, Δjulian_transit_dates))
-# 		text!(ax, "Transit $i\n$utc";
-# 			position = Point2f0(jd, 0.08),
-# 			textsize = 14,
-# 			align = (:left, :center),
-# 			offset = Point2f0(10, 0),
-# 			color = :grey,
-# 		)
-# 	end
+	# Mark transit epochs
+	Δjulian_transit_dates = julian_transit_dates .- 2.457e6
+	vlines!(ax, Δjulian_transit_dates;
+		linestyle = :dash,
+		color = :darkgrey,
+	)
 	
-	ax_phot, t_binned, f_binned, f_err_binned = plot_phot!(
+	# Label transit epochs
+	for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, Δjulian_transit_dates))
+		text!(ax, "Transit $i\n$utc";
+			position = Point2f0(jd, 5.0e4),
+			textsize = 14,
+			align = (:left, :center),
+			offset = Point2f0(10, 0),
+			color = :grey,
+		)
+	end
+	
+	ax_phot, t_binned, f_binned, f_err_binned, lc_binned, f_med = plot_phot!(
 		ax, t_ASASSN, f_ASASSN, f_err_ASASSN;
 		t_offset=2.457e6, relative_flux=true, binsize=t_window
 	)
 	
-# 	CSV.write(
-# 		"/home/mango/Desktop/WASP50LC_ASASSN_binned.csv",
-# 		DataFrame(:t=>t_binned, :f=>f_binned, :f_err=>f_err_binned),
-# 	)
+	#### Periodogram #######
+	ax_pg = Axis(fig[2, 1], xlabel="Periods (days)", ylabel="log10 Power")
+	Ps, powers, faps = compute_pg(lc_binned, 5, 30)
+	lines!(ax_pg, Ps, log10.(powers*f_med/1e6))
+	hlines!(ax_pg, log10.(faps), color=:darkgrey, linestyle=:dash, label="\n\n[1, 5, 10]% FAPs")
+	axislegend()
 	
-	plan = LombScargle.plan(
-		t_binned,
-		f_binned,
-		f_err_binned;
-		fast=false,
-		minimum_frequency = 1.0 / 30.0,
-		maximum_frequency = 1.0 / 5.0,
-		
+	CSV.write(
+		"/home/mango/Desktop/WASP50LC_ASASSN_binned.csv",
+		DataFrame(:t=>t_binned, :f=>f_binned, :f_err=>f_err_binned),
 	)
-	ls = lombscargle(plan)
-	
-	Plots.plot(periodpower(ls)...)
-	
-	#lines(fig[2, 1], 1 ./ ls.freq, ls.power)
-	
-	#fig
+			
+	fig
 end
 
 # ╔═╡ 8906a2a2-65c9-4dc1-aaef-078a6ddaaff2
 let
 	fig = Figure()
-	
-	ax_top = Axis(fig[1, 1],)
-	ax_bottom = Axis(fig[2, 1])
 
-	a_ax, t, f, f_err = plot_phot!(
-		ax_top, t_TESS_S04, f_TESS_S04, f_err_TESS_S04;
+	#################
+	### Sector 04 ###
+	#################
+	t_TESS_S04, f_TESS_S04, f_err_TESS_S04 = CSV.File(
+		"/home/mango/Desktop/WASP50LC_S4.csv"
+	) |> x -> (x.t, x.f, x.f_err)
+	ax_S04_photometry = Axis(fig[1, 1], ylabel="Relative flux (ppm)")
+	a_ax, t, f, f_err, lc_binned, f_med = plot_phot!(
+		ax_S04_photometry, t_TESS_S04, f_TESS_S04, f_err_TESS_S04;
 		relative_flux=true, binsize=t_window_TESS,
 	)
+	ax_S04_pg = Axis(fig[2, 1], xlabel="Periods (days)", ylabel="log10 Power")
+	Ps, powers, faps = compute_pg(lc_binned, 5, 30)
+	lines!(ax_S04_pg, Ps, log10.(powers*f_med/1e6))
+	# hlines!(ax_pg, log10.(faps), label="[10, 5, 1]% FAPs")
+	# axislegend()
 	CSV.write(
 		"/home/mango/Desktop/WASP50LC_S04_binned.csv",
 		DataFrame(:t=>t, :f=>f, :f_err=>f_err),
 	)
 	
-	b_ax, t, f, f_err = plot_phot!(
-		ax_bottom, t_TESS_S31,
+	#################
+	### Sector 31 ###
+	#################
+	ax_S31_photometry = Axis(fig[1, 2])
+	t_TESS_S31, f_TESS_S31, f_err_TESS_S31 = CSV.File(
+		"/home/mango/Desktop/WASP50LC_S31.csv"
+	) |> x -> (x.t, x.f, x.f_err)
+	b_ax, t, f, f_err, lc_binned = plot_phot!(
+		ax_S31_photometry, t_TESS_S31,
 		f_TESS_S31, f_err_TESS_S31;
-		relative_flux=false, binsize=t_window_TESS,
+		relative_flux=true, binsize=t_window_TESS,
 	)
+	ax_S31_pg = Axis(fig[2, 2], xlabel="Periods (days)")
+	Ps, powers, faps = compute_pg(lc_binned, 5, 30)
+	lines!(ax_S31_pg, Ps, log10.(powers*f_med/1e6))
 	CSV.write(
 		"/home/mango/Desktop/WASP50LC_S31_binned.csv",
 		DataFrame(:t=>t, :f=>f, :f_err=>f_err),
 	)
 	
+	linkyaxes!(ax_S04_photometry, ax_S31_photometry)
+	hideydecorations!.((ax_S31_photometry, ax_S31_pg))
+	linkyaxes!(ax_S04_pg, ax_S31_pg)
+		
 	fig #|> as_svg
 end
 
@@ -641,21 +682,6 @@ end
 md"""
 ## Notebook setup
 """
-
-# ╔═╡ 70fc8493-42a9-4eca-a990-c810f61b9e95
-begin
-	# Can remove this after tess_sip is updated
-	py"""
-	import sys
-	import os
-	
-	def update_sys():
-		sys.path.insert(0, os.getcwd())
-		return sys.path
-	"""
-	update_sys!() = py"update_sys"()
-	update_sys!()
-end
 
 # ╔═╡ f8e37bb8-bdd8-4eea-82c3-1b1f3a5617a1
 html"""
@@ -671,6 +697,7 @@ html"""
 """
 
 # ╔═╡ Cell order:
+# ╠═70fc8493-42a9-4eca-a990-c810f61b9e95
 # ╟─670b88e4-1e96-494d-bfcc-235092bb6e96
 # ╟─0cbe4263-799f-4ee3-9a94-3ba879528b01
 # ╟─b00c28a2-26b1-442e-a347-39fb66b825a0
@@ -692,7 +719,7 @@ html"""
 # ╠═e36d1322-5aa4-4513-bb89-410a4bb6b750
 # ╠═7f864c2d-e6a2-4774-b56e-6131041c3a00
 # ╟─dbe317fe-540d-44e8-b8e7-6c465c79559f
-# ╟─f3425d9c-861e-4b26-b352-bd0669c7f1f9
+# ╠═f3425d9c-861e-4b26-b352-bd0669c7f1f9
 # ╟─682499cb-af79-48f7-9e74-0185894f65fe
 # ╟─78d85c7c-da06-41ab-915b-48d93a010967
 # ╟─97e7feee-11b2-4a35-9327-b5c0d05b2a23
@@ -704,15 +731,12 @@ html"""
 # ╟─241c462c-3cd9-402d-b948-b9b1f608b727
 # ╠═82222ee8-f759-499d-a072-c219cc33ccad
 # ╠═bf01b1c2-e4c6-4bed-8e79-a20f273cc387
-# ╠═8da5f6ed-f0d2-484e-a5ae-4a6ac603f0df
 # ╟─3327596c-56f1-4024-9490-ee69bd514007
-# ╠═e7eba854-3846-4ba4-bbdb-c5f7dbdf08a7
-# ╠═e1648b37-b52b-4c46-a5fb-4e5bc2743cd4
+# ╟─e08075c7-ed2c-4b11-90d3-ded69e673717
 # ╠═09c666f7-a8b4-4b47-b9fd-1351e8bd28f9
-# ╠═5cca08d9-e035-4a15-b575-069e6b89b6db
-# ╠═a87d6163-4fd9-49c3-a83b-ab9c727edf99
 # ╠═8906a2a2-65c9-4dc1-aaef-078a6ddaaff2
 # ╟─99fcf959-665b-44cf-9b5f-fd68a919f846
+# ╟─a62cae71-f73f-49bc-992c-ba7dbf4792d9
 # ╠═ec12acb8-9124-4cc0-8c9f-6525c1565dfd
 # ╠═f287c0a6-e5d9-43be-b0b9-ded9273bdfc1
 # ╠═4c078bc4-b05d-4357-8dc1-d660b35cb2e0
@@ -721,11 +745,9 @@ html"""
 # ╠═8f382cc4-2c3b-4d40-83e7-044fbb6efb2e
 # ╠═ed93fd1f-79bd-4c5a-b822-680c6f6591d6
 # ╠═4fcb3ea1-bec6-4c30-82a6-4689077cdc14
-# ╠═de8e6634-f9a2-468b-a7d7-b374b2421de0
 # ╟─18223d42-66d8-40d1-9d89-be8af46853e2
 # ╠═682c3732-e68f-4fdb-bd63-553223308364
 # ╠═7370a1d9-4f8e-4788-adac-b8be2bcc9643
 # ╟─ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd
 # ╠═9e2ce576-c9bd-11eb-0699-47af13e79589
-# ╠═70fc8493-42a9-4eca-a990-c810f61b9e95
 # ╟─f8e37bb8-bdd8-4eea-82c3-1b1f3a5617a1
