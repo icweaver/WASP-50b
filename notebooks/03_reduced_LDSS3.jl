@@ -218,6 +218,15 @@ md"""
 	We divide the target WLC by each comparison star to minimize common systematics (e.g., air mass, local refractive atmospheric effects), and to make the transit shape more apparent. This allows us to select good comparison stars for that particular night and which timeseries points to include in the rest of the analysis.
 """
 
+# ╔═╡ fda9022a-2b95-4d06-8a80-80321a1bf441
+x = rand(100, 100)
+
+# ╔═╡ 1d91f3b2-293f-467c-ba40-7dc6497152cd
+[
+ 1 2
+ 3     4	
+]
+
 # ╔═╡ 89256633-3c12-4b94-b245-4fdda44d686c
 function filt(f_div_wlc, window_width; func=median, border="reflect")
 	# Filtered light curves
@@ -754,6 +763,8 @@ body.disable_ui main {
 # ╠═798880fa-1e52-4758-a7f7-d3c6adec244a
 # ╠═470514e7-0f08-44a3-8519-5d704ea6b8d4
 # ╠═f80347e8-dc5a-4b0c-a6c0-db5c12eadcbb
+# ╠═fda9022a-2b95-4d06-8a80-80321a1bf441
+# ╠═1d91f3b2-293f-467c-ba40-7dc6497152cd
 # ╠═89256633-3c12-4b94-b245-4fdda44d686c
 # ╟─97191c55-f673-46b4-82fd-147e7d150623
 # ╠═56efa000-a943-4256-94f4-f0ae4764f634

@@ -204,6 +204,7 @@ function plot_BLCs(datas, models, wbins, errs; offset=0.3)
 	ax_right = Axis(fig[1, 2], title = "Residuals")
 	ax_label = Axis(fig[1, 3], title = "Median precision: $(median_prec) ppm")
 	axs = reshape(copy(fig.content), 1, 3)
+	ylims!(ax_label, (1.05, 1.15))
 	linkaxes!(axs...)
 	
 	# Color palette

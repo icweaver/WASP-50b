@@ -68,6 +68,12 @@ begin
 	COLORS = Makie.wong_colors()
 end
 
+# ╔═╡ 1344dd10-16b1-4873-b530-495989572341
+using LombScargle
+
+# ╔═╡ dd2d460b-1169-4760-8e74-16ea640d4448
+using Images: findlocalmaxima
+
 # ╔═╡ 70fc8493-42a9-4eca-a990-c810f61b9e95
 begin
 	# Can remove this after tess_sip is updated
@@ -111,6 +117,9 @@ df_ASASSN = CSV.File(
 	"data/photometric/ASAS-SN/AP37847073.csv",
 	normalizenames = true,
 ) |> DataFrame
+
+# ╔═╡ 3345ff07-b04c-498e-8161-f87082448137
+nrow(df_ASASSN)
 
 # ╔═╡ 9094c4a4-3b75-4e21-97a7-600de734867b
 describe(df_ASASSN, :all)
@@ -293,6 +302,9 @@ From the $(length(all_srs)) data products found, we see that $(length(srs)) are 
 # ╔═╡ 6e62b3cc-96ce-43fd-811b-4b2b102cfd61
 lcs = srs.download_all();
 
+# ╔═╡ 137b03b4-0290-497e-884c-46cf66617fef
+lcs[1].normalize().remove_nans()
+
 # ╔═╡ 241c462c-3cd9-402d-b948-b9b1f608b727
 md"""
 We show the normalized PDCSAP flux below for each sector: 
@@ -369,7 +381,7 @@ begin
 		srs = lk.search_lightcurve(target, **srs_kwargs)
 		lcs = srs.download_all()
 		r = SIP(lcs, **sip_kwargs)
-		return r, srs
+		return r, srs, lcs
 	
 	def bin_lc(t, f, f_err, binsize):
 		lc = lk.LightCurve(time=t, flux=f, flux_err=f_err).bin(time_bin_size=binsize)
@@ -447,26 +459,38 @@ end
 sip_kwargs = Dict(
 	"min_period" => 5.0,
 	"max_period" => 30.0,
-	"nperiods" => 600,
+	"nperiods" => 100,
 	"bin_kwargs" => Dict("time_bin_size"=>(12.0u"hr" |> u"d").val),
 )
 
 # ╔═╡ f287c0a6-e5d9-43be-b0b9-ded9273bdfc1
-r_S04, srs_S04 = run_sip(
+r_S04, srs_S04, lcs_S04 = run_sip(
 	"WASP50",
 	srs_kwargs = Dict("sector"=>4, "author"=>"TESS-SPOC"),
 	sip_kwargs = sip_kwargs
 ); srs_S04
 
+# ╔═╡ 2007c74f-4289-42ef-a448-550e7cad3fd7
+t, s = let
+	lc = lcs_S04[1].normalize().remove_nans()
+	lc.time.value, lc.flux
+end
+
+# ╔═╡ 4dced64c-e00d-4f9c-8988-4b47a7017390
+plan = LombScargle.plan(t, s)
+
+# ╔═╡ baf84ca6-d581-4580-b068-d495d5561639
+pgram = lombscargle(plan)
+
 # ╔═╡ 4c078bc4-b05d-4357-8dc1-d660b35cb2e0
-r_S31, srs_S31 = run_sip(
+r_S31, srs_S31, lcs_S31 = run_sip(
 	"WASP50",
 	srs_kwargs = Dict("sector"=>31, "author"=>"TESS-SPOC"),
 	sip_kwargs = sip_kwargs
 ); srs_S31
 
 # ╔═╡ d2ed4e4b-edc1-4dfd-adeb-c6e5d5fab923
-r_combined, srs_combined = run_sip(
+r_combined, srs_combined, lcs_combined = run_sip(
 	"WASP50",
 	srs_kwargs = Dict("author"=>"TESS-SPOC"),
 	sip_kwargs = sip_kwargs
@@ -478,6 +502,28 @@ data_dict = OrderedDict(
 	"Sector 31" => r_S31,
 	"Combined" => r_combined,
 );
+
+# ╔═╡ 1a86efc8-0bb6-44e4-8568-82fdb3409c25
+md"""
+### Window function
+"""
+
+# ╔═╡ 0c790d2f-64d4-4e13-9629-a9725cd7086d
+const lk = pyimport("lightkurve")
+
+# ╔═╡ 2215ed86-fa78-4811-88ab-e3521e4a1dea
+function compute_window_func(lc; P_min=5, P_max=30)
+	t = lc.time.value
+	t_start, t_end = t |> extrema
+	Δt = median(diff(t))
+	t_uniform = t_start:Δt:t_end
+	
+	f = oneunit.(t_uniform)
+	f_err = median(lc.flux_err) .* f
+	lc_window_func = lk.LightCurve(time=t_uniform, flux=f, flux_err=f_err)
+	
+	return compute_pg(lc_window_func, P_min, P_max) # period, power, faps
+end
 
 # ╔═╡ 4fcb3ea1-bec6-4c30-82a6-4689077cdc14
 function plot_periodogram!(ax, r, P)
@@ -511,8 +557,16 @@ let
 	P = 16.3 # Gillon+ 2011
 	
 	axs = []
+	lcss = [lcs_S04, lcs_S31, lcs_combined]
 	for (i, (sector, r)) in enumerate(data_dict)
-		ax = Axis(fig[i, 1], yscale=log10)
+		ax_window_func = Axis(fig[2*i-1, 1])
+		lc = lcss[i].stitch(x -> x).remove_nans().normalize()
+		a, b, c = compute_window_func(lc) # period, power, faps
+		peak_idxs = findlocalmaxima(b)
+		lines!(ax_window_func, a, b)
+		scatter!(ax_window_func, a[peak_idxs], b[peak_idxs], color=:red)
+		
+		ax = Axis(fig[2*i, 1], yscale=log10)
 		plot_periodogram!(ax, r, P)
 		text!(ax, sector;
 			position = (30, 4.5),
@@ -702,6 +756,7 @@ html"""
 # ╟─0cbe4263-799f-4ee3-9a94-3ba879528b01
 # ╟─b00c28a2-26b1-442e-a347-39fb66b825a0
 # ╠═fa233a2c-7e89-4e71-85b8-824c5c341650
+# ╠═3345ff07-b04c-498e-8161-f87082448137
 # ╠═9094c4a4-3b75-4e21-97a7-600de734867b
 # ╟─6eaf882c-0cb5-415f-b8fe-c071ee25a895
 # ╟─2b2dd83b-ce99-4551-b8aa-79ca6db5dd06
@@ -728,12 +783,17 @@ html"""
 # ╟─34fcd73d-a49c-4597-8e63-cfe2495eee48
 # ╠═dff46359-7aec-4fa1-bc7a-89785dfca0e8
 # ╠═6e62b3cc-96ce-43fd-811b-4b2b102cfd61
+# ╠═137b03b4-0290-497e-884c-46cf66617fef
 # ╟─241c462c-3cd9-402d-b948-b9b1f608b727
 # ╠═82222ee8-f759-499d-a072-c219cc33ccad
 # ╠═bf01b1c2-e4c6-4bed-8e79-a20f273cc387
 # ╟─3327596c-56f1-4024-9490-ee69bd514007
 # ╟─e08075c7-ed2c-4b11-90d3-ded69e673717
 # ╠═09c666f7-a8b4-4b47-b9fd-1351e8bd28f9
+# ╠═1344dd10-16b1-4873-b530-495989572341
+# ╠═2007c74f-4289-42ef-a448-550e7cad3fd7
+# ╠═4dced64c-e00d-4f9c-8988-4b47a7017390
+# ╠═baf84ca6-d581-4580-b068-d495d5561639
 # ╠═8906a2a2-65c9-4dc1-aaef-078a6ddaaff2
 # ╟─99fcf959-665b-44cf-9b5f-fd68a919f846
 # ╟─a62cae71-f73f-49bc-992c-ba7dbf4792d9
@@ -743,6 +803,10 @@ html"""
 # ╠═d2ed4e4b-edc1-4dfd-adeb-c6e5d5fab923
 # ╠═fd3ffd0c-4d08-4862-bc90-a6b748e1faab
 # ╠═8f382cc4-2c3b-4d40-83e7-044fbb6efb2e
+# ╟─1a86efc8-0bb6-44e4-8568-82fdb3409c25
+# ╠═2215ed86-fa78-4811-88ab-e3521e4a1dea
+# ╠═dd2d460b-1169-4760-8e74-16ea640d4448
+# ╠═0c790d2f-64d4-4e13-9629-a9725cd7086d
 # ╠═ed93fd1f-79bd-4c5a-b822-680c6f6591d6
 # ╠═4fcb3ea1-bec6-4c30-82a6-4689077cdc14
 # ╟─18223d42-66d8-40d1-9d89-be8af46853e2

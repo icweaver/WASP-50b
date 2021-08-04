@@ -197,6 +197,18 @@ md"""
 Average precision per bin: $(round(Int, getproperty.(depths_adj[!, :Combined], :err) |> median)) ppm
 """
 
+# ╔═╡ 8738ddc7-6f42-4809-8d61-b021230729f8
+Measurements.uncertainty.(depths_common[!, "Transit 1 (IMACS)"]) |> mean
+
+# ╔═╡ 23ce5b47-2493-4ce5-afbd-72051a3c9e88
+Measurements.uncertainty.(depths_common[!, "Transit 2 (IMACS)"]) |> mean
+
+# ╔═╡ d6366a40-0565-4cd4-8ef4-2e4f9dce0774
+Measurements.uncertainty.(depths_common[!, "Transit 2 (LDSS3)"]) |> mean
+
+# ╔═╡ 855e8ad1-ca16-4b4d-8145-e8df5fdea283
+Measurements.uncertainty.(depths_common[!, "Transit 3 (IMACS)"]) |> mean
+
 # ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
 md"""
 ## Plot configs
@@ -350,7 +362,11 @@ body.disable_ui main {
 # ╠═c405941d-bdcc-458f-b0bf-01abf02982e0
 # ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
 # ╠═4b9cfc02-5e18-422d-b18e-6301a659561a
-# ╟─5d25caa3-916a-40b1-ba7c-ea1295afb775
+# ╠═5d25caa3-916a-40b1-ba7c-ea1295afb775
+# ╠═8738ddc7-6f42-4809-8d61-b021230729f8
+# ╠═23ce5b47-2493-4ce5-afbd-72051a3c9e88
+# ╠═d6366a40-0565-4cd4-8ef4-2e4f9dce0774
+# ╠═855e8ad1-ca16-4b4d-8145-e8df5fdea283
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
 # ╟─f8a86915-f7d8-4462-980e-7b8124b13a3f
 # ╠═bef0918c-c645-4557-a2e5-00b6c26573bc
