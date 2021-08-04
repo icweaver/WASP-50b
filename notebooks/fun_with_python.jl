@@ -10,6 +10,9 @@ begin
 	Conda.add(["batman-package"]; channel="conda-forge")
 end
 
+# ╔═╡ 1b2781b3-6298-43d6-8bd9-8834ab8a5be5
+using OrderedCollections
+
 # ╔═╡ 7c4c556c-7399-4585-a9c4-428734b9a9b2
 md"""
 # Fun with 🐍
@@ -68,7 +71,7 @@ neg_norm(3, 4)
 
 # ╔═╡ 8d512b4c-a0ad-453f-8b51-c09cc63c6a49
 md"""
-Looks good! Now let's try a module from `batman`:
+Looks good! Now let's try accessing the `_rsky` module from `batman`:
 """
 
 # ╔═╡ 97b525a0-cbca-4ca7-a415-23a8090eb7ac
@@ -117,17 +120,31 @@ r = r_batman(;transit_params...)
 
 # ╔═╡ 4cb0f5a5-d448-4d69-a92a-8f044c07d1a2
 md"""
-Not bad 🍉
+Not bad! We can also interface with python objects/modules/libraries directly:
 """
+
+# ╔═╡ 04b5e2f6-ae95-40eb-87e6-0e45dbf1aed3
+np, pd = pyimport.(["numpy", "pandas"])
+
+# ╔═╡ a2fc17e4-6f98-4864-b66c-8ee27cb0d509
+np.linspace(0, 10, 6)
+
+# ╔═╡ 58fefef0-d96d-42c5-b355-664c71ceb94f
+pd.DataFrame(
+	OrderedDict("a"=>[1, 2, 3], "b"=>[3, 2, 1]),
+	index = ["cat", "dog", "rabbit"]
+)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 Conda = "8f4d0f93-b110-5947-807f-2305c1781a2d"
+OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 
 [compat]
 Conda = "~1.5.2"
+OrderedCollections = "~1.4.1"
 PyCall = "~1.92.3"
 """
 
@@ -174,6 +191,11 @@ uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 [[Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
+[[OrderedCollections]]
+git-tree-sha1 = "85f8e6578bf1f9ee0d11e7bb1b1456435479d47c"
+uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
+version = "1.4.1"
+
 [[Parsers]]
 deps = ["Dates"]
 git-tree-sha1 = "c8abc88faa3f7a3950832ac5d6e690881590d6dc"
@@ -210,7 +232,7 @@ version = "1.2.0"
 # ╟─7c4c556c-7399-4585-a9c4-428734b9a9b2
 # ╠═ab57c20d-542c-4079-8d7d-21e523f7bdaa
 # ╟─ca74eea8-26de-4ecf-9e08-75658a3ae56a
-# ╠═793a51ba-f589-42f4-b562-bfcc0291243d
+# ╟─793a51ba-f589-42f4-b562-bfcc0291243d
 # ╠═2be60363-fed7-4146-ada6-bb287ab94678
 # ╠═bb7aaa9e-1b22-4706-a582-dcb090c85b99
 # ╟─8d512b4c-a0ad-453f-8b51-c09cc63c6a49
@@ -219,5 +241,9 @@ version = "1.2.0"
 # ╠═68649e6a-d26d-405f-9754-e7902407f866
 # ╠═d212844e-b382-4c89-a0f0-809313d0b8db
 # ╟─4cb0f5a5-d448-4d69-a92a-8f044c07d1a2
+# ╠═04b5e2f6-ae95-40eb-87e6-0e45dbf1aed3
+# ╠═a2fc17e4-6f98-4864-b66c-8ee27cb0d509
+# ╠═1b2781b3-6298-43d6-8bd9-8834ab8a5be5
+# ╠═58fefef0-d96d-42c5-b355-664c71ceb94f
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
