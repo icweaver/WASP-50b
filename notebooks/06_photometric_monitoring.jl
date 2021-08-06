@@ -68,9 +68,6 @@ begin
 	COLORS = Makie.wong_colors()
 end
 
-# ╔═╡ 1344dd10-16b1-4873-b530-495989572341
-using LombScargle
-
 # ╔═╡ dd2d460b-1169-4760-8e74-16ea640d4448
 using Images: findlocalmaxima
 
@@ -417,11 +414,12 @@ let
 	fig = Figure(resolution=FIG_TALL)
 		
 	for (i, lc) in enumerate(lcs)
-		lc = lc.remove_nans().normalize()
-		lines(
+		lc = lc.remove_nans().flatten().normalize()
+		errorbars(
 			fig[i, 1],
 			lc.time.value,
 			lc.flux,
+			lc.flux_err,
 			label = """
 			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
 			"""
@@ -429,6 +427,7 @@ let
 			#$(srs[i].exptime)
 			#"""
 		)
+		scatter!(fig[i, 1], lc.time.value, lc.flux)
 		
 		P = 1.9550931258
 		dur = 1.83 * (1.0 / 24.0)
@@ -460,7 +459,7 @@ sip_kwargs = Dict(
 	"min_period" => 5.0,
 	"max_period" => 30.0,
 	"nperiods" => 100,
-	"bin_kwargs" => Dict("time_bin_size"=>(12.0u"hr" |> u"d").val),
+	"bin_kwargs" => Dict("time_bin_size"=>(36.0u"hr" |> u"d").val),
 )
 
 # ╔═╡ f287c0a6-e5d9-43be-b0b9-ded9273bdfc1
@@ -469,18 +468,6 @@ r_S04, srs_S04, lcs_S04 = run_sip(
 	srs_kwargs = Dict("sector"=>4, "author"=>"TESS-SPOC"),
 	sip_kwargs = sip_kwargs
 ); srs_S04
-
-# ╔═╡ 2007c74f-4289-42ef-a448-550e7cad3fd7
-t, s = let
-	lc = lcs_S04[1].normalize().remove_nans()
-	lc.time.value, lc.flux
-end
-
-# ╔═╡ 4dced64c-e00d-4f9c-8988-4b47a7017390
-plan = LombScargle.plan(t, s)
-
-# ╔═╡ baf84ca6-d581-4580-b068-d495d5561639
-pgram = lombscargle(plan)
 
 # ╔═╡ 4c078bc4-b05d-4357-8dc1-d660b35cb2e0
 r_S31, srs_S31, lcs_S31 = run_sip(
@@ -516,7 +503,7 @@ function compute_window_func(lc; P_min=5, P_max=30)
 	t = lc.time.value
 	t_start, t_end = t |> extrema
 	Δt = median(diff(t))
-	t_uniform = t_start:Δt:t_end
+	t_uniform = t #t_start:Δt:t_end
 	
 	f = oneunit.(t_uniform)
 	f_err = median(lc.flux_err) .* f
@@ -532,15 +519,14 @@ function plot_periodogram!(ax, r, P)
     power_background = r["power_bkg"]
     power_relative = power_source ./ power_background
 
+	lines!(ax, periods, power_relative; label="divided")
 	lines!(ax, periods, power_source; label="source")
 	lines!(ax, periods, power_background; label="background")
-	lines!(ax, periods, power_relative; label="divided"
-	)
 	
 	P_max = periods[argmax(power_relative)]
-	vlines!(ax, P, linestyle=:dash, color=:darkgrey, label="P_rot (Gillon+ 2011)")
-	vlines!(ax, P/3.0, linestyle=:dash, color=:darkgrey, label="P_rot/3")
-	vlines!(ax, P_max, color=:darkgrey, label="P_max")
+	vlines!(ax, P, linestyle=:dash, color=:darkgrey)
+	vlines!(ax, P/3.0, linestyle=:dash, color=:darkgrey)
+	vlines!(ax, P_max, color=:darkgrey)
 	
 	text!(ax, "P_max = $(round(P_max, digits=2)) days";
 		position = (30, 2),
@@ -563,8 +549,8 @@ let
 		lc = lcss[i].stitch(x -> x).remove_nans().normalize()
 		a, b, c = compute_window_func(lc) # period, power, faps
 		peak_idxs = findlocalmaxima(b)
-		lines!(ax_window_func, a, b)
-		scatter!(ax_window_func, a[peak_idxs], b[peak_idxs], color=:red)
+		lines!(ax_window_func, a, b, color=:darkgrey, label="window function")
+		scatter!(ax_window_func, a[peak_idxs], b[peak_idxs], color=COLORS[6])
 		
 		ax = Axis(fig[2*i, 1], yscale=log10)
 		plot_periodogram!(ax, r, P)
@@ -790,10 +776,6 @@ html"""
 # ╟─3327596c-56f1-4024-9490-ee69bd514007
 # ╟─e08075c7-ed2c-4b11-90d3-ded69e673717
 # ╠═09c666f7-a8b4-4b47-b9fd-1351e8bd28f9
-# ╠═1344dd10-16b1-4873-b530-495989572341
-# ╠═2007c74f-4289-42ef-a448-550e7cad3fd7
-# ╠═4dced64c-e00d-4f9c-8988-4b47a7017390
-# ╠═baf84ca6-d581-4580-b068-d495d5561639
 # ╠═8906a2a2-65c9-4dc1-aaef-078a6ddaaff2
 # ╟─99fcf959-665b-44cf-9b5f-fd68a919f846
 # ╟─a62cae71-f73f-49bc-992c-ba7dbf4792d9

@@ -7,12 +7,12 @@ using InteractiveUtils
 # ╔═╡ ef970c0c-d08a-4856-b10b-531bb5e7e53e
 begin
 	import Pkg
-	Pkg.activate(joinpath(@__DIR__, ".."))
-
+	Pkg.activate(Base.current_project())
+	
 	using AlgebraOfGraphics
-	using CCDReduction
 	using CSV
 	using CairoMakie
+	using CCDReduction: fitscollection
 	using Colors
 	using DataFrames
 	using DataFramesMeta
@@ -22,13 +22,53 @@ begin
 	using ImageFiltering
 	using KernelDensity
 	using Latexify
+	using LaTeXStrings
 	using Measurements
+	using Measurements: value, uncertainty
 	using NaturalSort
 	using OrderedCollections
 	using Printf
-	using PyCall
 	using Statistics
 	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
+	using Unitful
+	
+	# Python setup
+	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP50/bin/python"
+	Pkg.build("PyCall")
+	using PyCall
+	
+	##############
+	# PLOT CONFIGS
+	##############
+	const FIG_TALL = (900, 1_200)
+	const FIG_WIDE = (1_350, 800)
+	
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Scatter = (linewidth=10,),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
+	
+	# const COLORS = Makie.wong_colors()
+	const COLORS = parse.(Colorant,
+	[
+		"#a6cee3",  # Cyan
+		"#fdbf6f",  # Yellow
+		"#ff7f00",  # Orange
+		"#1f78b4",  # Blue
+		# "plum",
+		# "#956cb4",  # Purple
+		# "mediumaquamarine",
+		# "#029e73",  # Green
+	]
+)
 end
 
 # ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
@@ -44,6 +84,9 @@ $(TableOfContents(title="📖 Table of Contents"))
 md"""
 ## Load data
 """
+
+# ╔═╡ d65c8a1b-f1e6-4658-8773-19f3c8397bd6
+31.61u"m/s^2" |> u"cm/s^2"
 
 # ╔═╡ 5100e6b4-03da-4e58-aad1-13376bcb4b59
 md"""
@@ -206,48 +249,11 @@ Measurements.uncertainty.(depths_common[!, "Transit 2 (IMACS)"]) |> mean
 # ╔═╡ d6366a40-0565-4cd4-8ef4-2e4f9dce0774
 Measurements.uncertainty.(depths_common[!, "Transit 2 (LDSS3)"]) |> mean
 
+# ╔═╡ b85674ce-8ead-445e-8645-491cb31a1391
+5520*0.5
+
 # ╔═╡ 855e8ad1-ca16-4b4d-8145-e8df5fdea283
 Measurements.uncertainty.(depths_common[!, "Transit 3 (IMACS)"]) |> mean
-
-# ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
-md"""
-## Plot configs
-"""
-
-# ╔═╡ bef0918c-c645-4557-a2e5-00b6c26573bc
-begin
-	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (1_350, 800)
-	#const COLORS = to_colormap(:seaborn_colorblind6, 8)[[8, 6, 4, 1]]
-	const COLORS = parse.(Colorant,
-		[
-			"#a6cee3",  # Cyan
-			"#fdbf6f",  # Yellow
-			"#ff7f00",  # Orange
-			"#1f78b4",  # Blue
-			# "plum",
-			# "#956cb4",  # Purple
-			# "mediumaquamarine",
-			# "#029e73",  # Green
-		]
-	)
-	
-	set_aog_theme!()
-	update_theme!(
-		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
-			Scatter = (linewidth=10,),
-			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
-			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
-		)
-	)
-	
-	COLORS
-end
 
 # ╔═╡ 8c077881-fc5f-4fad-8497-1cb6106c6ed5
 let
@@ -301,7 +307,22 @@ let
 		markersize = 12,
 		label = "Combined",
 	)
-		
+	
+	# Write to file
+	N = nrow(depths_adj)
+	CSV.write(
+			"/home/mango/Desktop/tspec_w50.csv",
+			DataFrame(
+			:Wlow => depths_adj.Wav_d,
+			:Wup => depths_adj.Wav_u,
+			:Depth => depth_combined,
+			:ErrUp => depth_combined_err,
+			:ErrLow => depth_combined_err,
+			:Instrument => fill("Magellan/IMACS", N),
+			:Offset => fill("NO", N)
+			),
+		)
+	
 	# Plot uncombined points
 	for (i, (transit, df)) in enumerate(antijoins)
 		wav = df.wav
@@ -322,6 +343,49 @@ let
 		
 	fig #|> as_svg
 end
+
+# ╔═╡ 356411da-9c9d-45d0-8ced-e2d9a2bf57f8
+nrow(depths_adj)
+
+# ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
+md"""
+## Notebook setup
+"""
+
+# ╔═╡ bef0918c-c645-4557-a2e5-00b6c26573bc
+# begin
+# 	const FIG_TALL = (900, 1_200)
+# 	const FIG_WIDE = (1_350, 800)
+# 	#const COLORS = to_colormap(:seaborn_colorblind6, 8)[[8, 6, 4, 1]]
+# 	const COLORS = parse.(Colorant,
+# 		[
+# 			"#a6cee3",  # Cyan
+# 			"#fdbf6f",  # Yellow
+# 			"#ff7f00",  # Orange
+# 			"#1f78b4",  # Blue
+# 			# "plum",
+# 			# "#956cb4",  # Purple
+# 			# "mediumaquamarine",
+# 			# "#029e73",  # Green
+# 		]
+# 	)
+	
+# 	set_aog_theme!()
+# 	update_theme!(
+# 		Theme(
+# 			Axis = (xlabelsize=18, ylabelsize=18,),
+# 			Label = (textsize=18,),
+# 			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+# 			Scatter = (linewidth=10,),
+# 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
+# 			fontsize = 18,
+# 			rowgap = 0,
+# 			colgap = 0,
+# 		)
+# 	)
+	
+# 	COLORS
+# end
 
 # ╔═╡ 3510ead9-6e66-4fec-84ca-15c8a3ce4c3e
 html"""
@@ -345,6 +409,7 @@ body.disable_ui main {
 # ╔═╡ Cell order:
 # ╟─e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 # ╟─9413e640-22d9-4bfc-b4ea-f41c02a3bfde
+# ╠═d65c8a1b-f1e6-4658-8773-19f3c8397bd6
 # ╟─5100e6b4-03da-4e58-aad1-13376bcb4b59
 # ╠═c53be9cf-7722-4b43-928a-33e7b0463330
 # ╠═d6918a50-f75f-47f5-86c6-e251f7ef1e12
@@ -366,8 +431,10 @@ body.disable_ui main {
 # ╠═8738ddc7-6f42-4809-8d61-b021230729f8
 # ╠═23ce5b47-2493-4ce5-afbd-72051a3c9e88
 # ╠═d6366a40-0565-4cd4-8ef4-2e4f9dce0774
+# ╠═b85674ce-8ead-445e-8645-491cb31a1391
 # ╠═855e8ad1-ca16-4b4d-8145-e8df5fdea283
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
+# ╠═356411da-9c9d-45d0-8ced-e2d9a2bf57f8
 # ╟─f8a86915-f7d8-4462-980e-7b8124b13a3f
 # ╠═bef0918c-c645-4557-a2e5-00b6c26573bc
 # ╠═ef970c0c-d08a-4856-b10b-531bb5e7e53e
