@@ -230,23 +230,24 @@ def decompress_pickle(fname):
 
 
 def get_evidences(base_dir, relative_to_spot_only=False):
-    fit_R0 = "fitR0" if "fit_R0" in base_dir else "NofitR0"
+    fit_R0 = "NofitR0" if "NofitR0" in base_dir else "fitR0"
 
-    species = ["Na", "K", "TiO", "Na_K", "Na_TiO", "K_TiO", "Na_K_TiO"]
+    #species = ["Na", "K", "TiO", "Na_K", "Na_TiO", "K_TiO", "Na_K_TiO"]
+    species = ["Na", "K", "TiO", "Na_TiO", "K_TiO", "Na_K_TiO"]
     model_names_dict = {
         "clear": f"NoHet_FitP0_NoClouds_NoHaze_{fit_R0}",
         "clear+cloud": f"NoHet_FitP0_Clouds_NoHaze_{fit_R0}",
         "clear+haze": f"NoHet_FitP0_NoClouds_Haze_{fit_R0}",
         "clear+cloud+haze": f"NoHet_FitP0_Clouds_Haze_{fit_R0}",
         "clear+spot": f"Het_FitP0_NoClouds_NoHaze_{fit_R0}",
-        "clear+spot+cloud": f"Het_FitP0_Clouds_NoHaze_{fit_R0}",
+        #"clear+spot+cloud": f"Het_FitP0_Clouds_NoHaze_{fit_R0}",
         "clear+spot+haze": f"Het_FitP0_NoClouds_Haze_{fit_R0}",
         "clear+spot+cloud+haze": f"Het_FitP0_Clouds_Haze_{fit_R0}",
     }
 
     data_dict = {
         sp: {
-            model_name: load_pickle(f"{base_dir}/HATP23_E1_{model_id}_{sp}/retrieval.pkl")
+            model_name: load_pickle(f"{base_dir}/WASP50_E1_{model_id}_{sp}/retrieval.pkl")
             for (model_name, model_id) in model_names_dict.items()
         }
         for sp in species
@@ -273,13 +274,16 @@ def get_evidences(base_dir, relative_to_spot_only=False):
         model_min = "spot only"
     else:
         species_min = df_lnZ.min().idxmin()
+        species_max = df_lnZ.max().idxmax()
         model_min = df_lnZ[species_min].idxmin()
+        model_max = df_lnZ[species_max].idxmax()
         df_lnZ_min = data_dict[species_min][model_min]
+        df_lnZ_max = data_dict[species_max][model_max]
 
     df_Delta_lnZ = df_lnZ - df_lnZ_min["lnZ"]
     df_Delta_lnZ_err = np.sqrt(df_lnZ_err ** 2 + df_lnZ_min["lnZerr"] ** 2)
 
-    return df_Delta_lnZ, df_Delta_lnZ_err, species_min, model_min, data_dict
+    return df_Delta_lnZ, df_Delta_lnZ_err, species_min, model_min, data_dict, species_max, model_max
 
 
 def get_phases(t, P, t0):
@@ -1367,7 +1371,7 @@ def write_latex_row(row):
 
 def write_latex_row2(row):
     v, vu, vd = row
-    return f"{v:.1f}^{{+{vu:.0f}}}_{{-{vd:.0f}}}"
+    return f"{v:.3f}^{{+{vu:.3f}}}_{{-{vd:.3f}}}"
 
 
 def write_latex_row(row, fmt_v=".0f", fmt_vu=".0f", fmt_vd=".0f"):

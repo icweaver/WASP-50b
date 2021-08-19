@@ -71,6 +71,12 @@ begin
 )
 end
 
+# ╔═╡ 71672a5f-af6c-46f4-8e32-7bdd133ee039
+using PhysicalConstants.CODATA2018: G
+
+# ╔═╡ 7021cefd-f750-4422-b17b-c9abdc35dd2f
+using UnitfulAstro
+
 # ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 md"""
 # Transmission Spectra
@@ -84,9 +90,6 @@ $(TableOfContents(title="📖 Table of Contents"))
 md"""
 ## Load data
 """
-
-# ╔═╡ d65c8a1b-f1e6-4658-8773-19f3c8397bd6
-31.61u"m/s^2" |> u"cm/s^2"
 
 # ╔═╡ 5100e6b4-03da-4e58-aad1-13376bcb4b59
 md"""
@@ -220,6 +223,24 @@ wlc_depths = [cube["δ_WLC"] for (transit, cube) in cubes]
 # ╔═╡ c405941d-bdcc-458f-b0bf-01abf02982e0
 mean_wlc_depth = mean(wlc_depths)
 
+# ╔═╡ 9141dba4-4c11-404d-b18a-b22f3466caba
+Rₛ = 0.873u"Rsun"
+
+# ╔═╡ 54c341d9-2065-48cf-89bd-11acf72bdf9d
+Rₚ = √(mean_wlc_depth * 1e-6 * Rₛ^2)
+
+# ╔═╡ cc3aec2c-6ca3-4817-9100-3e1c01df4651
+Rₚ |> u"Rjup"
+
+# ╔═╡ 520d2cc3-00e0-46d8-83b2-5c740fd3bdd0
+Mₚ = 1.78u"Mjup"
+
+# ╔═╡ eaed62d7-5733-44b8-bd98-8b0fc4a18fe5
+gₚ = G * Mₚ / Rₚ^2
+
+# ╔═╡ 410644d5-e1e5-4107-aba7-e8a293bfff74
+gₚ |> u"cm/s^2"
+
 # ╔═╡ a915f236-8dae-4c91-8f96-fb9a805a0a7f
 wlc_offsets = reshape(wlc_depths .- mean_wlc_depth, 1, :)
 
@@ -311,17 +332,17 @@ let
 	# Write to file
 	N = nrow(depths_adj)
 	CSV.write(
-			"/home/mango/Desktop/tspec_w50.csv",
-			DataFrame(
-			:Wlow => depths_adj.Wav_d,
-			:Wup => depths_adj.Wav_u,
-			:Depth => depth_combined,
-			:ErrUp => depth_combined_err,
-			:ErrLow => depth_combined_err,
-			:Instrument => fill("Magellan/IMACS", N),
-			:Offset => fill("NO", N)
-			),
-		)
+		"/home/mango/Desktop/tspec_w50.csv",
+		DataFrame(
+		:Wlow => depths_adj.Wav_d,
+		:Wup => depths_adj.Wav_u,
+		:Depth => depth_combined,
+		:ErrUp => depth_combined_err,
+		:ErrLow => depth_combined_err,
+		:Instrument => fill("Magellan/IMACS", N),
+		:Offset => fill("NO", N)
+		),
+	)
 	
 	# Plot uncombined points
 	for (i, (transit, df)) in enumerate(antijoins)
@@ -338,14 +359,100 @@ let
 			markersize = 12,
 		)
 	end
+	
+	# All points
+	df_all = let
+	
+		N = 25
+
+		df_blue = antijoins[1][2][1:4, :]
+
+		δ_5600 = weightedmean(
+			(antijoins[1][2].δ[end], antijoins[2][2].δ[1], antijoins[4][2].δ[1])
+		)
+
+		df_middle = depths_adj
+
+		df_red = antijoins[3][2]
+
+		DataFrame(
+		"Wlow" => [df_blue.Wav_d..., 5600.0, df_middle.Wav_d..., df_red.Wav_d...],
+		"Wup" => [df_blue.Wav_u..., 5800.0, df_middle.Wav_u...,  df_red.Wav_u...],
+		"Depth" => [
+			value.(df_blue.δ)...,
+			δ_5600.val,
+			value.(df_middle.Combined)...,
+			value.(df_red.δ)...,
+		],
+		"ErrUp" => [
+			uncertainty.(df_blue.δ)...,
+			δ_5600.err,
+			uncertainty.(df_middle.Combined)...,
+			uncertainty.(df_red.δ)...,
+		],
+		"ErrLow" => [
+			uncertainty.(df_blue.δ)...,
+			δ_5600.err,
+			uncertainty.(df_middle.Combined)...,
+			uncertainty.(df_red.δ)...,
+		],
+		"Instrument" => fill("Magellan/IMACS", N),
+		"Offset?" => fill("NO", N)
+	)
+	end
+	
+	CSV.write("/home/mango/Desktop/tspec_all.csv", df_all)
+	
+	scatter!(ax, (df_all.Wlow .+ df_all.Wup) ./ 2, df_all.Depth, color=:red)
 
 	axislegend(orientation=:horizontal, valign=:bottom, labelsize=16)
 		
 	fig #|> as_svg
 end
 
-# ╔═╡ 356411da-9c9d-45d0-8ced-e2d9a2bf57f8
-nrow(depths_adj)
+# ╔═╡ 65e644f7-26c4-4909-a1a0-f964663b98a6
+antijoins[3][2]
+
+# ╔═╡ 6e610bd5-8c4c-43a6-9a16-f3733d4a701a
+df_all = let
+	
+	N = 25
+	
+	df_blue = antijoins[1][2][1:4, :]
+	
+	δ_5600 = weightedmean(
+		(antijoins[1][2].δ[end], antijoins[2][2].δ[1], antijoins[4][2].δ[1])
+	)
+	
+	df_middle = depths_adj
+	
+	df_red = antijoins[3][2]
+	
+	DataFrame(
+	"Wlow" => [df_blue.Wav_d..., 5600.0, df_middle.Wav_d..., df_red.Wav_d...],
+	"Wup" => [df_blue.Wav_u..., 5800.0, df_middle.Wav_u...,  df_red.Wav_u...],
+	"Depth" => [
+		value.(df_blue.δ)...,
+		δ_5600.val,
+		value.(df_middle.Combined)...,
+		value.(df_red.δ)...,
+	],
+	"ErrUp" => [
+		uncertainty.(df_blue.δ)...,
+		δ_5600.err,
+		uncertainty.(df_middle.Combined)...,
+		uncertainty.(df_red.δ)...,
+	],
+	"ErrLow" => [
+		uncertainty.(df_blue.δ)...,
+		δ_5600.err,
+		uncertainty.(df_middle.Combined)...,
+		uncertainty.(df_red.δ)...,
+	],
+	"Instrument" => fill("Magellan/IMACS", N),
+	"Offset?" => fill("NO", N)
+)
+end
 
 # ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
 md"""
@@ -409,7 +516,6 @@ body.disable_ui main {
 # ╔═╡ Cell order:
 # ╟─e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 # ╟─9413e640-22d9-4bfc-b4ea-f41c02a3bfde
-# ╠═d65c8a1b-f1e6-4658-8773-19f3c8397bd6
 # ╟─5100e6b4-03da-4e58-aad1-13376bcb4b59
 # ╠═c53be9cf-7722-4b43-928a-33e7b0463330
 # ╠═d6918a50-f75f-47f5-86c6-e251f7ef1e12
@@ -425,16 +531,25 @@ body.disable_ui main {
 # ╠═84055852-1b9f-4221-95a7-ab48110bf78c
 # ╠═2f377692-2abf-404e-99ea-a18c7af1a840
 # ╠═c405941d-bdcc-458f-b0bf-01abf02982e0
+# ╠═9141dba4-4c11-404d-b18a-b22f3466caba
+# ╠═54c341d9-2065-48cf-89bd-11acf72bdf9d
+# ╠═cc3aec2c-6ca3-4817-9100-3e1c01df4651
+# ╠═520d2cc3-00e0-46d8-83b2-5c740fd3bdd0
+# ╠═eaed62d7-5733-44b8-bd98-8b0fc4a18fe5
+# ╠═410644d5-e1e5-4107-aba7-e8a293bfff74
+# ╠═71672a5f-af6c-46f4-8e32-7bdd133ee039
+# ╠═7021cefd-f750-4422-b17b-c9abdc35dd2f
 # ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
 # ╠═4b9cfc02-5e18-422d-b18e-6301a659561a
-# ╠═5d25caa3-916a-40b1-ba7c-ea1295afb775
+# ╟─5d25caa3-916a-40b1-ba7c-ea1295afb775
 # ╠═8738ddc7-6f42-4809-8d61-b021230729f8
 # ╠═23ce5b47-2493-4ce5-afbd-72051a3c9e88
 # ╠═d6366a40-0565-4cd4-8ef4-2e4f9dce0774
 # ╠═b85674ce-8ead-445e-8645-491cb31a1391
 # ╠═855e8ad1-ca16-4b4d-8145-e8df5fdea283
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
-# ╠═356411da-9c9d-45d0-8ced-e2d9a2bf57f8
+# ╠═65e644f7-26c4-4909-a1a0-f964663b98a6
+# ╠═6e610bd5-8c4c-43a6-9a16-f3733d4a701a
 # ╟─f8a86915-f7d8-4462-980e-7b8124b13a3f
 # ╠═bef0918c-c645-4557-a2e5-00b6c26573bc
 # ╠═ef970c0c-d08a-4856-b10b-531bb5e7e53e
