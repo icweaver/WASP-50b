@@ -339,11 +339,58 @@ begin
 	oot_flux(lc, P, t_0, dur) = py"oot_flux"(lc, P, t_0, dur)
 end
 
+# ╔═╡ 2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
+Time = pyimport("astropy.time").Time
+
 # ╔═╡ 31d5bc92-a1f2-4c82-82f2-67755f9aa235
 begin
 	P = 1.9550931258
-	t_0 = 2455558.61237
+	t_0 = Time(2455558.61237, format="jd")
 	dur = 1.83 * (1.0 / 24.0)
+	
+	lcs_cleaned = []
+	lcs_oot = []
+	for lc in lcs
+		lc_cleaned = lc.remove_nans().normalize()
+		lc_oot = oot_flux(lc_cleaned, P, t_0, dur).remove_outliers(sigma=3.0)
+		push!(lcs_cleaned, lc_cleaned)
+		push!(lcs_oot, lc_oot)
+	end
+	push!(lcs_cleaned, lk.LightCurveCollection([lcs_cleaned...]).stitch())
+	push!(lcs_oot, lk.LightCurveCollection([lcs_oot...]).stitch())
+end;
+
+# ╔═╡ 82222ee8-f759-499d-a072-c219cc33ccad
+let
+	fig = Figure(resolution=FIG_TALL)
+	
+	for (i, (lc, lc_oot)) ∈ enumerate(zip(lcs_cleaned, lcs_oot))
+		ax = Axis(fig[i, 1])
+		errorbars!(
+			ax,
+			lc.time.value,
+			lc.flux,
+			lc.flux_err,
+			label = """
+			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
+			"""
+		)
+		#scatter!(fig[i, 1], lc.time.value, lc.flux)
+		
+		errorbars!(ax, lc_oot.time.value, lc_oot.flux, lc_oot.flux_err;
+			color = COLORS[2], label="oot",
+			markersize = 5,
+		)
+
+		axislegend()
+	end
+
+	#linkyaxes!(filter(x -> x isa Axis, fig.content)...)
+
+	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
+	Label(fig[1:end-1, 0], "Relative flux", rotation=π/2)
+	
+	fig
 end
 
 # ╔═╡ 897da774-0e18-43f8-8337-4048f12d8e45
@@ -392,96 +439,120 @@ md"""
 ### Periodogram
 """
 
+# ╔═╡ a203f10c-7b7f-4b2f-b020-4154138ce5e5
+md"""
+#### `tess_sip`
+"""
+
 # ╔═╡ d1f7ed4b-4599-48bd-aac5-93920dae9151
-SIP = pyimport("tess_sip").SIP
+# SIP = pyimport("tess_sip").SIP
+# binsize = 1.2 #12 * 3600 * 1 / 86_400
+# lcs_combined = lcs #lk.LightCurveCollection([lc.bin(binsize) for lc ∈ lcs])
+# lcs_S04 = lk.LightCurveCollection([lcs_combined[1]])
+# lcs_S31 = lk.LightCurveCollection([lcs_combined[2]])
+# SIP_kwargs = (min_period=1.0, max_period=35.0, nperiods=100)
+# r_S04, r_S31, r_combined = SIP.((lcs_S04, lcs_S31, lcs_combined); SIP_kwargs...)
 
-# ╔═╡ 50ddb876-4b4a-4839-aebd-aa44e2ff691b
-binsize = 1.2 #12 * 3600 * 1 / 86_400
-
-# ╔═╡ 65acd5d1-bc58-4feb-92d1-bcca63fd7f0d
-3600*24
-
-# ╔═╡ 3a276bdb-4f02-43d3-822c-9e6250935c2f
-SIP_kwargs = (min_period=1.0, max_period=25.0, nperiods=100)
-
-# ╔═╡ e628b52c-dc01-42d4-9182-161dce61a807
-#r_S04, r_S31, r_combined = SIP.((lcs_S04, lcs_S31, lcs_combined); SIP_kwargs...)
-
-# ╔═╡ 47e290c8-de07-414d-a3d1-0a297ea70864
-function plot_SIP_flux(r)
-	lc_raw = r["raw_lc"]
-	lc_corr = r["corr_lc"]
+# function plot_SIP_flux(r)
+# 	lc_raw = r["raw_lc"]
+# 	lc_corr = r["corr_lc"]
 	
+# 	fig = Figure()
+# 	ax = Axis(fig[1, 1])
+
+# 	lines!(ax, lc_raw.time.value, lc_raw.flux, color=:darkgrey)
+# 	scatter!(ax, lc_corr.time.value, lc_corr.flux)
+
+# 	#xlims!(ax, 1400, 1450)
+# 	ylims!(ax, 0.95, 1.05)
+	
+# 	fig
+# end
+
+# pgram_S04, plan_S04 = compute_pgram(r_S04["corr_lc"])
+# pgram_S31, plan_S31 = compute_pgram(r_S31["corr_lc"])
+# pgram_combined, plan_combined = compute_pgram(r_combined["corr_lc"])
+
+# ╔═╡ de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
+function compute_pgram(lc; min_period=0.5, max_period=30)
+	plan = LombScargle.plan(
+		lc.time.value, lc.flux .± lc.flux_err,
+		minimum_frequency = 1.0 / max_period,
+		maximum_frequency = 1.0 / min_period,
+	)
+	return lombscargle(plan), plan
+end
+
+# ╔═╡ d7f034c5-5925-4b91-9bea-1068a7ce9252
+begin
+	pgrams, plans, P_maxs = [], [], []
+	for lc in lcs_oot
+		pgram, plan = compute_pgram(lc)
+		P_max = findmaxperiod(pgram)[1]
+		
+		push!(pgrams, pgram)
+		push!(plans, plan)
+		push!(P_maxs, P_max)
+	end
+end
+
+# ╔═╡ 94d05a5b-b05e-4407-bcd3-7d625680a262
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1], xlabel="Period (days)", ylabel="Normalized power")
+	
+	for (pgram, plan, P_max) in zip(pgrams, plans, P_maxs)
+		# Compute FAPs
+		b = LombScargle.bootstrap(100, plan)
+		
+		# Plot
+		lines!(ax, periodpower(pgram)..., label="$(round(P_max, digits=2))")
+		hlines!(ax, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))))
+	end
+	
+	axislegend()
+	
+	fig
+end
+
+# ╔═╡ a50ef756-ade6-48a3-8d3a-17b56ce03c26
+md"""
+### Folded lightcurve
+"""
+
+# ╔═╡ fdbb89ff-86b6-4bf8-8548-01b34807ee37
+lc_folded = lcs_oot[1].fold(P_maxs[1])
+
+# ╔═╡ 5a4034c0-0125-4381-bf9a-bf529ebd777e
+lc_folded_binned = lc_folded.bin(bins=500)
+
+# ╔═╡ 3128e57f-df4f-4811-b867-8a293d7d536d
+begin
+	f = 1 / P_maxs[1]
+	t = lcs_oot[1].time.value
+	s = lcs_oot[1].flux
+	tmin, tmax = (1/50, 2) #extrema(t)
+	t_fit = (-3:0.1:3)#range(tmin, stop=tmax, length=100)
+	s_fit = LombScargle.model(t, s, f, t_fit/f) # Determine the model
+	lc_fit = lk.LightCurve(t_fit, s_fit)
+	lc_fit_folded = lc_fit.fold(P_maxs[1])
+end;
+
+# ╔═╡ 49bcddbe-d413-48ae-91d8-92bcebf40518
+let
 	fig = Figure()
 	ax = Axis(fig[1, 1])
-
-	lines!(ax, lc_raw.time.value, lc_raw.flux, color=:darkgrey)
-	scatter!(ax, lc_corr.time.value, lc_corr.flux)
-
-	#xlims!(ax, 1400, 1450)
-	ylims!(ax, 0.95, 1.05)
+	
+	scatter!(ax, lc_folded.time.value, lc_folded.flux)
+	scatter!(ax, lc_folded_binned.time.value, lc_folded_binned.flux)
+	#lines!(ax, lc_fit_folded.time.value, lc_fit_folded.flux, color=:lightgreen)
+	lines!(ax, t_fit, s_fit, color=:lightgreen)
 	
 	fig
 end
 
-# ╔═╡ d9a3ae98-1f42-423f-96f4-3015ccc4e801
-plot_SIP_flux(r_S04)
-
-# ╔═╡ 33d19bd9-4f27-405a-abb0-61f120ffccee
-plot_SIP_flux(r_S31)
-
-# ╔═╡ ea7d6c05-4419-4cac-8306-9e03629f05a8
-plot_SIP_flux(r_combined)
-
-# ╔═╡ 1e3ae871-5ee2-4f53-88e7-1920470b37a5
-lc = oot_flux(lc0, P, t_0, dur)
-
-# ╔═╡ 82222ee8-f759-499d-a072-c219cc33ccad
-let
-	fig = Figure(resolution=FIG_TALL)
-	
-	for (i, lc) in enumerate(lcs)
-		ax = Axis(fig[i, 1])
-		lc = lc.remove_nans().normalize()
-		scatter!(
-			ax,
-			lc.time.value,
-			lc.flux,
-			lc.flux_err,
-			label = """
-			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
-			"""
-		)
-		#scatter!(fig[i, 1], lc.time.value, lc.flux)
-		
-		lc_oot = oot_flux(lc, P, t_0, dur)
-		scatter!(ax, lc_oot.time.value, lc_oot.flux;
-			color = COLORS[2], label="yee",
-			markersize = 5,
-		)
-
-		axislegend()
-	end
-
-	#linkyaxes!(filter(x -> x isa Axis, fig.content)...)
-
-	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
-	Label(fig[1:end-1, 0], "Relative flux", rotation=π/2)
-	
-	fig
-end
-
-# ╔═╡ 202b4178-1e9f-4b0a-967d-ecc5cab8299a
-lcs_combined = lk.LightCurveCollection([lc.bin(binsize) for lc ∈ lcs])
-
-# ╔═╡ 79df8d43-3e4a-4a51-a394-582181c5c33e
-lcs_S04 = lk.LightCurveCollection([lcs_combined[1]])
-
-# ╔═╡ 57aa2e7a-9994-4a64-8e4c-8c46e741752f
-lcs_S31 = lk.LightCurveCollection([lcs_combined[2]])
-
-# ╔═╡ d0969a13-4165-4c44-ac75-df08c2dc36fb
-pgram, plan = a
+# ╔═╡ 3f600977-6576-4804-bbb0-e20d72ce2c08
+lines(s_fit)
 
 # ╔═╡ 87e7f166-f022-4b53-a3a3-c96b9d377781
 # let
@@ -497,64 +568,9 @@ pgram, plan = a
 # end
 
 # ╔═╡ 056281a2-4786-45eb-a9fa-57515153f66c
-factor = 1
-
-# ╔═╡ de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
-function compute_pgram(lc, frequencies=1 ./ (5:factor*binsize:30))
-	plan = LombScargle.plan(
-		lc.time.value, lc.flux .± lc.flux_err;
-		#frequencies = frequencies,
-		minimum_frequency = 1/35,
-		maximum_frequency = 1.0/0.5
-	)
-	return lombscargle(plan), plan
-end
-
-# ╔═╡ 29e20c4b-e207-45da-9f73-e8c656edc0f3
-pgram_S04, plan_S04 = compute_pgram(r_S04["corr_lc"])
-
-# ╔═╡ a9f417ba-f7c3-4950-b86a-bfd79131232e
-pgram_S31, plan_S31 = compute_pgram(r_S31["corr_lc"])
-
-# ╔═╡ 92445d70-dc10-4fbc-b3cf-7ff3388bd30a
-pgram_combined, plan_combined = compute_pgram(r_combined["corr_lc"])
-
-# ╔═╡ b5bde047-0007-484c-ad97-45d34469e4e8
-P_max = findmaxperiod(pgram_combined)[1]
-
-# ╔═╡ a92b26ae-4ce5-4f13-86ee-4c257bc8f18d
-let
-	fig = Figure(); ax = Axis(fig[1, 1], xlabel="Period (d)", ylabel="Normalized power")
-	
-	lines!(ax, periodpower(pgram_combined)...)
-	
-	#vlines!(ax, [P_max / 3.0, P_max / 2.0, P_max], color=:red)
-	vlines!(ax, P_max, color=:red)
-	vlines!(ax, 16.3, color=:green)
-	
-	#b = LombScargle.bootstrap(100, plan_combined)
-	#hlines!(ax, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))))
-	
-	save("/home/mango/Desktop/meeting/combined_pg_$(factor)x$(binsize).png", fig)
-	
-	fig
-end
-
-# ╔═╡ e0cda7cb-463a-4735-8c07-219084b7c117
-lc_corr = r_S04["corr_lc"]
-
-# ╔═╡ 0ec9d2b4-6590-445c-8fe7-31f3cb00fb23
-lc_folded = lc_corr.fold(P_max)
-
-# ╔═╡ 3e231e5e-9396-41c8-afc6-9ef90fd456d8
-let
-	fig = Figure()
-	ax = Axis(fig[1, 1])
-	
-	scatter!(ax, lc_folded.time.value, lc_folded.flux)
-		
-	fig
-end
+md"""
+#### Spot parameter estimation
+"""
 
 # ╔═╡ 3a612743-7071-4d85-a48d-0a4b12facffc
 ΔL = minimum(lc_folded.flux) / median(lc_folded.flux)
@@ -760,37 +776,26 @@ md"""
 # ╠═6e62b3cc-96ce-43fd-811b-4b2b102cfd61
 # ╟─241c462c-3cd9-402d-b948-b9b1f608b727
 # ╠═ec12acb8-9124-4cc0-8c9f-6525c1565dfd
+# ╠═2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
 # ╠═31d5bc92-a1f2-4c82-82f2-67755f9aa235
 # ╠═82222ee8-f759-499d-a072-c219cc33ccad
 # ╠═897da774-0e18-43f8-8337-4048f12d8e45
 # ╠═e343fcb5-f633-46eb-a534-7772e11c3f60
 # ╠═bf01b1c2-e4c6-4bed-8e79-a20f273cc387
 # ╟─99fcf959-665b-44cf-9b5f-fd68a919f846
+# ╟─a203f10c-7b7f-4b2f-b020-4154138ce5e5
 # ╠═d1f7ed4b-4599-48bd-aac5-93920dae9151
-# ╠═50ddb876-4b4a-4839-aebd-aa44e2ff691b
-# ╠═65acd5d1-bc58-4feb-92d1-bcca63fd7f0d
-# ╠═202b4178-1e9f-4b0a-967d-ecc5cab8299a
-# ╠═79df8d43-3e4a-4a51-a394-582181c5c33e
-# ╠═57aa2e7a-9994-4a64-8e4c-8c46e741752f
-# ╠═3a276bdb-4f02-43d3-822c-9e6250935c2f
-# ╠═e628b52c-dc01-42d4-9182-161dce61a807
-# ╠═47e290c8-de07-414d-a3d1-0a297ea70864
-# ╠═d9a3ae98-1f42-423f-96f4-3015ccc4e801
-# ╠═33d19bd9-4f27-405a-abb0-61f120ffccee
-# ╠═ea7d6c05-4419-4cac-8306-9e03629f05a8
+# ╠═d7f034c5-5925-4b91-9bea-1068a7ce9252
 # ╠═de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
-# ╠═1e3ae871-5ee2-4f53-88e7-1920470b37a5
-# ╠═d0969a13-4165-4c44-ac75-df08c2dc36fb
-# ╠═29e20c4b-e207-45da-9f73-e8c656edc0f3
-# ╠═a9f417ba-f7c3-4950-b86a-bfd79131232e
-# ╠═92445d70-dc10-4fbc-b3cf-7ff3388bd30a
+# ╠═94d05a5b-b05e-4407-bcd3-7d625680a262
+# ╟─a50ef756-ade6-48a3-8d3a-17b56ce03c26
+# ╠═fdbb89ff-86b6-4bf8-8548-01b34807ee37
+# ╠═5a4034c0-0125-4381-bf9a-bf529ebd777e
+# ╠═49bcddbe-d413-48ae-91d8-92bcebf40518
+# ╠═3128e57f-df4f-4811-b867-8a293d7d536d
+# ╠═3f600977-6576-4804-bbb0-e20d72ce2c08
 # ╠═87e7f166-f022-4b53-a3a3-c96b9d377781
-# ╠═056281a2-4786-45eb-a9fa-57515153f66c
-# ╠═a92b26ae-4ce5-4f13-86ee-4c257bc8f18d
-# ╠═3e231e5e-9396-41c8-afc6-9ef90fd456d8
-# ╠═b5bde047-0007-484c-ad97-45d34469e4e8
-# ╠═e0cda7cb-463a-4735-8c07-219084b7c117
-# ╠═0ec9d2b4-6590-445c-8fe7-31f3cb00fb23
+# ╟─056281a2-4786-45eb-a9fa-57515153f66c
 # ╠═3a612743-7071-4d85-a48d-0a4b12facffc
 # ╠═278ea804-e2dd-4ca8-9a20-0e9a25746e02
 # ╠═d26122f1-1602-440c-8ba9-72469a782104
