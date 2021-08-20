@@ -393,56 +393,90 @@ let
 	fig
 end
 
-# ╔═╡ 897da774-0e18-43f8-8337-4048f12d8e45
-# oot_flux(lcs[2], P, dur, t_0).to_csv("/home/mango/Desktop/WASP50_S31_oot.csv")
-
-# ╔═╡ e343fcb5-f633-46eb-a534-7772e11c3f60
-# oot_flux(lcs.stitch(), P, dur, t_0).to_csv("/home/mango/Desktop/WASP50_combined_oot.csv")
-
-# ╔═╡ bf01b1c2-e4c6-4bed-8e79-a20f273cc387
-function plot_photometry(lcs, yfield)
-	fig = Figure(resolution=FIG_TALL)
-	
-	for (i, lc) in enumerate(lcs)
-		lines(
-			fig[i, 1],
-			lc.time.value,
-			getproperty(lc, yfield).value,
-			label = """
-			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
-			$(lc.meta["EXPOSURE"]) s
-			$(srs[i].exptime)
-			"""
-		)
-		
-		axislegend()
-	end
-	
-	linkyaxes!(filter(x -> x isa Axis, fig.content)...)
-			
-	if yfield == :sap_flux
-		ylabel = "SAP Flux (e⁻/s)"
-	elseif yfield == :pdcsap_flux
-		ylabel = "PDCSAP Flux (e⁻/s)"
-	else
-		ylabel = "Flux"
-	end
-	
-	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
-	Label(fig[1:end-1, 0], ylabel, rotation=π/2)
-	
-	fig
-end
-
 # ╔═╡ 99fcf959-665b-44cf-9b5f-fd68a919f846
 md"""
 ### Periodogram
 """
 
-# ╔═╡ a203f10c-7b7f-4b2f-b020-4154138ce5e5
-md"""
-#### `tess_sip`
-"""
+# ╔═╡ de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
+function compute_pgram(lc; min_period=0.5, max_period=30.0)
+	plan = LombScargle.plan(
+		lc.time.value, lc.flux .± lc.flux_err,
+		minimum_frequency = 1.0 / max_period,
+		maximum_frequency = 1.0 / min_period,
+	)
+	return lombscargle(plan), plan
+end
+
+# ╔═╡ 2215ed86-fa78-4811-88ab-e3521e4a1dea
+function compute_window_func(lc; min_period=0.5, max_period=30.0)
+	t = lc.time.value
+	t_start, t_end = t |> extrema
+	Δt = median(diff(t))
+	t_uniform = t #t_start:Δt:t_end
+	
+	f = oneunit.(t_uniform)
+	f_err = median(lc.flux_err) .* f
+	lc_window_func = lk.LightCurve(time=t_uniform, flux=f, flux_err=f_err)
+	
+	return compute_pgram(lc_window_func; min_period=min_period, max_period=max_period)
+end
+
+# ╔═╡ d7f034c5-5925-4b91-9bea-1068a7ce9252
+begin
+	pgrams, pgrams_window, plans, P_maxs = [], [], [], []
+	for lc in lcs_oot
+		pgram, plan = compute_pgram(lc)
+		pgram_window, _ = compute_window_func(lc)
+		P_max = findmaxperiod(pgram)[1]
+		
+		push!(pgrams, pgram)
+		push!(pgrams_window, pgram_window)
+		push!(plans, plan)
+		push!(P_maxs, P_max)
+	end
+end
+
+# ╔═╡ 94d05a5b-b05e-4407-bcd3-7d625680a262
+let
+	fig = Figure()
+	
+	ax_window = Axis(fig[1, 1])
+	for pgram_window in pgrams_window
+		lines!(ax_window, periodpower(pgram_window)...)
+	end
+	text!(ax_window, "Window function", position=(0.4, 0.2))
+	
+	ax = Axis(fig[2, 1], xlabel="Period (days)")
+	sectors = ("Sector 04", "Sector 31", "Combined")
+	for (pgram, plan, P_max, sector) in zip(pgrams, plans, P_maxs, sectors)
+		# Compute FAPs
+		#b = LombScargle.bootstrap(100, plan)
+		
+		# Plot
+		lines!(ax, periodpower(pgram)...;
+			label="$(sector): $(round(P_max, digits=2))"
+		)
+		#hlines!(ax, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))))
+	end
+	
+	axislegend("P_max (days)", position=:lc)
+	
+	hidexdecorations!(ax_window)
+	linkaxes!(ax_window, ax)
+	
+	xlims!(ax, 0, 10)
+	ylims!(ax, 0, 0.3)
+	
+	Label(fig[1:2, 0], "Normalized power", rotation=π/2)
+	#Label(fig[end+1, :], "Period (days)")
+	
+	#xlabel="Period (days)", ylabel="Normalized power"
+	
+	#axislegend()
+	
+	fig
+end
 
 # ╔═╡ d1f7ed4b-4599-48bd-aac5-93920dae9151
 # SIP = pyimport("tess_sip").SIP
@@ -473,57 +507,9 @@ md"""
 # pgram_S31, plan_S31 = compute_pgram(r_S31["corr_lc"])
 # pgram_combined, plan_combined = compute_pgram(r_combined["corr_lc"])
 
-# ╔═╡ 5a275d11-f503-4623-b200-097abdfb2a76
-lcs_oot[1].bin(0.5)
-
-# ╔═╡ de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
-function compute_pgram(lc; min_period=0.5, max_period=30)
-	plan = LombScargle.plan(
-		lc.time.value, lc.flux .± lc.flux_err,
-		minimum_frequency = 1.0 / max_period,
-		maximum_frequency = 1.0 / min_period,
-	)
-	return lombscargle(plan), plan
-end
-
-# ╔═╡ d7f034c5-5925-4b91-9bea-1068a7ce9252
-begin
-	pgrams, plans, P_maxs = [], [], []
-	for lc in lcs_oot
-		pgram, plan = compute_pgram(lc)
-		P_max = findmaxperiod(pgram)[1]
-		
-		push!(pgrams, pgram)
-		push!(plans, plan)
-		push!(P_maxs, P_max)
-	end
-end
-
-# ╔═╡ bdee2a77-5554-412e-b461-1f548e9d880b
-compute_pgram(lcs_oot[1].bin(0.005))
-
-# ╔═╡ 94d05a5b-b05e-4407-bcd3-7d625680a262
-let
-	fig = Figure()
-	ax = Axis(fig[1, 1], xlabel="Period (days)", ylabel="Normalized power")
-	
-	for (pgram, plan, P_max) in zip(pgrams, plans, P_maxs)
-		# Compute FAPs
-		b = LombScargle.bootstrap(100, plan)
-		
-		# Plot
-		lines!(ax, periodpower(pgram)..., label="$(round(P_max, digits=2))")
-		hlines!(ax, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))))
-	end
-	
-	axislegend()
-	
-	fig
-end
-
 # ╔═╡ a50ef756-ade6-48a3-8d3a-17b56ce03c26
 md"""
-### Folded lightcurve
+### Folded lightcurves
 """
 
 # ╔═╡ 3128e57f-df4f-4811-b867-8a293d7d536d
@@ -548,8 +534,9 @@ begin
 	for (lc, P) in zip(lcs_oot, P_maxs)
 		# Data
 		lc_folded = lc.fold(P)
+		Δt = lc_folded.time.value |> median
 		push!(lcs_folded, lc_folded)
-		push!(lcs_folded_binned, lc_folded.bin(P))
+		push!(lcs_folded_binned, lc_folded.bin(Δt/10))
 		
 		# Model
 		lc_fit_folded = compute_pgram_model(lc, P)	
@@ -577,26 +564,16 @@ let
 	fig
 end
 
-# ╔═╡ 87e7f166-f022-4b53-a3a3-c96b9d377781
-# let
-# 	tmin, tmax = extrema(lc_corr.time.value)
-# 	Δt = median(diff(lc_corr.time.value))
-# 	t = tmin:0.001:tmax
-# 	s = oneunit.(t)
-# 	s_err = median(lc_corr.flux_err) .* s
-	
-# 	pgram = lombscargle(t, s .± s_err)
-	
-# 	lines(periodpower(pgram)...)
-# end
-
 # ╔═╡ 056281a2-4786-45eb-a9fa-57515153f66c
 md"""
-#### Spot parameter estimation
+### Spot parameter estimation
 """
 
 # ╔═╡ 3a612743-7071-4d85-a48d-0a4b12facffc
-ΔL = minimum(lc_folded.flux) / median(lc_folded.flux)
+ΔLs = [
+	minimum(lc.flux) / median(lc.flux)
+	for lc in lcs_fit_folded
+]
 
 # ╔═╡ 278ea804-e2dd-4ca8-9a20-0e9a25746e02
 T₀ = 5_520
@@ -605,112 +582,7 @@ T₀ = 5_520
 f_sp(T_sp, T₀, ΔL) = (T₀^4 /  (T₀^4 - T_sp^4)) * (1 - ΔL)
 
 # ╔═╡ c0d53fc0-467b-4e49-a829-f149e14e3d08
-f_sp.((2_200, 2_800), T₀, ΔL) .* 100
-
-# ╔═╡ a62cae71-f73f-49bc-992c-ba7dbf4792d9
-md"""
-With the TESS data in hand, we now run it through [TESS_SIP](https://github.com/christinahedges/TESS-SIP) to analyze the final periodogram:
-"""
-
-# ╔═╡ 1a86efc8-0bb6-44e4-8568-82fdb3409c25
-md"""
-### Window function
-"""
-
-# ╔═╡ 2215ed86-fa78-4811-88ab-e3521e4a1dea
-function compute_window_func(lc; P_min=5, P_max=30)
-	t = lc.time.value
-	t_start, t_end = t |> extrema
-	Δt = median(diff(t))
-	t_uniform = t #t_start:Δt:t_end
-	
-	f = oneunit.(t_uniform)
-	f_err = median(lc.flux_err) .* f
-	lc_window_func = lk.LightCurve(time=t_uniform, flux=f, flux_err=f_err)
-	
-	return compute_pgram(lc_window_func) # period, power, faps
-end
-
-# ╔═╡ a675c241-dba2-4764-8e37-ca24ab98f8cd
-ppgram, pplan = compute_window_func(lc_corr)
-
-# ╔═╡ 4377b1c0-bd0e-4f48-ad34-4aa4ae297aab
-let
-	fig = Figure(); ax = Axis(fig[1, 1])
-	
-	lines!(ax, periodpower(ppgram)...)
-	
-	#vlines!(ax, [P_max / 3.0, P_max / 2.0, P_max], color=:red)
-	
-	#b = LombScargle.bootstrap(100, pplan)
-	#hlines!(ax, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))))
-	
-	fig
-end
-
-# ╔═╡ dd2d460b-1169-4760-8e74-16ea640d4448
-# using Images: findlocalmaxima
-
-# ╔═╡ ed93fd1f-79bd-4c5a-b822-680c6f6591d6
-# let
-# 	fig = Figure(resolution=FIG_TALL)
-	
-# 	P = 16.3 # Gillon+ 2011
-	
-# 	axs = []
-# 	lcss = [lcs_S04, lcs_S31, lcs_combined]
-# 	for (i, (sector, r)) in enumerate(data_dict)
-# 		ax_window_func = Axis(fig[2*i-1, 1])
-# 		lc = lcss[i].stitch(x -> x).remove_nans().normalize()
-# 		a, b, c = compute_window_func(lc) # period, power, faps
-# 		peak_idxs = findlocalmaxima(b)
-# 		lines!(ax_window_func, a, b, color=:darkgrey, label="window function")
-# 		scatter!(ax_window_func, a[peak_idxs], b[peak_idxs], color=COLORS[6])
-		
-# 		ax = Axis(fig[2*i, 1], yscale=log10)
-# 		plot_periodogram!(ax, r, P)
-# 		text!(ax, sector;
-# 			position = (30, 4.5),
-# 			textsize = 16,
-# 			align = (:right, :center),
-# 			color = :darkgrey,
-# 		)
-# 		push!(axs, ax)
-# 	end
-	
-# 	linkaxes!(axs...)
-# 	hidexdecorations!.(axs[1:2])
-	
-# 	Legend(fig[1:end, 2], axs[1], margin=(10, 0, 0, 0))
-# 	Label(fig[end+1, 1], "Period (days)", tellwidth=false)
-# 	Label(fig[1:end, 0], "log10 Power", rotation=π/2)
-	
-# 	fig
-# end
-
-# ╔═╡ 4fcb3ea1-bec6-4c30-82a6-4689077cdc14
-# function plot_periodogram!(ax, r, P)
-# 	periods = r["periods"]
-#     power_source = r["power"]
-#     power_background = r["power_bkg"]
-#     power_relative = power_source ./ power_background
-
-# 	lines!(ax, periods, power_relative; label="divided")
-# 	lines!(ax, periods, power_source; label="source")
-# 	lines!(ax, periods, power_background; label="background")
-	
-# 	P_max = periods[argmax(power_relative)]
-# 	vlines!(ax, P, linestyle=:dash, color=:darkgrey)
-# 	vlines!(ax, P/3.0, linestyle=:dash, color=:darkgrey)
-# 	vlines!(ax, P_max, color=:darkgrey)
-	
-# 	text!(ax, "P_max = $(round(P_max, digits=2)) days";
-# 		position = (30, 2),
-# 		textsize = 16,
-# 		align = (:right, :center),
-# 		color = :darkgrey,
-# 	)
-# end
+[f_sp.((2_200, 2_800), T₀, ΔL) .* 100 for ΔL in ΔLs]
 
 # ╔═╡ 18223d42-66d8-40d1-9d89-be8af46853e2
 md"""
@@ -814,44 +686,30 @@ end
 # ╟─78d85c7c-da06-41ab-915b-48d93a010967
 # ╟─97e7feee-11b2-4a35-9327-b5c0d05b2a23
 # ╠═0c790d2f-64d4-4e13-9629-a9725cd7086d
+# ╠═2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
+# ╠═ec12acb8-9124-4cc0-8c9f-6525c1565dfd
 # ╠═708d54a5-95fd-4f15-9681-f6d8e7b9b05c
 # ╟─34fcd73d-a49c-4597-8e63-cfe2495eee48
 # ╠═dff46359-7aec-4fa1-bc7a-89785dfca0e8
 # ╠═6e62b3cc-96ce-43fd-811b-4b2b102cfd61
 # ╟─241c462c-3cd9-402d-b948-b9b1f608b727
-# ╠═ec12acb8-9124-4cc0-8c9f-6525c1565dfd
-# ╠═2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
 # ╠═31d5bc92-a1f2-4c82-82f2-67755f9aa235
 # ╠═82222ee8-f759-499d-a072-c219cc33ccad
-# ╠═897da774-0e18-43f8-8337-4048f12d8e45
-# ╠═e343fcb5-f633-46eb-a534-7772e11c3f60
-# ╠═bf01b1c2-e4c6-4bed-8e79-a20f273cc387
 # ╟─99fcf959-665b-44cf-9b5f-fd68a919f846
-# ╟─a203f10c-7b7f-4b2f-b020-4154138ce5e5
-# ╠═d1f7ed4b-4599-48bd-aac5-93920dae9151
-# ╠═d7f034c5-5925-4b91-9bea-1068a7ce9252
-# ╠═bdee2a77-5554-412e-b461-1f548e9d880b
-# ╠═5a275d11-f503-4623-b200-097abdfb2a76
-# ╠═de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
 # ╠═94d05a5b-b05e-4407-bcd3-7d625680a262
+# ╠═d7f034c5-5925-4b91-9bea-1068a7ce9252
+# ╠═de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
+# ╠═2215ed86-fa78-4811-88ab-e3521e4a1dea
+# ╠═d1f7ed4b-4599-48bd-aac5-93920dae9151
 # ╟─a50ef756-ade6-48a3-8d3a-17b56ce03c26
 # ╠═49bcddbe-d413-48ae-91d8-92bcebf40518
 # ╠═97ced6ba-ff74-46b4-90d5-18e7b2f1b903
 # ╠═3128e57f-df4f-4811-b867-8a293d7d536d
-# ╠═87e7f166-f022-4b53-a3a3-c96b9d377781
 # ╟─056281a2-4786-45eb-a9fa-57515153f66c
 # ╠═3a612743-7071-4d85-a48d-0a4b12facffc
 # ╠═278ea804-e2dd-4ca8-9a20-0e9a25746e02
 # ╠═d26122f1-1602-440c-8ba9-72469a782104
 # ╠═c0d53fc0-467b-4e49-a829-f149e14e3d08
-# ╟─a62cae71-f73f-49bc-992c-ba7dbf4792d9
-# ╟─1a86efc8-0bb6-44e4-8568-82fdb3409c25
-# ╠═2215ed86-fa78-4811-88ab-e3521e4a1dea
-# ╠═a675c241-dba2-4764-8e37-ca24ab98f8cd
-# ╠═4377b1c0-bd0e-4f48-ad34-4aa4ae297aab
-# ╠═dd2d460b-1169-4760-8e74-16ea640d4448
-# ╠═ed93fd1f-79bd-4c5a-b822-680c6f6591d6
-# ╠═4fcb3ea1-bec6-4c30-82a6-4689077cdc14
 # ╟─18223d42-66d8-40d1-9d89-be8af46853e2
 # ╠═682c3732-e68f-4fdb-bd63-553223308364
 # ╠═7370a1d9-4f8e-4788-adac-b8be2bcc9643
