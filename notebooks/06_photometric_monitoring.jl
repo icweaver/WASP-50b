@@ -168,37 +168,37 @@ We will make use of astropy's coordinates and time modules to first make the con
 """
 
 # ╔═╡ 5bf1136b-2d13-4463-8d74-9ade1e2cee96
-# begin
-# 	py"""
-# 	from astropy.coordinates import SkyCoord, EarthLocation
-# 	from astropy import units as u
-# 	from astropy.time import Time
+begin
+	py"""
+	from astropy.coordinates import SkyCoord, EarthLocation
+	from astropy import units as u
+	from astropy.time import Time
 	
 	
-# 	# https://gist.github.com/StuartLittlefair/4ab7bb8cf21862e250be8cb25f72bb7a
-# 	def helio_to_bary(coords, hjd, obs_name):
-# 	    helio = Time(hjd, scale="utc", format="jd")
-# 	    obs = EarthLocation.of_site(obs_name)
-# 	    star = SkyCoord(coords, unit=(u.hour, u.deg)) 
-# 	    ltt = helio.light_travel_time(star, "heliocentric", location=obs)
-# 	    guess = helio - ltt
+	# https://gist.github.com/StuartLittlefair/4ab7bb8cf21862e250be8cb25f72bb7a
+	def helio_to_bary(coords, hjd, obs_name):
+	    helio = Time(hjd, scale="utc", format="jd")
+	    obs = EarthLocation.of_site(obs_name)
+	    star = SkyCoord(coords, unit=(u.hour, u.deg)) 
+	    ltt = helio.light_travel_time(star, "heliocentric", location=obs)
+	    guess = helio - ltt
 	    
-# 	    # If we assume guess is correct - how far is heliocentric time away
-# 	    # from true value?
-# 	    delta = (
-# 	    guess + guess.light_travel_time(star, "heliocentric", obs)
-# 	    ).jd - helio.jd
+	    # If we assume guess is correct - how far is heliocentric time away
+	    # from true value?
+	    delta = (
+	    guess + guess.light_travel_time(star, "heliocentric", obs)
+	    ).jd - helio.jd
 	    
-# 	    # Apply this correction
-# 	    guess -= delta * u.d
-# 	    ltt = guess.light_travel_time(star, 'barycentric', obs)
+	    # Apply this correction
+	    guess -= delta * u.d
+	    ltt = guess.light_travel_time(star, 'barycentric', obs)
 	    
-# 	    return guess.tdb + ltt
-# 	"""
-# 	helio_to_bary(coords, hjd, obs_name) = py"helio_to_bary"(
-# 		coords, hjd, obs_name
-# 	).value
-# end
+	    return guess.tdb + ltt
+	"""
+	helio_to_bary(coords, hjd, obs_name) = py"helio_to_bary"(
+		coords, hjd, obs_name
+	).value
+end
 
 # ╔═╡ c86f5adc-6e17-44c4-b754-1b5c42557809
 const coords_W50 = "1:12:43.2 +31:12:43" # RA, Dec of WASP-50
@@ -209,32 +209,10 @@ loc_to_BJD(t, coords, camera) = camera == "Haleakala" ?
 	helio_to_bary(coords, t, "CTIO")
 
 # ╔═╡ 42b72605-f89e-42c4-a159-d43e4620140f
-# df_ASASSN[!, :bjd] = loc_to_BJD.(df_ASASSN.hjd, coords_W50, df_ASASSN.camera);
+df_ASASSN[!, :bjd] = loc_to_BJD.(df_ASASSN.hjd, coords_W50, df_ASASSN.camera);
 
 # ╔═╡ 79d08932-66f3-4ed9-bc13-f1ac3229e95d
 df_ASASSN
-
-# ╔═╡ 92548af3-9a26-4202-88f2-ba3a31181686
-# begin
-# 	df_sorted = sort(df_ASASSN, :bjd)
-# 	t_ASASSN, f_ASASSN, f_err_ASASSN = eachcol(
-# 		df_sorted[!, [:bjd, :flux_mJy_, :flux_err]]
-# 	)
-# 	#t_ASASSN .-= 2.457e6
-# end;
-
-# ╔═╡ e36d1322-5aa4-4513-bb89-410a4bb6b750
-# t_ASASSN_binned, f_ASASSN_binned, f_ASASSN_binned_err = bin_lc(
-# 	t_ASASSN, f_ASASSN, f_err_ASASSN, t_window
-# );
-
-# ╔═╡ 7f864c2d-e6a2-4774-b56e-6131041c3a00
-# df_sorted |> describe
-
-# ╔═╡ dbe317fe-540d-44e8-b8e7-6c465c79559f
-md"""
-``t_\text{window}`` = $(@bind t_window Slider(1:30, default=7, show_value=true)) days
-"""
 
 # ╔═╡ 9a195365-e68f-43e2-8870-c09153e2ce91
 md"""
@@ -243,50 +221,19 @@ md"""
 With the BJD times computed, we can now plot the ASAS-SN photometry, binned to **$(t_window) days**:
 """
 
-# ╔═╡ f3425d9c-861e-4b26-b352-bd0669c7f1f9
-# let
-# 	fig = Figure(resolution=(800, 800))
-	
-# 	### Photometry plot ####
-# 	ax = Axis(fig[1, 1], xlabel="Time (BTJD)", ylabel="Relative flux (ppm)")
-	
-# 	# Mark transit epochs
-# 	Δjulian_transit_dates = julian_transit_dates .- 2.457e6
-# 	vlines!(ax, Δjulian_transit_dates;
-# 		linestyle = :dash,
-# 		color = :darkgrey,
-# 	)
-	
-# 	# Label transit epochs
-# 	for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, Δjulian_transit_dates))
-# 		text!(ax, "Transit $i\n$utc";
-# 			position = Point2f0(jd, 5.0e4),
-# 			textsize = 14,
-# 			align = (:left, :center),
-# 			offset = Point2f0(10, 0),
-# 			color = :grey,
-# 		)
-# 	end
-	
-# 	ax_phot, t_binned, f_binned, f_err_binned, lc_binned, f_med = plot_phot!(
-# 		ax, t_ASASSN, f_ASASSN, f_err_ASASSN;
-# 		t_offset=2.457e6, relative_flux=true, binsize=t_window
-# 	)
-	
-# 	#### Periodogram #######
-# 	ax_pg = Axis(fig[2, 1], xlabel="Periods (days)", ylabel="log10 Power")
-# 	Ps, powers, faps = compute_pg(lc_binned, 5, 30)
-# 	lines!(ax_pg, Ps, log10.(powers*f_med/1e6))
-# 	hlines!(ax_pg, log10.(faps), color=:darkgrey, linestyle=:dash, label="\n\n[1, 5, 10]% FAPs")
-# 	axislegend()
-	
-# 	CSV.write(
-# 		"/home/mango/Desktop/WASP50LC_ASASSN_binned.csv",
-# 		DataFrame(:t=>t_binned, :f=>f_binned, :f_err=>f_err_binned),
-# 	)
-			
-# 	fig
-# end
+# ╔═╡ 92548af3-9a26-4202-88f2-ba3a31181686
+begin
+	df_sorted = sort(df_ASASSN, :bjd)
+	t_ASASSN, f_ASASSN, f_err_ASASSN = eachcol(
+		df_sorted[!, [:bjd, :flux_mJy_, :flux_err]]
+	)
+	#t_ASASSN .-= 2.457e6
+end;
+
+# ╔═╡ dbe317fe-540d-44e8-b8e7-6c465c79559f
+md"""
+``Δt_\text{ASAS-SN}`` = $(@bind binsize_ASASSN Slider(1:30, default=7, show_value=true)) days
+"""
 
 # ╔═╡ 682499cb-af79-48f7-9e74-0185894f65fe
 #= md"""
@@ -309,6 +256,33 @@ First we use [`lightkurve`](https://docs.lightkurve.org/whats-new-v2.html) to do
 # ╔═╡ 0c790d2f-64d4-4e13-9629-a9725cd7086d
 lk = pyimport("lightkurve")
 
+# ╔═╡ 3033c5f2-dd7a-4490-9d67-0ee26d8b57a0
+lc_ASASSN = lk.LightCurve(t_ASASSN, f_ASASSN, f_err_ASASSN).normalize()
+
+# ╔═╡ df094431-eedc-438d-a363-93d4c3ae2b66
+lc_ASASSN_binned = lc_ASASSN.bin(binsize_ASASSN)
+
+# ╔═╡ e36d1322-5aa4-4513-bb89-410a4bb6b750
+t_ASASSN_binned, f_ASASSN_binned, f_ASASSN_binned_err = (
+	lc_ASASSN_binned.time.value,
+	lc_ASASSN_binned.flux,
+	lc_ASASSN_binned.flux_err
+)
+
+# ╔═╡ 2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
+Time = pyimport("astropy.time").Time
+
+# ╔═╡ ec12acb8-9124-4cc0-8c9f-6525c1565dfd
+begin
+	py"""
+	def oot_flux(lc, P, t_0, dur):
+		in_transit = lc.create_transit_mask(P, t_0, dur)
+		lc_oot = lc[~in_transit]
+		return lc_oot
+	"""
+	oot_flux(lc, P, t_0, dur) = py"oot_flux"(lc, P, t_0, dur)
+end
+
 # ╔═╡ 708d54a5-95fd-4f15-9681-f6d8e7b9b05c
 all_srs = lk.search_lightcurve("WASP-50")
 
@@ -327,20 +301,6 @@ lcs = srs.download_all(flux_column="pdcsap_flux")
 md"""
 We show the normalized PDCSAP flux below for each sector: 
 """
-
-# ╔═╡ ec12acb8-9124-4cc0-8c9f-6525c1565dfd
-begin
-	py"""
-	def oot_flux(lc, P, t_0, dur):
-		in_transit = lc.create_transit_mask(P, t_0, dur)
-		lc_oot = lc[~in_transit]
-		return lc_oot
-	"""
-	oot_flux(lc, P, t_0, dur) = py"oot_flux"(lc, P, t_0, dur)
-end
-
-# ╔═╡ 2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
-Time = pyimport("astropy.time").Time
 
 # ╔═╡ 31d5bc92-a1f2-4c82-82f2-67755f9aa235
 begin
@@ -632,6 +592,51 @@ function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=
 	return ax, t_binned, f_binned, f_err_binned, lc_binned, f_med
 end
 
+# ╔═╡ f3425d9c-861e-4b26-b352-bd0669c7f1f9
+let
+	fig = Figure(resolution=(800, 800))
+	
+	### Photometry plot ####
+	ax = Axis(fig[1, 1], xlabel="Time (BTJD)", ylabel="Relative flux (ppm)")
+	
+	# Mark transit epochs
+	Δjulian_transit_dates = julian_transit_dates .- 2.457e6
+	vlines!(ax, Δjulian_transit_dates;
+		linestyle = :dash,
+		color = :darkgrey,
+	)
+	
+	# Label transit epochs
+	for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, Δjulian_transit_dates))
+		text!(ax, "Transit $i\n$utc";
+			position = Point2f0(jd, 5.0e4),
+			textsize = 14,
+			align = (:left, :center),
+			offset = Point2f0(10, 0),
+			color = :grey,
+		)
+	end
+	
+	ax_phot, t_binned, f_binned, f_err_binned, lc_binned, f_med = plot_phot!(
+		ax, t_ASASSN, f_ASASSN, f_err_ASASSN;
+		t_offset=2.457e6, relative_flux=true, binsize=binsize_ASASSN
+	)
+	
+	#### Periodogram #######
+	ax_pg = Axis(fig[2, 1], xlabel="Periods (days)", ylabel="log10 Power")
+	Ps, powers, faps = compute_pg(lc_binned, 5, 30)
+	lines!(ax_pg, Ps, log10.(powers*f_med/1e6))
+	hlines!(ax_pg, log10.(faps), color=:darkgrey, linestyle=:dash, label="\n\n[1, 5, 10]% FAPs")
+	axislegend()
+	
+	CSV.write(
+		"/home/mango/Desktop/WASP50LC_ASASSN_binned.csv",
+		DataFrame(:t=>t_binned, :f=>f_binned, :f_err=>f_err_binned),
+	)
+			
+	fig
+end
+
 # ╔═╡ ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd
 md"""
 ## Notebook setup
@@ -678,8 +683,9 @@ end
 # ╠═79d08932-66f3-4ed9-bc13-f1ac3229e95d
 # ╟─9a195365-e68f-43e2-8870-c09153e2ce91
 # ╠═92548af3-9a26-4202-88f2-ba3a31181686
+# ╠═3033c5f2-dd7a-4490-9d67-0ee26d8b57a0
+# ╠═df094431-eedc-438d-a363-93d4c3ae2b66
 # ╠═e36d1322-5aa4-4513-bb89-410a4bb6b750
-# ╠═7f864c2d-e6a2-4774-b56e-6131041c3a00
 # ╟─dbe317fe-540d-44e8-b8e7-6c465c79559f
 # ╠═f3425d9c-861e-4b26-b352-bd0669c7f1f9
 # ╟─682499cb-af79-48f7-9e74-0185894f65fe
