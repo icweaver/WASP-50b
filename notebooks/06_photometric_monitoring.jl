@@ -473,6 +473,9 @@ md"""
 # pgram_S31, plan_S31 = compute_pgram(r_S31["corr_lc"])
 # pgram_combined, plan_combined = compute_pgram(r_combined["corr_lc"])
 
+# ╔═╡ 5a275d11-f503-4623-b200-097abdfb2a76
+lcs_oot[1].bin(0.5)
+
 # ╔═╡ de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
 function compute_pgram(lc; min_period=0.5, max_period=30)
 	plan = LombScargle.plan(
@@ -495,6 +498,9 @@ begin
 		push!(P_maxs, P_max)
 	end
 end
+
+# ╔═╡ bdee2a77-5554-412e-b461-1f548e9d880b
+compute_pgram(lcs_oot[1].bin(0.005))
 
 # ╔═╡ 94d05a5b-b05e-4407-bcd3-7d625680a262
 let
@@ -520,39 +526,56 @@ md"""
 ### Folded lightcurve
 """
 
-# ╔═╡ fdbb89ff-86b6-4bf8-8548-01b34807ee37
-lc_folded = lcs_oot[1].fold(P_maxs[1])
-
-# ╔═╡ 5a4034c0-0125-4381-bf9a-bf529ebd777e
-lc_folded_binned = lc_folded.bin(bins=500)
-
 # ╔═╡ 3128e57f-df4f-4811-b867-8a293d7d536d
-begin
-	f = 1 / P_maxs[1]
-	t = lcs_oot[1].time.value
-	s = lcs_oot[1].flux
-	tmin, tmax = (1/50, 2) #extrema(t)
-	t_fit = (-3:0.1:3)#range(tmin, stop=tmax, length=100)
-	s_fit = LombScargle.model(t, s, f, t_fit/f) # Determine the model
+function compute_pgram_model(lc, P)
+	t_fit = lc.time.value
+	s_fit = LombScargle.model(
+		lc.time.value,
+		lc.flux,
+		lc.flux_err,
+		1 / P,
+	)
 	lc_fit = lk.LightCurve(t_fit, s_fit)
-	lc_fit_folded = lc_fit.fold(P_maxs[1])
-end;
+	lc_fit_folded = lc_fit.fold(P)
+	return lc_fit_folded
+end
+
+# ╔═╡ 97ced6ba-ff74-46b4-90d5-18e7b2f1b903
+begin
+	lcs_folded = []
+	lcs_folded_binned = []
+	lcs_fit_folded = []
+	for (lc, P) in zip(lcs_oot, P_maxs)
+		# Data
+		lc_folded = lc.fold(P)
+		push!(lcs_folded, lc_folded)
+		push!(lcs_folded_binned, lc_folded.bin(P))
+		
+		# Model
+		lc_fit_folded = compute_pgram_model(lc, P)	
+		push!(lcs_fit_folded, lc_fit_folded)
+	end
+end
 
 # ╔═╡ 49bcddbe-d413-48ae-91d8-92bcebf40518
 let
 	fig = Figure()
-	ax = Axis(fig[1, 1])
 	
-	scatter!(ax, lc_folded.time.value, lc_folded.flux)
-	scatter!(ax, lc_folded_binned.time.value, lc_folded_binned.flux)
-	#lines!(ax, lc_fit_folded.time.value, lc_fit_folded.flux, color=:lightgreen)
-	lines!(ax, t_fit, s_fit, color=:lightgreen)
+	axs = []
+	for (i, (lc_folded, lc_folded_binned, lc_fit_folded)) in enumerate(zip(
+				lcs_folded, lcs_folded_binned, lcs_fit_folded
+		))
+		ax = Axis(fig[i, 1])
+		push!(axs, ax)
+		scatter!(ax, lc_folded.time.value, lc_folded.flux)
+		scatter!(ax, lc_folded_binned.time.value, lc_folded_binned.flux)
+		lines!(ax, lc_fit_folded.time.value, lc_fit_folded.flux, color=:lightgreen)
+	end
+	
+	linkaxes!(axs...)
 	
 	fig
 end
-
-# ╔═╡ 3f600977-6576-4804-bbb0-e20d72ce2c08
-lines(s_fit)
 
 # ╔═╡ 87e7f166-f022-4b53-a3a3-c96b9d377781
 # let
@@ -742,6 +765,27 @@ md"""
 ## Notebook setup
 """
 
+# ╔═╡ 4475d6c8-c6cc-4a5a-903e-96aa0c457864
+let
+	t = range(0.01, stop = 10pi, length = 1000) # Observation times
+	s = sinpi.(t) .+ 1.2cospi.(t) .+ 0.3rand(length(t)) # The noisy signal
+	
+	# Pick-up the best frequency
+	f = findmaxfreq(lombscargle(t, s, maximum_frequency=10, samples_per_peak=20))[1]
+	t_fit = range(0, stop = 1, length = 50)
+	s_fit = LombScargle.model(t, s, f, t_fit/f) # Determine the model
+	
+	fig = Figure()
+	ax = Axis(fig[1, 1])
+	
+	scatter!(ax, mod.(t.*f, 1), s, label="Phased data", title="Best Lomb-Scargle frequency: $f")
+	lines!(t_fit, s_fit, label="Best-fitting model", linewidth=4, color=:orange)
+	
+	axislegend()
+	
+	fig
+end
+
 # ╔═╡ Cell order:
 # ╟─670b88e4-1e96-494d-bfcc-235092bb6e96
 # ╟─0cbe4263-799f-4ee3-9a94-3ba879528b01
@@ -786,14 +830,14 @@ md"""
 # ╟─a203f10c-7b7f-4b2f-b020-4154138ce5e5
 # ╠═d1f7ed4b-4599-48bd-aac5-93920dae9151
 # ╠═d7f034c5-5925-4b91-9bea-1068a7ce9252
+# ╠═bdee2a77-5554-412e-b461-1f548e9d880b
+# ╠═5a275d11-f503-4623-b200-097abdfb2a76
 # ╠═de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
 # ╠═94d05a5b-b05e-4407-bcd3-7d625680a262
 # ╟─a50ef756-ade6-48a3-8d3a-17b56ce03c26
-# ╠═fdbb89ff-86b6-4bf8-8548-01b34807ee37
-# ╠═5a4034c0-0125-4381-bf9a-bf529ebd777e
 # ╠═49bcddbe-d413-48ae-91d8-92bcebf40518
+# ╠═97ced6ba-ff74-46b4-90d5-18e7b2f1b903
 # ╠═3128e57f-df4f-4811-b867-8a293d7d536d
-# ╠═3f600977-6576-4804-bbb0-e20d72ce2c08
 # ╠═87e7f166-f022-4b53-a3a3-c96b9d377781
 # ╟─056281a2-4786-45eb-a9fa-57515153f66c
 # ╠═3a612743-7071-4d85-a48d-0a4b12facffc
@@ -813,3 +857,4 @@ md"""
 # ╠═7370a1d9-4f8e-4788-adac-b8be2bcc9643
 # ╟─ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd
 # ╠═9e2ce576-c9bd-11eb-0699-47af13e79589
+# ╠═4475d6c8-c6cc-4a5a-903e-96aa0c457864
