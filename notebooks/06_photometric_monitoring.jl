@@ -371,14 +371,9 @@ end
 # ╔═╡ 2215ed86-fa78-4811-88ab-e3521e4a1dea
 function compute_window_func(lc; min_period=0.5, max_period=30.0)
 	t = lc.time.value
-	t_start, t_end = t |> extrema
-	Δt = median(diff(t))
-	t_uniform = t #t_start:Δt:t_end
-	
-	f = oneunit.(t_uniform)
+	f = oneunit.(t)
 	f_err = median(lc.flux_err) .* f
-	lc_window_func = lk.LightCurve(time=t_uniform, flux=f, flux_err=f_err)
-	
+	lc_window_func = lk.LightCurve(time=t, flux=f, flux_err=f_err)
 	return compute_pgram(lc_window_func; min_period=min_period, max_period=max_period)
 end
 
@@ -391,7 +386,7 @@ begin
 		P_max = findmaxperiod(pgram)[1]
 		
 		push!(pgrams, pgram)
-		push!(pgrams_window, pgram_window)
+		push!(pgrams_window, pgram_window )
 		push!(plans, plan)
 		push!(P_maxs, P_max)
 	end
@@ -405,7 +400,7 @@ let
 	for pgram_window in pgrams_window
 		lines!(ax_window, periodpower(pgram_window)...)
 	end
-	text!(ax_window, "Window function", position=(0.4, 0.2))
+	text!(ax_window, "Window function", position=(1, 0.3))
 	
 	ax = Axis(fig[2, 1], xlabel="Period (days)")
 	sectors = ("Sector 04", "Sector 31", "Combined")
@@ -420,18 +415,15 @@ let
 		#hlines!(ax, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))))
 	end
 	
-	axislegend("P_max (days)", position=:lc)
+	axislegend("P_max (days)", position=(0.05, 0.8))
 	
 	hidexdecorations!(ax_window)
 	linkaxes!(ax_window, ax)
 	
-	xlims!(ax, 0, 10)
-	ylims!(ax, 0, 0.3)
+	#xlims!(ax, 0, 10)
+	#ylims!(ax, 0, 0.3)
 	
 	Label(fig[1:2, 0], "Normalized power", rotation=π/2)
-	#Label(fig[end+1, :], "Period (days)")
-	
-	#xlabel="Period (days)", ylabel="Normalized power"
 	
 	#axislegend()
 	
@@ -494,9 +486,9 @@ begin
 	for (lc, P) in zip(lcs_oot, P_maxs)
 		# Data
 		lc_folded = lc.fold(P)
-		Δt = lc_folded.time.value |> median
+		Δt = (lc_folded.time.value |> diff |> median) * 5
 		push!(lcs_folded, lc_folded)
-		push!(lcs_folded_binned, lc_folded.bin(Δt/10))
+		push!(lcs_folded_binned, lc_folded.bin(bins=200))
 		
 		# Model
 		lc_fit_folded = compute_pgram_model(lc, P)	
@@ -539,10 +531,10 @@ md"""
 T₀ = 5_520
 
 # ╔═╡ d26122f1-1602-440c-8ba9-72469a782104
-f_sp(T_sp, T₀, ΔL) = (T₀^4 /  (T₀^4 - T_sp^4)) * (1 - ΔL)
+f_sp(T_sp, ΔL, T₀=T₀) = (T₀^4 /  (T₀^4 - T_sp^4)) * (1 - ΔL)
 
 # ╔═╡ c0d53fc0-467b-4e49-a829-f149e14e3d08
-[f_sp.((2_200, 2_800), T₀, ΔL) .* 100 for ΔL in ΔLs]
+[f_sp.((2_200, 2_800), ΔL, T₀) .* 100 for ΔL in ΔLs]
 
 # ╔═╡ 18223d42-66d8-40d1-9d89-be8af46853e2
 md"""
@@ -642,27 +634,6 @@ md"""
 ## Notebook setup
 """
 
-# ╔═╡ 4475d6c8-c6cc-4a5a-903e-96aa0c457864
-let
-	t = range(0.01, stop = 10pi, length = 1000) # Observation times
-	s = sinpi.(t) .+ 1.2cospi.(t) .+ 0.3rand(length(t)) # The noisy signal
-	
-	# Pick-up the best frequency
-	f = findmaxfreq(lombscargle(t, s, maximum_frequency=10, samples_per_peak=20))[1]
-	t_fit = range(0, stop = 1, length = 50)
-	s_fit = LombScargle.model(t, s, f, t_fit/f) # Determine the model
-	
-	fig = Figure()
-	ax = Axis(fig[1, 1])
-	
-	scatter!(ax, mod.(t.*f, 1), s, label="Phased data", title="Best Lomb-Scargle frequency: $f")
-	lines!(t_fit, s_fit, label="Best-fitting model", linewidth=4, color=:orange)
-	
-	axislegend()
-	
-	fig
-end
-
 # ╔═╡ Cell order:
 # ╟─670b88e4-1e96-494d-bfcc-235092bb6e96
 # ╟─0cbe4263-799f-4ee3-9a94-3ba879528b01
@@ -721,4 +692,3 @@ end
 # ╠═7370a1d9-4f8e-4788-adac-b8be2bcc9643
 # ╟─ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd
 # ╠═9e2ce576-c9bd-11eb-0699-47af13e79589
-# ╠═4475d6c8-c6cc-4a5a-903e-96aa0c457864
