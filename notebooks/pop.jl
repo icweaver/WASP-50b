@@ -10,6 +10,7 @@ begin
 	Pkg.activate(Base.current_project())
 	
 	using AlgebraOfGraphics, CairoMakie, CSV, DataFrames, Unitful, UnitfulAstro
+	using DataFramesMeta
 	using PhysicalConstants.CODATA2018: G, k_B, m_u, σ
 	
 	set_aog_theme!()
@@ -68,26 +69,45 @@ const G_RpMp = G |> u"Rearth^3/Mearth/s^2" |> ustrip
 const G_SI = G |> u"m*Rearth^2/Mearth/s^2" |> ustrip
 
 # ╔═╡ ad322153-a033-4c71-ae28-ae9f3e18fa47
-const k_B_earth = k_B |> u"Mearth*m^2/s^2/K" |> ustrip
+const k_B_earth = k_B |> u"kg*m^2/s^2/K" |> ustrip
+
+# ╔═╡ 40b9adc9-94f9-4426-ad9b-839175d318b7
+const mp = 2.0 * m_u |> u"kg" |> ustrip # X amu
+
+# ╔═╡ 2a32d2af-3acd-4015-b937-cc55e5dcef11
+# μ ≡ 2.0 amu (in Mearth), gp in m/s^2
+# returns km
+compute_H(Tp, gp) = 1e-3 * k_B_earth * Tp / (mp * gp)
 
 # ╔═╡ 46942e93-fa05-48ce-9639-248ccb63fa30
 compute_g(Mp, Rp) = G_SI * Mp / Rp^2
 
-# ╔═╡ 2a32d2af-3acd-4015-b937-cc55e5dcef11
- compute_H(Tp, gp) = k_B * Tp / (2.0 * gp) # μ ≡ 2.0
-
-# ╔═╡ a8cb0326-b1ec-4799-9ee6-92960318f861
+# ╔═╡ 8f9634d6-7600-4279-ae9c-23c91ed6cd81
 df_cleaned.pl_g = compute_g.(df_cleaned.pl_bmasse, df_cleaned.pl_rade)
 
-# ╔═╡ 3e6feeef-9dfb-497e-9354-b99dbbe5739b
+# ╔═╡ 88dc35de-1b8e-4b0f-acb3-8cbb77d47faa
+df_cleaned.pl_H = compute_H.(df_cleaned.pl_eqt, df_cleaned.pl_g)
+
+# ╔═╡ 3c0f3bbb-6455-4867-a069-e7816ba8eba2
 let
-	fig = Figure()
-	ax = Axis(fig[1, 1], limits=((0, 45), (0, 3_000)))
+	pop = data(@subset(df_cleaned, 1.0 .≤ :pl_H .≤ 200.0)) *
+		mapping(
+		:pl_g => "Surface gravity (m/s²)",
+		:pl_eqt => "Equilibrium temperature (K)",
+		color=:pl_H => "Scale height (km)",
+	)
 	
-	g, Teq = df_cleaned.pl_g, df_cleaned.pl_eqt
-	
-	scatter!(ax, g, Teq)
+	fig = draw(pop; axis=(;limits=((0, 60), (0, 3_000))))
 		
+	scatter!(
+		fig.figure[1, 1],
+		# WASP-43, HAT-P-23, WASP-50
+		[47.4, 29.2, 31.61], [1440.0, 2027.0, 1381.0];
+		color=:red,
+		markersize=40,
+		marker='x',
+	)
+	
 	fig
 end
 
@@ -99,8 +119,10 @@ end
 # ╠═c55f348b-280a-4a3f-bba5-85d6eb160b03
 # ╠═794df6de-c602-4b69-9502-8225c45cd156
 # ╠═ad322153-a033-4c71-ae28-ae9f3e18fa47
-# ╠═46942e93-fa05-48ce-9639-248ccb63fa30
+# ╠═40b9adc9-94f9-4426-ad9b-839175d318b7
 # ╠═2a32d2af-3acd-4015-b937-cc55e5dcef11
-# ╠═a8cb0326-b1ec-4799-9ee6-92960318f861
-# ╠═3e6feeef-9dfb-497e-9354-b99dbbe5739b
+# ╠═46942e93-fa05-48ce-9639-248ccb63fa30
+# ╠═8f9634d6-7600-4279-ae9c-23c91ed6cd81
+# ╠═88dc35de-1b8e-4b0f-acb3-8cbb77d47faa
+# ╠═3c0f3bbb-6455-4867-a069-e7816ba8eba2
 # ╠═24c6a2d0-0aea-11ec-2cd4-3de7ec08b83e
