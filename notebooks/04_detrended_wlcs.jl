@@ -164,7 +164,7 @@ detLC = CSV.File(
 
 # ╔═╡ 0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # Returns value `v` from `Variables` columns in results.dat file 
-val(df, v) = @where(df, :Variable .== v)[1, "Value"]
+val(df, v) = @subset(df, :Variable .== v)[1, "Value"]
 
 # ╔═╡ d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c
 # Computes orbital phase
@@ -207,7 +207,7 @@ where $x$ is a sample from the posterior distribution for the given parameter, `
 
 # ╔═╡ 706f1fb6-2895-48f6-a315-842fbf35da18
 function scale_samples(samples, param, BMA)
-	m = @where(BMA, :Parameter .== param)[!, "Combined"][1]
+	m = @subset(BMA, :Parameter .== param)[!, "Combined"][1]
 	return (samples .- m.val) ./ m.err
 end
 
@@ -478,6 +478,9 @@ let
 	fig #|> as_svg
 end
 
+# ╔═╡ 5c18857c-ff56-476e-b0cf-0ed613ec7e72
+hspan
+
 # ╔═╡ baeadfce-535a-46c3-8cb9-79cf6bde8555
 md"""
 ## Packages
@@ -542,6 +545,7 @@ body.disable_ui main {
 # ╟─82a23101-9e1f-4eae-b529-e750a44c98b1
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
 # ╠═1f7b883c-0192-45bd-a206-2a9fde1409ca
+# ╠═5c18857c-ff56-476e-b0cf-0ed613ec7e72
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
 # ╠═691eddff-f2eb-41a8-ab05-63afb46d15f2
 # ╟─2c3f26b9-410a-4cfa-befd-194daddefb4e

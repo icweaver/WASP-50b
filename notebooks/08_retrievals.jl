@@ -79,7 +79,7 @@ base_dir = "./data/retrievals/all_WASP50/NofitR0"
 fit_R0 = basename(base_dir)
 
 # ╔═╡ 0f65d095-09af-44d2-907b-c30e2c16b609
-species = ["Na", "K", "TiO", "Na_TiO", "K_TiO", "Na_K_TiO"]
+species = ["K", "TiO", "Na_TiO", "K_TiO", "Na_K_TiO"]
 
 # ╔═╡ 093156c7-9da7-4814-9260-5173f27fa497
 model_names = OrderedDict(

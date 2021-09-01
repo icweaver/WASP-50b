@@ -233,7 +233,8 @@ def get_evidences(base_dir, relative_to_spot_only=False):
     fit_R0 = "NofitR0" if "NofitR0" in base_dir else "fitR0"
 
     #species = ["Na", "K", "TiO", "Na_K", "Na_TiO", "K_TiO", "Na_K_TiO"]
-    species = ["Na", "K", "TiO", "Na_TiO", "K_TiO", "Na_K_TiO"]
+    #species = ["Na", "K", "TiO", "Na_TiO", "K_TiO", "Na_K_TiO"]
+    species = ["K", "TiO", "Na_TiO", "K_TiO", "Na_K_TiO"]
     model_names_dict = {
         "clear": f"NoHet_FitP0_NoClouds_NoHaze_{fit_R0}",
         "clear+cloud": f"NoHet_FitP0_Clouds_NoHaze_{fit_R0}",

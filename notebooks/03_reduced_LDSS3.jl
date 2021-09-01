@@ -18,6 +18,8 @@ begin
 	import Pkg
 	Pkg.activate(Base.current_project())
 	
+	Pkg.instantiate()
+	
 	using AlgebraOfGraphics
 	using CSV
 	using CairoMakie
@@ -40,7 +42,7 @@ begin
 	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
 	
 	# Python setup
-	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP50/bin/python"
+	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP-50b/bin/python"
 	Pkg.build("PyCall")
 	using PyCall
 	
@@ -119,6 +121,9 @@ Each cube (`LC`) can be selected from the following drop-down menu, and will be 
 $(@bind fpath Select(sort(glob("data/reduced/LDSS3/*/LC*.npy"))))
 """
 
+# ╔═╡ 4f0e557c-1c5b-43d1-acdb-5f5798871863
+Dates
+
 # ╔═╡ 698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 md"""
 We next define the mapping between the standard aperture names defined in `stellar` and the target/comparison star names used:
@@ -182,6 +187,34 @@ md"""
 With the flux extracted for each object, we now turn to analyzing the resulting stellar spectra:
 """
 
+# ╔═╡ 2d0c1052-d5a2-456b-ac88-df52df473241
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1])
+		
+	@which xlims!(ax, 0, 1)
+end
+
+# ╔═╡ 979895ea-9b13-494c-be08-2496562ccf07
+Na_bins = range(5800.0, stop=5986.0, length=6)
+
+# ╔═╡ ce86c8d1-1900-413f-90be-c9f4eb386a5a
+K_bins = range(7655.0, stop=7709.0, length=6)
+
+# ╔═╡ bf61788d-ca13-457e-8026-62bc2460d4d7
+make_bins(x) = hcat(x[begin:end-1], x[begin+1:end])
+
+# ╔═╡ 86cedb14-37d1-494b-b022-181887195719
+wbins_species = round.(
+	vcat(make_bins(Na_bins), make_bins(K_bins)),
+)
+
+# ╔═╡ 80d2f86f-377f-4dac-9b89-89518f001a6a
+writedlm("./data/reduced/w50_bins_species.dat", wbins_species, " ")
+
+# ╔═╡ 48f31cef-ee18-47f9-a71d-4a5b2c6efe71
+species = (Na=5892.9, K=7682.0, Na_8200=8189.0)
+
 # ╔═╡ a6088ea2-904f-4909-b1be-9470e7ec2010
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
 
@@ -204,7 +237,11 @@ Next, we will extract the integrated white-light curves from these spectra. We i
 """
 
 # ╔═╡ 9697e26b-b6d9-413b-869f-47bc2ab99919
-wbins = readdlm("data/reduced/LDSS3/w50_bins_LDSS3.dat", comments=true)
+#wbins = readdlm("data/reduced/LDSS3/w50_bins_LDSS3.dat", comments=true)
+wbins = readdlm("data/reduced/w50_bins_species.dat", comments=true)
+
+# ╔═╡ 80480fc2-861b-4fa9-be2d-fcb57f479a93
+wbins
 
 # ╔═╡ cb805821-5d2e-484c-93a5-10a897d2cfe7
 @bind window_width Slider(3:2:21, default=15, show_value=true)
@@ -360,6 +397,9 @@ md"""
 #### Binned LCs (magnitude space)
 """
 
+# ╔═╡ 1ca7ba4c-9a94-4c97-ba02-1db2dadaf16e
+tdir
+
 # ╔═╡ 123d0c63-f05a-4a7d-be16-6a3b9abac044
 function f_to_med_mag(f)
 	mag = -2.51 * log10.(f)
@@ -437,6 +477,16 @@ let
 			label = name,
 		)
 	end
+	
+	#vlines!.(ax, wbins, linewidth=15.0, color=:lightgrey)
+	#vlines!.(ax, values(species), color=:red)
+	
+	#vlines!(ax, Na_bins, color=:green)
+	#vlines!(ax, K_bins, color=:green)
+	#vlines!.(ax, wbins_species, color=:green)
+	
+	#xlims!(ax, 5_700, 6_400)
+	#xlims!(ax, 7600, 7800)
 	
 	axislegend()
 	
@@ -732,6 +782,7 @@ body.disable_ui main {
 # ╟─34ef4580-bb95-11eb-34c1-25893217f422
 # ╟─a8e3b170-3fc2-4d12-b117-07bd37d27710
 # ╠═01e27cf6-0a1b-4741-828a-ef8bf7037ae9
+# ╠═4f0e557c-1c5b-43d1-acdb-5f5798871863
 # ╟─698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 # ╠═d8236985-9a36-4357-ac78-7eb39dd0f080
 # ╟─b4f4e65b-bd50-4ee2-945f-7c130db21fdf
@@ -747,7 +798,15 @@ body.disable_ui main {
 # ╠═9cdc7e8b-be59-44f9-9bee-4591e2ad788d
 # ╠═0d5749ac-4c94-4228-b721-83aaf84891c2
 # ╟─299dda0e-a214-45ca-9a68-947f60fcf404
+# ╠═80480fc2-861b-4fa9-be2d-fcb57f479a93
 # ╠═45418bd3-74a3-4758-9fce-adddbeeec076
+# ╠═2d0c1052-d5a2-456b-ac88-df52df473241
+# ╠═979895ea-9b13-494c-be08-2496562ccf07
+# ╠═ce86c8d1-1900-413f-90be-c9f4eb386a5a
+# ╠═bf61788d-ca13-457e-8026-62bc2460d4d7
+# ╠═86cedb14-37d1-494b-b022-181887195719
+# ╠═80d2f86f-377f-4dac-9b89-89518f001a6a
+# ╠═48f31cef-ee18-47f9-a71d-4a5b2c6efe71
 # ╠═7d68ad39-3e39-48fa-939a-e56c6659d2b3
 # ╠═a6088ea2-904f-4909-b1be-9470e7ec2010
 # ╟─bd937d51-17e9-4de3-a5d0-4c436d413940
@@ -803,6 +862,7 @@ body.disable_ui main {
 # ╠═5110de9a-3721-4043-b8b7-493daacb4137
 # ╠═53f5a645-93e0-499a-bb36-e4ff0153a63c
 # ╠═631c4d02-58cc-4c70-947f-22c8e8b11015
+# ╠═1ca7ba4c-9a94-4c97-ba02-1db2dadaf16e
 # ╠═123d0c63-f05a-4a7d-be16-6a3b9abac044
 # ╟─3b6b57e2-46ab-46d9-b334-6264daf583f3
 # ╠═2d34e125-548e-41bb-a530-ba212c0ca17c

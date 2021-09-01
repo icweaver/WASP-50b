@@ -33,7 +33,7 @@ begin
 	using Unitful
 	
 	# Python setup
-	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP50/bin/python"
+	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP-50b/bin/python"
 	Pkg.build("PyCall")
 	using PyCall
 	
@@ -99,6 +99,9 @@ First let's load up all of the data, including the white light transit depths fr
 # ╔═╡ c53be9cf-7722-4b43-928a-33e7b0463330
 const DATA_DIR = "data/detrended/out_l/WASP50"
 
+# ╔═╡ bcc81c51-796f-40b9-9deb-28884d167287
+@subset
+
 # ╔═╡ 1decb49e-a875-412c-938f-74b4fa0e2e85
 maxmeasure(x, x_u, x_d) = x ± max(x_u, x_d)
 
@@ -151,7 +154,7 @@ begin
 		) |> DataFrame
 		
 		symbol, p, p_u, p_d = eachcol(
-			@where(df_WLC, :Variable .== "p")
+			@subset(df_WLC, :Variable .== "p")
 		)
 	 	
 		cubes[transit]["δ_WLC"] = maxmeasure(p[1], p_u[1], p_d[1])^2 * 1e6
@@ -520,6 +523,7 @@ body.disable_ui main {
 # ╠═c53be9cf-7722-4b43-928a-33e7b0463330
 # ╠═d6918a50-f75f-47f5-86c6-e251f7ef1e12
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
+# ╠═bcc81c51-796f-40b9-9deb-28884d167287
 # ╠═1decb49e-a875-412c-938f-74b4fa0e2e85
 # ╠═1e8524c4-a732-4e2f-80a9-b5e7548ef2b2
 # ╠═7b6d3a33-cb3b-4776-86f6-3af1663b9e49

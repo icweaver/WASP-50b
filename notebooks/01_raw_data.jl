@@ -33,7 +33,7 @@ begin
 	using Unitful
 	
 	# Python setup
-	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP50/bin/python"
+	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP-50b/bin/python"
 	Pkg.build("PyCall")
 	using PyCall
 	

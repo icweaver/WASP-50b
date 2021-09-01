@@ -40,7 +40,7 @@ begin
 	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
 	
 	# Python setup
-	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP50/bin/python"
+	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP-50b/bin/python"
 	Pkg.build("PyCall")
 	using PyCall
 	
@@ -134,7 +134,7 @@ begin
 end;
 
 # ╔═╡ bd2cdf33-0c41-4948-82ab-9a28929f72b3
-LC = load_pickle(fpath)
+LC = load_pickle(fpath);
 
 # ╔═╡ e774a20f-2d58-486a-ab71-6bde678b26f8
 md"""
@@ -158,30 +158,6 @@ function spec_plot!(ax, wav, A; color=:blue, norm=1.0, label="")
 		cycle = Cycle(:linestyle),
 		label = label,
 	)
-end
-
-# ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
-let
-	fig = Figure()
-	ax = Axis(fig[1, 1])
-	
-	wav = LC["spectra"]["wavelengths"]
-	f_norm = median(LC["spectra"]["WASP50"])
-	
-	i = 1
-	for (name, f) in sort(LC["spectra"])
-		if name != "wavelengths"
-			spec_plot!(ax, wav, f, color=COLORS_SERIES[i], norm=f_norm, label=name)
-			i += 1
-		end
-	end
-	
-	axislegend()
-	
-	xlims!(ax, 3_500, 11_000)
-	ylims!(ax, 0, 2.2)
-	
-	fig #|> as_svg
 end
 
 # ╔═╡ e3468c61-782b-4f55-a4a1-9d1883655d11
@@ -209,9 +185,12 @@ We next plot these light curves and identified outliers below:
 """
 
 # ╔═╡ 4b763b58-862e-4c88-a7c9-fe0b1271c0b4
-use_comps = ["c15", "c18", "c21", "c23"]
-#use_comps = ["c06", "c13"]
+#use_comps = ["c15", "c18", "c21", "c23"]
+use_comps = ["c06", "c13"]
 #use_comps = ["c15", "c21"]
+
+# ╔═╡ 0997f1b0-28f2-4f0a-9d2a-91dacd2a9342
+comp_names
 
 # ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
 @bind window_width Slider(3:2:21, default=15, show_value=true)
@@ -382,6 +361,32 @@ wbins_name = occursin("131219", fpath) ? "w50_bins_ut131219.dat" : "w50_bins.dat
 # ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
 wbins = readdlm("data/reduced/IMACS/$(wbins_name)", comments=true)
 
+# ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1])
+	
+	wav = LC["spectra"]["wavelengths"]
+	f_norm = median(LC["spectra"]["WASP50"])
+	
+	i = 1
+	for (name, f) in sort(LC["spectra"])
+		if name != "wavelengths"
+			spec_plot!(ax, wav, f, color=COLORS_SERIES[i], norm=f_norm, label=name)
+			i += 1
+		end
+	end
+	
+	vlines!.(ax, wbins, linewidth=1.0, color=:lightgrey)
+	
+	axislegend()
+	
+	xlims!(ax, 3_500, 11_000)
+	ylims!(ax, 0, 2.2)
+	
+	fig #|> as_svg
+end
+
 # ╔═╡ 793c4d08-e2ee-4c9d-b7a0-11eaaddba895
 md"""
 We plot these below for each comparison star division. Move the slider to view the plot for the corresponding comparison star:
@@ -497,6 +502,7 @@ body.disable_ui main {
 # ╠═18d58341-0173-4eb1-9f01-cfa893088613
 # ╟─941cd721-07d8-4a8f-9d75-42854e6e8edb
 # ╠═4b763b58-862e-4c88-a7c9-fe0b1271c0b4
+# ╠═0997f1b0-28f2-4f0a-9d2a-91dacd2a9342
 # ╠═df46d106-f186-4900-9d3f-b711bc803707
 # ╠═ab058d99-ce5f-4ed3-97bd-a62d2f258773
 # ╠═13523326-a5f2-480d-9961-d23cd51192b8
