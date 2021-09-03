@@ -257,7 +257,9 @@ First we use [`lightkurve`](https://docs.lightkurve.org/whats-new-v2.html) to do
 lk = pyimport("lightkurve")
 
 # ╔═╡ 3033c5f2-dd7a-4490-9d67-0ee26d8b57a0
-lc_ASASSN = lk.LightCurve(t_ASASSN, f_ASASSN, f_err_ASASSN).normalize()
+lc_ASASSN = lk.LightCurve(
+	time=t_ASASSN, flux=f_ASASSN, flux_err=f_err_ASASSN
+).normalize()
 
 # ╔═╡ df094431-eedc-438d-a363-93d4c3ae2b66
 lc_ASASSN_binned = lc_ASASSN.bin(binsize_ASASSN)
@@ -473,7 +475,7 @@ function compute_pgram_model(lc, P)
 		lc.flux_err,
 		1 / P,
 	)
-	lc_fit = lk.LightCurve(t_fit, s_fit)
+	lc_fit = lk.LightCurve(time=t_fit, flux=s_fit)
 	lc_fit_folded = lc_fit.fold(P)
 	return lc_fit_folded
 end

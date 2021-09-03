@@ -187,14 +187,6 @@ md"""
 With the flux extracted for each object, we now turn to analyzing the resulting stellar spectra:
 """
 
-# ╔═╡ 2d0c1052-d5a2-456b-ac88-df52df473241
-let
-	fig = Figure()
-	ax = Axis(fig[1, 1])
-		
-	@which xlims!(ax, 0, 1)
-end
-
 # ╔═╡ 979895ea-9b13-494c-be08-2496562ccf07
 Na_bins = range(5800.0, stop=5986.0, length=6)
 
@@ -237,8 +229,8 @@ Next, we will extract the integrated white-light curves from these spectra. We i
 """
 
 # ╔═╡ 9697e26b-b6d9-413b-869f-47bc2ab99919
-#wbins = readdlm("data/reduced/LDSS3/w50_bins_LDSS3.dat", comments=true)
-wbins = readdlm("data/reduced/w50_bins_species.dat", comments=true)
+wbins = readdlm("data/reduced/LDSS3/w50_bins_LDSS3.dat", comments=true)
+#wbins = readdlm("data/reduced/w50_bins_species.dat", comments=true)
 
 # ╔═╡ 80480fc2-861b-4fa9-be2d-fcb57f479a93
 wbins
@@ -289,27 +281,35 @@ function filt_idxs(f_div_wlc, window_width; ferr=0.002)
 	return f_filt, use_idxs, bad_idxs
 end
 
-# ╔═╡ 798880fa-1e52-4758-a7f7-d3c6adec244a
+# ╔═╡ 20d12d7b-c666-46c3-8f48-5501641e8df3
 function plot_div_WLCS!(
 	axs, f_div_wlc, window_width, cNames, use_comps_idxs; ferr=0.002
 )
-	# Using all comp stars for this instrument
 	use_comps = cNames[use_comps_idxs]
 	
 	# Only apply filter to specified comp star divided WLCs
 	f_filt, use_idxs, bad_idxs = filt_idxs(
 		f_div_wlc[:, use_comps_idxs], window_width; ferr=ferr
 	)
-	
 	idxs = 1:size(f_div_wlc, 1)
-	c = :darkgrey
 	k = 1
+	c = :darkgrey
 	for (i, cName) ∈ enumerate(cNames)		
 		# All points
+		if cName ∈ ("c06", "c15", "c21") # LDSS3 comps
+			c_text = COLORS[end]
+		else
+			c_text = :darkgrey
+		end
 		scatter!(axs[i], idxs, f_div_wlc[:, i];
 			color = (c, 0.3),
-			label = "$cName",
 		)
+		text!(axs[i], "$(cName)";
+			position =(300, 0.975),
+			align = (:right, :center),
+			color = c_text,
+		)
+		
 		# Used points
 		if cName ∈ use_comps
 			scatter!(axs[i], idxs[use_idxs], f_div_wlc[use_idxs, i];
@@ -322,7 +322,7 @@ function plot_div_WLCS!(
 			k += 1
 		end
 		
-		axislegend(axs[i])
+		#axislegend(axs[i])
 	end
 end
 
@@ -397,9 +397,6 @@ md"""
 #### Binned LCs (magnitude space)
 """
 
-# ╔═╡ 1ca7ba4c-9a94-4c97-ba02-1db2dadaf16e
-tdir
-
 # ╔═╡ 123d0c63-f05a-4a7d-be16-6a3b9abac044
 function f_to_med_mag(f)
 	mag = -2.51 * log10.(f)
@@ -458,6 +455,12 @@ f_comps = cat(
 	dims=3
 )
 
+# ╔═╡ f6ed9c49-bf9c-467d-a602-8d18758a4602
+fluxes["WASP50"]
+
+# ╔═╡ 2312f321-67ff-4fec-ba73-ff78c82af8dd
+median(fluxes["WASP50"], dims=2)
+
 # ╔═╡ dc62887d-746b-4503-8547-7a6814de66a8
 wav = LC["spectral"]["wavelength"][common_wav_idxs]
 
@@ -468,12 +471,13 @@ let
 	
 	fluxes = [f_target, [f_comps[:, :, i] for i in 1:3]...]
 	labels = names.vals
-	f_norm = 40362.188283796 # median IMACS WASP-50 flux for comparison
+	#f_norm = 40362.188283796 # median IMACS WASP-50 flux for comparison
 	
 	for (i, (name, f)) in enumerate(zip(labels, fluxes))
 		spec_plot!(ax, wav, f;
 			color=COLORS_SERIES[i],
-			norm = f_norm,
+			#norm = f_norm,
+			norm = median(f),
 			label = name,
 		)
 	end
@@ -488,7 +492,14 @@ let
 	#xlims!(ax, 5_700, 6_400)
 	#xlims!(ax, 7600, 7800)
 	
+	ylims!(ax, 0, 2.6)
+	
 	axislegend()
+	
+	save(
+		"../../ACCESS_WASP-50b/figures/reduced/extracted_spectra_ut150927_LDSS3.pdf",
+		fig
+	)
 	
 	fig #|> as_svg
 end
@@ -515,26 +526,28 @@ end
 
 # ╔═╡ 4b2ed9db-0a17-4e52-a04d-3a6a5bf2c054
 let
-	fig = Figure(resolution=FIG_TALL)
+	fig = Figure()#resolution=FIG_TALL)
 	
 	comp_names = names.vals[2:4]
 	ncomps = length(comp_names)
 	use_comps = comp_names # use all comps
 	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
 	
-	axs = [Axis(fig[i, 1]) for i in 1:ncomps]
+	axs = [Axis(fig[1, i]) for i in 1:ncomps]
 	axs = reshape(copy(fig.content), ncomps, 1)
 	
 	plot_div_WLCS!(
 		axs, f_div_WLC_norm, window_width, comp_names, use_comps_idxs
 	)
 	
-	hidexdecorations!.(axs[begin:end-1], grid=false)
+	hideydecorations!.(axs[begin+1:end], grid=false)
 	linkaxes!(axs...)
 	ylims!(axs[end], 0.97, 1.02)
 	
-	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
-	fig[end+1, 1:end] = Label(fig, "Index")
+	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2, tellheight=false)
+	axs[2].xlabel = "Index"
+	
+	save("../../ACCESS_WASP-50b/figures/reduced/div_wlcs_ut150927_LDSS3.pdf", fig)
 	
 	fig #|> as_svg
 end
@@ -680,6 +693,11 @@ let
 	# ax.xlabel = "Index"
 	# ax.ylabel = "Relative flux + offset"
 	
+	save(
+		"../../ACCESS_WASP-50b/figures/reduced/divided_blcs_LDSS3.pdf",
+		fig
+	)
+	
 	fig #|> as_svg
 end
 
@@ -800,7 +818,8 @@ body.disable_ui main {
 # ╟─299dda0e-a214-45ca-9a68-947f60fcf404
 # ╠═80480fc2-861b-4fa9-be2d-fcb57f479a93
 # ╠═45418bd3-74a3-4758-9fce-adddbeeec076
-# ╠═2d0c1052-d5a2-456b-ac88-df52df473241
+# ╠═f6ed9c49-bf9c-467d-a602-8d18758a4602
+# ╠═2312f321-67ff-4fec-ba73-ff78c82af8dd
 # ╠═979895ea-9b13-494c-be08-2496562ccf07
 # ╠═ce86c8d1-1900-413f-90be-c9f4eb386a5a
 # ╠═bf61788d-ca13-457e-8026-62bc2460d4d7
@@ -819,7 +838,7 @@ body.disable_ui main {
 # ╠═4b2ed9db-0a17-4e52-a04d-3a6a5bf2c054
 # ╠═9372c69a-0aad-4e6e-9ea3-e934fa09b758
 # ╟─d5c6d058-17c6-4cf0-97b8-d863b1529161
-# ╠═798880fa-1e52-4758-a7f7-d3c6adec244a
+# ╠═20d12d7b-c666-46c3-8f48-5501641e8df3
 # ╠═470514e7-0f08-44a3-8519-5d704ea6b8d4
 # ╠═f80347e8-dc5a-4b0c-a6c0-db5c12eadcbb
 # ╠═fda9022a-2b95-4d06-8a80-80321a1bf441
@@ -862,7 +881,6 @@ body.disable_ui main {
 # ╠═5110de9a-3721-4043-b8b7-493daacb4137
 # ╠═53f5a645-93e0-499a-bb36-e4ff0153a63c
 # ╠═631c4d02-58cc-4c70-947f-22c8e8b11015
-# ╠═1ca7ba4c-9a94-4c97-ba02-1db2dadaf16e
 # ╠═123d0c63-f05a-4a7d-be16-6a3b9abac044
 # ╟─3b6b57e2-46ab-46d9-b334-6264daf583f3
 # ╠═2d34e125-548e-41bb-a530-ba212c0ca17c

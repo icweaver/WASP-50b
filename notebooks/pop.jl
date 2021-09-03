@@ -89,8 +89,10 @@ df_cleaned.pl_g = compute_g.(df_cleaned.pl_bmasse, df_cleaned.pl_rade)
 df_cleaned.pl_H = compute_H.(df_cleaned.pl_eqt, df_cleaned.pl_g)
 
 # ╔═╡ 3c0f3bbb-6455-4867-a069-e7816ba8eba2
+# TODO: Ratio of H/R in ppm
+# TODO: TSM relative to WASP-43b, HAT-P-23b, WASP-50b
 let
-	pop = data(@subset(df_cleaned, 1.0 .≤ :pl_H .≤ 200.0)) *
+	pop = data(@subset(df_cleaned, 1.0 .≤ :pl_H .≤ 300.0)) *
 		mapping(
 		:pl_g => "Surface gravity (m/s²)",
 		:pl_eqt => "Equilibrium temperature (K)",

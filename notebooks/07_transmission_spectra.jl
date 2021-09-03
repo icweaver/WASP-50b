@@ -99,9 +99,6 @@ First let's load up all of the data, including the white light transit depths fr
 # ╔═╡ c53be9cf-7722-4b43-928a-33e7b0463330
 const DATA_DIR = "data/detrended/out_l/WASP50"
 
-# ╔═╡ bcc81c51-796f-40b9-9deb-28884d167287
-@subset
-
 # ╔═╡ 1decb49e-a875-412c-938f-74b4fa0e2e85
 maxmeasure(x, x_u, x_d) = x ± max(x_u, x_d)
 
@@ -264,6 +261,9 @@ md"""
 Average precision per bin: $(round(Int, getproperty.(depths_adj[!, :Combined], :err) |> median)) ppm
 """
 
+# ╔═╡ 2a78be93-2e56-43ee-9ad0-c2bd1cc316a3
+depths_adj.Wav_u
+
 # ╔═╡ 8738ddc7-6f42-4809-8d61-b021230729f8
 Measurements.uncertainty.(depths_common[!, "Transit 1 (IMACS)"]) |> mean
 
@@ -272,9 +272,6 @@ Measurements.uncertainty.(depths_common[!, "Transit 2 (IMACS)"]) |> mean
 
 # ╔═╡ d6366a40-0565-4cd4-8ef4-2e4f9dce0774
 Measurements.uncertainty.(depths_common[!, "Transit 2 (LDSS3)"]) |> mean
-
-# ╔═╡ b85674ce-8ead-445e-8645-491cb31a1391
-5520*0.5
 
 # ╔═╡ 855e8ad1-ca16-4b4d-8145-e8df5fdea283
 Measurements.uncertainty.(depths_common[!, "Transit 3 (IMACS)"]) |> mean
@@ -523,7 +520,6 @@ body.disable_ui main {
 # ╠═c53be9cf-7722-4b43-928a-33e7b0463330
 # ╠═d6918a50-f75f-47f5-86c6-e251f7ef1e12
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
-# ╠═bcc81c51-796f-40b9-9deb-28884d167287
 # ╠═1decb49e-a875-412c-938f-74b4fa0e2e85
 # ╠═1e8524c4-a732-4e2f-80a9-b5e7548ef2b2
 # ╠═7b6d3a33-cb3b-4776-86f6-3af1663b9e49
@@ -546,10 +542,10 @@ body.disable_ui main {
 # ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
 # ╠═4b9cfc02-5e18-422d-b18e-6301a659561a
 # ╟─5d25caa3-916a-40b1-ba7c-ea1295afb775
+# ╠═2a78be93-2e56-43ee-9ad0-c2bd1cc316a3
 # ╠═8738ddc7-6f42-4809-8d61-b021230729f8
 # ╠═23ce5b47-2493-4ce5-afbd-72051a3c9e88
 # ╠═d6366a40-0565-4cd4-8ef4-2e4f9dce0774
-# ╠═b85674ce-8ead-445e-8645-491cb31a1391
 # ╠═855e8ad1-ca16-4b4d-8145-e8df5fdea283
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
 # ╠═65e644f7-26c4-4909-a1a0-f964663b98a6

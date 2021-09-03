@@ -221,6 +221,8 @@ let
 	linkaxes!(axs...)
 	hidedecorations!.(axs)
 	
+	save("../../ACCESS_WASP-50b/figures/frames/sci_imacs.pdf", fig)
+	
 	fig #|> as_svg
 end
 

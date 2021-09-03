@@ -143,9 +143,6 @@ md"""
 With the flux extracted for each object, we now turn to analyzing the resulting stellar spectra:
 """
 
-# ╔═╡ 52af8a0f-7ebf-4542-86fb-fe6a1b3565cc
-median(LC["spectra"]["WASP50"])
-
 # ╔═╡ 6fd88483-d005-4186-8dd2-82cea767ce90
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
 
@@ -185,12 +182,28 @@ We next plot these light curves and identified outliers below:
 """
 
 # ╔═╡ 4b763b58-862e-4c88-a7c9-fe0b1271c0b4
-#use_comps = ["c15", "c18", "c21", "c23"]
-use_comps = ["c06", "c13"]
-#use_comps = ["c15", "c21"]
+comps = Dict(
+	# Transit 1
+	"ut131219" => ["c15", "c18", "c21", "c23"],
+	#use_comps = ["c15", "c21"]
+
+	# Transit 2
+	"ut150927" => ["c15", "c18", "c21", "c23"],
+	#use_comps = ["c15", "c21"]
+
+	# Transit 3
+	"ut161211" => ["c06", "c13"],
+	#use_comps = ["c06", "c13"]
+)
+
+# ╔═╡ 40bd44b4-a88d-487b-9767-823433f6a048
+utdate = basename(dirname(fpath))
 
 # ╔═╡ 0997f1b0-28f2-4f0a-9d2a-91dacd2a9342
 comp_names
+
+# ╔═╡ 2df82761-b9fe-4d37-b57c-1eabb0ffa8dd
+use_comps = comps[utdate]
 
 # ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
 @bind window_width Slider(3:2:21, default=15, show_value=true)
@@ -254,14 +267,24 @@ function plot_div_WLCS!(
 		f_div_wlc[:, use_comps_idxs], window_width; ferr=ferr
 	)
 	idxs = 1:size(f_div_wlc, 1)
-	c = :darkgrey
 	k = 1
+	c = :darkgrey
 	for (i, cName) ∈ enumerate(cNames)		
 		# All points
+		if cName ∈ ("c06", "c15", "c21") # LDSS3 comps
+			c_text = COLORS[end]
+		else
+			c_text = :darkgrey
+		end
 		scatter!(axs[i], idxs, f_div_wlc[:, i];
 			color = (c, 0.3),
-			label = "$cName",
 		)
+		text!(axs[i], "$(cName)";
+			position =(300, 0.975),
+			align = (:right, :center),
+			color = c_text,
+		)
+		
 		# Used points
 		if cName ∈ use_comps
 			scatter!(axs[i], idxs[use_idxs], f_div_wlc[use_idxs, i];
@@ -274,19 +297,19 @@ function plot_div_WLCS!(
 			k += 1
 		end
 		
-		axislegend(axs[i])
+		#axislegend(axs[i])
 	end
 end
 
 # ╔═╡ 13523326-a5f2-480d-9961-d23cd51192b8
 let
-	fig = Figure(resolution=FIG_TALL)
+	fig = Figure()#resolution=FIG_WIDE)
 	
 	ncomps = length(comp_names)
 	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
 	
-	axs = [Axis(fig[i, j]) for i ∈ 1:4, j ∈ 1:2]
-	axs = reshape(copy(fig.content), 4, 2)
+	axs = [Axis(fig[i, j]) for i ∈ 1:2, j ∈ 1:4]
+	axs = reshape(copy(fig.content), 2, 4)
 	
 	plot_div_WLCS!(
 		axs, f_div_WLC_norm, window_width, comp_names, use_comps_idxs
@@ -299,6 +322,8 @@ let
 	
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
 	fig[end+1, 2:end] = Label(fig, "Index")
+	
+	#save("../../ACCESS_WASP-50b/figures/reduced/div_wlcs_$(utdate)_IMACS.pdf", fig)
 	
 	fig #|> as_svg
 end
@@ -359,7 +384,8 @@ We first compute `f_norm_w`, the binned target flux divided by each comparison s
 wbins_name = occursin("131219", fpath) ? "w50_bins_ut131219.dat" : "w50_bins.dat"
 
 # ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
-wbins = readdlm("data/reduced/IMACS/$(wbins_name)", comments=true)
+#wbins = readdlm("data/reduced/IMACS/$(wbins_name)", comments=true)
+wbins = readdlm("data/reduced/w50_bins_species.dat", comments=true)
 
 # ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
 let
@@ -382,9 +408,29 @@ let
 	axislegend()
 	
 	xlims!(ax, 3_500, 11_000)
-	ylims!(ax, 0, 2.2)
+	ylims!(ax, 0, 2.6)
+	
+	# save(
+	# 	"../../ACCESS_WASP-50b/figures/reduced/extracted_spectra_$(utdate)_IMACS.pdf",
+	# 	fig
+	# )
 	
 	fig #|> as_svg
+end
+
+# ╔═╡ 24594175-5f0e-4d5a-a9bf-e1fd441b70d3
+#let
+with_terminal() do
+	wl, wu = wbins[:, 1], wbins[:, 2]
+	Δw = @. wu - wl
+	wc = @. (wl + wu) / 2
+	df = DataFrame(
+		"Central wavelength" => wc,
+		"Lower wav." => wl,
+		"Upper wav." => wu,
+		L"$\Delta$ wav." => Δw,
+	)
+	latextabular(df, latex=false) |> println
 end
 
 # ╔═╡ 793c4d08-e2ee-4c9d-b7a0-11eaaddba895
@@ -455,6 +501,11 @@ let
 	fig[1:2, 0] = Label(fig, "Relative flux + offset", rotation=π/2)
 	fig[end, 2:3] = Label(fig, "Index")
 	
+	# save(
+	# 	"../../ACCESS_WASP-50b/figures/reduced/divided_blcs_IMACS.pdf",
+	# 	fig
+	# )
+	
 	# ax.xlabel = "Index"
 	# ax.ylabel = "Relative flux + offset"
 	
@@ -495,14 +546,15 @@ body.disable_ui main {
 # ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
 # ╟─e774a20f-2d58-486a-ab71-6bde678b26f8
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
-# ╠═52af8a0f-7ebf-4542-86fb-fe6a1b3565cc
 # ╠═1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
 # ╠═6fd88483-d005-4186-8dd2-82cea767ce90
 # ╟─e3468c61-782b-4f55-a4a1-9d1883655d11
 # ╠═18d58341-0173-4eb1-9f01-cfa893088613
 # ╟─941cd721-07d8-4a8f-9d75-42854e6e8edb
 # ╠═4b763b58-862e-4c88-a7c9-fe0b1271c0b4
+# ╠═40bd44b4-a88d-487b-9767-823433f6a048
 # ╠═0997f1b0-28f2-4f0a-9d2a-91dacd2a9342
+# ╠═2df82761-b9fe-4d37-b57c-1eabb0ffa8dd
 # ╠═df46d106-f186-4900-9d3f-b711bc803707
 # ╠═ab058d99-ce5f-4ed3-97bd-a62d2f258773
 # ╠═13523326-a5f2-480d-9961-d23cd51192b8
@@ -520,6 +572,7 @@ body.disable_ui main {
 # ╠═2768623f-7904-4674-a2ee-ad809cdd508b
 # ╠═d06ef854-7503-4801-97ae-65d2f1883a0d
 # ╠═6471fc66-47a5-455e-9611-c6fd9d56e9dc
+# ╠═24594175-5f0e-4d5a-a9bf-e1fd441b70d3
 # ╟─793c4d08-e2ee-4c9d-b7a0-11eaaddba895
 # ╠═684c026a-b5d0-4694-8d29-a44b7cb0fd6c
 # ╟─eeb3da97-72d5-4317-acb9-d28637a06d67
