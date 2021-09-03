@@ -403,9 +403,11 @@ let
 	
 	CSV.write("/home/mango/Desktop/tspec_all.csv", df_all)
 	
-	scatter!(ax, (df_all.Wlow .+ df_all.Wup) ./ 2, df_all.Depth, color=:red)
+	#scatter!(ax, (df_all.Wlow .+ df_all.Wup) ./ 2, df_all.Depth, color=:red)
 
-	axislegend(orientation=:horizontal, valign=:bottom, labelsize=16)
+	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
+	
+	save("../../ACCESS_WASP-50b/figures/detrended/tspec.pdf", fig)
 		
 	fig #|> as_svg
 end

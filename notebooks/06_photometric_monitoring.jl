@@ -112,8 +112,8 @@ end
 
 # ╔═╡ 6eaf882c-0cb5-415f-b8fe-c071ee25a895
 md"""
-Looks good. According to the table above, the data spans from
-**$(join(name.(extrema(df_ASASSN.hjd)), " - "))** from two cameras (**bd**, commissioned 2013 December at Haleakala; **bh**, commissioned 2015 July at CTIO), both in the V band:
+Looks good. According to the table above, the data spans
+**from $(join(name.(extrema(df_ASASSN.hjd)), " to "))** from two cameras (**bd**, commissioned 2013 December at Haleakala; **bh**, commissioned 2015 July at CTIO), both in the V band:
 """
 
 # ╔═╡ 98704543-8cb7-4fca-b601-2a8d2dfa4833
@@ -150,7 +150,7 @@ let
 		)
 	end
 		
-	#save("phot_mon.png", fig, px_per_unit=3)
+	save("../../ACCESS_WASP-50b/figures/stellar_activity/ASAS-SN_flux.pdf", fig)
 	
 	fig #|> as_svg
 end
@@ -214,13 +214,6 @@ df_ASASSN[!, :bjd] = loc_to_BJD.(df_ASASSN.hjd, coords_W50, df_ASASSN.camera);
 # ╔═╡ 79d08932-66f3-4ed9-bc13-f1ac3229e95d
 df_ASASSN
 
-# ╔═╡ 9a195365-e68f-43e2-8870-c09153e2ce91
-md"""
-### Plot
-
-With the BJD times computed, we can now plot the ASAS-SN photometry, binned to **$(t_window) days**:
-"""
-
 # ╔═╡ 92548af3-9a26-4202-88f2-ba3a31181686
 begin
 	df_sorted = sort(df_ASASSN, :bjd)
@@ -230,10 +223,67 @@ begin
 	#t_ASASSN .-= 2.457e6
 end;
 
+# ╔═╡ 3033c5f2-dd7a-4490-9d67-0ee26d8b57a0
+# lc_ASASSN = lk.LightCurve(
+# 	time=t_ASASSN, flux=f_ASASSN, flux_err=f_err_ASASSN
+# ).normalize()
+
 # ╔═╡ dbe317fe-540d-44e8-b8e7-6c465c79559f
 md"""
 ``Δt_\text{ASAS-SN}`` = $(@bind binsize_ASASSN Slider(1:30, default=7, show_value=true)) days
 """
+
+# ╔═╡ 9a195365-e68f-43e2-8870-c09153e2ce91
+md"""
+### Plot
+
+With the BJD times computed, we can now plot the ASAS-SN photometry, binned to **$(binsize_ASASSN) days**:
+"""
+
+# ╔═╡ f3425d9c-861e-4b26-b352-bd0669c7f1f9
+let
+	fig = Figure(resolution=(800, 800))
+	
+	### Photometry plot ####
+	ax = Axis(fig[1, 1], xlabel="Time (BTJD)", ylabel="Relative flux (ppm)")
+	
+	# Mark transit epochs
+	Δjulian_transit_dates = julian_transit_dates .- 2.457e6
+	vlines!(ax, Δjulian_transit_dates;
+		linestyle = :dash,
+		color = :darkgrey,
+	)
+	
+	# Label transit epochs
+	for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, Δjulian_transit_dates))
+		text!(ax, "Transit $i\n$utc";
+			position = Point2f0(jd, 5.0e4),
+			textsize = 14,
+			align = (:left, :center),
+			offset = Point2f0(10, 0),
+			color = :grey,
+		)
+	end
+	
+	# ax_phot, t_binned, f_binned, f_err_binned, lc_binned, f_med = plot_phot!(
+	# 	ax, t_ASASSN, f_ASASSN, f_err_ASASSN;
+	# 	t_offset=2.457e6, relative_flux=true, binsize=binsize_ASASSN
+	# )
+	
+# 	#### Periodogram #######
+# 	ax_pg = Axis(fig[2, 1], xlabel="Periods (days)", ylabel="log10 Power")
+# 	Ps, powers, faps = compute_pg(lc_binned, 5, 30)
+# 	lines!(ax_pg, Ps, log10.(powers*f_med/1e6))
+# 	hlines!(ax_pg, log10.(faps), color=:darkgrey, linestyle=:dash, label="\n\n[1, 5, 10]% FAPs")
+# 	axislegend()
+	
+# 	CSV.write(
+# 		"/home/mango/Desktop/WASP50LC_ASASSN_binned.csv",
+# 		DataFrame(:t=>t_binned, :f=>f_binned, :f_err=>f_err_binned),
+# 	)
+			
+	fig
+end
 
 # ╔═╡ 682499cb-af79-48f7-9e74-0185894f65fe
 #= md"""
@@ -256,20 +306,46 @@ First we use [`lightkurve`](https://docs.lightkurve.org/whats-new-v2.html) to do
 # ╔═╡ 0c790d2f-64d4-4e13-9629-a9725cd7086d
 lk = pyimport("lightkurve")
 
-# ╔═╡ 3033c5f2-dd7a-4490-9d67-0ee26d8b57a0
-lc_ASASSN = lk.LightCurve(
-	time=t_ASASSN, flux=f_ASASSN, flux_err=f_err_ASASSN
-).normalize()
-
-# ╔═╡ df094431-eedc-438d-a363-93d4c3ae2b66
-lc_ASASSN_binned = lc_ASASSN.bin(binsize_ASASSN)
-
-# ╔═╡ e36d1322-5aa4-4513-bb89-410a4bb6b750
-t_ASASSN_binned, f_ASASSN_binned, f_ASASSN_binned_err = (
-	lc_ASASSN_binned.time.value,
-	lc_ASASSN_binned.flux,
-	lc_ASASSN_binned.flux_err
-)
+# ╔═╡ 7370a1d9-4f8e-4788-adac-b8be2bcc9643
+function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=1.0)
+	t_rel = t .- t_offset
+	if relative_flux
+		f_med = median(f)
+		Δf, Δf_err = 1e6*(f .- f_med) / f_med , 1e6*f_err / f_med
+		
+	else
+		f_med = 1.0
+		Δf, Δf_err = f, f_err
+	end
+	
+	# Original data
+	errorbars!(ax, t_rel, Δf, Δf_err, color=(:darkgrey, 0.25))
+	scatter!(ax, t_rel, Δf, color=(:darkgrey, 0.25))
+	
+	# Binned data
+	lc = lk.LightCurve(
+		time=t_ASASSN, flux=f_ASASSN, flux_err=f_err_ASASSN
+	).normalize()
+	lc_binned = lc.bin(binsize)
+	t_binned, f_binned, f_err_binned = (
+		lc_binned.time.value,
+		lc_binned.flux,
+		lc_binned.flux_err
+	)
+	#bin_lc(t_rel, Δf, Δf_err, binsize)
+	f_binned_err_med = median(filter(!isnan, f_err_binned))
+	
+	errorbars!(ax, t_binned, f_binned, f_err_binned;
+		color=:grey
+	)
+	scatter!(ax, t_binned, f_binned;
+		color=:grey, label="avg err: $(f_binned_err_med)",
+	)
+	
+	axislegend(ax, position=:rb)
+	
+	return ax, t_binned, f_binned, f_err_binned, lc_binned, f_med
+end
 
 # ╔═╡ 2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
 Time = pyimport("astropy.time").Time
@@ -322,35 +398,41 @@ begin
 	push!(lcs_oot, lk.LightCurveCollection([lcs_oot...]).stitch())
 end;
 
+# ╔═╡ a3a0d365-fd08-4d6d-93cd-f73548da1feb
+P
+
 # ╔═╡ 82222ee8-f759-499d-a072-c219cc33ccad
 let
 	fig = Figure(resolution=FIG_TALL)
 	
-	for (i, (lc, lc_oot)) ∈ enumerate(zip(lcs_cleaned, lcs_oot))
+	for (i, (lc, lc_oot)) ∈ enumerate(zip(lcs_cleaned[1:end-1], lcs_oot[1:end-1]))
 		ax = Axis(fig[i, 1])
-		errorbars!(
-			ax,
-			lc.time.value,
-			lc.flux,
-			lc.flux_err,
+		scatter!(ax, lc.time.value, lc.flux;
+			color = (:darkgrey, 1.0),
+			#lc.flux_err,
+			markersize = 15,
 			label = """
 			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
 			"""
 		)
+		
+		ylims!(ax, 0.97, 1.02)
 		#scatter!(fig[i, 1], lc.time.value, lc.flux)
 		
-		errorbars!(ax, lc_oot.time.value, lc_oot.flux, lc_oot.flux_err;
-			color = COLORS[2], label="oot",
-			markersize = 5,
+		scatter!(ax, lc_oot.time.value, lc_oot.flux;
+			color = COLORS[2], label="OOT baseline",
+			#markersize = 5,
 		)
 
 		axislegend()
 	end
 
-	#linkyaxes!(filter(x -> x isa Axis, fig.content)...)
+	linkyaxes!(filter(x -> x isa Axis, fig.content)...)
 
 	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
 	Label(fig[1:end-1, 0], "Relative flux", rotation=π/2)
+	
+	save("../../ACCESS_WASP-50b/figures/stellar_activity/TESS_flux.pdf", fig)
 	
 	fig
 end
@@ -408,13 +490,13 @@ let
 	sectors = ("Sector 04", "Sector 31", "Combined")
 	for (pgram, plan, P_max, sector) in zip(pgrams, plans, P_maxs, sectors)
 		# Compute FAPs
-		#b = LombScargle.bootstrap(100, plan)
+		b = LombScargle.bootstrap(100, plan)
 		
 		# Plot
 		lines!(ax, periodpower(pgram)...;
 			label="$(sector): $(round(P_max, digits=2))"
 		)
-		#hlines!(ax, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))))
+		hlines!(ax, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))))
 	end
 	
 	axislegend("P_max (days)", position=(0.05, 0.8))
@@ -428,6 +510,8 @@ let
 	Label(fig[1:2, 0], "Normalized power", rotation=π/2)
 	
 	#axislegend()
+	
+	save("../../ACCESS_WASP-50b/figures/stellar_activity/TESS_pg.pdf", fig)
 	
 	fig
 end
@@ -503,17 +587,27 @@ let
 	fig = Figure()
 	
 	axs = []
+	sectors = ("Sector 04", "Sector 31", "Combined")
 	for (i, (lc_folded, lc_folded_binned, lc_fit_folded)) in enumerate(zip(
 				lcs_folded, lcs_folded_binned, lcs_fit_folded
 		))
 		ax = Axis(fig[i, 1])
 		push!(axs, ax)
-		scatter!(ax, lc_folded.time.value, lc_folded.flux)
-		scatter!(ax, lc_folded_binned.time.value, lc_folded_binned.flux)
-		lines!(ax, lc_fit_folded.time.value, lc_fit_folded.flux, color=:lightgreen)
+		scatter!(ax, lc_folded.time.value, lc_folded.flux, color=(:darkgrey, 0.5))
+		scatter!(ax, lc_folded_binned.time.value, lc_folded_binned.flux, color=COLORS[2])
+		lines!(ax, lc_fit_folded.time.value, lc_fit_folded.flux, color=0.5 .*(COLORS[2], 1.0))
+		text!(ax, "$(sectors[i])";
+			position = (3.5, 1.007),
+		)
+		ylims!(ax, 0.991, 1.01)
 	end
 	
 	linkaxes!(axs...)
+	
+	axs[end].xlabel = "Phase"
+	axs[2].ylabel = "Normalized flux"
+	
+	save("../../ACCESS_WASP-50b/figures/stellar_activity/TESS_phase.pdf", fig)
 	
 	fig
 end
@@ -538,6 +632,12 @@ f_sp(T_sp, ΔL, T₀=T₀) = (T₀^4 /  (T₀^4 - T_sp^4)) * (1 - ΔL)
 # ╔═╡ c0d53fc0-467b-4e49-a829-f149e14e3d08
 [f_sp.((2_200, 2_800), ΔL, T₀) for ΔL in ΔLs]
 
+# ╔═╡ 3077c3bf-9ddd-46db-94b7-b7a8120f1485
+Ts = 10.0:10.0:5_000
+
+# ╔═╡ df370404-2f12-4925-8827-6198793ae842
+extrema(f_sp.(Ts, ΔLs[end], T₀)) .* 100
+
 # ╔═╡ 18223d42-66d8-40d1-9d89-be8af46853e2
 md"""
 ## Helper Functions
@@ -552,83 +652,6 @@ begin
 	Makie.convert_arguments(
 		P::Type{<:Errorbars}, v::Vector, m::AbstractVector{<:Measurement}
 	) = convert_arguments(P, v, value.(m), uncertainty.(m))	
-end
-
-# ╔═╡ 7370a1d9-4f8e-4788-adac-b8be2bcc9643
-function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=1.0)
-	t_rel = t .- t_offset
-	if relative_flux
-		f_med = median(f)
-		Δf, Δf_err = 1e6*(f .- f_med) / f_med , 1e6*f_err / f_med
-		
-	else
-		f_med = 1.0
-		Δf, Δf_err = f, f_err
-	end
-	
-	# Original data
-	errorbars!(ax, t_rel, Δf, Δf_err, color=(:darkgrey, 0.25))
-	scatter!(ax, t_rel, Δf, color=(:darkgrey, 0.25))
-	
-	# Binned data
-	t_binned, f_binned, f_err_binned, lc_binned = bin_lc(t_rel, Δf, Δf_err, binsize)
-	f_binned_err_med = median(filter(!isnan, f_err_binned))
-	
-	errorbars!(ax, t_binned, f_binned, f_err_binned;
-		color=:grey
-	)
-	scatter!(ax, t_binned, f_binned;
-		color=:grey, label="avg err: $(f_binned_err_med)",
-	)
-	
-	axislegend(ax, position=:rb)
-	
-	return ax, t_binned, f_binned, f_err_binned, lc_binned, f_med
-end
-
-# ╔═╡ f3425d9c-861e-4b26-b352-bd0669c7f1f9
-let
-	fig = Figure(resolution=(800, 800))
-	
-	### Photometry plot ####
-	ax = Axis(fig[1, 1], xlabel="Time (BTJD)", ylabel="Relative flux (ppm)")
-	
-	# Mark transit epochs
-	Δjulian_transit_dates = julian_transit_dates .- 2.457e6
-	vlines!(ax, Δjulian_transit_dates;
-		linestyle = :dash,
-		color = :darkgrey,
-	)
-	
-	# Label transit epochs
-	for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, Δjulian_transit_dates))
-		text!(ax, "Transit $i\n$utc";
-			position = Point2f0(jd, 5.0e4),
-			textsize = 14,
-			align = (:left, :center),
-			offset = Point2f0(10, 0),
-			color = :grey,
-		)
-	end
-	
-	ax_phot, t_binned, f_binned, f_err_binned, lc_binned, f_med = plot_phot!(
-		ax, t_ASASSN, f_ASASSN, f_err_ASASSN;
-		t_offset=2.457e6, relative_flux=true, binsize=binsize_ASASSN
-	)
-	
-	#### Periodogram #######
-	ax_pg = Axis(fig[2, 1], xlabel="Periods (days)", ylabel="log10 Power")
-	Ps, powers, faps = compute_pg(lc_binned, 5, 30)
-	lines!(ax_pg, Ps, log10.(powers*f_med/1e6))
-	hlines!(ax_pg, log10.(faps), color=:darkgrey, linestyle=:dash, label="\n\n[1, 5, 10]% FAPs")
-	axislegend()
-	
-	CSV.write(
-		"/home/mango/Desktop/WASP50LC_ASASSN_binned.csv",
-		DataFrame(:t=>t_binned, :f=>f_binned, :f_err=>f_err_binned),
-	)
-			
-	fig
 end
 
 # ╔═╡ ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd
@@ -657,15 +680,15 @@ md"""
 # ╟─9a195365-e68f-43e2-8870-c09153e2ce91
 # ╠═92548af3-9a26-4202-88f2-ba3a31181686
 # ╠═3033c5f2-dd7a-4490-9d67-0ee26d8b57a0
-# ╠═df094431-eedc-438d-a363-93d4c3ae2b66
-# ╠═e36d1322-5aa4-4513-bb89-410a4bb6b750
 # ╟─dbe317fe-540d-44e8-b8e7-6c465c79559f
 # ╠═f3425d9c-861e-4b26-b352-bd0669c7f1f9
+# ╠═7370a1d9-4f8e-4788-adac-b8be2bcc9643
 # ╟─682499cb-af79-48f7-9e74-0185894f65fe
 # ╟─78d85c7c-da06-41ab-915b-48d93a010967
 # ╟─97e7feee-11b2-4a35-9327-b5c0d05b2a23
 # ╠═0c790d2f-64d4-4e13-9629-a9725cd7086d
 # ╠═2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
+# ╠═a3a0d365-fd08-4d6d-93cd-f73548da1feb
 # ╠═ec12acb8-9124-4cc0-8c9f-6525c1565dfd
 # ╠═708d54a5-95fd-4f15-9681-f6d8e7b9b05c
 # ╟─34fcd73d-a49c-4597-8e63-cfe2495eee48
@@ -689,8 +712,9 @@ md"""
 # ╠═278ea804-e2dd-4ca8-9a20-0e9a25746e02
 # ╠═d26122f1-1602-440c-8ba9-72469a782104
 # ╠═c0d53fc0-467b-4e49-a829-f149e14e3d08
+# ╠═3077c3bf-9ddd-46db-94b7-b7a8120f1485
+# ╠═df370404-2f12-4925-8827-6198793ae842
 # ╟─18223d42-66d8-40d1-9d89-be8af46853e2
 # ╠═682c3732-e68f-4fdb-bd63-553223308364
-# ╠═7370a1d9-4f8e-4788-adac-b8be2bcc9643
 # ╟─ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd
 # ╠═9e2ce576-c9bd-11eb-0699-47af13e79589

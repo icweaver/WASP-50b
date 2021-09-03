@@ -137,6 +137,8 @@ function plot_evidences(nm)
 	
 	Legend(fig[0, :], elements, labels, nbanks=4, tellheight=true)
 	
+	save("../../ACCESS_WASP-50b/figures/detrended/retrieval_evidences.pdf", fig)
+	
 	fig
 end
 
