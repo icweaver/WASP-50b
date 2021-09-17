@@ -5,68 +5,46 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ fbce9888-e591-11eb-38f3-eb65313e6f35
-using CairoMakie, KernelDensity
+using CairoMakie
 
-# ╔═╡ b5138f25-3434-4cd0-949d-26a0b900165d
-md"""
-Say we have some MCMC data like the following:
-"""
+# ╔═╡ 84393b89-ff56-4b1c-9d41-8f6478e7f4b4
+using DataFrames
 
-# ╔═╡ 22dc61e9-9db5-4e5f-9954-08ac474859af
-samples = Dict(
-	"params_$i" => randn(1_000)
-	for i in 1:3
-)
+# ╔═╡ 410455e6-afff-43dc-8f73-3f4aa7515caf
+import Makie.KernelDensity: kde
 
-# ╔═╡ 641321f3-acee-4826-b3d0-6eb7a69b5e8d
-md"""
-We can make a corner plot for it by just builind the subplots for it on the fly and then populating it with the data!
-"""
-
-# ╔═╡ 97e0d3ee-cd01-42e7-b8eb-a390c3bc30ae
-function corner_plot!(fig, samples)
-	n_params = length(samples) # Number of parameters
-	
-	# Initialize the cornerplot grid
-	for j in 1:n_params, i in 1:n_params
-		# Create subplot apply global settings
-		ax = Axis(fig[i, j]; aspect=1)
-		# Hide upper triangle
-		j > i && (hidedecorations!(ax); hidespines!(ax))
-		# # Hide y ticks on diagonals
-		j == i && hideydecorations!(ax)
-		# Hide x ticks on all diagonal elements except the bottom one
-		j == i && i != n_params && (hidexdecorations!(ax, grid=false))
-		# Hide ticks on interior lower triangle
-		j < i && i != n_params && j != 1 && (
-			hideydecorations!(ax, grid=false);
-			hidexdecorations!(ax, grid=false);
-		)
-		# Hide remaining xyticks
-		j < i && j == 1 && i != n_params && (hidexdecorations!(ax, grid=false))
-		j < i && i == n_params && j != 1 && (hideydecorations!(ax, grid=false))
-	end
-	
-	# Plot it up!
-	params = keys(samples)
-	for (j, p1) in enumerate(params), (i, p2) in enumerate(params)
-		# 1D plot
-		if i == j
-			density!(fig[i, i], samples[p1])
-		end
-		# 2D plot
-		if i > j
-			Z = kde((samples[p1], samples[p2]), npoints=(2^4, 2^4),)
-			contour!(fig[i, j], Z)
-		end
-	end
+# ╔═╡ aa2b0c98-a75a-4eb3-a4f9-0e2752eb59d2
+begin
+	df = DataFrame([rand(30) for _ in 1:4], :auto)
+	df.x2 .+= 5.0
+	df
 end
 
-# ╔═╡ ecde7b88-67b2-4c0a-b60c-a68d97479048
+# ╔═╡ 154801d7-3988-407a-8bfe-b82907b38a66
 begin
-	fig = Figure(resolution=(1_400, 1_400))
+	fig = Figure()
+	params = names(df)
+	N = length(params)
+	for (j, xj) in enumerate(eachcol(df)), (i, xi) in enumerate(eachcol(df))
+		axis = (xlabel="$(params[j])", ylabel="$(params[i])",)
+		i == j && density(fig[i, i], xi, axis=axis)
+		i > j && contour(fig[i, j], kde((xj, xi)), axis=axis)
+	end	
 	
-	corner_plot!(fig, samples)
+	# Label stuff
+	# N = length(params)
+	# params_str = names(df)
+	# axs = reshape(fig.content, N, N)
+	axs = fig.content
+	linkxaxes!(axs...)
+	# [
+	# 	(ax.xlabelvisible=true; ax.xticksvisible=true; ax.xticklabelsvisible=true)
+	# 	for ax ∈ axs[end, :]
+	# ]
+	# [
+	# 	(ax.ylabelvisible=true; ax.yticksvisible=true; ax.yticklabelsvisible=true)
+	# 	for ax ∈ axs[:, begin]
+	# ]
 	
 	fig
 end
@@ -75,11 +53,13 @@ end
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-KernelDensity = "5ab0869b-81aa-558d-bb23-cbf5423bbe9b"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 
 [compat]
 CairoMakie = "~0.6.3"
-KernelDensity = "~0.6.3"
+DataFrames = "~1.2.2"
+Makie = "~0.15.0"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -217,10 +197,21 @@ git-tree-sha1 = "9f02045d934dc030edad45944ea80dbd1f0ebea7"
 uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
 version = "0.5.7"
 
+[[Crayons]]
+git-tree-sha1 = "3f71217b538d7aaee0b69ab47d9b7724ca8afa0d"
+uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
+version = "4.0.4"
+
 [[DataAPI]]
 git-tree-sha1 = "ee400abb2298bd13bfc3df1c412ed228061a2385"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 version = "1.7.0"
+
+[[DataFrames]]
+deps = ["Compat", "DataAPI", "Future", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrettyTables", "Printf", "REPL", "Reexport", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
+git-tree-sha1 = "d785f42445b63fc86caa08bb9a9351008be9b765"
+uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+version = "1.2.2"
 
 [[DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
@@ -357,6 +348,10 @@ git-tree-sha1 = "aa31987c2ba8704e23c6c8ba8a4f769d5d7e4f91"
 uuid = "559328eb-81f9-559d-9380-de523a88c83c"
 version = "1.0.10+0"
 
+[[Future]]
+deps = ["Random"]
+uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
+
 [[GeometryBasics]]
 deps = ["EarCut_jll", "IterTools", "LinearAlgebra", "StaticArrays", "StructArrays", "Tables"]
 git-tree-sha1 = "15ff9a14b9e1218958d3530cc288cf31465d9ae2"
@@ -452,6 +447,11 @@ deps = ["Dates", "EllipsisNotation", "Statistics"]
 git-tree-sha1 = "3cc368af3f110a767ac786560045dceddfc16758"
 uuid = "8197267c-284f-5f27-9208-e0e47529a953"
 version = "0.5.3"
+
+[[InvertedIndices]]
+git-tree-sha1 = "bee5f1ef5bf65df56bdd2e40447590b272a5471f"
+uuid = "41ab1584-1d38-5bbf-9106-f11c6c58b48f"
+version = "1.1.0"
 
 [[Isoband]]
 deps = ["isoband_jll"]
@@ -759,11 +759,23 @@ git-tree-sha1 = "c031d2332c9a8e1c90eca239385815dc271abb22"
 uuid = "647866c9-e3ac-4575-94e7-e3d426903924"
 version = "0.1.1"
 
+[[PooledArrays]]
+deps = ["DataAPI", "Future"]
+git-tree-sha1 = "a193d6ad9c45ada72c14b731a318bedd3c2f00cf"
+uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
+version = "1.3.0"
+
 [[Preferences]]
 deps = ["TOML"]
 git-tree-sha1 = "00cfd92944ca9c760982747e9a1d0d5d86ab1e5a"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
 version = "1.2.2"
+
+[[PrettyTables]]
+deps = ["Crayons", "Formatting", "Markdown", "Reexport", "Tables"]
+git-tree-sha1 = "0d1245a357cc61c8cd61934c07447aa569ff22e6"
+uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
+version = "1.1.0"
 
 [[Printf]]
 deps = ["Unicode"]
@@ -1096,10 +1108,9 @@ version = "3.5.0+0"
 
 # ╔═╡ Cell order:
 # ╠═fbce9888-e591-11eb-38f3-eb65313e6f35
-# ╟─b5138f25-3434-4cd0-949d-26a0b900165d
-# ╠═22dc61e9-9db5-4e5f-9954-08ac474859af
-# ╟─641321f3-acee-4826-b3d0-6eb7a69b5e8d
-# ╠═ecde7b88-67b2-4c0a-b60c-a68d97479048
-# ╠═97e0d3ee-cd01-42e7-b8eb-a390c3bc30ae
+# ╠═410455e6-afff-43dc-8f73-3f4aa7515caf
+# ╠═84393b89-ff56-4b1c-9d41-8f6478e7f4b4
+# ╠═aa2b0c98-a75a-4eb3-a4f9-0e2752eb59d2
+# ╠═154801d7-3988-407a-8bfe-b82907b38a66
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

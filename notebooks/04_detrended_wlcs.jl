@@ -20,7 +20,6 @@ begin
 	using DelimitedFiles
 	using Glob
 	using ImageFiltering
-	using KernelDensity
 	using Latexify
 	using Measurements
 	using NaturalSort
@@ -29,6 +28,8 @@ begin
 	using PyCall
 	using Statistics
 	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
+	
+	import CairoMakie.Makie.KernelDensity: kde
 end
 
 # ╔═╡ 506eeeb2-e56d-436b-91b8-605e52201563
@@ -485,9 +486,6 @@ let
 	fig #|> as_svg
 end
 
-# ╔═╡ 5c18857c-ff56-476e-b0cf-0ed613ec7e72
-hspan
-
 # ╔═╡ baeadfce-535a-46c3-8cb9-79cf6bde8555
 md"""
 ## Packages
@@ -551,7 +549,6 @@ body.disable_ui main {
 # ╟─82a23101-9e1f-4eae-b529-e750a44c98b1
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
 # ╠═1f7b883c-0192-45bd-a206-2a9fde1409ca
-# ╠═5c18857c-ff56-476e-b0cf-0ed613ec7e72
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
 # ╠═691eddff-f2eb-41a8-ab05-63afb46d15f2
 # ╟─2c3f26b9-410a-4cfa-befd-194daddefb4e

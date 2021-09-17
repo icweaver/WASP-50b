@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.15.1
+# v0.16.0
 
 using Markdown
 using InteractiveUtils
@@ -11,7 +11,8 @@ begin
 	
 	using AlgebraOfGraphics, CairoMakie, CSV, DataFrames, Unitful, UnitfulAstro
 	using DataFramesMeta
-	using PhysicalConstants.CODATA2018: G, k_B, m_u, σ
+	using HTTP
+	using Unitful
 	
 	set_aog_theme!()
 	update_theme!(
@@ -25,20 +26,45 @@ begin
 			colgap = 0,
 		)
 	)
-	
 	COLORS = Makie.wong_colors()
 end
 
-# ╔═╡ a5559bbb-11d9-4976-bece-9aaebea7a68d
-df = CSV.read("data/pop/PSCompPars_2021.08.31_23.50.02.csv", DataFrame;
-	comment = "#",
-)
+# ╔═╡ c64b8c73-786c-451b-b8fc-43ee5ded5fcd
+md"""
+Column name definitions [here](https://exoplanetarchive.ipac.caltech.edu/docs/TAP/usingTAP.html)
+"""
 
-# ╔═╡ f8cf4024-660f-4ad0-8ea9-a67fa8b9ca22
-df_cleaned = dropmissing(
-	df,
-	[:pl_radj, :pl_eqt, :pl_bmassj, :st_rad, :sy_jmag]
-)
+# ╔═╡ f396cda3-f535-4ad9-b771-7ccbd45c54f3
+df_all = let
+		columns = [
+		"pl_name",
+		"disc_facility",
+		"tic_id",
+		"pl_rade",
+		"pl_bmasse",
+		"pl_orbper",
+		"pl_eqt",
+		"pl_dens",
+		"pl_trandep",
+		"pl_trandur",
+		"sy_jmag",
+		"sy_tmag",
+		"st_teff",
+		"st_rad",
+	]
+	url = "https://exoplanetarchive.ipac.caltech.edu/TAP"
+	#cond = "tran_flag+=1+and+pl_eqt+<+1000+and+pl_rade+<+4"
+	cond = "tran_flag+=1"
+	query = "select+$(join(columns, ','))+from+pscomppars+where+$(cond)&format=csv"
+	request = HTTP.get("$(url)/sync?query=$(query)")
+	CSV.read(request.body, DataFrame)
+end
+
+# ╔═╡ 9aed232f-ec74-4ec6-9ae7-06b90539833b
+df = @chain df_all begin
+	dropmissing([:pl_rade, :pl_eqt, :pl_bmasse, :st_rad, :sy_jmag])
+	#@subset(:pl_rade .≤ 11.0)
+end
 
 # ╔═╡ 2776646e-47e7-4b9e-ab91-4035bc6df99f
 function compute_scale_factor(Rp)
@@ -51,80 +77,88 @@ function compute_scale_factor(Rp)
 	elseif 4.0 ≤ Rp < 10.0
 		f = 1.15
 	else
-		f = 0.0 # Only goes up to 1O R_earth in Kempton+2018
+		f = 1.15 # Only goes up to 1O R_earth in Kempton+2018
 	end
 	return f
 end
 
-# ╔═╡ 0df5cd17-d6c7-47ad-8e51-5d4aaae2ec61
-function compute_TSM(f, Rp, Teq, Mp, Rs, J)
-	f = compute_scale_factor(Rp)
-	return f * (Rp^3 * Teq / (Mp * Rs^2)) * 10.0^(-J/5.0)
-end
-
-# ╔═╡ c55f348b-280a-4a3f-bba5-85d6eb160b03
-const G_RpMp = G |> u"Rearth^3/Mearth/s^2" |> ustrip
-
-# ╔═╡ 794df6de-c602-4b69-9502-8225c45cd156
-const G_SI = G |> u"m*Rearth^2/Mearth/s^2" |> ustrip
-
-# ╔═╡ ad322153-a033-4c71-ae28-ae9f3e18fa47
-const k_B_earth = k_B |> u"kg*m^2/s^2/K" |> ustrip
-
-# ╔═╡ 40b9adc9-94f9-4426-ad9b-839175d318b7
-const mp = 2.0 * m_u |> u"kg" |> ustrip # X amu
-
-# ╔═╡ 2a32d2af-3acd-4015-b937-cc55e5dcef11
-# μ ≡ 2.0 amu (in Mearth), gp in m/s^2
-# returns km
-compute_H(Tp, gp) = 1e-3 * k_B_earth * Tp / (mp * gp)
+# ╔═╡ 2a59198c-95aa-4360-be05-49b38f1c9171
+const G = ustrip(u"m*Rearth^2/Mearth/s^2", Unitful.G)
 
 # ╔═╡ 46942e93-fa05-48ce-9639-248ccb63fa30
-compute_g(Mp, Rp) = G_SI * Mp / Rp^2
+compute_g(Mp, Rp) = G * Mp / Rp^2
 
-# ╔═╡ 8f9634d6-7600-4279-ae9c-23c91ed6cd81
-df_cleaned.pl_g = compute_g.(df_cleaned.pl_bmasse, df_cleaned.pl_rade)
+# ╔═╡ c7960066-cc33-480c-807b-c56ead4262bf
+function compute_TSM(Rp, Teq, Mp, Rs, J; denom=1.0)
+	f = compute_scale_factor(Rp)
+	#f = 1.0
+	return f * (Rp^3 * Teq / (Mp * Rs^2)) * 10.0^(-J/5.0) / denom
+end
 
-# ╔═╡ 88dc35de-1b8e-4b0f-acb3-8cbb77d47faa
-df_cleaned.pl_H = compute_H.(df_cleaned.pl_eqt, df_cleaned.pl_g)
+# ╔═╡ 7b52e0aa-cf3e-472e-9ca6-06db018ac86d
+@transform! df begin
+	:pl_g = compute_g.(:pl_bmasse, :pl_rade)
+	:pl_TSM = compute_TSM.(
+		:pl_rade,
+		:pl_eqt,
+		:pl_bmasse,
+		:st_rad,
+		:sy_jmag,
+	)
+end
+
+# ╔═╡ bb90ce6d-a354-425e-abfd-5f7e69997f22
+TSM₀ = @subset(df, :pl_name .== "HAT-P-23 b").pl_TSM[1]
+
+# ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
+df_HGHJs = @subset(df, :pl_name .∈ Ref(["HAT-P-23 b", "WASP-43 b", "WASP-50 b"]))
+
+# ╔═╡ de1cc207-ccc9-41ba-bd73-e1f912b65a04
+df_candidates = @chain df begin
+	@subset @. (1.0 ≤ :pl_TSMR ≤ 5.0) & (20.0 ≤ :pl_g ≤ 60.0)
+	sort(:pl_TSMR, rev=true)
+end
 
 # ╔═╡ 3c0f3bbb-6455-4867-a069-e7816ba8eba2
-# TODO: Ratio of H/R in ppm
-# TODO: TSM relative to WASP-43b, HAT-P-23b, WASP-50b
 let
-	pop = data(@subset(df_cleaned, 1.0 .≤ :pl_H .≤ 300.0)) *
+	pop = data(df_candidates) *
+	#pop = data(@subset(df, 1.0 .≤ :pl_TSMR .≤ 5.0)) *
 		mapping(
 		:pl_g => "Surface gravity (m/s²)",
 		:pl_eqt => "Equilibrium temperature (K)",
-		color=:pl_H => "Scale height (km)",
+		color = :pl_TSMR => "TSMR",
 	)
 	
-	fig = draw(pop; axis=(;limits=((0, 60), (0, 3_000))))
+	fig = draw(pop)
 		
-	scatter!(
-		fig.figure[1, 1],
-		# WASP-43, HAT-P-23, WASP-50
-		[47.4, 29.2, 31.61], [1440.0, 2027.0, 1381.0];
-		color=:red,
-		markersize=40,
-		marker='x',
+	scatter!(fig.figure[1, 1], df_HGHJs.pl_g, df_HGHJs.pl_eqt;
+		color = (:red, 0.5),
+		markersize = 20,
 	)
+	# for HGHJs in df_HGHJs
+	# 	scatter!(
+	# 		fig.figure[1, 1],
+	# 		[47.4, 29.2, 31.61], [1440.0, 2027.0, 1381.0];
+	# 		color=:red,
+	# 		markersize=40,
+	# 		marker='x',
+	# 	)
+	# end
 	
 	fig
 end
 
 # ╔═╡ Cell order:
-# ╠═a5559bbb-11d9-4976-bece-9aaebea7a68d
-# ╠═f8cf4024-660f-4ad0-8ea9-a67fa8b9ca22
-# ╠═0df5cd17-d6c7-47ad-8e51-5d4aaae2ec61
+# ╟─c64b8c73-786c-451b-b8fc-43ee5ded5fcd
+# ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
+# ╠═9aed232f-ec74-4ec6-9ae7-06b90539833b
 # ╠═2776646e-47e7-4b9e-ab91-4035bc6df99f
-# ╠═c55f348b-280a-4a3f-bba5-85d6eb160b03
-# ╠═794df6de-c602-4b69-9502-8225c45cd156
-# ╠═ad322153-a033-4c71-ae28-ae9f3e18fa47
-# ╠═40b9adc9-94f9-4426-ad9b-839175d318b7
-# ╠═2a32d2af-3acd-4015-b937-cc55e5dcef11
+# ╠═2a59198c-95aa-4360-be05-49b38f1c9171
 # ╠═46942e93-fa05-48ce-9639-248ccb63fa30
-# ╠═8f9634d6-7600-4279-ae9c-23c91ed6cd81
-# ╠═88dc35de-1b8e-4b0f-acb3-8cbb77d47faa
+# ╠═7b52e0aa-cf3e-472e-9ca6-06db018ac86d
+# ╠═c7960066-cc33-480c-807b-c56ead4262bf
+# ╠═bb90ce6d-a354-425e-abfd-5f7e69997f22
+# ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
+# ╠═de1cc207-ccc9-41ba-bd73-e1f912b65a04
 # ╠═3c0f3bbb-6455-4867-a069-e7816ba8eba2
 # ╠═24c6a2d0-0aea-11ec-2cd4-3de7ec08b83e

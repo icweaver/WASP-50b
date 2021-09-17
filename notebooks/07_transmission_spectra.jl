@@ -20,7 +20,6 @@ begin
 	using DelimitedFiles
 	using Glob
 	using ImageFiltering
-	using KernelDensity
 	using Latexify
 	using LaTeXStrings
 	using Measurements
