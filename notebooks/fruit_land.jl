@@ -12,13 +12,11 @@ set_aog_theme!()
 
 # ╔═╡ 6886b93c-d850-4704-afbd-48fd660c1be4
 df = DataFrame(
-	Dict(
-		:city => ["Apple", "Grapefuit", "Kiwi", "Orange", "Pear", "Watermelon"],
-		:size => rand(1:0.1:10, 6),
-		:pop => rand(1:0.1:10, 6),
-		:happiness => rand(1:10, 6),
-		:cost => rand(40_000:400_000, 6)
-	)
+	:city => ["Apple", "Grapefuit", "Kiwi", "Orange", "Pear", "Watermelon"],
+	:size => rand(1:0.1:10, 6),
+	:pop => rand(1:0.1:10, 6),
+	:happiness => rand(1:10, 6),
+	:cost => rand(40_000:400_000, 6)
 )
 
 # ╔═╡ 52eb90bf-d904-4b1a-a224-557ced444cf4
