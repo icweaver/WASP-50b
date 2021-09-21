@@ -97,25 +97,32 @@ df.pl_TSMR = df.pl_TSM ./ TSM₀
 
 # ╔═╡ de1cc207-ccc9-41ba-bd73-e1f912b65a04
 df_candidates = @chain df begin
-	@subset @. (1.0 ≤ :pl_TSMR ≤ 5.0) & (20.0 ≤ :pl_g ≤ 80.0)
+	@subset @. (1.0 ≤ :pl_TSMR ≤ 20.0) & (20.0 ≤ :pl_g ≤ 100.0)
 	sort(:pl_TSMR, rev=true)
 end
 
 # ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
 df_HGHJs = @subset(df_candidates, :pl_name .∈ Ref(["HAT-P-23 b", "WASP-43 b", "WASP-50 b"]))
 
-# ╔═╡ 3c0f3bbb-6455-4867-a069-e7816ba8eba2
+# ╔═╡ c1cd9292-28b9-4206-b128-608aaf30ff9c
 let
 	m = mapping(
 		:pl_g => "Surface gravity (m/s²)",
 		:pl_eqt => "Equilibrium temperature (K)",
-		color = :pl_trandep => "Transit depth (%)",
+		color = :sy_tmag => "Tess magnitude",
 		markersize = :pl_TSMR => (x -> 20.0*x),
 	)
 	marker_open = visual(marker='○')
 	marker_closed = visual(marker='●')
 	plt = m * (data(df_candidates)*marker_open + data(df_HGHJs)*marker_closed)
 	fg = draw(plt)
+	
+	ax = fg.grid[1, 1].axis
+	vlines!(ax, 30.0, color=:darkgrey, linestyle=:dash)
+	TSMR_range = round.(extrema(df_candidates.pl_TSMR))
+	text!(ax, "TSMR: $(TSMR_range[1]) -- $(TSMR_range[2])", position=(35, 2_500))
+	
+	fg
 end
 
 # ╔═╡ 2a59198c-95aa-4360-be05-49b38f1c9171
@@ -148,6 +155,6 @@ end
 # ╠═f37b0b30-4d62-4a72-a033-4c5b68b19e1a
 # ╠═de1cc207-ccc9-41ba-bd73-e1f912b65a04
 # ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
-# ╠═3c0f3bbb-6455-4867-a069-e7816ba8eba2
+# ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╠═2a59198c-95aa-4360-be05-49b38f1c9171
 # ╠═24c6a2d0-0aea-11ec-2cd4-3de7ec08b83e
