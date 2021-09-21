@@ -13,20 +13,6 @@ begin
 	using DataFramesMeta
 	using HTTP
 	using Unitful
-	
-	set_aog_theme!()
-	update_theme!(
-		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
-			Scatter = (linewidth=10,),
-			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
-		)
-	)
-	COLORS = Makie.wong_colors()
 end
 
 # ╔═╡ c64b8c73-786c-451b-b8fc-43ee5ded5fcd
@@ -89,12 +75,6 @@ function compute_TSM(Rp, Teq, Mp, Rs, J; denom=1.0)
 	return f * (Rp^3 * Teq / (Mp * Rs^2)) * 10.0^(-J/5.0) / denom
 end
 
-# ╔═╡ bb90ce6d-a354-425e-abfd-5f7e69997f22
-TSM₀ = @subset(df, :pl_name .== "HAT-P-23 b").pl_TSM[1]
-
-# ╔═╡ f37b0b30-4d62-4a72-a033-4c5b68b19e1a
-df.pl_TSMR = df.pl_TSM ./ TSM₀
-
 # ╔═╡ de1cc207-ccc9-41ba-bd73-e1f912b65a04
 df_candidates = @chain df begin
 	@subset @. (1.0 ≤ :pl_TSMR ≤ 20.0) & (20.0 ≤ :pl_g ≤ 100.0)
@@ -132,15 +112,38 @@ const G = ustrip(u"m*Rearth^2/Mearth/s^2", Unitful.G)
 compute_g(Mp, Rp) = G * Mp / Rp^2
 
 # ╔═╡ 7b52e0aa-cf3e-472e-9ca6-06db018ac86d
-@transform! df begin
-	:pl_g = compute_g.(:pl_bmasse, :pl_rade)
-	:pl_TSM = compute_TSM.(
-		:pl_rade,
-		:pl_eqt,
-		:pl_bmasse,
-		:st_rad,
-		:sy_jmag,
+begin
+	@transform! df begin
+		:pl_g = compute_g.(:pl_bmasse, :pl_rade)
+		:pl_TSM = compute_TSM.(
+			:pl_rade,
+			:pl_eqt,
+			:pl_bmasse,
+			:st_rad,
+			:sy_jmag,
+		)
+	end
+	
+	TSM₀ = @subset(df, :pl_name .== "HAT-P-23 b").pl_TSM[1]
+	
+	df.pl_TSMR = df.pl_TSM ./ TSM₀
+end
+
+# ╔═╡ dcb16743-4ea5-45e8-936e-c6445bfa010f
+begin
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Text = (font=AlgebraOfGraphics.firasans("Light"),),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
 	)
+	COLORS = Makie.wong_colors()
 end
 
 # ╔═╡ Cell order:
@@ -151,10 +154,9 @@ end
 # ╠═46942e93-fa05-48ce-9639-248ccb63fa30
 # ╠═7b52e0aa-cf3e-472e-9ca6-06db018ac86d
 # ╠═c7960066-cc33-480c-807b-c56ead4262bf
-# ╠═bb90ce6d-a354-425e-abfd-5f7e69997f22
-# ╠═f37b0b30-4d62-4a72-a033-4c5b68b19e1a
 # ╠═de1cc207-ccc9-41ba-bd73-e1f912b65a04
 # ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╠═2a59198c-95aa-4360-be05-49b38f1c9171
+# ╠═dcb16743-4ea5-45e8-936e-c6445bfa010f
 # ╠═24c6a2d0-0aea-11ec-2cd4-3de7ec08b83e
