@@ -35,6 +35,9 @@ And then plot:
 1. Size vs. Population
 1. Colored by Cost
 1. With markersize corresponding to Happiness™
+1. And those three cities above highlighted
+1. And the axes automatically labelled
+1. And a colorbar automatically added
 """
 
 # ╔═╡ ef586ca8-b17a-4648-816b-732a6551f933
@@ -1215,7 +1218,7 @@ version = "3.5.0+0"
 # ╠═6886b93c-d850-4704-afbd-48fd660c1be4
 # ╟─52eb90bf-d904-4b1a-a224-557ced444cf4
 # ╠═8dada509-93f0-494c-ad6c-c864bf0b0a56
-# ╟─f782a371-fc8b-42fd-b5a3-17d03585191e
+# ╠═f782a371-fc8b-42fd-b5a3-17d03585191e
 # ╠═ef586ca8-b17a-4648-816b-732a6551f933
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

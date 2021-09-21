@@ -95,44 +95,27 @@ TSM₀ = @subset(df, :pl_name .== "HAT-P-23 b").pl_TSM[1]
 # ╔═╡ f37b0b30-4d62-4a72-a033-4c5b68b19e1a
 df.pl_TSMR = df.pl_TSM ./ TSM₀
 
-# ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
-df_HGHJs = @subset(df, :pl_name .∈ Ref(["HAT-P-23 b", "WASP-43 b", "WASP-50 b"]))
-
 # ╔═╡ de1cc207-ccc9-41ba-bd73-e1f912b65a04
 df_candidates = @chain df begin
 	@subset @. (1.0 ≤ :pl_TSMR ≤ 5.0) & (20.0 ≤ :pl_g ≤ 80.0)
 	sort(:pl_TSMR, rev=true)
 end
 
+# ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
+df_HGHJs = @subset(df_candidates, :pl_name .∈ Ref(["HAT-P-23 b", "WASP-43 b", "WASP-50 b"]))
+
 # ╔═╡ 3c0f3bbb-6455-4867-a069-e7816ba8eba2
 let
-	pop = data(df_candidates) *
-		mapping(
+	m = mapping(
 		:pl_g => "Surface gravity (m/s²)",
 		:pl_eqt => "Equilibrium temperature (K)",
 		color = :pl_trandep => "Transit depth (%)",
-		markersize = :pl_TSMR => (x -> 30.0*x),
+		markersize = :pl_TSMR => (x -> 20.0*x),
 	)
-	
-	p = draw(pop)
-	fig = p.figure[1, 1]
-			
-	scatter!(fig, df_HGHJs.pl_g, df_HGHJs.pl_eqt;
-		color = :white,
-		marker = 'x',
-		markersize = 20,
-	)
-	
-	# text!(
-	# 	fig,
-	# 	df_HGHJs.pl_name,
-	# 	position = [(x, y) for (x, y) ∈ zip(df_HGHJs.pl_g, df_HGHJs.pl_eqt)],
-	# 	align = (:right, :top),
-	# )
-	
-	#fig
-	
-	p
+	marker_open = visual(marker='○')
+	marker_closed = visual(marker='●')
+	plt = m * (data(df_candidates)*marker_open + data(df_HGHJs)*marker_closed)
+	fg = draw(plt)
 end
 
 # ╔═╡ 2a59198c-95aa-4360-be05-49b38f1c9171
@@ -163,8 +146,8 @@ end
 # ╠═c7960066-cc33-480c-807b-c56ead4262bf
 # ╠═bb90ce6d-a354-425e-abfd-5f7e69997f22
 # ╠═f37b0b30-4d62-4a72-a033-4c5b68b19e1a
-# ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
 # ╠═de1cc207-ccc9-41ba-bd73-e1f912b65a04
+# ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
 # ╠═3c0f3bbb-6455-4867-a069-e7816ba8eba2
 # ╠═2a59198c-95aa-4360-be05-49b38f1c9171
 # ╠═24c6a2d0-0aea-11ec-2cd4-3de7ec08b83e
