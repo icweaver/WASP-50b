@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.15.1
+# v0.16.1
 
 using Markdown
 using InteractiveUtils
@@ -31,7 +31,6 @@ begin
 	using DelimitedFiles
 	using Glob
 	using ImageFiltering
-	using KernelDensity
 	using Latexify
 	using Measurements
 	using Measurements: value, uncertainty
@@ -40,6 +39,8 @@ begin
 	using Printf
 	using Statistics
 	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
+	
+	import CairoMakie.Makie.KernelDensity: kde
 	
 	# Python setup
 	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP-50b/bin/python"

@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.15.1
+# v0.16.1
 
 using Markdown
 using InteractiveUtils
@@ -283,7 +283,7 @@ end
 
 # ╔═╡ 6fcd1377-8364-45a3-9ff6-89d61df1ef42
 # Number of levels `n` to show in contour plots
-levels(A, n) = reverse(
+compute_levels(A, n) = reverse(
 	range(maximum(A), step=-maximum(A)/(n+1), length=(n+1))
 )
 
@@ -303,14 +303,14 @@ function plot_corner!(fig, samples, params; n_levels=4, color=:blue)
 		if i > j
 			Z = kde((samples[p1], samples[p2]), npoints=(2^4, 2^4),)
 			contourf!(fig[i, j], Z;
-				levels = levels(Z.density, n_levels),
+				levels = compute_levels(Z.density, n_levels),
 				colormap = cgrad(
 					range(colorant"white", color, length=n_levels),
 					alpha=0.5,
 				),
 			)
 			contour!(fig[i, j], Z;
-				levels = levels(Z.density, n_levels),
+				levels = compute_levels(Z.density, n_levels),
 				color = color,
 				linewidth = 3,
 			)
