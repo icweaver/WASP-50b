@@ -95,16 +95,22 @@ With this list of $(nrow(df_all)) transiting exoplanets with observed stellar an
 """
 
 # ╔═╡ 7c431d58-e262-4d93-af28-1f65cfe9e452
-g_low, g_high = 20.0, 100.0 
+g_low, g_high = 15.0, 100.0 
 
 # ╔═╡ 6b9906d6-eaa5-4994-a751-296c6dcf9570
-TSM_low, TSM_high = 1.0, 15.0
+TSM_low, TSM_high = 0.01, 20
 
 # ╔═╡ 7f956b36-ce65-4e4e-afa5-9b97b9e06954
 md"""
 ## HGHJ population 💪
 
 We define this population to be the sample of transiting exoplanets with surface gravities between $(g_low) – $(g_high) m/s², with a TSM relative to HAT-P-23b between $(TSM_low) – $(TSM_high). We choose our relative TSM (TSMR) to be based on the TSM of HAT-P-23b because that is the HGHJ with the smallest TSM, that also has transmission spectra data available.
+"""
+
+# ╔═╡ 0f9262ef-b774-45bc-bdab-46860779683d
+md"""
+!!! note
+	Inspired from [warm-worlds](https://github.com/nespinoza/warm-worlds)
 """
 
 # ╔═╡ 2776646e-47e7-4b9e-ab91-4035bc6df99f
@@ -167,6 +173,9 @@ df_HGHJs_all = @chain df begin
 	sort(:TSMR, rev=true)
 end
 
+# ╔═╡ e6d3e2b6-8895-46cd-8836-611d5cc4f5d3
+extrema(df_HGHJs_all.TSMR)
+
 # ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
 df_HGHJs = @subset(
 	df_HGHJs_all, :pl_name .∈ Ref(["HAT-P-23 b", "WASP-43 b", "WASP-50 b"])
@@ -174,21 +183,33 @@ df_HGHJs = @subset(
 
 # ╔═╡ c1cd9292-28b9-4206-b128-608aaf30ff9c
 let
+	markersize_factor = 15.0
 	m = mapping(
 		:pl_eqt => "Equilibrium temperature (K)",
 		:g_SI => "Surface gravity (m/s²)",
 		color = :ΔD => "ΔD (ppm)",
-		markersize = :TSMR => (x -> 15.0*x),
+		markersize = :TSMR => (x -> markersize_factor*x),
 	)
 	marker_open = visual(marker='○')
 	marker_closed = visual(marker='●')
 	plt = m * (data(df_HGHJs_all)*marker_open + data(df_HGHJs)*marker_closed)
 	fg = draw(plt)
 	
+	# HGHJ g boundary
 	ax = fg.grid[1, 1].axis
 	hlines!(ax, 30.0, color=:darkgrey, linestyle=:dash)
-	TSMR_range = round.(extrema(df.TSMR))
-	text!(ax, "TSMR: $(TSMR_range[1]) – $(TSMR_range[2])", position=(450, 45))
+	
+	tsmrs = [4, 2, 1]
+	axislegend(
+		ax,
+		[MarkerElement(marker='○', markersize=markersize_factor*ms) for ms ∈ tsmrs],
+		["$tsmr" for tsmr ∈ tsmrs],
+		"TSMR",
+		position = :lt,
+		patchsize = (60, 55),
+		framevisible = true,
+		groupgap=10,
+	)
 	
 	fg
 end
@@ -227,6 +248,8 @@ end
 # ╟─7f956b36-ce65-4e4e-afa5-9b97b9e06954
 # ╠═7c431d58-e262-4d93-af28-1f65cfe9e452
 # ╠═6b9906d6-eaa5-4994-a751-296c6dcf9570
+# ╠═e6d3e2b6-8895-46cd-8836-611d5cc4f5d3
+# ╟─0f9262ef-b774-45bc-bdab-46860779683d
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╠═c98c5618-4bac-4322-b4c3-c76181f47889
 # ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
