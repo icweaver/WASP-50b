@@ -45,7 +45,7 @@ $(TableOfContents(title="📖 Table of Contents"))
 
 # ╔═╡ 6b06701b-05e2-4284-a308-e9edeb65a648
 md"""
-## Data sample 🔭
+## Data sample
 
 We will draw our sample of each sample above from the archive of transiting exoplanet data from ground and space-based observations, which we query from the NASA Exoplanet Archive [TAP API](https://exoplanetarchive.ipac.caltech.edu/docs/TAP/usingTAP.html):
 """
@@ -269,50 +269,79 @@ let
 	fg
 end
 
+# ╔═╡ 9f65c968-70ff-4446-acbc-be6a5160102a
+df[occursin.("HATS-2", df.pl_name), :]
+
 # ╔═╡ 2476f26e-f7cc-4f8e-ac66-60b85a46cb2c
 md"""
 ## CO – CH₄ transition
 """
 
-# ╔═╡ f7c0732f-9ae1-45f0-a51b-271197f3e576
-df_CO_CH₄_all = @chain df begin
-	@subset @. (300 ≤ :ΔD_ppm ≤ 1700)
-	sort(:TSMR, rev=true)
-end
+# ╔═╡ 8e4b1149-abf1-4ded-b20f-4765d2ee49a9
+md"""
+For this population, we will make a similar plot and compare to the current list of ACCESS targets that straddle this boundary.
+"""
+
+# ╔═╡ 8cece13d-34cb-40df-8986-ac0dad210e58
+df_ACCESS = innerjoin(CSV.read("data/pop/ACCESS.csv", DataFrame), df, on=:pl_name)
+
+# ╔═╡ d6791747-7503-49a9-903c-c479fc0c3d49
+species = (
+	"H₂O" => (273.15, (:center, :center)),
+	"NH₃" => (583.0, (:right, :center)),
+	"N₂" => (583.0, (:left, :baseline)),
+	"CH₄" => (1000.0, (:right, :center)),
+	"CO" => (1000.0, (:left, :baseline)),
+	"MnS" => (1350.0, (:center, :center)),
+)
 
 # ╔═╡ 60016c3f-6968-4d3c-ac73-d324b2a071e0
 let
+	fig = Figure()
+	ax = Axis(fig[1, 1], limits=(0, 2_800, 0, nothing))
+	
+	# Condensation temps
+	for (i, (name, (T, align))) in enumerate(species)
+		vlines!(ax, T, color=:darkgrey, linewidth=1.0, linestyle=:dash)
+		text!(ax, name, position=(T, 16.0 + i), align=align, textsize=16)
+	end
+	vspan!(ax, 1625.0, 1875.0, color=(:darkgrey, 0.25))
+	text!(ax, "Silicates/Metal-oxides";
+		position = (0.5*(1875.0+1625.0), 22.0),
+		textsize = 16,
+	)
+	
 	# Phase plot
-	markersize_factor = 15.0
 	m = mapping(
 		:pl_eqt => "Equilibrium temperature (K)",
-		:pl_rade => "Radius (Rₑₐᵣₜₕ)",
-		color = :ΔD_ppm => "ΔD (ppm)",
-		markersize = :TSMR => (x -> markersize_factor*x),
+		:pl_rade => "Radius (Earth radii)",
 	)
-	marker_open, marker_closed = visual(marker='○'), visual(marker='●')
-	plt = m * (data(df_CO_CH₄_all)*marker_open)# + data(df_HGHJs)*marker_closed)
-	fg = draw(plt)
-	
-	# HGHJ g boundary
-	ax = fg.grid[1, 1].axis
-	vlines!(ax, 1_400.0, color=:darkgrey, linestyle=:dash)
-	
-	# TSMR legend
-	tsmrs = [4, 2, 1]
-	axislegend(
-		ax,
-		[MarkerElement(marker='○', markersize=markersize_factor*ms) for ms ∈ tsmrs],
-		["$tsmr" for tsmr ∈ tsmrs],
-		"TSMR",
-		position = :lt,
-		patchsize = (60, 55),
-		framevisible = true,
-		padding = (5, 5, 8, 24),
-		margin = (10, 0, 0, 0)
+	marker_all = visual(color=(:darkgrey, 0.25))
+	marker_ACCESS = visual(markersize=18)
+	plt = m*(
+		data(df)*marker_all +
+		data(df_ACCESS) * mapping(color=:status) * marker_ACCESS
 	)
+	colors = [
+		"Observing"=>COLORS[2], "Data complete"=>COLORS[1], "Published"=>COLORS[3]
+	]
+	grid = draw!(ax, plt, palettes=(color=colors,))
+	legend!(fig[1, 2], grid)
 	
-	fg
+	# Annotate target names
+	for (name, T, R) in zip(df_ACCESS.name_abbrv, df_ACCESS.pl_eqt, df_ACCESS.pl_rade) 
+		if name == "W50b"
+			align = (:left, :top)
+		elseif name == "W96b"
+			align = (:right, :baseline)
+		elseif name == "W107b"
+			align = (:right, :top)
+		else
+			align = (:left, :baseline)
+		end
+		text!(ax, name, position=(T, R), align=align, textsize=12)
+	end
+	fig
 end
 
 # ╔═╡ Cell order:
@@ -328,6 +357,7 @@ end
 # ╠═c98c5618-4bac-4322-b4c3-c76181f47889
 # ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
+# ╠═9f65c968-70ff-4446-acbc-be6a5160102a
 # ╠═958453c3-7993-4620-ab7f-e7ad79781dd5
 # ╠═f07ad06b-81d2-454f-988f-a7ae1713eac4
 # ╠═2776646e-47e7-4b9e-ab91-4035bc6df99f
@@ -336,6 +366,8 @@ end
 # ╠═1e587a84-ed43-4fac-81cf-134a4f3d65d5
 # ╠═c1e63cf3-7f30-4858-bdd6-125d2a99529f
 # ╟─2476f26e-f7cc-4f8e-ac66-60b85a46cb2c
-# ╠═f7c0732f-9ae1-45f0-a51b-271197f3e576
+# ╟─8e4b1149-abf1-4ded-b20f-4765d2ee49a9
+# ╠═8cece13d-34cb-40df-8986-ac0dad210e58
 # ╠═60016c3f-6968-4d3c-ac73-d324b2a071e0
+# ╠═d6791747-7503-49a9-903c-c479fc0c3d49
 # ╠═24c6a2d0-0aea-11ec-2cd4-3de7ec08b83e
