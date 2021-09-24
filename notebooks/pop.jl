@@ -16,6 +16,8 @@ begin
 	using PlutoUI
 	using Unitful: k, G
 	
+	set_aog_theme!()
+	
 	update_theme!(
 		Theme(
 			Axis = (xlabelsize=18, ylabelsize=18,),
@@ -114,6 +116,17 @@ md"""
 	Inspired from [warm-worlds](https://github.com/nespinoza/warm-worlds)
 """
 
+# ╔═╡ 958453c3-7993-4620-ab7f-e7ad79781dd5
+val(df, name, col) = df[df.pl_name .== name, col][1]
+
+# ╔═╡ f07ad06b-81d2-454f-988f-a7ae1713eac4
+function annotate_text!(ax, t, p1, p2, l, lm; align=(:center, :center))
+	hyp = 2.0*lm + l
+	eps = lm*(p2 - p1) / hyp
+	text!(ax, t, position=p1, align=align)
+	lines!(ax, [p1 + eps, p2 - eps], color=:darkgrey, linewidth=1)
+end
+
 # ╔═╡ 2776646e-47e7-4b9e-ab91-4035bc6df99f
 function compute_scale_factor(Rp)
 	if Rp < 1.5
@@ -171,16 +184,9 @@ end
 
 # ╔═╡ c98c5618-4bac-4322-b4c3-c76181f47889
 df_HGHJs_all = @chain df begin
-	#@subset @. (TSM_low ≤ :TSMR ≤ TSM_high) & (g_low ≤ :g_SI ≤ g_high)
-	@subset @. (:TSMR ≥ 1.0) & (10.0 ≤ :g_SI ≤ 53) & (100 ≤ :ΔD_ppm)
+	@subset @. (1.0 ≤ :TSMR) & (10.0 ≤ :g_SI ≤ 53) & (300 ≤ :ΔD_ppm)
 	sort(:TSMR, rev=true)
 end
-
-# ╔═╡ e6d3e2b6-8895-46cd-8836-611d5cc4f5d3
-extrema(df_HGHJs_all.TSMR)
-
-# ╔═╡ 309a87d4-8d9d-4228-a2fd-f71553e129b9
-describe(df_HGHJs_all)
 
 # ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
 df_HGHJs = @subset(
@@ -206,12 +212,44 @@ let
 	)
 	marker_open = visual(marker='○') # ○ ●
 	marker_closed = visual(markersize=15, marker='+', color=:white)
-	plt = m*data(df_HGHJs_all) + data(df_HGHJs)*marker_closed*m2
+	plt = m*data(df_HGHJs_all) #+ data(df_HGHJs)*marker_closed*m2
 	fg = draw(plt)
 	
 	# HGHJ g boundary
 	ax = fg.grid[1, 1].axis
 	hlines!(ax, 20.0, color=:darkgrey, linestyle=:dash)
+	
+	# Annotate HGHJs with tspec observations
+	HP23x, HP23y = val.(Ref(df_HGHJs), Ref("HAT-P-23 b"), [:pl_eqt, :g_SI])
+	annotate_text!(
+		ax,
+		"HAT-P-23 b",
+		Point2f((HP23x[1], HP23y[1])) .- (-600, -3),
+		Point2f((HP23x[1], HP23y[1])),
+		0.5,
+		0.1;
+		align = (:center, :baseline),
+	)
+	W43x, W43y = val.(Ref(df_HGHJs), Ref("WASP-43 b"), [:pl_eqt, :g_SI])
+	annotate_text!(
+		ax,
+		"WASP-43 b",
+		Point2f((W43x[1], W43y[1])) .- (800, 5),
+		Point2f((W43x[1], W43y[1])),
+		0.3,
+		0.1;
+		align = (:center, :top),
+	)
+	W50x, W50y = val.(Ref(df_HGHJs), Ref("WASP-50 b"), [:pl_eqt, :g_SI])
+	annotate_text!(
+		ax,
+		"WASP-50 b",
+		Point2f((W50x[1], W50y[1])) .- (-300, -8),
+		Point2f((W50x[1], W50y[1])),
+		0.5,
+		0.1;
+		align = (:center, :baseline),
+	)
 	
 	# TSMR legend
 	tsmrs = [14, 4, 1]
@@ -224,7 +262,7 @@ let
 		patchsize = (120, 100),
 		framevisible = true,
 		padding = (5, 5, -24, 10),
-		#margin = (10, 10, 0, 0),
+		margin = (10, 10, 0, 0),
 		titlegap = 24,
 	)
 	
@@ -286,12 +324,12 @@ end
 # ╠═9aed232f-ec74-4ec6-9ae7-06b90539833b
 # ╟─4cbbb1e8-e5fb-4ab0-a7e6-7881c2dde032
 # ╟─7f956b36-ce65-4e4e-afa5-9b97b9e06954
-# ╠═e6d3e2b6-8895-46cd-8836-611d5cc4f5d3
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d
-# ╠═309a87d4-8d9d-4228-a2fd-f71553e129b9
 # ╠═c98c5618-4bac-4322-b4c3-c76181f47889
-# ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
+# ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
+# ╠═958453c3-7993-4620-ab7f-e7ad79781dd5
+# ╠═f07ad06b-81d2-454f-988f-a7ae1713eac4
 # ╠═2776646e-47e7-4b9e-ab91-4035bc6df99f
 # ╠═c7960066-cc33-480c-807b-c56ead4262bf
 # ╠═abaee9cc-9841-4b6b-ad33-2093c27422c8
