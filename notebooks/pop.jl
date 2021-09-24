@@ -116,6 +116,15 @@ md"""
 	Inspired from [warm-worlds](https://github.com/nespinoza/warm-worlds)
 """
 
+# ╔═╡ 18094afc-b77f-4cae-a30c-2691d34125d8
+md"""
+!!! warning "TODO"
+* WASP-33: active star, difficult analysis
+* TOI 1581: double check
+* WASP-4 : Already in ACCESS survey, can re-analyze
+* Focus on top 6-12 targets, review targets in literature, what can be done from the South?
+"""
+
 # ╔═╡ 958453c3-7993-4620-ab7f-e7ad79781dd5
 val(df, name, col) = df[df.pl_name .== name, col][1]
 
@@ -184,7 +193,10 @@ end
 
 # ╔═╡ c98c5618-4bac-4322-b4c3-c76181f47889
 df_HGHJs_all = @chain df begin
-	@subset @. (1.0 ≤ :TSMR) & (10.0 ≤ :g_SI ≤ 53) & (300 ≤ :ΔD_ppm)
+	@subset @. (1.0 ≤ :TSMR) &
+	(15.0 ≤ :g_SI ≤ 53) &
+	(300 ≤ :ΔD_ppm) &
+	(:pl_eqt ≤ 4900.0)
 	sort(:TSMR, rev=true)
 end
 
@@ -285,6 +297,15 @@ For this population, we will make a similar plot and compare to the current list
 # ╔═╡ 8cece13d-34cb-40df-8986-ac0dad210e58
 df_ACCESS = innerjoin(CSV.read("data/pop/ACCESS.csv", DataFrame), df, on=:pl_name)
 
+# ╔═╡ 10e8182d-60ba-42d1-b1ee-1b2f3379d741
+md"""
+!!! warning "TODO"
+* Highlight ACCESS targets across Co-CH₄ boundary in proposal,
+* H5b (Natalie, part of collaboration)
+* HP26b (Kevin's target, mentoring)
+* W98 (Double check data)
+"""
+
 # ╔═╡ d6791747-7503-49a9-903c-c479fc0c3d49
 species = (
 	"H₂O" => (273.15, (:center, :center)),
@@ -298,7 +319,7 @@ species = (
 # ╔═╡ 60016c3f-6968-4d3c-ac73-d324b2a071e0
 let
 	fig = Figure()
-	ax = Axis(fig[1, 1], limits=(0, 2_800, 0, nothing))
+	ax = Axis(fig[1, 1], limits=(0, 3_000, 0, nothing))
 	
 	# Condensation temps
 	for (i, (name, (T, align))) in enumerate(species)
@@ -320,7 +341,7 @@ let
 	marker_ACCESS = visual(markersize=18)
 	plt = m*(
 		data(df)*marker_all +
-		data(df_ACCESS) * mapping(color=:status) * marker_ACCESS
+		data(df_ACCESS) * mapping(color=:status=>"Status") * marker_ACCESS
 	)
 	colors = [
 		"Observing"=>COLORS[2], "Data complete"=>COLORS[1], "Published"=>COLORS[3]
@@ -355,8 +376,9 @@ end
 # ╟─7f956b36-ce65-4e4e-afa5-9b97b9e06954
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d
 # ╠═c98c5618-4bac-4322-b4c3-c76181f47889
-# ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
+# ╟─18094afc-b77f-4cae-a30c-2691d34125d8
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
+# ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
 # ╠═9f65c968-70ff-4446-acbc-be6a5160102a
 # ╠═958453c3-7993-4620-ab7f-e7ad79781dd5
 # ╠═f07ad06b-81d2-454f-988f-a7ae1713eac4
@@ -368,6 +390,7 @@ end
 # ╟─2476f26e-f7cc-4f8e-ac66-60b85a46cb2c
 # ╟─8e4b1149-abf1-4ded-b20f-4765d2ee49a9
 # ╠═8cece13d-34cb-40df-8986-ac0dad210e58
+# ╟─10e8182d-60ba-42d1-b1ee-1b2f3379d741
 # ╠═60016c3f-6968-4d3c-ac73-d324b2a071e0
 # ╠═d6791747-7503-49a9-903c-c479fc0c3d49
 # ╠═24c6a2d0-0aea-11ec-2cd4-3de7ec08b83e
