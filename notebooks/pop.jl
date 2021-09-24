@@ -15,6 +15,19 @@ begin
 	using Unitful
 	using PlutoUI
 	using Unitful: k, G
+	
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Text = (font=AlgebraOfGraphics.firasans("Light"),),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
+	COLORS = Makie.wong_colors()
 end
 
 # ╔═╡ cd13d7f3-0ea3-4631-afd9-5f3e359000e6
@@ -43,15 +56,9 @@ df_all = let
 		"tic_id",
 		"pl_rade",
 		"pl_bmasse",
-		"pl_orbper",
 		"pl_eqt",
-		"pl_dens",
-		"pl_trandep",
-		"pl_trandur",
-		"sy_jmag",
-		"sy_tmag",
-		"st_teff",
 		"st_rad",
+		"sy_jmag",
 	]
 	url = "https://exoplanetarchive.ipac.caltech.edu/TAP"
 	#cond = "tran_flag+=1+and+pl_eqt+<+1000+and+pl_rade+<+4"
@@ -67,7 +74,7 @@ We next compute some relevant quantities from this table to help organize each p
 """
 
 # ╔═╡ 9aed232f-ec74-4ec6-9ae7-06b90539833b
-# function make_table1()
+# begin
 # 	df = @chain df_all begin
 # 		dropmissing([:pl_rade, :pl_eqt, :pl_bmasse, :st_rad, :sy_jmag, :pl_trandep])
 # 		@aside g_SI = let
@@ -94,17 +101,11 @@ md"""
 With this list of $(nrow(df_all)) transiting exoplanets with observed stellar and planetary parameters, we now turn to visualizing the subset of each population from the list above.
 """
 
-# ╔═╡ 7c431d58-e262-4d93-af28-1f65cfe9e452
-g_low, g_high = 15.0, 100.0 
-
-# ╔═╡ 6b9906d6-eaa5-4994-a751-296c6dcf9570
-TSM_low, TSM_high = 0.01, 20
-
 # ╔═╡ 7f956b36-ce65-4e4e-afa5-9b97b9e06954
 md"""
-## HGHJ population 💪
+## HGHJ population
 
-We define this population to be the sample of transiting exoplanets with surface gravities between $(g_low) – $(g_high) m/s², with a TSM relative to HAT-P-23b between $(TSM_low) – $(TSM_high). We choose our relative TSM (TSMR) to be based on the TSM of HAT-P-23b because that is the HGHJ with the smallest TSM, that also has transmission spectra data available.
+We define this population to be the sample of transiting exoplanets with ... We defined our relative TSM (TSMR) to be based on the TSM of HAT-P-23b for comparison.
 """
 
 # ╔═╡ 0f9262ef-b774-45bc-bdab-46860779683d
@@ -148,7 +149,7 @@ compute_ΔD(H, Rₚ, Rₛ) = 2.0 * H * Rₚ/Rₛ^2
 # ╔═╡ 2702ba80-993c-4cca-bd14-0d4d6b67362b
 begin
 	df = dropmissing(
-		df_all, [:pl_rade, :pl_eqt, :pl_bmasse, :st_rad, :sy_jmag, :pl_trandep]
+		df_all, [:pl_rade, :pl_eqt, :pl_bmasse, :st_rad, :sy_jmag]
 	)
 	df.g_SI = let
 		g = compute_g.(df.pl_bmasse*u"Mearth", df.pl_rade*u"Rearth")
@@ -160,21 +161,26 @@ begin
 	end
 	df.TSM = compute_TSM.(df.pl_rade, df.pl_eqt, df.pl_bmasse, df.st_rad, df.sy_jmag)
 	df.TSMR = df.TSM ./ df.TSM[df.pl_name .== "HAT-P-23 b"][1]
-	df.ΔD = let
+	df.ΔD_ppm = let
 		ΔD = compute_ΔD.(df.H_km*u"km", df.pl_rade*u"Rearth", df.st_rad*u"Rsun")
 		uconvert.(NoUnits, ΔD) * 5.0 * 1e6
 	end
+	df.ΔDR_ppm = df.ΔD_ppm ./ df.ΔD_ppm[df.pl_name .== "HAT-P-23 b"][1]
 	df
 end
 
 # ╔═╡ c98c5618-4bac-4322-b4c3-c76181f47889
 df_HGHJs_all = @chain df begin
-	@subset @. (TSM_low ≤ :TSMR ≤ TSM_high) & (g_low ≤ :g_SI ≤ g_high)
+	#@subset @. (TSM_low ≤ :TSMR ≤ TSM_high) & (g_low ≤ :g_SI ≤ g_high)
+	@subset @. (:TSMR ≥ 1.0) & (10.0 ≤ :g_SI ≤ 53) & (100 ≤ :ΔD_ppm)
 	sort(:TSMR, rev=true)
 end
 
 # ╔═╡ e6d3e2b6-8895-46cd-8836-611d5cc4f5d3
 extrema(df_HGHJs_all.TSMR)
+
+# ╔═╡ 309a87d4-8d9d-4228-a2fd-f71553e129b9
+describe(df_HGHJs_all)
 
 # ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
 df_HGHJs = @subset(
@@ -182,23 +188,79 @@ df_HGHJs = @subset(
 )
 
 # ╔═╡ c1cd9292-28b9-4206-b128-608aaf30ff9c
+# TODO: Place latitude constraints
 let
-	markersize_factor = 15.0
+	# Phase plot
+	markersize_factor = 10.0
 	m = mapping(
 		:pl_eqt => "Equilibrium temperature (K)",
 		:g_SI => "Surface gravity (m/s²)",
-		color = :ΔD => "ΔD (ppm)",
+		color = :ΔD_ppm => "ΔD (ppm)",
 		markersize = :TSMR => (x -> markersize_factor*x),
 	)
-	marker_open = visual(marker='○')
-	marker_closed = visual(marker='●')
-	plt = m * (data(df_HGHJs_all)*marker_open + data(df_HGHJs)*marker_closed)
+	m2 = mapping(
+		:pl_eqt => "Equilibrium temperature (K)",
+		:g_SI => "Surface gravity (m/s²)",
+		#color = :ΔD_ppm => "ΔD (ppm)",
+		#markersize = :TSMR => (x -> markersize_factor*x),
+	)
+	marker_open = visual(marker='○') # ○ ●
+	marker_closed = visual(markersize=15, marker='+', color=:white)
+	plt = m*data(df_HGHJs_all) + data(df_HGHJs)*marker_closed*m2
 	fg = draw(plt)
 	
 	# HGHJ g boundary
 	ax = fg.grid[1, 1].axis
-	hlines!(ax, 30.0, color=:darkgrey, linestyle=:dash)
+	hlines!(ax, 20.0, color=:darkgrey, linestyle=:dash)
 	
+	# TSMR legend
+	tsmrs = [14, 4, 1]
+	axislegend(
+		ax,
+		[MarkerElement(marker='○', markersize=markersize_factor*ms) for ms ∈ tsmrs],
+		["$tsmr" for tsmr ∈ tsmrs],
+		"TSMR",
+		position = :rt,
+		patchsize = (120, 100),
+		framevisible = true,
+		padding = (5, 5, -24, 10),
+		#margin = (10, 10, 0, 0),
+		titlegap = 24,
+	)
+	
+	fg
+end
+
+# ╔═╡ 2476f26e-f7cc-4f8e-ac66-60b85a46cb2c
+md"""
+## CO – CH₄ transition
+"""
+
+# ╔═╡ f7c0732f-9ae1-45f0-a51b-271197f3e576
+df_CO_CH₄_all = @chain df begin
+	@subset @. (300 ≤ :ΔD_ppm ≤ 1700)
+	sort(:TSMR, rev=true)
+end
+
+# ╔═╡ 60016c3f-6968-4d3c-ac73-d324b2a071e0
+let
+	# Phase plot
+	markersize_factor = 15.0
+	m = mapping(
+		:pl_eqt => "Equilibrium temperature (K)",
+		:pl_rade => "Radius (Rₑₐᵣₜₕ)",
+		color = :ΔD_ppm => "ΔD (ppm)",
+		markersize = :TSMR => (x -> markersize_factor*x),
+	)
+	marker_open, marker_closed = visual(marker='○'), visual(marker='●')
+	plt = m * (data(df_CO_CH₄_all)*marker_open)# + data(df_HGHJs)*marker_closed)
+	fg = draw(plt)
+	
+	# HGHJ g boundary
+	ax = fg.grid[1, 1].axis
+	vlines!(ax, 1_400.0, color=:darkgrey, linestyle=:dash)
+	
+	# TSMR legend
 	tsmrs = [4, 2, 1]
 	axislegend(
 		ax,
@@ -208,33 +270,11 @@ let
 		position = :lt,
 		patchsize = (60, 55),
 		framevisible = true,
-		groupgap=10,
+		padding = (5, 5, 8, 24),
+		margin = (10, 0, 0, 0)
 	)
 	
 	fg
-end
-
-# ╔═╡ 4084831d-e357-430a-ab43-7d9dd494d6ed
-(2 * 126u"km" * 1.036u"Rjup" / 0.667u"Rsun"^2) |> x -> uconvert(NoUnits, x)
-
-# ╔═╡ eeebf896-5832-46ba-a004-20b0307df97c
-(2 * 126u"km" * 0.1596 / 0.667u"Rsun") |> ustrip 
-
-# ╔═╡ dcb16743-4ea5-45e8-936e-c6445bfa010f
-begin
-	set_aog_theme!()
-	update_theme!(
-		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
-			Text = (font=AlgebraOfGraphics.firasans("Light"),),
-			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
-		)
-	)
-	COLORS = Makie.wong_colors()
 end
 
 # ╔═╡ Cell order:
@@ -246,19 +286,18 @@ end
 # ╠═9aed232f-ec74-4ec6-9ae7-06b90539833b
 # ╟─4cbbb1e8-e5fb-4ab0-a7e6-7881c2dde032
 # ╟─7f956b36-ce65-4e4e-afa5-9b97b9e06954
-# ╠═7c431d58-e262-4d93-af28-1f65cfe9e452
-# ╠═6b9906d6-eaa5-4994-a751-296c6dcf9570
 # ╠═e6d3e2b6-8895-46cd-8836-611d5cc4f5d3
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d
-# ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
+# ╠═309a87d4-8d9d-4228-a2fd-f71553e129b9
 # ╠═c98c5618-4bac-4322-b4c3-c76181f47889
+# ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
 # ╠═2776646e-47e7-4b9e-ab91-4035bc6df99f
 # ╠═c7960066-cc33-480c-807b-c56ead4262bf
 # ╠═abaee9cc-9841-4b6b-ad33-2093c27422c8
 # ╠═1e587a84-ed43-4fac-81cf-134a4f3d65d5
 # ╠═c1e63cf3-7f30-4858-bdd6-125d2a99529f
-# ╠═4084831d-e357-430a-ab43-7d9dd494d6ed
-# ╠═eeebf896-5832-46ba-a004-20b0307df97c
-# ╠═dcb16743-4ea5-45e8-936e-c6445bfa010f
+# ╟─2476f26e-f7cc-4f8e-ac66-60b85a46cb2c
+# ╠═f7c0732f-9ae1-45f0-a51b-271197f3e576
+# ╠═60016c3f-6968-4d3c-ac73-d324b2a071e0
 # ╠═24c6a2d0-0aea-11ec-2cd4-3de7ec08b83e
