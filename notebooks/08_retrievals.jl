@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.15.1
+# v0.16.1
 
 using Markdown
 using InteractiveUtils
@@ -20,7 +20,6 @@ begin
 	using DelimitedFiles
 	using Glob
 	using ImageFiltering
-	using KernelDensity
 	using Latexify
 	using LaTeXStrings
 	using LombScargle
@@ -32,6 +31,8 @@ begin
 	using Statistics
 	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
 	using Unitful
+	
+	import CairoMakie.Makie.KernelDensity: kde
 	
 	# Python setup
 	#ENV["PYTHON"] = "~/miniconda3/envs/WASP-50b/bin/python"
@@ -73,24 +74,21 @@ $(TableOfContents(title="📖 Table of Contents"))
 """
 
 # ╔═╡ 60dc161c-2aa2-4264-884d-6da3ead0e57b
-base_dir = "./data/retrievals/all_WASP50/NofitR0"
+base_dir = "./data/retrievals/all_WASP50"
 
 # ╔═╡ d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
-fit_R0 = basename(base_dir)
-
-# ╔═╡ 0f65d095-09af-44d2-907b-c30e2c16b609
-species = ["K", "TiO", "Na_TiO", "K_TiO", "Na_K_TiO"]
+fit_R0 = "fitR0"
 
 # ╔═╡ 093156c7-9da7-4814-9260-5173f27fa497
 model_names = OrderedDict(
 	"clear" => "NoHet_FitP0_NoClouds_NoHaze_$(fit_R0)",
 	"clear+cloud" => "NoHet_FitP0_Clouds_NoHaze_$(fit_R0)",
 	"clear+haze" => "NoHet_FitP0_NoClouds_Haze_$(fit_R0)",
-	"clear+cloud+haze" => "NoHet_FitP0_Clouds_Haze_$(fit_R0)",
+	#"clear+cloud+haze" => "NoHet_FitP0_Clouds_Haze_$(fit_R0)",
 	"clear+spot" => "Het_FitP0_NoClouds_NoHaze_$(fit_R0)",
-	#"clear+spot+cloud" => "Het_FitP0_Clouds_NoHaze_$(fit_R0)",
+	"clear+spot+cloud" => "Het_FitP0_Clouds_NoHaze_$(fit_R0)",
 	"clear+spot+haze" => "Het_FitP0_NoClouds_Haze_$(fit_R0)",
-	"clear+spot+cloud+haze" => "Het_FitP0_Clouds_Haze_$(fit_R0)",
+	#"clear+spot+cloud+haze" => "Het_FitP0_Clouds_Haze_$(fit_R0)",
 )
 
 # ╔═╡ 41370a85-7abc-42ac-b82e-f6d739d8b5a8
@@ -107,6 +105,34 @@ end
 md"""
 ## Plot
 """
+
+# ╔═╡ 0f65d095-09af-44d2-907b-c30e2c16b609
+species = [
+	"K",
+	"TiO",
+	"Na_TiO",
+	"K_TiO",
+	"Na_K_TiO",
+	"CO",
+	"H2O",
+	#"NH3", # too low
+	#"HCN", # too low
+	#"CH4", # too low
+	#"CO2", # too low
+	#"FEH", # too low
+]
+
+# ╔═╡ 7b714c1e-2e3d-453f-a342-81df8283de5c
+# Check if missing files
+with_terminal() do
+	for sp ∈ species
+		for (model_name, model_id) ∈ model_names
+			!isfile("$(base_dir)/WASP50_E1_$(model_id)_$(sp)/retrieval.pkl") &&
+				println("WASP50_E1_$(model_id)_$(sp)")
+				#println("$(base_dir)/WASP50_E1_$(model_id)_$(sp)/retrieval.pkl")
+		end
+	end
+end
 
 # ╔═╡ 812210c9-e294-4d61-bdf6-a03284199188
 function plot_evidences(nm)
@@ -135,7 +161,9 @@ function plot_evidences(nm)
 	labels = String.(subgroup_labels)
 	elements = [PolyElement(polycolor = COLORS[i]) for i in 1:length(labels)]
 	
-	Legend(fig[0, :], elements, labels, nbanks=4, tellheight=true)
+	axislegend(ax, elements, labels, nbanks=3)
+	
+	ylims!(ax, 0, 5)
 	
 	save("../../ACCESS_WASP-50b/figures/detrended/retrieval_evidences.pdf", fig)
 	
@@ -143,10 +171,7 @@ function plot_evidences(nm)
 end
 
 # ╔═╡ db524678-9ee2-4934-b1bb-6a2f13bf0fa6
-dirpath = 
-"data/retrievals/" *
-"spot_lower_fit_R0/"*
-"WASP50_E1_NoHet_FitP0_NoClouds_NoHaze_fitR0_Na_K"
+dirpath = "data/retrievals/all_WASP50/WASP50_E1_Het_FitP0_Clouds_Haze_fitR0_K"
 
 # ╔═╡ 38f37547-9663-464d-9983-4fd3bdbc79b6
 retr = CSV.File("$(dirpath)/retr_Magellan_IMACS.txt")
@@ -238,9 +263,9 @@ md"""
 # ╟─0132b4ab-0447-4546-b412-ec598b20d21d
 # ╠═60dc161c-2aa2-4264-884d-6da3ead0e57b
 # ╠═d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
-# ╠═0f65d095-09af-44d2-907b-c30e2c16b609
 # ╠═093156c7-9da7-4814-9260-5173f27fa497
 # ╠═daacda36-1fc9-411f-b101-82944863c9f3
+# ╠═7b714c1e-2e3d-453f-a342-81df8283de5c
 # ╟─41370a85-7abc-42ac-b82e-f6d739d8b5a8
 # ╠═3dfe9e7d-3d77-4b49-b25b-3e7049906d26
 # ╠═65b51ff6-0991-491f-8945-dd889ffe71dd
@@ -248,6 +273,7 @@ md"""
 # ╠═750f830c-5818-4d8f-a673-f838a9d0da46
 # ╠═0064b4ce-c41d-4b4e-bba4-ef4be0430edc
 # ╟─869c4e1e-ef11-4048-bb83-6710ce0b3c8e
+# ╠═0f65d095-09af-44d2-907b-c30e2c16b609
 # ╠═8af2ffc6-b24d-46c3-b9f5-ecc81c61cd49
 # ╠═812210c9-e294-4d61-bdf6-a03284199188
 # ╠═db524678-9ee2-4934-b1bb-6a2f13bf0fa6

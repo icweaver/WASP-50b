@@ -116,6 +116,14 @@ md"""
 	Inspired from [warm-worlds](https://github.com/nespinoza/warm-worlds)
 """
 
+# ╔═╡ c98c5618-4bac-4322-b4c3-c76181f47889
+df_HGHJs_all = @chain df begin
+	@subset @. (1.0 ≤ :TSMR) &
+	(15.0 ≤ :g_SI ≤ 53) &
+	(:pl_eqt ≤ 4900.0)
+	sort(:TSMR, rev=true)
+end
+
 # ╔═╡ 18094afc-b77f-4cae-a30c-2691d34125d8
 md"""
 !!! warning "TODO"
@@ -128,12 +136,102 @@ md"""
 # ╔═╡ 958453c3-7993-4620-ab7f-e7ad79781dd5
 val(df, name, col) = df[df.pl_name .== name, col][1]
 
+# ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
+df_HGHJs = @subset(
+	df_HGHJs_all, :pl_name .∈ Ref(["HAT-P-23 b", "WASP-43 b", "WASP-50 b"])
+)
+
 # ╔═╡ f07ad06b-81d2-454f-988f-a7ae1713eac4
 function annotate_text!(ax, t, p1, p2, l, lm; align=(:center, :center))
 	hyp = 2.0*lm + l
 	eps = lm*(p2 - p1) / hyp
 	text!(ax, t, position=p1, align=align)
 	lines!(ax, [p1 + eps, p2 - eps], color=:darkgrey, linewidth=1)
+end
+
+# ╔═╡ c1cd9292-28b9-4206-b128-608aaf30ff9c
+# TODO: Place latitude constraints
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1])
+
+	# HGHJ g boundary
+	hlines!(ax, 20.0, color=:darkgrey, linestyle=:dash)
+	
+	# Phase plot
+	markersize_factor = 10.0
+	m = mapping(
+		:pl_eqt => "Equilibrium temperature (K)",
+		:g_SI => "Surface gravity (m/s²)",
+		color = :ΔD_ppm => "ΔD (ppm)",
+		markersize = :TSMR => (x -> markersize_factor*x),
+	)
+	m2 = mapping(
+		:pl_eqt => "Equilibrium temperature (K)",
+		:g_SI => "Surface gravity (m/s²)",
+		#color = :ΔD_ppm => "ΔD (ppm)",
+		#markersize = :TSMR => (x -> markersize_factor*x),
+	)
+	marker_open = visual(marker='○') # ○ ●
+	marker_closed = visual(markersize=15, marker='+', color=:white)
+	plt = m*data(df_HGHJs_all)
+	fg = draw!(ax, plt)
+	colorbar!(fig[1, 2], fg)
+	
+	# HGHJ g boundary
+	# ax = fg.grid[1, 1].axis
+	#hlines!(ax, 20.0, color=:darkgrey, linestyle=:dash)
+	
+	# Annotate HGHJs with tspec observations
+	HP23x, HP23y = val.(Ref(df_HGHJs), Ref("HAT-P-23 b"), [:pl_eqt, :g_SI])
+	annotate_text!(
+		ax,
+		"HAT-P-23 b",
+		Point2f((HP23x[1], HP23y[1])) .- (-600, -3),
+		Point2f((HP23x[1], HP23y[1])),
+		0.5,
+		0.1;
+		align = (:center, :baseline),
+	)
+	W43x, W43y = val.(Ref(df_HGHJs), Ref("WASP-43 b"), [:pl_eqt, :g_SI])
+	annotate_text!(
+		ax,
+		"WASP-43 b",
+		Point2f((W43x[1], W43y[1])) .- (800, 5),
+		Point2f((W43x[1], W43y[1])),
+		0.3,
+		0.1;
+		align = (:center, :top),
+	)
+	W50x, W50y = val.(Ref(df_HGHJs), Ref("WASP-50 b"), [:pl_eqt, :g_SI])
+	annotate_text!(
+		ax,
+		"WASP-50 b",
+		Point2f((W50x[1], W50y[1])) .- (-300, -8),
+		Point2f((W50x[1], W50y[1])),
+		0.5,
+		0.1;
+		align = (:center, :baseline),
+	)
+	
+	# TSMR legend
+	tsmrs = [14, 4, 1]
+	axislegend(
+		ax,
+		[MarkerElement(marker='○', markersize=markersize_factor*ms) for ms ∈ tsmrs],
+		["$tsmr" for tsmr ∈ tsmrs],
+		"TSMR",
+		position = :rt,
+		patchsize = (120, 100),
+		framevisible = true,
+		padding = (5, 5, -24, 10),
+		margin = (10, 10, 0, 0),
+		titlegap = 24,
+	)
+
+	save("../../51Peg/figures/hg_pop.pdf", fig)
+	
+	fig
 end
 
 # ╔═╡ 2776646e-47e7-4b9e-ab91-4035bc6df99f
@@ -191,98 +289,8 @@ begin
 	df
 end
 
-# ╔═╡ c98c5618-4bac-4322-b4c3-c76181f47889
-df_HGHJs_all = @chain df begin
-	@subset @. (1.0 ≤ :TSMR) &
-	(15.0 ≤ :g_SI ≤ 53) &
-	(300 ≤ :ΔD_ppm) &
-	(:pl_eqt ≤ 4900.0)
-	sort(:TSMR, rev=true)
-end
-
-# ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
-df_HGHJs = @subset(
-	df_HGHJs_all, :pl_name .∈ Ref(["HAT-P-23 b", "WASP-43 b", "WASP-50 b"])
-)
-
-# ╔═╡ c1cd9292-28b9-4206-b128-608aaf30ff9c
-# TODO: Place latitude constraints
-let
-	# Phase plot
-	markersize_factor = 10.0
-	m = mapping(
-		:pl_eqt => "Equilibrium temperature (K)",
-		:g_SI => "Surface gravity (m/s²)",
-		color = :ΔD_ppm => "ΔD (ppm)",
-		markersize = :TSMR => (x -> markersize_factor*x),
-	)
-	m2 = mapping(
-		:pl_eqt => "Equilibrium temperature (K)",
-		:g_SI => "Surface gravity (m/s²)",
-		#color = :ΔD_ppm => "ΔD (ppm)",
-		#markersize = :TSMR => (x -> markersize_factor*x),
-	)
-	marker_open = visual(marker='○') # ○ ●
-	marker_closed = visual(markersize=15, marker='+', color=:white)
-	plt = m*data(df_HGHJs_all) #+ data(df_HGHJs)*marker_closed*m2
-	fg = draw(plt)
-	
-	# HGHJ g boundary
-	ax = fg.grid[1, 1].axis
-	hlines!(ax, 20.0, color=:darkgrey, linestyle=:dash)
-	
-	# Annotate HGHJs with tspec observations
-	HP23x, HP23y = val.(Ref(df_HGHJs), Ref("HAT-P-23 b"), [:pl_eqt, :g_SI])
-	annotate_text!(
-		ax,
-		"HAT-P-23 b",
-		Point2f((HP23x[1], HP23y[1])) .- (-600, -3),
-		Point2f((HP23x[1], HP23y[1])),
-		0.5,
-		0.1;
-		align = (:center, :baseline),
-	)
-	W43x, W43y = val.(Ref(df_HGHJs), Ref("WASP-43 b"), [:pl_eqt, :g_SI])
-	annotate_text!(
-		ax,
-		"WASP-43 b",
-		Point2f((W43x[1], W43y[1])) .- (800, 5),
-		Point2f((W43x[1], W43y[1])),
-		0.3,
-		0.1;
-		align = (:center, :top),
-	)
-	W50x, W50y = val.(Ref(df_HGHJs), Ref("WASP-50 b"), [:pl_eqt, :g_SI])
-	annotate_text!(
-		ax,
-		"WASP-50 b",
-		Point2f((W50x[1], W50y[1])) .- (-300, -8),
-		Point2f((W50x[1], W50y[1])),
-		0.5,
-		0.1;
-		align = (:center, :baseline),
-	)
-	
-	# TSMR legend
-	tsmrs = [14, 4, 1]
-	axislegend(
-		ax,
-		[MarkerElement(marker='○', markersize=markersize_factor*ms) for ms ∈ tsmrs],
-		["$tsmr" for tsmr ∈ tsmrs],
-		"TSMR",
-		position = :rt,
-		patchsize = (120, 100),
-		framevisible = true,
-		padding = (5, 5, -24, 10),
-		margin = (10, 10, 0, 0),
-		titlegap = 24,
-	)
-	
-	fg
-end
-
-# ╔═╡ 9f65c968-70ff-4446-acbc-be6a5160102a
-df[occursin.("HATS-2", df.pl_name), :]
+# ╔═╡ d2d6452b-426c-4c61-8dc4-d210c0cd9d41
+@which println(1000000.)
 
 # ╔═╡ 2476f26e-f7cc-4f8e-ac66-60b85a46cb2c
 md"""
@@ -296,6 +304,9 @@ For this population, we will make a similar plot and compare to the current list
 
 # ╔═╡ 8cece13d-34cb-40df-8986-ac0dad210e58
 df_ACCESS = innerjoin(CSV.read("data/pop/ACCESS.csv", DataFrame), df, on=:pl_name)
+
+# ╔═╡ df499885-3f7d-4293-bcf5-9c761ac3ccd2
+sort(df_ACCESS, :pl_name, lt=natural)
 
 # ╔═╡ 10e8182d-60ba-42d1-b1ee-1b2f3379d741
 md"""
@@ -317,9 +328,9 @@ species = (
 )
 
 # ╔═╡ 60016c3f-6968-4d3c-ac73-d324b2a071e0
-let
+begin
 	fig = Figure()
-	ax = Axis(fig[1, 1], limits=(0, 3_000, 0, nothing))
+	ax = Axis(fig[1, 1], limits=(0, 3_600, 0, nothing))
 	
 	# Condensation temps
 	for (i, (name, (T, align))) in enumerate(species)
@@ -337,17 +348,29 @@ let
 		:pl_eqt => "Equilibrium temperature (K)",
 		:pl_rade => "Radius (Earth radii)",
 	)
+	m_ACCESS = mapping(
+		color = :status => 
+		sorter("Observing", "Data complete", "Published") => "Status",
+	)
 	marker_all = visual(color=(:darkgrey, 0.25))
 	marker_ACCESS = visual(markersize=18)
 	plt = m*(
 		data(df)*marker_all +
-		data(df_ACCESS) * mapping(color=:status=>"Status") * marker_ACCESS
+		data(df_ACCESS) * m_ACCESS * marker_ACCESS
 	)
-	colors = [
-		"Observing"=>COLORS[2], "Data complete"=>COLORS[1], "Published"=>COLORS[3]
-	]
-	grid = draw!(ax, plt, palettes=(color=colors,))
-	legend!(fig[1, 2], grid)
+	# colors = [
+	# 	"Observing"=>COLORS[2], "Data complete"=>COLORS[1], "Published"=>COLORS[3]
+	# ]
+	fg = draw!(ax, plt)#, palettes=(color=colors,))
+	lg = legend!(fig[1, 1], fg;
+		tellwidth = false,
+		halign = :right,
+		valign = :center,
+		framevisible = true,
+		padding = (15, 15, 15, 15),
+		#margin = (10, 10, 0, 0),
+		#titlegap = 24,
+	)
 	
 	# Annotate target names
 	for (name, T, R) in zip(df_ACCESS.name_abbrv, df_ACCESS.pl_eqt, df_ACCESS.pl_rade) 
@@ -362,6 +385,9 @@ let
 		end
 		text!(ax, name, position=(T, R), align=align, textsize=12)
 	end
+
+	save("../../51Peg/figures/co_ch4_pop.pdf", fig)
+	
 	fig
 end
 
@@ -378,18 +404,19 @@ end
 # ╠═c98c5618-4bac-4322-b4c3-c76181f47889
 # ╟─18094afc-b77f-4cae-a30c-2691d34125d8
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
-# ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
-# ╠═9f65c968-70ff-4446-acbc-be6a5160102a
 # ╠═958453c3-7993-4620-ab7f-e7ad79781dd5
+# ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
 # ╠═f07ad06b-81d2-454f-988f-a7ae1713eac4
 # ╠═2776646e-47e7-4b9e-ab91-4035bc6df99f
 # ╠═c7960066-cc33-480c-807b-c56ead4262bf
 # ╠═abaee9cc-9841-4b6b-ad33-2093c27422c8
 # ╠═1e587a84-ed43-4fac-81cf-134a4f3d65d5
 # ╠═c1e63cf3-7f30-4858-bdd6-125d2a99529f
+# ╠═d2d6452b-426c-4c61-8dc4-d210c0cd9d41
 # ╟─2476f26e-f7cc-4f8e-ac66-60b85a46cb2c
 # ╟─8e4b1149-abf1-4ded-b20f-4765d2ee49a9
 # ╠═8cece13d-34cb-40df-8986-ac0dad210e58
+# ╠═df499885-3f7d-4293-bcf5-9c761ac3ccd2
 # ╟─10e8182d-60ba-42d1-b1ee-1b2f3379d741
 # ╠═60016c3f-6968-4d3c-ac73-d324b2a071e0
 # ╠═d6791747-7503-49a9-903c-c479fc0c3d49

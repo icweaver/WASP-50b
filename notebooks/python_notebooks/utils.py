@@ -229,21 +229,20 @@ def decompress_pickle(fname):
     return pickle.load(data)
 
 
-def get_evidences(base_dir, relative_to_spot_only=False):
-    fit_R0 = "NofitR0" if "NofitR0" in base_dir else "fitR0"
-
+def get_evidences(base_dir, fit_R0, relative_to_spot_only=False):
+    print(f"{fit_R0=}")
     #species = ["Na", "K", "TiO", "Na_K", "Na_TiO", "K_TiO", "Na_K_TiO"]
     #species = ["Na", "K", "TiO", "Na_TiO", "K_TiO", "Na_K_TiO"]
-    species = ["K", "TiO", "Na_TiO", "K_TiO", "Na_K_TiO"]
+    species = ["K", "TiO", "Na_TiO", "K_TiO", "Na_K_TiO", "CO", "H2O"]
     model_names_dict = {
         "clear": f"NoHet_FitP0_NoClouds_NoHaze_{fit_R0}",
         "clear+cloud": f"NoHet_FitP0_Clouds_NoHaze_{fit_R0}",
         "clear+haze": f"NoHet_FitP0_NoClouds_Haze_{fit_R0}",
-        "clear+cloud+haze": f"NoHet_FitP0_Clouds_Haze_{fit_R0}",
+        #"clear+cloud+haze": f"NoHet_FitP0_Clouds_Haze_{fit_R0}",
         "clear+spot": f"Het_FitP0_NoClouds_NoHaze_{fit_R0}",
-        #"clear+spot+cloud": f"Het_FitP0_Clouds_NoHaze_{fit_R0}",
+        "clear+spot+cloud": f"Het_FitP0_Clouds_NoHaze_{fit_R0}",
         "clear+spot+haze": f"Het_FitP0_NoClouds_Haze_{fit_R0}",
-        "clear+spot+cloud+haze": f"Het_FitP0_Clouds_Haze_{fit_R0}",
+        #"clear+spot+cloud+haze": f"Het_FitP0_Clouds_Haze_{fit_R0}",
     }
 
     data_dict = {
