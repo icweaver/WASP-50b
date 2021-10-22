@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-import batman
+#import batman
 import bz2
 import corner
 import george
@@ -646,8 +646,8 @@ def plot_chips(dirpath, fpathame, target="", vmin=0, vmax=2_000, spec_ap=0, sky_
                 col = "w"
                 if target in coords.obj[c]:
                     col = "y"
-                ax.axvline(coords.x[c] - sky_ap, color="g", lw=1)
-                ax.axvline(coords.x[c] + sky_ap, color="g", lw=1)
+                #ax.axvline(coords.x[c] - sky_ap, color="g", lw=1)
+                #ax.axvline(coords.x[c] + sky_ap, color="g", lw=1)
                 txt = ax.text(
                     coords.x[c],
                     coords.y[c],
