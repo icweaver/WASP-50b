@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.1
+# v0.16.3
 
 using Markdown
 using InteractiveUtils
@@ -121,9 +121,6 @@ The data from this instrument is stored in an `npy` file that contains the follo
 Each cube (`LC`) can be selected from the following drop-down menu, and will be used for the rest of this analysis:
 $(@bind fpath Select(sort(glob("data/reduced/LDSS3/*/LC*.npy"))))
 """
-
-# ╔═╡ 4f0e557c-1c5b-43d1-acdb-5f5798871863
-Dates
 
 # ╔═╡ 698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 md"""
@@ -429,6 +426,12 @@ end;
 
 # ╔═╡ 01e27cf6-0a1b-4741-828a-ef8bf7037ae9
 LC = load_npz(fpath, allow_pickle=true)
+
+# ╔═╡ 3ce1d29a-7219-49be-baba-4125b5a557de
+am = LC["temporal"].columns["airmass"]
+
+# ╔═╡ de51df33-1be5-473b-afa9-c5a2fc40493a
+lines(am)
 
 # ╔═╡ 9341c427-642a-4782-925a-6e07b91277a0
 fluxes = Dict(
@@ -752,8 +755,8 @@ fwhm, trace_center, sky_flux = median_eparam.(
 	Ref(common_wav_idxs[binned_wav_idxs_range])
 )
 
-# ╔═╡ 7c92ea01-d871-4952-8364-bc007df427fc
-LC["cubes"]["width"] |> keys
+# ╔═╡ ecc8917c-96a1-488c-9e0b-2e8f6ca6cd60
+LC["cubes"]["peak"] |> keys
 
 # ╔═╡ 079c3915-33af-40db-a544-28453732c372
 specshifts = load_npz(
@@ -798,10 +801,11 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
-# ╟─34ef4580-bb95-11eb-34c1-25893217f422
+# ╠═34ef4580-bb95-11eb-34c1-25893217f422
 # ╟─a8e3b170-3fc2-4d12-b117-07bd37d27710
 # ╠═01e27cf6-0a1b-4741-828a-ef8bf7037ae9
-# ╠═4f0e557c-1c5b-43d1-acdb-5f5798871863
+# ╠═3ce1d29a-7219-49be-baba-4125b5a557de
+# ╠═de51df33-1be5-473b-afa9-c5a2fc40493a
 # ╟─698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 # ╠═d8236985-9a36-4357-ac78-7eb39dd0f080
 # ╟─b4f4e65b-bd50-4ee2-945f-7c130db21fdf
@@ -864,7 +868,7 @@ body.disable_ui main {
 # ╠═301ff07c-8dd5-403a-bae8-a4c38deeb331
 # ╠═c03cb527-d16d-47aa-ab63-6970f4ff0b1f
 # ╠═c65c2298-e3a3-4666-be9d-73ee43d94847
-# ╠═7c92ea01-d871-4952-8364-bc007df427fc
+# ╠═ecc8917c-96a1-488c-9e0b-2e8f6ca6cd60
 # ╠═d14ab9de-23b4-4647-a823-9b318bb734e9
 # ╠═079c3915-33af-40db-a544-28453732c372
 # ╠═e4960d1a-8e33-478a-8100-d1838782938d

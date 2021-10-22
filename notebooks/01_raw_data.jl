@@ -160,11 +160,6 @@ let
 	draw(airmass)
 end
 
-# ╔═╡ 5b51d513-3957-4ea1-b13c-a0438aee14e5
-with_terminal() do
-	println([round(f(df_sci.AIRMASS), digits=1) for f in (minimum, median, maximum)])
-end
-
 # ╔═╡ 90845d70-35d9-402d-8936-74936b069577
 md"""
 ## Raw frame
@@ -399,7 +394,6 @@ body.disable_ui main {
 # ╠═3ca865bb-078a-4bd5-a632-a4b4b9d6e1e9
 # ╠═c3ac2517-3bac-4686-9b1e-16a5c5b5865f
 # ╠═2fdfc049-11b1-4972-9c48-e8724765126f
-# ╠═5b51d513-3957-4ea1-b13c-a0438aee14e5
 # ╟─90845d70-35d9-402d-8936-74936b069577
 # ╠═86b4ace1-a891-41e5-a29f-f7eee5f8fb17
 # ╠═3a6ab0c0-ba08-4151-9646-c19d45749b9f
