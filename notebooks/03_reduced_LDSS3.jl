@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.3
+# v0.17.1
 
 using Markdown
 using InteractiveUtils
@@ -7,8 +7,9 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
 end
@@ -128,7 +129,7 @@ We next define the mapping between the standard aperture names defined in `stell
 """
 
 # ╔═╡ d8236985-9a36-4357-ac78-7eb39dd0f080
-names = OrderedDict(
+obj_names = OrderedDict(
 	"aperture_324_803" => "WASP50",
 	"aperture_153_1117" => "c06",
 	"aperture_830_689" => "c15",
@@ -229,9 +230,6 @@ Next, we will extract the integrated white-light curves from these spectra. We i
 # ╔═╡ 9697e26b-b6d9-413b-869f-47bc2ab99919
 wbins = readdlm("data/reduced/LDSS3/w50_bins_LDSS3.dat", comments=true)
 #wbins = readdlm("data/reduced/w50_bins_species.dat", comments=true)
-
-# ╔═╡ 80480fc2-861b-4fa9-be2d-fcb57f479a93
-wbins
 
 # ╔═╡ cb805821-5d2e-484c-93a5-10a897d2cfe7
 @bind window_width Slider(3:2:21, default=15, show_value=true)
@@ -435,7 +433,7 @@ lines(am)
 
 # ╔═╡ 9341c427-642a-4782-925a-6e07b91277a0
 fluxes = Dict(
-	names[k] => convert(Matrix{Float64}, v)
+	obj_names[k] => convert(Matrix{Float64}, v)
 	for (k, v) ∈ LC["cubes"]["raw_counts"]
 )
 
@@ -474,7 +472,7 @@ let
 	ax = Axis(fig[1, 1], xlabel="Wavelength Å", ylabel="Relative flux")
 	
 	fluxes = [f_target, [f_comps[:, :, i] for i in 1:3]...]
-	labels = names.vals
+	labels = obj_names.vals
 	#f_norm = 40362.188283796 # median IMACS WASP-50 flux for comparison
 	
 	for (i, (name, f)) in enumerate(zip(labels, fluxes))
@@ -532,7 +530,7 @@ end
 let
 	fig = Figure()#resolution=FIG_TALL)
 	
-	comp_names = names.vals[2:4]
+	comp_names = obj_names.vals[2:4]
 	ncomps = length(comp_names)
 	use_comps = comp_names # use all comps
 	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
@@ -572,7 +570,7 @@ let
 		ylabel="Relative flux",
 	)
 	
-	comp_names = names.vals[2:4]
+	comp_names = obj_names.vals[2:4]
 	f_wlc_targ = f_target_wlc[:]
 	f_wlc_comps = f_comps_wlc ./ mean(f_comps_wlc, dims=1)
 	
@@ -656,7 +654,7 @@ f_norm_w[:, comp_idx, :], window_width
 # ╔═╡ 9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
 let
 	fig = Figure(resolution=FIG_TALL)
-	comp_names = names.vals[begin+1:end]
+	comp_names = obj_names.vals[begin+1:end]
 	ax_left = Axis(fig[1, 1], title = "target / $(comp_names[comp_idx])")
 	ax_right = Axis(fig[1, 2], title = "residuals")
 	ax_label = Axis(fig[1, 3])
@@ -697,10 +695,10 @@ let
 	# ax.xlabel = "Index"
 	# ax.ylabel = "Relative flux + offset"
 	
-	save(
-		"../../ACCESS_WASP-50b/figures/reduced/divided_blcs_LDSS3.pdf",
-		fig
-	)
+	# save(
+	# 	"../../ACCESS_WASP-50b/figures/reduced/divided_blcs_LDSS3.pdf",
+	# 	fig
+	# )
 	
 	fig #|> as_svg
 end
@@ -801,7 +799,7 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
-# ╠═34ef4580-bb95-11eb-34c1-25893217f422
+# ╟─34ef4580-bb95-11eb-34c1-25893217f422
 # ╟─a8e3b170-3fc2-4d12-b117-07bd37d27710
 # ╠═01e27cf6-0a1b-4741-828a-ef8bf7037ae9
 # ╠═3ce1d29a-7219-49be-baba-4125b5a557de
@@ -821,7 +819,6 @@ body.disable_ui main {
 # ╠═9cdc7e8b-be59-44f9-9bee-4591e2ad788d
 # ╠═0d5749ac-4c94-4228-b721-83aaf84891c2
 # ╟─299dda0e-a214-45ca-9a68-947f60fcf404
-# ╠═80480fc2-861b-4fa9-be2d-fcb57f479a93
 # ╠═45418bd3-74a3-4758-9fce-adddbeeec076
 # ╠═f6ed9c49-bf9c-467d-a602-8d18758a4602
 # ╠═2312f321-67ff-4fec-ba73-ff78c82af8dd

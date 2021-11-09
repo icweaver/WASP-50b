@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.3
+# v0.17.1
 
 using Markdown
 using InteractiveUtils
@@ -15,7 +15,7 @@ begin
 	using CCDReduction: fitscollection, getdata, CCDData
 	using Colors
 	using DataFrames
-	using DataFramesMeta
+	using DataFrameMacros
 	using Dates
 	using DelimitedFiles
 	using Glob
@@ -48,6 +48,7 @@ begin
 		Theme(
 			Axis = (xlabelsize=18, ylabelsize=18,),
 			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Text = (; font=AlgebraOfGraphics.firasans("Medium")),
 			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
 			Scatter = (linewidth=10,),
 			fontsize = 18,
@@ -65,7 +66,7 @@ md"""
 
 $(TableOfContents())
 
-In this notebook we will summarize the raw data and view a sample frame before moving on to the automated data reduction.
+In this notebook we will summarize the raw data and view a sample frame from each instrument before moving on to the automated data reduction.
 
 !!! note "rclone"
 
@@ -85,7 +86,7 @@ md"""
 
 # ╔═╡ 1e0db1d5-86b7-475c-897b-b0054575a5fa
 begin
-	DATA_DIR = "data/raw/ut131219"
+	DATA_DIR = "data/raw/IMACS/ut131219"
 	
 	df = fitscollection(
 		DATA_DIR;
@@ -162,7 +163,7 @@ end
 
 # ╔═╡ 90845d70-35d9-402d-8936-74936b069577
 md"""
-## Raw frame
+## IMACS
 
 Let's take a quick look at a sample bias subtracted science frame. We do this to verify the mask slit placement, as well as the positions of WASP-50 and its comparison stars on each CCD chip.
 
@@ -177,12 +178,12 @@ begin
 	chips = ["c1", "c6", "c2", "c5", "c3", "c8", "c4", "c7"]
 	fpaths = [
 		filter(s -> occursin(c, s), fpaths_glob)[1]
-		for c in chips
+		for c ∈ chips
 	]
 	
 	# Load science frames and perform bias subtraction
 	cube = Array{Float64}(undef, 2048, 1024, 8);	
-	for (i, fpath) in enumerate(fpaths)
+	for (i, fpath) ∈ enumerate(fpaths)
 		ccd = CCDData(fpath)
 		dxsec, dysec = ccd.hdr["DATASEC"] |> Meta.parse |> eval
 		oxsec, oysec = ccd.hdr["BIASSEC"] |> Meta.parse |> eval
@@ -190,23 +191,35 @@ begin
 	end
 end
 
+# ╔═╡ 26feb668-4e7e-4a9d-a2b6-a5dac81e3ab7
+coords = CSV.read("data/raw/IMACS/ut131219/WASP50.coords", DataFrame;
+	delim = ' ',
+	ignorerepeated = true,
+	header = ["target", "chip", "x", "y"],
+)
+
 # ╔═╡ 3a6ab0c0-ba08-4151-9646-c19d45749b9f
 let
 	fig = Figure(resolution = (800, 600))
-	step = 8
+	step = 1 # For quick testing
 	chip_idx = 1
 	hms = []
 	axs = []
-	for j in 1:4, i in 1:2
-		ax = Axis(fig[i, j])
-		if "$(chips[chip_idx])" in ["c5", "c6", "c7", "c8"]
-			x_flip = x -> x
-			y_flip = reverse
+	for j ∈ 1:4, i ∈ 1:2
+		# Set chip orientation based on IMACS conventions
+		if "$(chips[chip_idx])" ∈ ["c5", "c6", "c7", "c8"]
+			xflip = reverse
+			yflip = reverse
+			xreversed = false
+			yreversed = true
 		else
-			x_flip = reverse
-			y_flip = x -> x
+			xflip = x -> x
+			yflip = x -> x
+			xreversed = false
+			yreversed = true
 		end
-		d = cube[x_flip(begin:step:end), y_flip(begin:step:end), chip_idx]'
+		ax = Axis(fig[i, j], xreversed=xreversed, yreversed=yreversed)
+		d = cube[yflip(begin:step:end), xflip(begin:step:end), chip_idx]'
 		nrows, ncols = size(d)
 		hm = heatmap!(
 			ax,
@@ -214,11 +227,25 @@ let
 			colormap = :magma,
 			colorrange = (0, 2_000),
 		)
+
+		# Label objects on chip
+		chip = chips[chip_idx]
+		for obj in eachrow(@subset coords :chip == chip)
+			coord = (obj.x, obj.y) ./ step
+			text!(ax, obj.target;
+				position = coord,
+				font = AlgebraOfGraphics.firasans("Light"),
+				textsize = 11,
+				align = (:center, :baseline),
+				color = :white,
+			)
+		end
 		
+		# Label chip
 		text!(
-			"$(chips[chip_idx])",
-			position = (2, 2),
-			color = :white,
+			"$(chip)",
+			position = (50, 2_000),
+			color = :yellow,
 		)
 		chip_idx += 1
 		push!(axs, ax)
@@ -231,9 +258,36 @@ let
 	linkaxes!(axs...)
 	hidedecorations!.(axs)
 	
-	save("../../ACCESS_WASP-50b/figures/frames/sci_imacs.pdf", fig)
+	path = "../../ACCESS_WASP-50b/figures/frames"
+	mkpath(path)
+	save("$(path)/sci_imacs.png", fig)
 	
 	fig #|> as_svg
+end
+
+# ╔═╡ a0d54171-3d3b-472f-baca-2883924ec75e
+let
+	chip_idx = 6
+	step = 16
+	d = cube[(begin:step:end), reverse(begin:step:end), chip_idx]
+	
+	fig = Figure(resolution = (400, 600))
+	ax = Axis(fig[1, 1], xreversed=false, yreversed=true)
+
+	heatmap!(ax, d', colorrange = (0, 2_000), colormap=:magma)
+
+	chip = chips[chip_idx]
+	for obj in eachrow(@subset coords :chip == chip)
+		coord = (obj.x, obj.y) ./ step
+		scatter!(ax, coord)
+		text!(ax, obj.target, position=coord, color=:white,
+		#font = AlgebraOfGraphics.firasans("Light")
+		)
+	end
+
+	text!(ax, "c8", position = (4, 20), color=:yellow, space=:screen)
+
+	fig
 end
 
 # ╔═╡ 06a834f0-8c90-4013-af34-725166970969
@@ -243,7 +297,7 @@ md"""
 
 # ╔═╡ 5c6e6f7b-70e0-49a8-b064-60dcf1440223
 begin
-	DATA_DIR_LDSS3 = "data/raw/LDSS3/ut150927/LDSS3_e150927"
+	DATA_DIR_LDSS3 = "data/raw/LDSS3/ut150927"
 	
 	df_LDSS3 = fitscollection(
 		DATA_DIR_LDSS3;
@@ -355,7 +409,9 @@ let
 	linkaxes!(axs...)
 	hidedecorations!.(axs)
 	
-	save("../../ACCESS_WASP-50b/figures/frames/sci_ldss3.png", fig)
+	path = "../../ACCESS_WASP-50b/figures/frames"
+	mkpath(path)
+	save("$(path)/sci_ldss3.png", fig)
 	
 	fig #|> as_svg
 end
@@ -385,7 +441,7 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
-# ╠═fb39c593-86bd-4d4c-b9ec-e5e212a4de98
+# ╟─fb39c593-86bd-4d4c-b9ec-e5e212a4de98
 # ╟─7e111d10-0aa8-47bd-9ea8-186c1aecc321
 # ╠═1e0db1d5-86b7-475c-897b-b0054575a5fa
 # ╠═9257eef5-c18a-4226-9ff3-fc0ea90a1262
@@ -397,6 +453,8 @@ body.disable_ui main {
 # ╟─90845d70-35d9-402d-8936-74936b069577
 # ╠═86b4ace1-a891-41e5-a29f-f7eee5f8fb17
 # ╠═3a6ab0c0-ba08-4151-9646-c19d45749b9f
+# ╠═a0d54171-3d3b-472f-baca-2883924ec75e
+# ╠═26feb668-4e7e-4a9d-a2b6-a5dac81e3ab7
 # ╟─06a834f0-8c90-4013-af34-725166970969
 # ╠═5c6e6f7b-70e0-49a8-b064-60dcf1440223
 # ╠═b5affee5-0322-43da-9f9a-05978fd90a21

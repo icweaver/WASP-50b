@@ -15,8 +15,10 @@ corner = "^2.2.1"
 numpy = "^1.21.3"
 arviz = "^0.11.4"
 george = "^0.4.0"
+black = "^21.10b0"
 
 [tool.poetry.dev-dependencies]
+black = { version = "*", allow-prereleases = true }
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
