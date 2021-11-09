@@ -137,6 +137,9 @@ end;
 # ╔═╡ bd2cdf33-0c41-4948-82ab-9a28929f72b3
 LC = load_pickle(fpath);
 
+# ╔═╡ ddaf1038-7123-4a3b-b266-02b90697a0b1
+keys(LC)
+
 # ╔═╡ e774a20f-2d58-486a-ab71-6bde678b26f8
 md"""
 ## Stellar spectra ⭐
@@ -541,6 +544,7 @@ body.disable_ui main {
 # ╟─ee24f7df-c4db-4065-afe9-10be80cbcd6b
 # ╟─9d180c21-e634-4a1e-8430-bdd089262f66
 # ╠═bd2cdf33-0c41-4948-82ab-9a28929f72b3
+# ╠═ddaf1038-7123-4a3b-b266-02b90697a0b1
 # ╟─66052b03-35a0-4877-abef-f525766fd332
 # ╟─7bfc971c-8737-49ad-adec-ac57d176f10e
 # ╟─1c3e8cb3-2eff-47c2-8c17-01d0599556b8

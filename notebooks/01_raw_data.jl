@@ -86,7 +86,7 @@ md"""
 
 # ╔═╡ 1e0db1d5-86b7-475c-897b-b0054575a5fa
 begin
-	DATA_DIR = "data/raw/IMACS/ut131219"
+	DATA_DIR = "data/raw/IMACS/ut161211"
 	
 	df = fitscollection(
 		DATA_DIR;
@@ -172,7 +172,7 @@ For each of the 8 fits files (1 for each chip), we extract just the portion on e
 
 # ╔═╡ 86b4ace1-a891-41e5-a29f-f7eee5f8fb17
 begin
-	fpaths_glob = sort(glob("data/raw/IMACS/ut131219/ift0026c*.fits"))
+	fpaths_glob = sort(glob("$(DATA_DIR)/ift0046c*.fits"))
 	
 	# Pre-sort chips into IMACS order
 	chips = ["c1", "c6", "c2", "c5", "c3", "c8", "c4", "c7"]
@@ -192,7 +192,7 @@ begin
 end
 
 # ╔═╡ 26feb668-4e7e-4a9d-a2b6-a5dac81e3ab7
-coords = CSV.read("data/raw/IMACS/ut131219/WASP50.coords", DataFrame;
+coords = CSV.read("$(DATA_DIR)/WASP50.coords", DataFrame;
 	delim = ' ',
 	ignorerepeated = true,
 	header = ["target", "chip", "x", "y"],
@@ -201,7 +201,7 @@ coords = CSV.read("data/raw/IMACS/ut131219/WASP50.coords", DataFrame;
 # ╔═╡ 3a6ab0c0-ba08-4151-9646-c19d45749b9f
 let
 	fig = Figure(resolution = (800, 600))
-	step = 1 # For quick testing
+	step = 8 # For quick testing
 	chip_idx = 1
 	hms = []
 	axs = []
@@ -232,20 +232,22 @@ let
 		chip = chips[chip_idx]
 		for obj in eachrow(@subset coords :chip == chip)
 			coord = (obj.x, obj.y) ./ step
-			text!(ax, obj.target;
+			text!(ax, split(obj.target, "_")[1];
 				position = coord,
-				font = AlgebraOfGraphics.firasans("Light"),
 				textsize = 11,
-				align = (:center, :baseline),
-				color = :white,
+				align = (:center, :center),
+				color = :black,
+				rotation = π/2,
 			)
 		end
 		
 		# Label chip
 		text!(
 			"$(chip)",
-			position = (50, 2_000),
+			position = (0, ncols),
 			color = :yellow,
+			align = (:left, :baseline),
+			offset = 0.5 .* (step, step),
 		)
 		chip_idx += 1
 		push!(axs, ax)
@@ -263,31 +265,6 @@ let
 	save("$(path)/sci_imacs.png", fig)
 	
 	fig #|> as_svg
-end
-
-# ╔═╡ a0d54171-3d3b-472f-baca-2883924ec75e
-let
-	chip_idx = 6
-	step = 16
-	d = cube[(begin:step:end), reverse(begin:step:end), chip_idx]
-	
-	fig = Figure(resolution = (400, 600))
-	ax = Axis(fig[1, 1], xreversed=false, yreversed=true)
-
-	heatmap!(ax, d', colorrange = (0, 2_000), colormap=:magma)
-
-	chip = chips[chip_idx]
-	for obj in eachrow(@subset coords :chip == chip)
-		coord = (obj.x, obj.y) ./ step
-		scatter!(ax, coord)
-		text!(ax, obj.target, position=coord, color=:white,
-		#font = AlgebraOfGraphics.firasans("Light")
-		)
-	end
-
-	text!(ax, "c8", position = (4, 20), color=:yellow, space=:screen)
-
-	fig
 end
 
 # ╔═╡ 06a834f0-8c90-4013-af34-725166970969
@@ -368,23 +345,24 @@ cube_LDSS3 = compute_cube(
 )
 #end
 
+# ╔═╡ 83a9357d-836b-4cee-a41f-eabc8f3f12e7
+coords_LDSS3 = DataFrame((
+	(target="c21",     chip="c1", x=15,  y=600),
+	(target="c06",     chip="c1", x=78.5,  y=560),
+	(target="WASP-50", chip="c1", x=162.5, y=400),
+	(target="c15",     chip="c2", x=98,  y=350)
+))
+
 # ╔═╡ 71ba9181-90e4-4d12-97c0-462b3f1df077
 let
 	fig = Figure(resolution = (800, 600))
-	step = 1
+	step = 4
 	chip_idx = 1
 	hms = []
 	axs = []
 	for j in 1:2, i in 1
 		ax = Axis(fig[i, j])
-		if "$(chips[chip_idx])" in ["c5", "c6", "c7", "c8"]
-			x_flip = x -> x
-			y_flip = reverse
-		else
-			x_flip = reverse
-			y_flip = x -> x
-		end
-		d = cube_LDSS3[chip_idx][x_flip(begin:step:end), y_flip(begin:step:end)]'
+		d = cube_LDSS3[chip_idx][begin:step:end, begin:step:end]'
 		nrows, ncols = size(d)
 		hm = heatmap!(
 			ax,
@@ -392,11 +370,27 @@ let
 			colormap = :magma,
 			colorrange = (0, 2_000),
 		)
+
+		chip = "c$j"
+
+		# Label objects
+		for obj in eachrow(@subset coords_LDSS3 :chip == chip)
+			coord = 0.5 .* (obj.x, obj.y)
+			text!(ax, obj.target;
+				position = coord,
+				textsize = 11,
+				align = (:center, :center),
+				color = :black,
+				rotation = π/2,
+			)
+		end
 		
+		# Label chip
 		text!(
-			"$(chips[chip_idx])",
-			position = (2, 2),
-			color = :white,
+			"$(chip)",
+			position = 0.5 .* (10, 20),
+			color = :yellow,
+			align = (:left, :baseline),
 		)
 		chip_idx += 1
 		push!(axs, ax)
@@ -411,7 +405,7 @@ let
 	
 	path = "../../ACCESS_WASP-50b/figures/frames"
 	mkpath(path)
-	save("$(path)/sci_ldss3.png", fig)
+	#save("$(path)/sci_ldss3.png", fig)
 	
 	fig #|> as_svg
 end
@@ -452,13 +446,13 @@ body.disable_ui main {
 # ╠═2fdfc049-11b1-4972-9c48-e8724765126f
 # ╟─90845d70-35d9-402d-8936-74936b069577
 # ╠═86b4ace1-a891-41e5-a29f-f7eee5f8fb17
-# ╠═3a6ab0c0-ba08-4151-9646-c19d45749b9f
-# ╠═a0d54171-3d3b-472f-baca-2883924ec75e
 # ╠═26feb668-4e7e-4a9d-a2b6-a5dac81e3ab7
+# ╠═3a6ab0c0-ba08-4151-9646-c19d45749b9f
 # ╟─06a834f0-8c90-4013-af34-725166970969
 # ╠═5c6e6f7b-70e0-49a8-b064-60dcf1440223
 # ╠═b5affee5-0322-43da-9f9a-05978fd90a21
 # ╠═c488270a-3126-4e38-a0c8-ee242115a3ea
+# ╠═83a9357d-836b-4cee-a41f-eabc8f3f12e7
 # ╠═71ba9181-90e4-4d12-97c0-462b3f1df077
 # ╟─4480ae72-3bb2-4e17-99be-28afc756332a
 # ╠═3433ed02-c27c-4fe5-bfda-a5108a58407c
