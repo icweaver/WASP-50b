@@ -15,7 +15,7 @@ begin
 	using CairoMakie
 	using Colors
 	using DataFrames
-	using DataFramesMeta
+	using DataFrameMacros
 	using Dates
 	using DelimitedFiles
 	using Glob
@@ -267,7 +267,7 @@ end
 # Will probably just copy-paste directly into paper
 with_terminal() do
 	BMA |> x -> latexify(x, env=:table) |> print
-end;
+end
 
 # ╔═╡ 56d0de38-5639-4196-aafe-79a9ab933980
 begin
@@ -403,7 +403,9 @@ let
 	Label(fig[1:2, 0], "Relative flux", rotation=π/2)
 	#axs[end].ylabel = "Relative flux"
 	
-	save("../../ACCESS_WASP-50b/figures/detrended/detrended_wlcs.pdf", fig)
+	path = "../../ACCESS_WASP-50b/figures/detrended"
+	mkpath(path)
+	save("$(path)/detrended_wlcs.png", fig)
 	
 	fig #|> as_svg
 end
@@ -480,8 +482,10 @@ let
 		nbanks = 2,
 		orientation = :horizontal,
 	)
-	
-	save("../../ACCESS_WASP-50b/figures/detrended/detrended_wlcs_corner.pdf", fig)
+
+	path = "../../ACCESS_WASP-50b/figures/detrended"
+	mkpath(path)
+	save("$(path)/detrended_wlcs_corner.png", fig)
 	
 	fig #|> as_svg
 end

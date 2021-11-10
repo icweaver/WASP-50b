@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.1
+# v0.17.1
 
 using Markdown
 using InteractiveUtils
@@ -10,11 +10,13 @@ begin
 	Pkg.activate(Base.current_project())
 	
 	using AlgebraOfGraphics, CairoMakie, CSV, DataFrames, Unitful, UnitfulAstro
-	using DataFramesMeta
+	using DataFrameMacros
 	using HTTP
 	using Unitful
 	using PlutoUI
 	using Unitful: k, G
+	using Chain
+	using NaturalSort
 	
 	set_aog_theme!()
 	
@@ -58,7 +60,8 @@ df_all = let
 		"tic_id",
 		"pl_rade",
 		"pl_bmasse",
-		"pl_eqt",
+		"pl_ratdor",
+		"st_teff",
 		"st_rad",
 		"sy_jmag",
 	]
@@ -74,6 +77,17 @@ end
 md"""
 We next compute some relevant quantities from this table to help organize each population:
 """
+
+# ╔═╡ 4b51303e-6926-4922-85f9-b5b7559e96df
+println("hey")
+
+# ╔═╡ e0365154-d6c8-4db2-bb85-bf2536a3aa74
+function compute_Teq(T, aR; α)
+	T * (1.0 - α)^0.25 * sqrt(0.5 * inv(aR))
+end
+
+# ╔═╡ b0dcdd07-3887-4d3e-9bef-6abed46a9f94
+w63 = @subset df_all :pl_name =="WASP-63 b"
 
 # ╔═╡ 9aed232f-ec74-4ec6-9ae7-06b90539833b
 # begin
@@ -116,14 +130,6 @@ md"""
 	Inspired from [warm-worlds](https://github.com/nespinoza/warm-worlds)
 """
 
-# ╔═╡ c98c5618-4bac-4322-b4c3-c76181f47889
-df_HGHJs_all = @chain df begin
-	@subset @. (1.0 ≤ :TSMR) &
-	(15.0 ≤ :g_SI ≤ 53) &
-	(:pl_eqt ≤ 4900.0)
-	sort(:TSMR, rev=true)
-end
-
 # ╔═╡ 18094afc-b77f-4cae-a30c-2691d34125d8
 md"""
 !!! warning "TODO"
@@ -136,11 +142,6 @@ md"""
 # ╔═╡ 958453c3-7993-4620-ab7f-e7ad79781dd5
 val(df, name, col) = df[df.pl_name .== name, col][1]
 
-# ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
-df_HGHJs = @subset(
-	df_HGHJs_all, :pl_name .∈ Ref(["HAT-P-23 b", "WASP-43 b", "WASP-50 b"])
-)
-
 # ╔═╡ f07ad06b-81d2-454f-988f-a7ae1713eac4
 function annotate_text!(ax, t, p1, p2, l, lm; align=(:center, :center))
 	hyp = 2.0*lm + l
@@ -148,6 +149,75 @@ function annotate_text!(ax, t, p1, p2, l, lm; align=(:center, :center))
 	text!(ax, t, position=p1, align=align)
 	lines!(ax, [p1 + eps, p2 - eps], color=:darkgrey, linewidth=1)
 end
+
+# ╔═╡ 2776646e-47e7-4b9e-ab91-4035bc6df99f
+function compute_scale_factor(Rp)
+	if Rp < 1.5
+		f = 0.190
+	elseif 1.5 ≤ Rp 2.75
+		f = 1.26
+	elseif 2.75 ≤ Rp < 4.0
+		f = 1.28
+	elseif 4.0 ≤ Rp < 10.0
+		f = 1.15
+	else
+		f = 1.15 # Only goes up to 1O R_earth in Kempton+2018
+	end
+	return f
+end
+
+# ╔═╡ c7960066-cc33-480c-807b-c56ead4262bf
+# compute TSM, assuming M, R in Earth units, T in Kelvin
+function compute_TSM(Rp, Teq, Mp, Rs, J; denom=1.0)
+	f = compute_scale_factor(Rp)
+	return f * (Rp^3 * Teq / (Mp * Rs^2)) * 10.0^(-J/5.0) / denom
+end
+
+# ╔═╡ abaee9cc-9841-4b6b-ad33-2093c27422c8
+compute_g(M, R) = G * M / R^2
+
+# ╔═╡ 1e587a84-ed43-4fac-81cf-134a4f3d65d5
+compute_H(μ, T, g) = k * T / (μ * g)
+
+# ╔═╡ c1e63cf3-7f30-4858-bdd6-125d2a99529f
+compute_ΔD(H, Rₚ, Rₛ) = 2.0 * H * Rₚ/Rₛ^2
+
+# ╔═╡ 2702ba80-993c-4cca-bd14-0d4d6b67362b
+begin
+	df = dropmissing(
+		df_all, [:pl_rade, :pl_bmasse, :pl_ratdor, :st_teff, :sy_jmag]
+	)
+	df.pl_eqt = compute_Teq.(df.st_teff, df.pl_ratdor; α=0.1)
+	df.g_SI = let
+		g = compute_g.(df.pl_bmasse*u"Mearth", df.pl_rade*u"Rearth")
+		ustrip.(u"m/s^2", g)
+	end
+	df.H_km = let
+		H = compute_H.(2.0*u"u", df.pl_eqt*u"K", df.g_SI*u"m/s^2")
+		ustrip.(u"km", H)
+	end
+	df.TSM = compute_TSM.(df.pl_rade, df.pl_eqt, df.pl_bmasse, df.st_rad, df.sy_jmag)
+	df.TSMR = df.TSM ./ df.TSM[df.pl_name .== "HAT-P-23 b"][1]
+	df.ΔD_ppm = let
+		ΔD = compute_ΔD.(df.H_km*u"km", df.pl_rade*u"Rearth", df.st_rad*u"Rsun")
+		uconvert.(NoUnits, ΔD) * 5.0 * 1e6
+	end
+	df.ΔDR_ppm = df.ΔD_ppm ./ df.ΔD_ppm[df.pl_name .== "HAT-P-23 b"][1]
+	df
+end
+
+# ╔═╡ c98c5618-4bac-4322-b4c3-c76181f47889
+df_HGHJs_all = @chain df begin
+	@subset (1.0 ≤ :TSMR) &
+	(15.0 ≤ :g_SI ≤ 53) &
+	(:pl_eqt ≤ 4900.0)
+	sort(:TSMR, rev=true)
+end
+
+# ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
+df_HGHJs = @subset(
+	df_HGHJs_all, :pl_name .∈ Ref(["HAT-P-23 b", "WASP-43 b", "WASP-50 b"])
+)
 
 # ╔═╡ c1cd9292-28b9-4206-b128-608aaf30ff9c
 # TODO: Place latitude constraints
@@ -229,64 +299,11 @@ let
 		titlegap = 24,
 	)
 
-	save("../../51Peg/figures/hg_pop.pdf", fig)
+	path = "../../ACCESS_WASP-50b/figures/pop"
+	mkpath(path)
+	save("$(path)/hg_pop.png", fig)
 	
 	fig
-end
-
-# ╔═╡ 2776646e-47e7-4b9e-ab91-4035bc6df99f
-function compute_scale_factor(Rp)
-	if Rp < 1.5
-		f = 0.190
-	elseif 1.5 ≤ Rp 2.75
-		f = 1.26
-	elseif 2.75 ≤ Rp < 4.0
-		f = 1.28
-	elseif 4.0 ≤ Rp < 10.0
-		f = 1.15
-	else
-		f = 1.15 # Only goes up to 1O R_earth in Kempton+2018
-	end
-	return f
-end
-
-# ╔═╡ c7960066-cc33-480c-807b-c56ead4262bf
-# compute TSM, assuming M, R in Earth units, T in Kelvin
-function compute_TSM(Rp, Teq, Mp, Rs, J; denom=1.0)
-	f = compute_scale_factor(Rp)
-	return f * (Rp^3 * Teq / (Mp * Rs^2)) * 10.0^(-J/5.0) / denom
-end
-
-# ╔═╡ abaee9cc-9841-4b6b-ad33-2093c27422c8
-compute_g(M, R) = G * M / R^2
-
-# ╔═╡ 1e587a84-ed43-4fac-81cf-134a4f3d65d5
-compute_H(μ, T, g) = k * T / (μ * g)
-
-# ╔═╡ c1e63cf3-7f30-4858-bdd6-125d2a99529f
-compute_ΔD(H, Rₚ, Rₛ) = 2.0 * H * Rₚ/Rₛ^2
-
-# ╔═╡ 2702ba80-993c-4cca-bd14-0d4d6b67362b
-begin
-	df = dropmissing(
-		df_all, [:pl_rade, :pl_eqt, :pl_bmasse, :st_rad, :sy_jmag]
-	)
-	df.g_SI = let
-		g = compute_g.(df.pl_bmasse*u"Mearth", df.pl_rade*u"Rearth")
-		ustrip.(u"m/s^2", g)
-	end
-	df.H_km = let
-		H = compute_H.(2.0*u"u", df.pl_eqt*u"K", df.g_SI*u"m/s^2")
-		ustrip.(u"km", H)
-	end
-	df.TSM = compute_TSM.(df.pl_rade, df.pl_eqt, df.pl_bmasse, df.st_rad, df.sy_jmag)
-	df.TSMR = df.TSM ./ df.TSM[df.pl_name .== "HAT-P-23 b"][1]
-	df.ΔD_ppm = let
-		ΔD = compute_ΔD.(df.H_km*u"km", df.pl_rade*u"Rearth", df.st_rad*u"Rsun")
-		uconvert.(NoUnits, ΔD) * 5.0 * 1e6
-	end
-	df.ΔDR_ppm = df.ΔD_ppm ./ df.ΔD_ppm[df.pl_name .== "HAT-P-23 b"][1]
-	df
 end
 
 # ╔═╡ d2d6452b-426c-4c61-8dc4-d210c0cd9d41
@@ -307,15 +324,6 @@ df_ACCESS = innerjoin(CSV.read("data/pop/ACCESS.csv", DataFrame), df, on=:pl_nam
 
 # ╔═╡ df499885-3f7d-4293-bcf5-9c761ac3ccd2
 sort(df_ACCESS, :pl_name, lt=natural)
-
-# ╔═╡ 10e8182d-60ba-42d1-b1ee-1b2f3379d741
-md"""
-!!! warning "TODO"
-* Highlight ACCESS targets across Co-CH₄ boundary in proposal,
-* H5b (Natalie, part of collaboration)
-* HP26b (Kevin's target, mentoring)
-* W98 (Double check data)
-"""
 
 # ╔═╡ d6791747-7503-49a9-903c-c479fc0c3d49
 species = (
@@ -385,10 +393,73 @@ begin
 		end
 		text!(ax, name, position=(T, R), align=align, textsize=12)
 	end
-
-	save("../../51Peg/figures/co_ch4_pop.pdf", fig)
 	
 	fig
+end
+
+# ╔═╡ b5c0dbc8-d700-473e-9f00-d89a319f6432
+md"""
+## Targets with tspecs
+"""
+
+# ╔═╡ 24cd6863-9b93-473b-a66b-993e3f7d50a5
+df.pl_name[1]
+
+# ╔═╡ b4c7316d-d198-4449-ad45-66397fd1a9a5
+tspec_targs = [
+	"GJ 436 b",
+	"GJ 1214 b",
+	"GJ 3470 b",
+	"HAT-P-1 b",
+	"HAT-P-11 b",
+	"HAT-P-12 b",
+	"HAT-P-26 b",
+	"HAT-P-32 b",
+	"HAT-P-38 b",
+	"HAT-P-41 b",
+	"HD 97658 b",
+	"HD 189733 b",
+	"HD 209458 b",
+	"K2-18 b",
+	"KELT-11 b",
+	"Kepler-51 b",
+	"Kepler-51 d",
+	"TRAPPIST-1 b",
+	"TRAPPIST-1 c",
+	"TRAPPIST-1 d",
+	"TRAPPIST-1 e",
+	"TRAPPIST-1 f",
+	"TRAPPIST-1 g",
+	"WASP-6 b",
+	"WASP-12 b",
+	"WASP-17 b",
+	"WASP-19 b",
+	"WASP-21 b",
+	"WASP-31 b",
+	"WASP-39 b",
+	"WASP-43 b",
+	"WASP-52 b",
+	"WASP-62 b",
+	"WASP-63 b",
+	"WASP-67 b",
+	"WASP-76 b",
+	"WASP-79 b",
+	"WASP-101 b",
+	"WASP-107 b",
+	"WASP-121 b",
+	"WASP-127 b",
+	"XO-1 b",
+]
+
+# ╔═╡ 0f118d0e-0eb6-4517-8378-9623337f73ca
+df_tspecs = @subset df :pl_name ∈ tspec_targs
+
+# ╔═╡ 8f13ccae-cda2-4c11-a4b8-bbde9c0c6bcc
+names(df_tspecs)
+
+# ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
+let
+	data(df_tspecs) * mapping()
 end
 
 # ╔═╡ Cell order:
@@ -397,6 +468,9 @@ end
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
 # ╠═2702ba80-993c-4cca-bd14-0d4d6b67362b
+# ╠═4b51303e-6926-4922-85f9-b5b7559e96df
+# ╠═e0365154-d6c8-4db2-bb85-bf2536a3aa74
+# ╠═b0dcdd07-3887-4d3e-9bef-6abed46a9f94
 # ╠═9aed232f-ec74-4ec6-9ae7-06b90539833b
 # ╟─4cbbb1e8-e5fb-4ab0-a7e6-7881c2dde032
 # ╟─7f956b36-ce65-4e4e-afa5-9b97b9e06954
@@ -417,7 +491,12 @@ end
 # ╟─8e4b1149-abf1-4ded-b20f-4765d2ee49a9
 # ╠═8cece13d-34cb-40df-8986-ac0dad210e58
 # ╠═df499885-3f7d-4293-bcf5-9c761ac3ccd2
-# ╟─10e8182d-60ba-42d1-b1ee-1b2f3379d741
 # ╠═60016c3f-6968-4d3c-ac73-d324b2a071e0
 # ╠═d6791747-7503-49a9-903c-c479fc0c3d49
+# ╟─b5c0dbc8-d700-473e-9f00-d89a319f6432
+# ╠═24cd6863-9b93-473b-a66b-993e3f7d50a5
+# ╠═b4c7316d-d198-4449-ad45-66397fd1a9a5
+# ╠═0f118d0e-0eb6-4517-8378-9623337f73ca
+# ╠═8f13ccae-cda2-4c11-a4b8-bbde9c0c6bcc
+# ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
 # ╠═24c6a2d0-0aea-11ec-2cd4-3de7ec08b83e

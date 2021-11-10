@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.1
+# v0.17.1
 
 using Markdown
 using InteractiveUtils
@@ -7,8 +7,9 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
 end
@@ -24,12 +25,12 @@ begin
 	using CCDReduction: fitscollection
 	using Colors
 	using DataFrames
-	using DataFramesMeta
+	using DataFrameMacros
 	using Dates
 	using DelimitedFiles
 	using Glob
 	using ImageFiltering
-	using KernelDensity
+	import CairoMakie.Makie.KernelDensity: kde
 	using Latexify
 	using LaTeXStrings
 	using LombScargle
@@ -150,7 +151,9 @@ let
 		)
 	end
 		
-	save("../../ACCESS_WASP-50b/figures/stellar_activity/ASAS-SN_flux.pdf", fig)
+	path = "../../ACCESS_WASP-50b/figures/stellar_activity"
+	mkpath(path)
+	save("$(path)/ASAS-SN_flux.png", fig)
 	
 	fig #|> as_svg
 end
@@ -240,51 +243,6 @@ md"""
 With the BJD times computed, we can now plot the ASAS-SN photometry, binned to **$(binsize_ASASSN) days**:
 """
 
-# ╔═╡ f3425d9c-861e-4b26-b352-bd0669c7f1f9
-let
-	fig = Figure(resolution=(800, 800))
-	
-	### Photometry plot ####
-	ax = Axis(fig[1, 1], xlabel="Time (BTJD)", ylabel="Relative flux (ppm)")
-	
-	# Mark transit epochs
-	Δjulian_transit_dates = julian_transit_dates .- 2.457e6
-	vlines!(ax, Δjulian_transit_dates;
-		linestyle = :dash,
-		color = :darkgrey,
-	)
-	
-	# Label transit epochs
-	for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, Δjulian_transit_dates))
-		text!(ax, "Transit $i\n$utc";
-			position = Point2f0(jd, 5.0e4),
-			textsize = 14,
-			align = (:left, :center),
-			offset = Point2f0(10, 0),
-			color = :grey,
-		)
-	end
-	
-	# ax_phot, t_binned, f_binned, f_err_binned, lc_binned, f_med = plot_phot!(
-	# 	ax, t_ASASSN, f_ASASSN, f_err_ASASSN;
-	# 	t_offset=2.457e6, relative_flux=true, binsize=binsize_ASASSN
-	# )
-	
-# 	#### Periodogram #######
-# 	ax_pg = Axis(fig[2, 1], xlabel="Periods (days)", ylabel="log10 Power")
-# 	Ps, powers, faps = compute_pg(lc_binned, 5, 30)
-# 	lines!(ax_pg, Ps, log10.(powers*f_med/1e6))
-# 	hlines!(ax_pg, log10.(faps), color=:darkgrey, linestyle=:dash, label="\n\n[1, 5, 10]% FAPs")
-# 	axislegend()
-	
-# 	CSV.write(
-# 		"/home/mango/Desktop/WASP50LC_ASASSN_binned.csv",
-# 		DataFrame(:t=>t_binned, :f=>f_binned, :f_err=>f_err_binned),
-# 	)
-			
-	fig
-end
-
 # ╔═╡ 682499cb-af79-48f7-9e74-0185894f65fe
 #= md"""
 For comparison, the cadence for this data has an average of $(t_ASASSN |> diff |> mean) days.
@@ -311,7 +269,7 @@ function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=
 	t_rel = t .- t_offset
 	if relative_flux
 		f_med = median(f)
-		Δf, Δf_err = 1e6*(f .- f_med) / f_med , 1e6*f_err / f_med
+		Δf, Δf_err = @. 1.0 + (f - f_med) / f_med , @. f_err / f_med
 		
 	else
 		f_med = 1.0
@@ -324,9 +282,9 @@ function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=
 	
 	# Binned data
 	lc = lk.LightCurve(
-		time=t_ASASSN, flux=f_ASASSN, flux_err=f_err_ASASSN
+		time=t, flux=f, flux_err=f_err
 	).normalize()
-	lc_binned = lc.bin(binsize)
+	lc_binned = lc.bin(binsize).remove_nans()
 	t_binned, f_binned, f_err_binned = (
 		lc_binned.time.value,
 		lc_binned.flux,
@@ -407,9 +365,8 @@ let
 	
 	for (i, (lc, lc_oot)) ∈ enumerate(zip(lcs_cleaned[1:end-1], lcs_oot[1:end-1]))
 		ax = Axis(fig[i, 1])
-		scatter!(ax, lc.time.value, lc.flux;
-			color = (:darkgrey, 1.0),
-			#lc.flux_err,
+		errorbars!(ax, lc.time.value, lc.flux, lc.flux_err;
+			color = (:darkgrey, 0.25),
 			markersize = 15,
 			label = """
 			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
@@ -420,7 +377,7 @@ let
 		#scatter!(fig[i, 1], lc.time.value, lc.flux)
 		
 		scatter!(ax, lc_oot.time.value, lc_oot.flux;
-			color = COLORS[2], label="OOT baseline",
+			color = :darkgrey, label="OOT baseline",
 			#markersize = 5,
 		)
 
@@ -432,7 +389,9 @@ let
 	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
 	Label(fig[1:end-1, 0], "Relative flux", rotation=π/2)
 	
-	save("../../ACCESS_WASP-50b/figures/stellar_activity/TESS_flux.pdf", fig)
+	path = "../../ACCESS_WASP-50b/figures/stellar_activity"
+	mkpath(path)
+	save("$(path)/TESS_flux.png", fig)
 	
 	fig
 end
@@ -450,6 +409,59 @@ function compute_pgram(lc; min_period=0.5, max_period=30.0)
 		maximum_frequency = 1.0 / min_period,
 	)
 	return lombscargle(plan), plan
+end
+
+# ╔═╡ f3425d9c-861e-4b26-b352-bd0669c7f1f9
+begin
+	fig = Figure(resolution=(800, 800))
+	
+	### Photometry plot ####
+	ax = Axis(fig[1, 1], xlabel="Time (BTJD)", ylabel="Relative flux (ppm)")
+	
+	# Mark transit epochs
+	Δjulian_transit_dates = julian_transit_dates #.- 2.457e6
+	vlines!(ax, Δjulian_transit_dates;
+		linestyle = :dash,
+		color = :darkgrey,
+	)
+	
+	# Label transit epochs
+	# for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, Δjulian_transit_dates))
+	# 	text!(ax, "Transit $i\n$utc";
+	# 		position = Point2f0(jd, 5.0e4),
+	# 		textsize = 14,
+	# 		align = (:left, :center),
+	# 		offset = Point2f0(10, 0),
+	# 		color = :grey,
+	# 	)
+	# end
+	
+	ax_phot, t_binned, f_binned, f_err_binned, lc_binned, f_med = plot_phot!(
+		ax, t_ASASSN, f_ASASSN, f_err_ASASSN;
+		t_offset=0, relative_flux=true, binsize=binsize_ASASSN
+	)
+	
+	#### Periodogram #######
+	ax_pg = Axis(fig[2, 1], xlabel="Periods (days)", ylabel="log10 Power")
+	pgram, plan = compute_pgram(lc_binned)
+	b = LombScargle.bootstrap(100, plan)
+	P_max = findmaxperiod(pgram)[1]
+	lines!(ax_pg, periodpower(pgram)...;
+			label = "P_max: $(P_max) days",
+		)
+	hlines!(ax_pg, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))), linestyle=:dash)
+	axislegend(ax_pg, position=:lc)
+	
+# 	CSV.write(
+# 		"/home/mango/Desktop/WASP50LC_ASASSN_binned.csv",
+# 		DataFrame(:t=>t_binned, :f=>f_binned, :f_err=>f_err_binned),
+# 	)
+
+	path = "../../ACCESS_WASP-50b/figures/stellar_activity"
+	mkpath(path)
+	save("$(path)/ASAS-SN_pg.png", fig)
+			
+	fig
 end
 
 # ╔═╡ 2215ed86-fa78-4811-88ab-e3521e4a1dea
@@ -511,7 +523,9 @@ let
 	
 	#axislegend()
 	
-	save("../../ACCESS_WASP-50b/figures/stellar_activity/TESS_pg.pdf", fig)
+	path = "../../ACCESS_WASP-50b/figures/stellar_activity"
+	mkpath(path)
+	save("$(path)/TESS_pg.png", fig)
 	
 	fig
 end
@@ -607,7 +621,9 @@ let
 	axs[end].xlabel = "Phase"
 	axs[2].ylabel = "Normalized flux"
 	
-	save("../../ACCESS_WASP-50b/figures/stellar_activity/TESS_phase.pdf", fig)
+	path = "../../ACCESS_WASP-50b/figures/stellar_activity"
+	mkpath(path)
+	save("$(path)/TESS_phase.png", fig)
 	
 	fig
 end
@@ -637,6 +653,13 @@ Ts = 10.0:10.0:5_000
 
 # ╔═╡ df370404-2f12-4925-8827-6198793ae842
 extrema(f_sp.(Ts, ΔLs[end], T₀)) .* 100
+
+# ╔═╡ 121907d6-8da9-4771-820f-debe5ecc4b0d
+md"""
+```math
+f_\text{sp} \in [0.832, 0.255]
+```
+"""
 
 # ╔═╡ 18223d42-66d8-40d1-9d89-be8af46853e2
 md"""
@@ -714,6 +737,7 @@ md"""
 # ╠═c0d53fc0-467b-4e49-a829-f149e14e3d08
 # ╠═3077c3bf-9ddd-46db-94b7-b7a8120f1485
 # ╠═df370404-2f12-4925-8827-6198793ae842
+# ╠═121907d6-8da9-4771-820f-debe5ecc4b0d
 # ╟─18223d42-66d8-40d1-9d89-be8af46853e2
 # ╠═682c3732-e68f-4fdb-bd63-553223308364
 # ╟─ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd

@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.1
+# v0.17.1
 
 using Markdown
 using InteractiveUtils
@@ -15,7 +15,7 @@ begin
 	using CCDReduction: fitscollection
 	using Colors
 	using DataFrames
-	using DataFramesMeta
+	using DataFrameMacros
 	using Dates
 	using DelimitedFiles
 	using Glob
@@ -406,7 +406,9 @@ let
 
 	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
 	
-	save("../../ACCESS_WASP-50b/figures/detrended/tspec.pdf", fig)
+	path = "../../ACCESS_WASP-50b/figures/detrended"
+	mkpath(path)
+	save("$(path)/tspec.png", fig)
 		
 	fig #|> as_svg
 end

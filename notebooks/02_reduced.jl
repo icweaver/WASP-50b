@@ -25,7 +25,7 @@ begin
 	using CCDReduction
 	using Colors
 	using DataFrames
-	using DataFramesMeta
+	using DataFrameMacros
 	using Dates
 	using DelimitedFiles
 	using Glob
@@ -136,9 +136,6 @@ end;
 
 # ╔═╡ bd2cdf33-0c41-4948-82ab-9a28929f72b3
 LC = load_pickle(fpath);
-
-# ╔═╡ ddaf1038-7123-4a3b-b266-02b90697a0b1
-keys(LC)
 
 # ╔═╡ e774a20f-2d58-486a-ab71-6bde678b26f8
 md"""
@@ -307,7 +304,7 @@ end
 
 # ╔═╡ 13523326-a5f2-480d-9961-d23cd51192b8
 let
-	fig = Figure()#resolution=FIG_WIDE)
+	fig = Figure(resolution=(800, 600))
 	
 	ncomps = length(comp_names)
 	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
@@ -327,7 +324,9 @@ let
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
 	fig[end+1, 2:end] = Label(fig, "Index")
 	
-	#save("../../ACCESS_WASP-50b/figures/reduced/div_wlcs_$(utdate)_IMACS.pdf", fig)
+	path = "../../ACCESS_WASP-50b/figures/reduced"
+	mkpath(path)
+	save("$(path)/div_wlcs_$(utdate)_IMACS.png", fig)
 	
 	fig #|> as_svg
 end
@@ -388,13 +387,13 @@ We first compute `f_norm_w`, the binned target flux divided by each comparison s
 wbins_name = occursin("131219", fpath) ? "w50_bins_ut131219.dat" : "w50_bins.dat"
 
 # ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
-#wbins = readdlm("data/reduced/IMACS/$(wbins_name)", comments=true)
-wbins = readdlm("data/reduced/w50_bins_species.dat", comments=true)
+wbins = readdlm("data/reduced/IMACS/$(wbins_name)", comments=true)
+#wbins = readdlm("data/reduced/w50_bins_species.dat", comments=true)
 
 # ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
 let
-	fig = Figure()
-	ax = Axis(fig[1, 1])
+	fig = Figure(resolution=(800, 400))
+	ax = Axis(fig[1, 1], xlabel="Wavelength (Å)", ylabel="Relative flux")
 	
 	wav = LC["spectra"]["wavelengths"]
 	f_norm = median(LC["spectra"]["WASP50"])
@@ -411,10 +410,13 @@ let
 	
 	axislegend()
 	
-	xlims!(ax, 3_500, 11_000)
+	xlims!(ax, 4_500, 11_000)
 	ylims!(ax, 0, 2.6)
 	
-	# save(
+	path = "../../ACCESS_WASP-50b/figures/reduced"
+	mkpath(path)
+	save("$(path)/extracted_spectra_$(utdate)_IMACS.png", fig)
+	#save(
 	# 	"../../ACCESS_WASP-50b/figures/reduced/extracted_spectra_$(utdate)_IMACS.pdf",
 	# 	fig
 	# )
@@ -544,7 +546,6 @@ body.disable_ui main {
 # ╟─ee24f7df-c4db-4065-afe9-10be80cbcd6b
 # ╟─9d180c21-e634-4a1e-8430-bdd089262f66
 # ╠═bd2cdf33-0c41-4948-82ab-9a28929f72b3
-# ╠═ddaf1038-7123-4a3b-b266-02b90697a0b1
 # ╟─66052b03-35a0-4877-abef-f525766fd332
 # ╟─7bfc971c-8737-49ad-adec-ac57d176f10e
 # ╟─1c3e8cb3-2eff-47c2-8c17-01d0599556b8

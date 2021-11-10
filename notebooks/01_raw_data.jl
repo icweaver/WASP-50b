@@ -86,7 +86,7 @@ md"""
 
 # ╔═╡ 1e0db1d5-86b7-475c-897b-b0054575a5fa
 begin
-	DATA_DIR = "data/raw/IMACS/ut161211"
+	DATA_DIR = "data/raw/IMACS/ut150927"
 	
 	df = fitscollection(
 		DATA_DIR;
@@ -172,7 +172,7 @@ For each of the 8 fits files (1 for each chip), we extract just the portion on e
 
 # ╔═╡ 86b4ace1-a891-41e5-a29f-f7eee5f8fb17
 begin
-	fpaths_glob = sort(glob("$(DATA_DIR)/ift0046c*.fits"))
+	fpaths_glob = sort(glob("$(DATA_DIR)/ift0543c*.fits"))
 	
 	# Pre-sort chips into IMACS order
 	chips = ["c1", "c6", "c2", "c5", "c3", "c8", "c4", "c7"]
@@ -201,7 +201,7 @@ coords = CSV.read("$(DATA_DIR)/WASP50.coords", DataFrame;
 # ╔═╡ 3a6ab0c0-ba08-4151-9646-c19d45749b9f
 let
 	fig = Figure(resolution = (800, 600))
-	step = 8 # For quick testing
+	step = 1 # For quick testing
 	chip_idx = 1
 	hms = []
 	axs = []
@@ -225,7 +225,7 @@ let
 			ax,
 			d,
 			colormap = :magma,
-			colorrange = (0, 2_000),
+			colorrange = (0, 500),
 		)
 
 		# Label objects on chip
@@ -247,7 +247,7 @@ let
 			position = (0, ncols),
 			color = :yellow,
 			align = (:left, :baseline),
-			offset = 0.5 .* (step, step),
+			offset = 0.5 .* (20, 20),
 		)
 		chip_idx += 1
 		push!(axs, ax)
@@ -262,7 +262,7 @@ let
 	
 	path = "../../ACCESS_WASP-50b/figures/frames"
 	mkpath(path)
-	save("$(path)/sci_imacs.png", fig)
+	save("$(path)/sci_imacs_$(basename(DATA_DIR)).png", fig)
 	
 	fig #|> as_svg
 end
@@ -347,16 +347,16 @@ cube_LDSS3 = compute_cube(
 
 # ╔═╡ 83a9357d-836b-4cee-a41f-eabc8f3f12e7
 coords_LDSS3 = DataFrame((
-	(target="c21",     chip="c1", x=15,  y=600),
-	(target="c06",     chip="c1", x=78.5,  y=560),
-	(target="WASP-50", chip="c1", x=162.5, y=400),
-	(target="c15",     chip="c2", x=98,  y=350)
+	(target="c21",     chip="c1", x=25,  y=1300),
+	(target="c06",     chip="c1", x=150,  y=1200),
+	(target="WASP-50", chip="c1", x=322, y=800),
+	(target="c15",     chip="c2", x=198,  y=1000)
 ))
 
 # ╔═╡ 71ba9181-90e4-4d12-97c0-462b3f1df077
 let
 	fig = Figure(resolution = (800, 600))
-	step = 4
+	step = 1
 	chip_idx = 1
 	hms = []
 	axs = []
@@ -368,14 +368,14 @@ let
 			ax,
 			d,
 			colormap = :magma,
-			colorrange = (0, 2_000),
+			colorrange = (0, 500),
 		)
 
 		chip = "c$j"
 
 		# Label objects
 		for obj in eachrow(@subset coords_LDSS3 :chip == chip)
-			coord = 0.5 .* (obj.x, obj.y)
+			coord = (obj.x, obj.y)
 			text!(ax, obj.target;
 				position = coord,
 				textsize = 11,
@@ -388,7 +388,7 @@ let
 		# Label chip
 		text!(
 			"$(chip)",
-			position = 0.5 .* (10, 20),
+			position = 0.5 .* (40, 80),
 			color = :yellow,
 			align = (:left, :baseline),
 		)
@@ -401,11 +401,11 @@ let
 	Colorbar(fig[:, end+1], hms[1], width=20, labelcolor=:black, label="Counts",)
 	
 	linkaxes!(axs...)
-	hidedecorations!.(axs)
+	#hidedecorations!.(axs)
 	
 	path = "../../ACCESS_WASP-50b/figures/frames"
 	mkpath(path)
-	#save("$(path)/sci_ldss3.png", fig)
+	save("$(path)/sci_ldss3.png", fig)
 	
 	fig #|> as_svg
 end

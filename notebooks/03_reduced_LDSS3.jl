@@ -27,7 +27,7 @@ begin
 	using CCDReduction
 	using Colors
 	using DataFrames
-	using DataFramesMeta
+	using DataFrameMacros
 	using Dates
 	using DelimitedFiles
 	using Glob
@@ -357,7 +357,7 @@ md"""
 """
 
 # ╔═╡ 301ff07c-8dd5-403a-bae8-a4c38deeb331
-target_name = "aperture_324_803"
+target_name = "aperture_325_803" # "aperture_324_803"
 
 # ╔═╡ d14ab9de-23b4-4647-a823-9b318bb734e9
 median_eparam(param, cube, obj_name, wav_idxs) = cube[param][obj_name][:, wav_idxs] |>
@@ -468,8 +468,8 @@ wav = LC["spectral"]["wavelength"][common_wav_idxs]
 
 # ╔═╡ 45418bd3-74a3-4758-9fce-adddbeeec076
 let
-	fig = Figure()
-	ax = Axis(fig[1, 1], xlabel="Wavelength Å", ylabel="Relative flux")
+	fig = Figure(resolution=(800, 400))
+	ax = Axis(fig[1, 1], xlabel="Wavelength Å", ylabel="Relative flux")
 	
 	fluxes = [f_target, [f_comps[:, :, i] for i in 1:3]...]
 	labels = obj_names.vals
@@ -483,6 +483,8 @@ let
 			label = name,
 		)
 	end
+
+	vlines!.(ax, wbins, linewidth=1.0, color=:lightgrey)
 	
 	#vlines!.(ax, wbins, linewidth=15.0, color=:lightgrey)
 	#vlines!.(ax, values(species), color=:red)
@@ -494,14 +496,14 @@ let
 	#xlims!(ax, 5_700, 6_400)
 	#xlims!(ax, 7600, 7800)
 	
+	xlims!(ax, 4_500, 11_000)
 	ylims!(ax, 0, 2.6)
 	
 	axislegend()
 	
-	save(
-		"../../ACCESS_WASP-50b/figures/reduced/extracted_spectra_ut150927_LDSS3.pdf",
-		fig
-	)
+	path = "../../ACCESS_WASP-50b/figures/reduced"
+	mkpath(path)
+	save("$(path)/extracted_spectra_ut150927_LDSS3.png", fig)
 	
 	fig #|> as_svg
 end
@@ -528,7 +530,7 @@ end
 
 # ╔═╡ 4b2ed9db-0a17-4e52-a04d-3a6a5bf2c054
 let
-	fig = Figure()#resolution=FIG_TALL)
+	fig = Figure(resolution=(800, 600))
 	
 	comp_names = obj_names.vals[2:4]
 	ncomps = length(comp_names)
@@ -549,7 +551,9 @@ let
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2, tellheight=false)
 	axs[2].xlabel = "Index"
 	
-	save("../../ACCESS_WASP-50b/figures/reduced/div_wlcs_ut150927_LDSS3.pdf", fig)
+	path = "../../ACCESS_WASP-50b/figures/reduced"
+	mkpath(path)
+	save("$(path)/div_wlcs_ut150927_LDSS3.png", fig)
 	
 	fig #|> as_svg
 end

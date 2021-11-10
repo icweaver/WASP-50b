@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.1
+# v0.17.1
 
 using Markdown
 using InteractiveUtils
@@ -15,7 +15,7 @@ begin
 	using CCDReduction: fitscollection
 	using Colors
 	using DataFrames
-	using DataFramesMeta
+	using DataFrameMacros
 	using Dates
 	using DelimitedFiles
 	using Glob
@@ -165,35 +165,56 @@ function plot_evidences(nm)
 	
 	ylims!(ax, 0, 5)
 	
-	save("../../ACCESS_WASP-50b/figures/detrended/retrieval_evidences.pdf", fig)
+	path = "../../ACCESS_WASP-50b/figures/detrended"
+	mkpath(path)
+	save("$(path)/retrieval_evidences.png", fig)
 	
 	fig
 end
 
 # ╔═╡ db524678-9ee2-4934-b1bb-6a2f13bf0fa6
-dirpath = "data/retrievals/all_WASP50/WASP50_E1_Het_FitP0_Clouds_Haze_fitR0_K"
+dirpath = "data/retrievals/all_WASP50/WASP50_E1_NoHet_FitP0_NoClouds_NoHaze_fitR0_Na_TiO"
 
 # ╔═╡ 38f37547-9663-464d-9983-4fd3bdbc79b6
-retr = CSV.File("$(dirpath)/retr_Magellan_IMACS.txt")
+retr = CSV.read(
+	"$(dirpath)/retr_Magellan_IMACS.txt", DataFrame;
+	header = [:wav, :flux, :wav_d, :wav_u, :flux_err],
+	comment = "#",
+)
 
 # ╔═╡ b245f244-897e-4eb2-a6a6-cef7c85ca390
-retr_model = CSV.File("$(dirpath)/retr_model.txt") 
+retr_model = CSV.read("$(dirpath)/retr_model.txt", DataFrame;
+	header = [:wav, :flux, :flux_d, :flux_u],
+	comment = "#",
+) 
 
 # ╔═╡ 66ad752e-29a2-4d1d-8985-4bda58138e31
-retr_model_sampled = CSV.File("$(dirpath)/retr_model_sampled_Magellan_IMACS.txt")
+retr_model_sampled = CSV.read(
+	"$(dirpath)/retr_model_sampled_Magellan_IMACS.txt", DataFrame;
+	header = [:wav, :flux],
+	comment = "#",
+)
 
 # ╔═╡ e801501c-a882-4f2d-bbc1-40028c1c91d8
 begin
-	fig = Figure()
-	ax = Axis(fig[1, 1])
-	
+	fig = Figure(resolution=(800, 500))
+	ax = Axis(fig[1, 1], limits=((0.25, 1.1), (17_500, 20_500)))
+
 	errorbars!(ax, retr.wav, retr.flux, retr.flux_err)
-	scatter!(ax, retr.wav, retr.flux)
-	
-	lines!(ax, retr_model.wav, retr_model.flux)
-	scatter!(ax, retr_model_sampled.wav, retr_model_sampled.flux)
-	
-	xlims!(ax, 0.2, 1.1)
+	scatter!(ax, retr.wav, retr.flux;
+		markersize = 15,
+		color = :white,
+		strokewidth=1.5,
+	)
+
+	lines!(ax, retr_model.wav, retr_model.flux, color=:darkgrey)
+	scatter!(ax, retr_model_sampled.wav, retr_model_sampled.flux;
+		marker = :rect,
+		markersize = 15,
+		color = :darkgrey,
+		strokewidth = 1.5,
+		strokecolor = :grey
+	)
 	
 	fig
 end

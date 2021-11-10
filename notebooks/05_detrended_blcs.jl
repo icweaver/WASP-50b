@@ -25,7 +25,7 @@ begin
 	using CairoMakie
 	using Colors
 	using DataFrames
-	using DataFramesMeta
+	using DataFrameMacros
 	using Dates
 	using DelimitedFiles
 	using Glob
@@ -66,10 +66,10 @@ end
 
 # ╔═╡ f3e9100a-ec8e-425f-9081-e457ad9b1515
 dates_to_names = Dict(
-	"131219_IMACS" => "Transit 1 (IMACS)",
-	"150927_IMACS" => "Transit 2 (IMACS)",
-	"150927_LDSS3_flat" => "Transit 2 (LDSS3)",
-	"161211_IMACS" => "Transit 3 (IMACS)",
+	"131219_IMACS" => "Transit_1_IMACS",
+	"150927_IMACS" => "Transit_2_IMACS",
+	"150927_LDSS3_flat" => "Transit_2_LDSS3",
+	"161211_IMACS" => "Transit_3_IMACS",
  )
 
 # ╔═╡ 100af59b-3a24-41d0-9cda-05592bd1778f
@@ -262,7 +262,9 @@ let
 		round.(Int, errs),
 	)
 	
-	#save("../../ACCESS_WASP-50b/figures/detrended/detrended_blcs.pdf", fig)
+	path = "../../ACCESS_WASP-50b/figures/detrended"
+	mkpath(path)
+	save("$(path)/detrended_blcs_$(transit).png", fig)
 		
 	fig #|> as_svg
 end
