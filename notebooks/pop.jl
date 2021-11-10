@@ -60,7 +60,7 @@ df_all = let
 		"tic_id",
 		"pl_rade",
 		"pl_bmasse",
-		"pl_ratdor",
+		"pl_orbsmax",
 		"st_teff",
 		"st_rad",
 		"sy_jmag",
@@ -78,16 +78,13 @@ md"""
 We next compute some relevant quantities from this table to help organize each population:
 """
 
-# ╔═╡ 4b51303e-6926-4922-85f9-b5b7559e96df
-println("hey")
+# ╔═╡ 7203f827-9d7b-435e-9017-6e408569559f
+@subset df_all :pl_name == "WASP-76 b"
 
 # ╔═╡ e0365154-d6c8-4db2-bb85-bf2536a3aa74
-function compute_Teq(T, aR; α)
-	T * (1.0 - α)^0.25 * sqrt(0.5 * inv(aR))
+function compute_Teq(T, R, a; α)
+	T * (1.0 - α)^0.25 * sqrt(0.5 * R / a)
 end
-
-# ╔═╡ b0dcdd07-3887-4d3e-9bef-6abed46a9f94
-w63 = @subset df_all :pl_name =="WASP-63 b"
 
 # ╔═╡ 9aed232f-ec74-4ec6-9ae7-06b90539833b
 # begin
@@ -185,9 +182,12 @@ compute_ΔD(H, Rₚ, Rₛ) = 2.0 * H * Rₚ/Rₛ^2
 # ╔═╡ 2702ba80-993c-4cca-bd14-0d4d6b67362b
 begin
 	df = dropmissing(
-		df_all, [:pl_rade, :pl_bmasse, :pl_ratdor, :st_teff, :sy_jmag]
+		df_all, [:pl_rade, :pl_bmasse, :pl_orbsmax, :st_teff, :sy_jmag]
 	)
-	df.pl_eqt = compute_Teq.(df.st_teff, df.pl_ratdor; α=0.1)
+	df.pl_eqt = let
+		Teq = compute_Teq.(df.st_teff*u"K", df.st_rad*u"Rsun", df.pl_orbsmax*u"AU"; α=0.1)
+		ustrip.(u"K", Teq)
+	end
 	df.g_SI = let
 		g = compute_g.(df.pl_bmasse*u"Mearth", df.pl_rade*u"Rearth")
 		ustrip.(u"m/s^2", g)
@@ -413,6 +413,7 @@ tspec_targs = [
 	"HAT-P-1 b",
 	"HAT-P-11 b",
 	"HAT-P-12 b",
+	"HAT-P-23 b",
 	"HAT-P-26 b",
 	"HAT-P-32 b",
 	"HAT-P-38 b",
@@ -438,6 +439,7 @@ tspec_targs = [
 	"WASP-31 b",
 	"WASP-39 b",
 	"WASP-43 b",
+	"WASP-50 b",
 	"WASP-52 b",
 	"WASP-62 b",
 	"WASP-63 b",
@@ -454,13 +456,19 @@ tspec_targs = [
 # ╔═╡ 0f118d0e-0eb6-4517-8378-9623337f73ca
 df_tspecs = @subset df :pl_name ∈ tspec_targs
 
-# ╔═╡ 8f13ccae-cda2-4c11-a4b8-bbde9c0c6bcc
-names(df_tspecs)
-
 # ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
 let
-	data(df_tspecs) * mapping()
+	p = (data(df)*visual(color=(:darkgrey, 0.25)) + data(df_tspecs)) *
+		mapping(
+			:g_SI => "Surface gravity (m/s²)",
+			:pl_eqt => "Equilibrium temperature (K)",
+		)
+	
+	draw(p, axis=(; limits=((0, 60), (0, nothing))))
 end
+
+# ╔═╡ df9870c9-f11d-4ab7-aa64-ec4db5998f2e
+@subset df_tspecs :pl_name == "WASP-43 b"
 
 # ╔═╡ Cell order:
 # ╟─cd13d7f3-0ea3-4631-afd9-5f3e359000e6
@@ -468,9 +476,8 @@ end
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
 # ╠═2702ba80-993c-4cca-bd14-0d4d6b67362b
-# ╠═4b51303e-6926-4922-85f9-b5b7559e96df
+# ╠═7203f827-9d7b-435e-9017-6e408569559f
 # ╠═e0365154-d6c8-4db2-bb85-bf2536a3aa74
-# ╠═b0dcdd07-3887-4d3e-9bef-6abed46a9f94
 # ╠═9aed232f-ec74-4ec6-9ae7-06b90539833b
 # ╟─4cbbb1e8-e5fb-4ab0-a7e6-7881c2dde032
 # ╟─7f956b36-ce65-4e4e-afa5-9b97b9e06954
@@ -497,6 +504,6 @@ end
 # ╠═24cd6863-9b93-473b-a66b-993e3f7d50a5
 # ╠═b4c7316d-d198-4449-ad45-66397fd1a9a5
 # ╠═0f118d0e-0eb6-4517-8378-9623337f73ca
-# ╠═8f13ccae-cda2-4c11-a4b8-bbde9c0c6bcc
 # ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
+# ╠═df9870c9-f11d-4ab7-aa64-ec4db5998f2e
 # ╠═24c6a2d0-0aea-11ec-2cd4-3de7ec08b83e
