@@ -73,13 +73,39 @@ df_all = let
 	CSV.read(request.body, DataFrame)
 end
 
+# ╔═╡ 6f06a5d1-109a-4ea9-99f4-13650c58a715
+df_simbad = let
+	request = HTTP.get(s4)
+end
+
+# ╔═╡ e3bd6946-2a9b-4ed5-b798-2a72c926b3e1
+md"""
+## Stuff
+"""
+
+# ╔═╡ d9509bfe-186e-485f-9ec6-080398e6b862
+query = """
+SELECT TOP 10
+MAIN_ID,
+RA,
+DEC
+FROM basic JOIN ident ON oidref = oid
+WHERE id = 'AB Aur'
+""" |> HTTP.URIs.escapeuri
+
+# ╔═╡ 303204da-349d-4528-a0ef-438a5bbbf191
+u = "http://simbad.u-strasbg.fr/simbad/sim-tap/sync?request=doQuery&lang=adql&format=csv&query=$(query)"
+
+# ╔═╡ 8a57e599-9ade-4fd9-86ba-8646f100305d
+r = HTTP.get(u)
+
+# ╔═╡ 349e2f91-8809-476d-b7ae-61098a985d85
+CSV.read(r.body, DataFrame)
+
 # ╔═╡ 4d1a7740-24c7-4cec-b788-a386bc25f836
 md"""
 We next compute some relevant quantities from this table to help organize each population:
 """
-
-# ╔═╡ 7203f827-9d7b-435e-9017-6e408569559f
-@subset df_all :pl_name == "WASP-76 b"
 
 # ╔═╡ e0365154-d6c8-4db2-bb85-bf2536a3aa74
 function compute_Teq(T, R, a; α)
@@ -458,7 +484,11 @@ df_tspecs = @subset df :pl_name ∈ tspec_targs
 
 # ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
 let
-	p = (data(df)*visual(color=(:darkgrey, 0.25)) + data(df_tspecs)) *
+	p = (
+		data(df)*visual(color=(:darkgrey, 0.25)) +
+		data(df_tspecs) +
+		data(df_HGHJs)*visual(color=COLORS[2], markersize=20, marker='○')
+	) *
 		mapping(
 			:g_SI => "Surface gravity (m/s²)",
 			:pl_eqt => "Equilibrium temperature (K)",
@@ -474,9 +504,14 @@ end
 # ╟─cd13d7f3-0ea3-4631-afd9-5f3e359000e6
 # ╟─6b06701b-05e2-4284-a308-e9edeb65a648
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
+# ╠═6f06a5d1-109a-4ea9-99f4-13650c58a715
+# ╟─e3bd6946-2a9b-4ed5-b798-2a72c926b3e1
+# ╠═d9509bfe-186e-485f-9ec6-080398e6b862
+# ╠═303204da-349d-4528-a0ef-438a5bbbf191
+# ╠═8a57e599-9ade-4fd9-86ba-8646f100305d
+# ╠═349e2f91-8809-476d-b7ae-61098a985d85
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
 # ╠═2702ba80-993c-4cca-bd14-0d4d6b67362b
-# ╠═7203f827-9d7b-435e-9017-6e408569559f
 # ╠═e0365154-d6c8-4db2-bb85-bf2536a3aa74
 # ╠═9aed232f-ec74-4ec6-9ae7-06b90539833b
 # ╟─4cbbb1e8-e5fb-4ab0-a7e6-7881c2dde032
