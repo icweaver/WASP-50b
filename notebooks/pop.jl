@@ -73,35 +73,6 @@ df_all = let
 	CSV.read(request.body, DataFrame)
 end
 
-# ╔═╡ 6f06a5d1-109a-4ea9-99f4-13650c58a715
-df_simbad = let
-	request = HTTP.get(s4)
-end
-
-# ╔═╡ e3bd6946-2a9b-4ed5-b798-2a72c926b3e1
-md"""
-## Stuff
-"""
-
-# ╔═╡ d9509bfe-186e-485f-9ec6-080398e6b862
-query = """
-SELECT TOP 10
-MAIN_ID,
-RA,
-DEC
-FROM basic JOIN ident ON oidref = oid
-WHERE id = 'AB Aur'
-""" |> HTTP.URIs.escapeuri
-
-# ╔═╡ 303204da-349d-4528-a0ef-438a5bbbf191
-u = "http://simbad.u-strasbg.fr/simbad/sim-tap/sync?request=doQuery&lang=adql&format=csv&query=$(query)"
-
-# ╔═╡ 8a57e599-9ade-4fd9-86ba-8646f100305d
-r = HTTP.get(u)
-
-# ╔═╡ 349e2f91-8809-476d-b7ae-61098a985d85
-CSV.read(r.body, DataFrame)
-
 # ╔═╡ 4d1a7740-24c7-4cec-b788-a386bc25f836
 md"""
 We next compute some relevant quantities from this table to help organize each population:
@@ -482,34 +453,37 @@ tspec_targs = [
 # ╔═╡ 0f118d0e-0eb6-4517-8378-9623337f73ca
 df_tspecs = @subset df :pl_name ∈ tspec_targs
 
+# ╔═╡ 8d519cad-8da6-409e-b486-2bc9a6008e0f
+function yee!(ax, targ; al_x=:center, al_y=:top, df=df_HGHJs)
+	x, y = val.(Ref(df), Ref(targ), [:g_SI, :pl_eqt])
+	text!(ax, targ, position=(x, y), align=(al_x, al_y), offset=(0, -5))
+end
+
 # ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
 let
-	p = (
-		data(df)*visual(color=(:darkgrey, 0.25)) +
-		data(df_tspecs) +
-		data(df_HGHJs)*visual(color=COLORS[2], markersize=20, marker='○')
-	) *
+	fig = Figure()
+	ax = Axis(fig[1, 1], limits=((0, 60), (0, nothing)))
+	
+	p = (data(df)*visual(color=(:darkgrey, 0.25)) + data(df_tspecs)) *
 		mapping(
 			:g_SI => "Surface gravity (m/s²)",
 			:pl_eqt => "Equilibrium temperature (K)",
 		)
-	
-	draw(p, axis=(; limits=((0, 60), (0, nothing))))
-end
 
-# ╔═╡ df9870c9-f11d-4ab7-aa64-ec4db5998f2e
-@subset df_tspecs :pl_name == "WASP-43 b"
+	draw!(ax, p)
+
+	yee!.(ax, ["WASP-43 b", "HAT-P-23 b"])
+	yee!(ax, "WASP-50 b", al_x=:left)
+
+	vlines!(ax, 20, color=:darkgrey, linestyle=:dash)
+
+	fig
+end
 
 # ╔═╡ Cell order:
 # ╟─cd13d7f3-0ea3-4631-afd9-5f3e359000e6
 # ╟─6b06701b-05e2-4284-a308-e9edeb65a648
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
-# ╠═6f06a5d1-109a-4ea9-99f4-13650c58a715
-# ╟─e3bd6946-2a9b-4ed5-b798-2a72c926b3e1
-# ╠═d9509bfe-186e-485f-9ec6-080398e6b862
-# ╠═303204da-349d-4528-a0ef-438a5bbbf191
-# ╠═8a57e599-9ade-4fd9-86ba-8646f100305d
-# ╠═349e2f91-8809-476d-b7ae-61098a985d85
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
 # ╠═2702ba80-993c-4cca-bd14-0d4d6b67362b
 # ╠═e0365154-d6c8-4db2-bb85-bf2536a3aa74
@@ -540,5 +514,5 @@ end
 # ╠═b4c7316d-d198-4449-ad45-66397fd1a9a5
 # ╠═0f118d0e-0eb6-4517-8378-9623337f73ca
 # ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
-# ╠═df9870c9-f11d-4ab7-aa64-ec4db5998f2e
+# ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
 # ╠═24c6a2d0-0aea-11ec-2cd4-3de7ec08b83e
