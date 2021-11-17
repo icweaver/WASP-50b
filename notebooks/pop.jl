@@ -219,8 +219,8 @@ df_HGHJs = @subset(
 # ╔═╡ c1cd9292-28b9-4206-b128-608aaf30ff9c
 # TODO: Place latitude constraints
 let
-	fig = Figure()
-	ax = Axis(fig[1, 1])
+	fig = Figure(resolution=(800, 700))
+	ax = Axis(fig[1, 1], limits=((0, nothing), (0, 60)))
 
 	# HGHJ g boundary
 	hlines!(ax, 20.0, color=:darkgrey, linestyle=:dash)
@@ -454,28 +454,37 @@ tspec_targs = [
 df_tspecs = @subset df :pl_name ∈ tspec_targs
 
 # ╔═╡ 8d519cad-8da6-409e-b486-2bc9a6008e0f
-function yee!(ax, targ; al_x=:center, al_y=:top, df=df_HGHJs)
-	x, y = val.(Ref(df), Ref(targ), [:g_SI, :pl_eqt])
-	text!(ax, targ, position=(x, y), align=(al_x, al_y), offset=(0, -5))
+function yee!(ax, targ; al_x=:center, al_y=:bottom, df=df_HGHJs, offset=nothing)
+	targg = split(targ, " (")[1]
+	x, y = val.(Ref(df), Ref(targg), [:pl_eqt, :g_SI])
+	text!(ax, targ, position=(x, y), align=(al_x, al_y), textsize=16, offset=offset)
 end
 
 # ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
 let
-	fig = Figure()
-	ax = Axis(fig[1, 1], limits=((0, 60), (0, nothing)))
+	fig = Figure(resolution=(800, 700))
+	ax = Axis(fig[1, 1], limits=((0, nothing), (0, 60)))
 	
-	p = (data(df)*visual(color=(:darkgrey, 0.25)) + data(df_tspecs)) *
+	p = (
+		data(df) * visual(color=(:darkgrey, 0.25)) +
+		data(df_tspecs) * visual(markersize=15, color=:grey)
+		) *
 		mapping(
-			:g_SI => "Surface gravity (m/s²)",
 			:pl_eqt => "Equilibrium temperature (K)",
+			:g_SI => "Surface gravity (m/s²)",
 		)
 
 	draw!(ax, p)
 
-	yee!.(ax, ["WASP-43 b", "HAT-P-23 b"])
-	yee!(ax, "WASP-50 b", al_x=:left)
+	yee!(ax, "WASP-43 b (Weaver+ 2020)", offset=(0, 5))
+	yee!(ax, "HAT-P-23 b (Weaver+ 2021)", al_x=:left, offset=(0, 5))
+	yee!(ax, "WASP-50 b (Weaver+ in prep.)", al_x=:right, offset=(0, 5))
 
-	vlines!(ax, 20, color=:darkgrey, linestyle=:dash)
+	hlines!(ax, 20, color=:darkgrey, linestyle=:dash)
+
+	path = "../../ACCESS_WASP-50b/figures/pop"
+	mkpath(path)
+	save("$(path)/tspec_pop.png", fig)
 
 	fig
 end

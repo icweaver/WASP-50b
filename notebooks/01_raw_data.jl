@@ -401,7 +401,7 @@ let
 	Colorbar(fig[:, end+1], hms[1], width=20, labelcolor=:black, label="Counts",)
 	
 	linkaxes!(axs...)
-	#hidedecorations!.(axs)
+	hidedecorations!.(axs)
 	
 	path = "../../ACCESS_WASP-50b/figures/frames"
 	mkpath(path)

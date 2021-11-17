@@ -108,13 +108,14 @@ md"""
 
 # ╔═╡ 0f65d095-09af-44d2-907b-c30e2c16b609
 species = [
+	"Na",
 	"K",
 	"TiO",
 	"Na_TiO",
 	"K_TiO",
 	"Na_K_TiO",
-	"CO",
-	"H2O",
+	#"CO",
+	#"H2O",
 	#"NH3", # too low
 	#"HCN", # too low
 	#"CH4", # too low
@@ -163,7 +164,7 @@ function plot_evidences(nm)
 	
 	axislegend(ax, elements, labels, nbanks=3)
 	
-	ylims!(ax, 0, 5)
+	ylims!(ax, 0, 5.5)
 	
 	path = "../../ACCESS_WASP-50b/figures/detrended"
 	mkpath(path)
@@ -173,48 +174,86 @@ function plot_evidences(nm)
 end
 
 # ╔═╡ db524678-9ee2-4934-b1bb-6a2f13bf0fa6
-dirpath = "data/retrievals/all_WASP50/WASP50_E1_NoHet_FitP0_NoClouds_NoHaze_fitR0_Na_TiO"
+begin
+	dirpath_Na = "data/retrievals/all_WASP50/WASP50_E1_NoHet_FitP0_NoClouds_NoHaze_fitR0_Na"
+	
+	retr = CSV.read(
+		"$(dirpath_Na)/retr_Magellan_IMACS.txt", DataFrame;
+		header = [:wav, :flux, :wav_d, :wav_u, :flux_err],
+		comment = "#",
+	)
 
-# ╔═╡ 38f37547-9663-464d-9983-4fd3bdbc79b6
-retr = CSV.read(
-	"$(dirpath)/retr_Magellan_IMACS.txt", DataFrame;
-	header = [:wav, :flux, :wav_d, :wav_u, :flux_err],
-	comment = "#",
-)
-
-# ╔═╡ b245f244-897e-4eb2-a6a6-cef7c85ca390
-retr_model = CSV.read("$(dirpath)/retr_model.txt", DataFrame;
+	retr_model_all_Na = CSV.read("$(dirpath_Na)/retr_model.txt", DataFrame;
 	header = [:wav, :flux, :flux_d, :flux_u],
 	comment = "#",
 ) 
-
-# ╔═╡ 66ad752e-29a2-4d1d-8985-4bda58138e31
-retr_model_sampled = CSV.read(
-	"$(dirpath)/retr_model_sampled_Magellan_IMACS.txt", DataFrame;
+	retr_model_sampled_Na = CSV.read(
+	"$(dirpath_Na)/retr_model_sampled_Magellan_IMACS.txt", DataFrame;
 	header = [:wav, :flux],
 	comment = "#",
 )
+end
+
+# ╔═╡ d97ec176-af5a-4f95-b891-7ceb5ae1b3e0
+begin
+	dirpath_Na_TiO = "data/retrievals/all_WASP50/WASP50_E1_NoHet_FitP0_NoClouds_NoHaze_fitR0_Na_TiO"
+	
+	retr_Na_TiO = CSV.read(
+		"$(dirpath_Na_TiO)/retr_Magellan_IMACS.txt", DataFrame;
+		header = [:wav, :flux, :wav_d, :wav_u, :flux_err],
+		comment = "#",
+	)
+
+	retr_model_all_Na_TiO = CSV.read("$(dirpath_Na_TiO)/retr_model.txt", DataFrame;
+	header = [:wav, :flux, :flux_d, :flux_u],
+	comment = "#",
+) 
+	retr_model_sampled_Na_TiO = CSV.read(
+	"$(dirpath_Na_TiO)/retr_model_sampled_Magellan_IMACS.txt", DataFrame;
+	header = [:wav, :flux],
+	comment = "#",
+)
+end
+
+# ╔═╡ cc011a66-37bd-4543-9a58-b11e1f785e52
+function retrieval!(ax, model, model_sampled; color=:blue, label="")
+	lines!(ax, model.wav, model.flux, color=color, label=label)
+	scatter!(ax, model_sampled.wav, model_sampled.flux;
+		marker = :rect,
+		markersize = 15,
+		color = color,
+		strokewidth = 1.5,
+		strokecolor = color,
+	)
+	band!(ax, model.wav, model.flux_d, model.flux_u;
+		color = (color, 0.25),
+	)
+end
 
 # ╔═╡ e801501c-a882-4f2d-bbc1-40028c1c91d8
-begin
+let
 	fig = Figure(resolution=(800, 500))
-	ax = Axis(fig[1, 1], limits=((0.25, 1.1), (17_500, 20_500)))
+	ax = Axis(fig[1, 1], xlabel="Wavelength (μm)", ylabel="Transit depth (ppm)")
+
+	model = @subset retr_model_all_Na 0.5 < :wav < 1.0
+	retrieval!(ax,  model, retr_model_sampled_Na, color=COLORS[2], label="Na")
+
+	model = @subset retr_model_all_Na_TiO 0.5 < :wav < 1.0
+	retrieval!(ax,  model, retr_model_sampled_Na_TiO, color=COLORS[1], label="Na_TiO")
 
 	errorbars!(ax, retr.wav, retr.flux, retr.flux_err)
 	scatter!(ax, retr.wav, retr.flux;
 		markersize = 15,
 		color = :white,
 		strokewidth=1.5,
+		label = "IMACS + LDSS3"
 	)
 
-	lines!(ax, retr_model.wav, retr_model.flux, color=:darkgrey)
-	scatter!(ax, retr_model_sampled.wav, retr_model_sampled.flux;
-		marker = :rect,
-		markersize = 15,
-		color = :darkgrey,
-		strokewidth = 1.5,
-		strokecolor = :grey
-	)
+	axislegend(orientation=:horizontal)
+
+	path = "../../ACCESS_WASP-50b/figures/retrievals"
+	mkpath(path)
+	save("$(path)/retr.png", fig)
 	
 	fig
 end
@@ -298,10 +337,9 @@ md"""
 # ╠═8af2ffc6-b24d-46c3-b9f5-ecc81c61cd49
 # ╠═812210c9-e294-4d61-bdf6-a03284199188
 # ╠═db524678-9ee2-4934-b1bb-6a2f13bf0fa6
-# ╠═38f37547-9663-464d-9983-4fd3bdbc79b6
-# ╠═b245f244-897e-4eb2-a6a6-cef7c85ca390
-# ╠═66ad752e-29a2-4d1d-8985-4bda58138e31
+# ╠═d97ec176-af5a-4f95-b891-7ceb5ae1b3e0
 # ╠═e801501c-a882-4f2d-bbc1-40028c1c91d8
+# ╠═cc011a66-37bd-4543-9a58-b11e1f785e52
 # ╟─41a233c7-5357-453c-b7ad-36fdf9f709cb
 # ╠═44b3b8cd-4b83-4b27-a948-d1230489552f
 # ╟─1eff1230-2423-4ac3-8e9b-f4e7bcd0121b

@@ -214,7 +214,7 @@ We next take these common transmission spectra and offset each, given by the dif
 """
 
 # ╔═╡ 84055852-1b9f-4221-95a7-ab48110bf78c
-depths_common = df_common[!, r"δ"] |>  x -> rename!(x, cubes.keys);
+#depths_common = df_common[!, r"δ"] |>  x -> rename!(x, cubes.keys);
 
 # ╔═╡ 2f377692-2abf-404e-99ea-a18c7af1a840
 wlc_depths = [cube["δ_WLC"] for (transit, cube) in cubes]
@@ -245,7 +245,8 @@ wlc_offsets = reshape(wlc_depths .- mean_wlc_depth, 1, :)
 
 # ╔═╡ 4b9cfc02-5e18-422d-b18e-6301a659561a
 begin
-	depths_adj = depths_common .- Measurements.value.(wlc_offsets)
+	depths_common = df_common[!, r"δ"] |>  x -> rename!(x, cubes.keys);
+	depths_adj = depths_common #.- Measurements.value.(wlc_offsets)
 	#depths_adj = copy(depths_common)
 	depths_adj.Combined = weightedmean.(eachrow(depths_adj))
 	insertcols!(depths_adj, 1,
@@ -260,21 +261,6 @@ md"""
 Average precision per bin: $(round(Int, getproperty.(depths_adj[!, :Combined], :err) |> median)) ppm
 """
 
-# ╔═╡ 2a78be93-2e56-43ee-9ad0-c2bd1cc316a3
-depths_adj.Wav_u
-
-# ╔═╡ 8738ddc7-6f42-4809-8d61-b021230729f8
-Measurements.uncertainty.(depths_common[!, "Transit 1 (IMACS)"]) |> mean
-
-# ╔═╡ 23ce5b47-2493-4ce5-afbd-72051a3c9e88
-Measurements.uncertainty.(depths_common[!, "Transit 2 (IMACS)"]) |> mean
-
-# ╔═╡ d6366a40-0565-4cd4-8ef4-2e4f9dce0774
-Measurements.uncertainty.(depths_common[!, "Transit 2 (LDSS3)"]) |> mean
-
-# ╔═╡ 855e8ad1-ca16-4b4d-8145-e8df5fdea283
-Measurements.uncertainty.(depths_common[!, "Transit 3 (IMACS)"]) |> mean
-
 # ╔═╡ 8c077881-fc5f-4fad-8497-1cb6106c6ed5
 let
 	fig = Figure(resolution=(1_000, 500))
@@ -285,10 +271,11 @@ let
 		grid = (linewidth=(0, 0),),
 	)
 	
+	# Overplot lines
 	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash)
-	hlines!(ax, mean_wlc_depth.val, color=:grey, linestyle=:dash, linewidth=3)
-	hlines!(ax, mean_wlc_depth.val + mean_wlc_depth.err, color=:grey, linewidth=3)
-	hlines!(ax, mean_wlc_depth.val - mean_wlc_depth.err, color=:grey, linewidth=3)
+	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
+	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
+	mean_wlc_depth.val - mean_wlc_depth.err), linestyle=:dash, color=:grey)
 	
 	wav = depths_adj.Wav_cen
 	ΔWLC_depth = mean_wlc_depth.err
@@ -306,7 +293,7 @@ let
 		scatter!(ax, wav, depth;
 			color = COLORS[i],
 			strokewidth = 0,
-			markersize = 12,
+			markersize = 16,
 			label = transit,
 		)
 	end
@@ -315,7 +302,7 @@ let
 	tspec_combined = depths_adj.Combined
 	depth_combined = Measurements.value.(tspec_combined)
 	depth_combined_err = Measurements.uncertainty.(tspec_combined)
-
+	
 	errorbars!(ax, wav, depth_combined, depth_combined_err;
 		linewidth = 5,
 		whiskerwidth = 10,
@@ -324,24 +311,24 @@ let
 	scatter!(ax, wav, depth_combined;
 		color = :white,
 		strokewidth = 3,
-		markersize = 12,
+		markersize = 16,
 		label = "Combined",
 	)
 	
 	# Write to file
 	N = nrow(depths_adj)
-	CSV.write(
-		"/home/mango/Desktop/tspec_w50.csv",
-		DataFrame(
-		:Wlow => depths_adj.Wav_d,
-		:Wup => depths_adj.Wav_u,
-		:Depth => depth_combined,
-		:ErrUp => depth_combined_err,
-		:ErrLow => depth_combined_err,
-		:Instrument => fill("Magellan/IMACS", N),
-		:Offset => fill("NO", N)
-		),
-	)
+	# CSV.write(
+	# 	"/home/mango/Desktop/tspec_w50.csv",
+	# 	DataFrame(
+	# 	:Wlow => depths_adj.Wav_d,
+	# 	:Wup => depths_adj.Wav_u,
+	# 	:Depth => depth_combined,
+	# 	:ErrUp => depth_combined_err,
+	# 	:ErrLow => depth_combined_err,
+	# 	:Instrument => fill("Magellan/IMACS", N),
+	# 	:Offset => fill("NO", N)
+	# 	),
+	# )
 	
 	# Plot uncombined points
 	for (i, (transit, df)) in enumerate(antijoins)
@@ -350,11 +337,11 @@ let
 		f_err = Measurements.uncertainty.(df.δ)
 		errorbars!(ax, wav, f, f_err;
 			linewidth = 3,
-			color = (COLORS[i], 0.5),
+			color = (:darkgrey, 0.5), #(COLORS[i], 0.5),
 		)
 
 		scatter!(ax, wav, f;
-			color = (COLORS[i], 0.5),
+			color = (:darkgrey, 0.5),#(COLORS[i], 0.5),
 			markersize = 12,
 		)
 	end
@@ -400,7 +387,7 @@ let
 	)
 	end
 	
-	CSV.write("/home/mango/Desktop/tspec_all.csv", df_all)
+	# CSV.write("/home/mango/Desktop/tspec_all.csv", df_all)
 	
 	#scatter!(ax, (df_all.Wlow .+ df_all.Wup) ./ 2, df_all.Depth, color=:red)
 
@@ -462,41 +449,6 @@ md"""
 ## Notebook setup
 """
 
-# ╔═╡ bef0918c-c645-4557-a2e5-00b6c26573bc
-# begin
-# 	const FIG_TALL = (900, 1_200)
-# 	const FIG_WIDE = (1_350, 800)
-# 	#const COLORS = to_colormap(:seaborn_colorblind6, 8)[[8, 6, 4, 1]]
-# 	const COLORS = parse.(Colorant,
-# 		[
-# 			"#a6cee3",  # Cyan
-# 			"#fdbf6f",  # Yellow
-# 			"#ff7f00",  # Orange
-# 			"#1f78b4",  # Blue
-# 			# "plum",
-# 			# "#956cb4",  # Purple
-# 			# "mediumaquamarine",
-# 			# "#029e73",  # Green
-# 		]
-# 	)
-	
-# 	set_aog_theme!()
-# 	update_theme!(
-# 		Theme(
-# 			Axis = (xlabelsize=18, ylabelsize=18,),
-# 			Label = (textsize=18,),
-# 			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
-# 			Scatter = (linewidth=10,),
-# 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
-# 			fontsize = 18,
-# 			rowgap = 0,
-# 			colgap = 0,
-# 		)
-# 	)
-	
-# 	COLORS
-# end
-
 # ╔═╡ 3510ead9-6e66-4fec-84ca-15c8a3ce4c3e
 html"""
 <style>
@@ -545,15 +497,9 @@ body.disable_ui main {
 # ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
 # ╠═4b9cfc02-5e18-422d-b18e-6301a659561a
 # ╟─5d25caa3-916a-40b1-ba7c-ea1295afb775
-# ╠═2a78be93-2e56-43ee-9ad0-c2bd1cc316a3
-# ╠═8738ddc7-6f42-4809-8d61-b021230729f8
-# ╠═23ce5b47-2493-4ce5-afbd-72051a3c9e88
-# ╠═d6366a40-0565-4cd4-8ef4-2e4f9dce0774
-# ╠═855e8ad1-ca16-4b4d-8145-e8df5fdea283
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
 # ╠═65e644f7-26c4-4909-a1a0-f964663b98a6
 # ╠═6e610bd5-8c4c-43a6-9a16-f3733d4a701a
 # ╟─f8a86915-f7d8-4462-980e-7b8124b13a3f
-# ╠═bef0918c-c645-4557-a2e5-00b6c26573bc
 # ╠═ef970c0c-d08a-4856-b10b-531bb5e7e53e
 # ╟─3510ead9-6e66-4fec-84ca-15c8a3ce4c3e
