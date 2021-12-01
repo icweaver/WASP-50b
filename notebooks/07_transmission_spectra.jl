@@ -15,7 +15,7 @@ begin
 	using CCDReduction: fitscollection
 	using Colors
 	using DataFrames
-	using DataFrameMacros
+	using DataFramesMeta
 	using Dates
 	using DelimitedFiles
 	using Glob
@@ -30,7 +30,9 @@ begin
 	using Statistics
 	using StatsBase
 	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
-	using Unitful
+	using Unitful, UnitfulAstro
+
+	const G = Unitful.G
 	
 	# Python setup
 	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP-50b/bin/python"
@@ -71,15 +73,6 @@ begin
 )
 end
 
-# ╔═╡ 71672a5f-af6c-46f4-8e32-7bdd133ee039
-using PhysicalConstants.CODATA2018: G
-
-# ╔═╡ 7021cefd-f750-4422-b17b-c9abdc35dd2f
-using UnitfulAstro
-
-# ╔═╡ ae18351e-60e9-4963-ba12-6dd26f86e7f2
-using Chain
-
 # ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 md"""
 # Transmission Spectra
@@ -92,11 +85,8 @@ $(TableOfContents(title="📖 Table of Contents"))
 # ╔═╡ 9413e640-22d9-4bfc-b4ea-f41c02a3bfde
 md"""
 ## Load data
-"""
 
-# ╔═╡ 5100e6b4-03da-4e58-aad1-13376bcb4b59
-md"""
-First let's load up all of the data, including the white light transit depths from each night. This will be used for combining the transmission spectra later:
+First let's load up all of the data, including the white light transit depths from each night.
 """
 
 # ╔═╡ c53be9cf-7722-4b43-928a-33e7b0463330
@@ -141,23 +131,21 @@ begin
 			cubes[transit]["tspec"][:, [:Wav_d, :Wav_u]] .= wbins
 		end
 		
-		# For plotting later
+		# Compute transmission spectra specific values
 		df.wav = mean([df.Wav_u, df.Wav_d])
 		df.δ = maxmeasure.(df.Depth_ppm_, df.Depthup_ppm_, df.DepthDown_ppm_)
 		
-		fpath_WLC = "$(dirpath)/white-light/results.dat"
-		df_WLC = CSV.File(
-			fpath_WLC,
+		# Extract WLC information
+		df_WLC = CSV.read(
+			"$(dirpath)/white-light/results.dat",
+			DataFrame,
 			comment = "#",
 			normalizenames = true,
-		) |> DataFrame
-		
+		)
 		symbol, p, p_u, p_d = eachcol(
 			@subset(df_WLC, :Variable .== "p")
 		)
-	 	
-		# Save WLC depths
-		cubes[transit]["δ_WLC"] = maxmeasure(p[1], p_u[1], p_d[1])^2 * 1e6
+	 	cubes[transit]["δ_WLC"] = maxmeasure(p[1], p_u[1], p_d[1])^2 * 1e6
 	end
 	
 	cubes = sort(cubes)
@@ -174,17 +162,19 @@ We start the combining process by saving the subset of the data sharing the same
 """
 
 # ╔═╡ cb1b277b-aa92-44de-91ce-88122bc34bb9
-df_common = innerjoin(
+df_common_0 = innerjoin(
 	(cube["tspec"] for (transit, cube) in cubes)...,
 	on = :wav,
 	makeunique = true,
-)
+);
 
-# ╔═╡ 029a9340-fd81-496c-a7e2-bbee60507710
-cubes["Transit 1 (IMACS)"]["tspec"].wav
+# ╔═╡ acde40fd-8ed4-4175-9a52-13ed91dc5495
+md"""
+Conversely, we also store which points in the spectrum are not common between all nights. `Transit 2 (LDSS3)` encompasses the spectra from all other nights, so we `antijoin` relative to this dataset:
+"""
 
 # ╔═╡ 461097e9-a687-4ef2-a5b4-8bf4d9e1c98f
-antijoins = (
+dfs_unique = (
 	"Transit 1 (IMACS)" => antijoin(
 		cubes["Transit 1 (IMACS)"]["tspec"],
 		cubes["Transit 2 (LDSS3)"]["tspec"],
@@ -208,24 +198,13 @@ antijoins = (
 		cubes["Transit 2 (LDSS3)"]["tspec"],
 		on = :wav,
 	),
-)
+);
 
-# ╔═╡ 99757e41-0a88-4662-abef-0fad1bbbed1d
-md"""
-We next take these common transmission spectra and offset each, given by the difference between its corresponding white-light curve transit depth and the average WLC depth across nights:
-"""
+# ╔═╡ 3cd56ec3-3a4a-4d65-b4f9-a8259c96e54e
+#transform!(df_common, names(df_common, r"δ") .=> cubes.keys, renamecols=true)
 
-# ╔═╡ 84055852-1b9f-4221-95a7-ab48110bf78c
-#depths_common = df_common[!, r"δ"] |>  x -> rename!(x, cubes.keys);
-
-# ╔═╡ 2f377692-2abf-404e-99ea-a18c7af1a840
-wlc_depths = [cube["δ_WLC"] for (transit, cube) in cubes]
-
-# ╔═╡ 9141dba4-4c11-404d-b18a-b22f3466caba
-Rₛ = 0.873u"Rsun"
-
-# ╔═╡ 520d2cc3-00e0-46d8-83b2-5c740fd3bdd0
-Mₚ = 1.78u"Mjup"
+# ╔═╡ c6c8be53-6839-409b-95f5-4a7a4f6798fb
+rename(df_common_0[!, r"δ"], cubes.keys)
 
 # ╔═╡ 45acc116-e585-4ddf-943d-128db7736921
 function weightedmean2(m; corrected=true)
@@ -240,34 +219,13 @@ function weightedmean2(m; corrected=true)
 	return a ± b
 end
 
-# ╔═╡ c405941d-bdcc-458f-b0bf-01abf02982e0
-mean_wlc_depth = weightedmean2(wlc_depths)
-
-# ╔═╡ 54c341d9-2065-48cf-89bd-11acf72bdf9d
-Rₚ = √(mean_wlc_depth * 1e-6 * Rₛ^2)
-
-# ╔═╡ cc3aec2c-6ca3-4817-9100-3e1c01df4651
-Rₚ |> u"Rjup"
-
-# ╔═╡ eaed62d7-5733-44b8-bd98-8b0fc4a18fe5
-gₚ = G * Mₚ / Rₚ^2
-
-# ╔═╡ 410644d5-e1e5-4107-aba7-e8a293bfff74
-gₚ |> u"cm/s^2"
-
-# ╔═╡ a915f236-8dae-4c91-8f96-fb9a805a0a7f
-wlc_offsets = reshape(wlc_depths .- mean_wlc_depth, 1, :)
-
 # ╔═╡ 4b9cfc02-5e18-422d-b18e-6301a659561a
-begin
-	depths_common = df_common[!, r"δ"] |>  x -> rename!(x, cubes.keys);
-	depths_adj = depths_common #.- Measurements.value.(wlc_offsets)
-	depths_adj.Combined = weightedmean2.(eachrow(Matrix(depths_adj)))
-	insertcols!(depths_adj, 1,
-		:Wlow => df_common.Wav_d,
-		:Wup => df_common.Wav_u,
-		:Wcen => df_common.wav,
-	)
+df_common = @chain df_common_0 begin
+	select(_, :Wav_d=>:Wlow, :Wav_u=>:Wup, :wav=>:Wcen, r"δ")
+	#transform(_, ) 
+	@rtransform :Combined = weightedmean2([:δ, :δ_1, :δ_2, :δ_3])
+	rename(_, names(_, r"δ") .=> cubes.keys)
+	# depths_adj = depths_common #.- Measurements.value.(wlc_offsets)
 end
 
 # ╔═╡ ed954843-34e5-49be-8643-e2671b659e06
@@ -294,6 +252,15 @@ df_tspecs = sort(vcat(depths_adj, depths_extra), :Wcen)
 md"""
 Average precision per bin: $(round(Int, getproperty.(df_tspecs[!, :Combined], :err) |> median)) ppm
 """
+
+# ╔═╡ 2f377692-2abf-404e-99ea-a18c7af1a840
+wlc_depths = [cube["δ_WLC"] for (transit, cube) in cubes]
+
+# ╔═╡ c405941d-bdcc-458f-b0bf-01abf02982e0
+mean_wlc_depth = weightedmean2(wlc_depths)
+
+# ╔═╡ a915f236-8dae-4c91-8f96-fb9a805a0a7f
+wlc_offsets = reshape(wlc_depths .- mean_wlc_depth, 1, :)
 
 # ╔═╡ 09887c41-022a-4109-8c5d-0ba033c50bcb
 function plot_tspec!(ax, df, col;
@@ -362,8 +329,27 @@ let
 	fig #|> as_svg
 end
 
-# ╔═╡ 674e08fa-8ae9-45b7-a024-3e2e1b9b293c
-# Write to file for retrieval analysis
+# ╔═╡ 146a2be7-1c08-4d7c-802f-41f65aeae0d5
+md"""
+## Retrieval params
+
+Finally, we save the final combined transmission spectrum to file for our retrieval analysis, along with planet/star parameters computed from the WLC fits:
+"""
+
+# ╔═╡ 9141dba4-4c11-404d-b18a-b22f3466caba
+Rₛ = 0.873u"Rsun"
+
+# ╔═╡ 54c341d9-2065-48cf-89bd-11acf72bdf9d
+Rₚ = √(mean_wlc_depth * 1e-6 * Rₛ^2)
+
+# ╔═╡ cc3aec2c-6ca3-4817-9100-3e1c01df4651
+Rₚ |> u"Rjup"
+
+# ╔═╡ 520d2cc3-00e0-46d8-83b2-5c740fd3bdd0
+Mₚ = 1.78u"Mjup"
+
+# ╔═╡ eaed62d7-5733-44b8-bd98-8b0fc4a18fe5
+gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 
 # ╔═╡ cb02a053-d048-43d9-950a-de3106019520
 function create_df(df)
@@ -375,7 +361,7 @@ function create_df(df)
 			:Errup = uncertainty(:Combined)
 			:ErrLow = uncertainty(:Combined)
 			:Instrument = "Magellan/IMACS"
-			:Offset = "NO"
+			"Offset?" = "NO"
 		end
 	end
 end
@@ -413,7 +399,6 @@ body.disable_ui main {
 # ╔═╡ Cell order:
 # ╟─e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 # ╟─9413e640-22d9-4bfc-b4ea-f41c02a3bfde
-# ╟─5100e6b4-03da-4e58-aad1-13376bcb4b59
 # ╠═c53be9cf-7722-4b43-928a-33e7b0463330
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
 # ╠═1decb49e-a875-412c-938f-74b4fa0e2e85
@@ -422,33 +407,29 @@ body.disable_ui main {
 # ╟─e58ec082-d654-44e3-bcd4-906fc34171c8
 # ╟─11066667-9da2-4b36-b784-c3515c04a659
 # ╠═cb1b277b-aa92-44de-91ce-88122bc34bb9
-# ╠═029a9340-fd81-496c-a7e2-bbee60507710
+# ╟─acde40fd-8ed4-4175-9a52-13ed91dc5495
 # ╠═461097e9-a687-4ef2-a5b4-8bf4d9e1c98f
-# ╟─99757e41-0a88-4662-abef-0fad1bbbed1d
-# ╠═84055852-1b9f-4221-95a7-ab48110bf78c
+# ╠═4b9cfc02-5e18-422d-b18e-6301a659561a
+# ╠═3cd56ec3-3a4a-4d65-b4f9-a8259c96e54e
+# ╠═c6c8be53-6839-409b-95f5-4a7a4f6798fb
+# ╠═45acc116-e585-4ddf-943d-128db7736921
+# ╠═ed954843-34e5-49be-8643-e2671b659e06
+# ╠═b32273bc-1bb5-406a-acfe-57fd643ded51
+# ╟─5d25caa3-916a-40b1-ba7c-ea1295afb775
 # ╠═2f377692-2abf-404e-99ea-a18c7af1a840
 # ╠═c405941d-bdcc-458f-b0bf-01abf02982e0
+# ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
+# ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
+# ╠═09887c41-022a-4109-8c5d-0ba033c50bcb
+# ╟─146a2be7-1c08-4d7c-802f-41f65aeae0d5
+# ╠═5718672b-1bc6-4676-8703-5fc06b83f0f9
+# ╠═b27f5a0a-812d-44c8-9c84-c74b0c58c794
 # ╠═9141dba4-4c11-404d-b18a-b22f3466caba
 # ╠═54c341d9-2065-48cf-89bd-11acf72bdf9d
 # ╠═cc3aec2c-6ca3-4817-9100-3e1c01df4651
 # ╠═520d2cc3-00e0-46d8-83b2-5c740fd3bdd0
 # ╠═eaed62d7-5733-44b8-bd98-8b0fc4a18fe5
-# ╠═410644d5-e1e5-4107-aba7-e8a293bfff74
-# ╠═71672a5f-af6c-46f4-8e32-7bdd133ee039
-# ╠═7021cefd-f750-4422-b17b-c9abdc35dd2f
-# ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
-# ╠═4b9cfc02-5e18-422d-b18e-6301a659561a
-# ╠═45acc116-e585-4ddf-943d-128db7736921
-# ╠═ed954843-34e5-49be-8643-e2671b659e06
-# ╠═b32273bc-1bb5-406a-acfe-57fd643ded51
-# ╟─5d25caa3-916a-40b1-ba7c-ea1295afb775
-# ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
-# ╠═09887c41-022a-4109-8c5d-0ba033c50bcb
-# ╠═674e08fa-8ae9-45b7-a024-3e2e1b9b293c
-# ╠═5718672b-1bc6-4676-8703-5fc06b83f0f9
-# ╠═b27f5a0a-812d-44c8-9c84-c74b0c58c794
 # ╠═cb02a053-d048-43d9-950a-de3106019520
 # ╟─f8a86915-f7d8-4462-980e-7b8124b13a3f
-# ╠═ae18351e-60e9-4963-ba12-6dd26f86e7f2
 # ╠═ef970c0c-d08a-4856-b10b-531bb5e7e53e
-# ╠═3510ead9-6e66-4fec-84ca-15c8a3ce4c3e
+# ╟─3510ead9-6e66-4fec-84ca-15c8a3ce4c3e
