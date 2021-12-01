@@ -261,26 +261,51 @@ begin
 	depths_adj = depths_common #.- Measurements.value.(wlc_offsets)
 	depths_adj.Combined = weightedmean2.(eachrow(Matrix(depths_adj)))
 	insertcols!(depths_adj, 1,
-		:Wav_d => df_common.Wav_d,
-		:Wav_u => df_common.Wav_u,
-		:Wav_cen => df_common.wav,
+		:Wlow => df_common.Wav_d,
+		:Wup => df_common.Wav_u,
+		:Wcen => df_common.wav,
 	)
 end
 
-# ╔═╡ 5d25caa3-916a-40b1-ba7c-ea1295afb775
-md"""
-Average precision per bin: $(round(Int, getproperty.(depths_adj[!, :Combined], :err) |> median)) ppm
-"""
-
 # ╔═╡ ed954843-34e5-49be-8643-e2671b659e06
 depths_extra = let
-	y = outerjoin((x[2] for x in antijoins)..., on=:wav, makeunique=true)
+	y = outerjoin((x[2] for x in antijoins)...;
+		on = [:Wav_d, :Wav_u, :wav],
+		makeunique = true,
+	)
 	z = y[!, r"δ"] |>  x -> rename!(x, cubes.keys)
 	z.Combined = [weightedmean2(skipmissing(row)) for row ∈ eachrow(z)]
 	insertcols!(z, 1,
-		:Wav_cen => y.wav,
+		:Wlow => y.Wav_d,
+		:Wup => y.Wav_u,
+		:Wcen => y.wav,
 	)
-	sort!(z, :Wav_cen)
+	sort!(z, :Wcen)
+end
+
+# ╔═╡ b32273bc-1bb5-406a-acfe-57fd643ded51
+df_tspecs = sort(vcat(depths_adj, depths_extra), :Wcen)
+#df_tspecs = depths_adj
+
+# ╔═╡ 5d25caa3-916a-40b1-ba7c-ea1295afb775
+md"""
+Average precision per bin: $(round(Int, getproperty.(df_tspecs[!, :Combined], :err) |> median)) ppm
+"""
+
+# ╔═╡ 09887c41-022a-4109-8c5d-0ba033c50bcb
+function plot_tspec!(ax, df, col;
+	nudge = 0.0,
+	kwargs_errorbars = Dict(),
+	kwargs_scatter = Dict(),
+	color = :black,
+	label = "enter label",
+)
+	wav, m = eachcol(select(df, "Wcen", col) |> dropmissing)
+	f, ferr = value.(m), uncertainty.(m)
+
+	errorbars!(ax, wav .+ nudge, f, ferr; color=color, kwargs_errorbars...)
+	
+	scatter!(ax, wav .+ nudge, f; color=color, kwargs_scatter..., label=label)
 end
 
 # ╔═╡ 8c077881-fc5f-4fad-8497-1cb6106c6ed5
@@ -294,86 +319,55 @@ let
 	)
 	
 	# Overplot lines
-	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linewidth=0.5)
+	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
 	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
 	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
 	mean_wlc_depth.val - mean_wlc_depth.err), linestyle=:dash, color=:grey)
 	
-	wav = depths_adj.Wav_cen
+	wav = depths_adj.Wcen
 	ΔWLC_depth = mean_wlc_depth.err
 	
 	# Individual nights
+	kwargs_errorbars = Dict(:whiskerwidth=>10.0, :linewidth=>1.0)
+	kwargs_scatter = Dict(:markersize=>12.0)
 	for (i, transit) in enumerate(keys(cubes))
-		tspec = depths_adj[!, transit]
-		depth = value.(tspec)
-		depth_err = uncertainty.(tspec)
-
-		CSV.write(
-			"/home/mango/Desktop/tspec_$(CSV.normalizename(transit))w50.csv",
-			DataFrame(
-				:wav => wav,
-				:depth => depth,
-				:depth_err => depth_err,
-			),
-		)
-		
-		errorbars!(ax, wav, depth, depth_err;
+		plot_tspec!(ax, df_tspecs, transit;
+			kwargs_errorbars = kwargs_errorbars,
+			kwargs_scatter = kwargs_scatter,
 			color = COLORS[i],
-			linewidth = 3,
-			whiskerwidth = 10,
-		)
-		scatter!(ax, wav, depth;
-			color = COLORS[i],
-			strokewidth = 0,
-			markersize = 16,
 			label = transit,
 		)
 	end
 	
 	# Combined
-	tspec_combined = depths_adj.Combined
-	depth_combined = value.(tspec_combined)
-	depth_combined_err = uncertainty.(tspec_combined)
-
-	CSV.write(
-		"/home/mango/Desktop/tspec_combined_standard_w50.csv",
-		DataFrame(
-			:wav => wav,
-			:depth => depth_combined,
-			:depth_err => depth_combined_err,
-		),
-	)
-	
 	nudge = 25.0
-	errorbars!(ax, wav .+ nudge, depth_combined, depth_combined_err;
-		linewidth = 5,
-		whiskerwidth = 10,
-	)
-	scatter!(ax, wav .+ nudge, depth_combined;
-		color = :white,
-		strokewidth = 3,
-		markersize = 16,
-		label = "Combined",
-	)
-
-	# Extra
-	errorbars!(
-		ax,
-		depths_extra.Wav_cen .+ nudge,
-		value.(depths_extra.Combined),
-		uncertainty.(depths_extra.Combined);
-		linewidth = 5,
-		whiskerwidth = 10,
-	)
-	scatter!(ax, depths_extra.Wav_cen .+ nudge, value.(depths_extra.Combined);
-		color = :grey,
-		strokewidth = 3,
-		markersize = 16,
-		label = "Extra Combined",
+	kwargs_errorbars = Dict(:whiskerwidth=>10.0, :linewidth=>3.0)
+	kwargs_scatter = Dict(:color=>:white, :strokewidth=>3.0, :markersize=>16.0)
+	plot_tspec!(ax, df_tspecs, "Combined";
+			nudge = nudge,
+			kwargs_errorbars = kwargs_errorbars,
+			kwargs_scatter = kwargs_scatter,
+			label = "Combined",
 	)
 	
-	# Write to file
-	N = nrow(depths_adj)
+	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
+	
+	path = "../../ACCESS_WASP-50b/figures/detrended"
+	mkpath(path)
+	save("$(path)/tspec.png", fig)
+		
+	fig #|> as_svg
+end
+
+# ╔═╡ 5718672b-1bc6-4676-8703-5fc06b83f0f9
+df_tspecs[!, [:Wlow, :Wup, :Combined]]
+
+# ╔═╡ c9c4910b-5bc2-41a4-a3ad-e1d67e170356
+
+
+# ╔═╡ fa3a0fdd-9932-4691-b707-bc0d03ace5a8
+# Write to file
+	#N = nrow(depths_adj)
 	# CSV.write(
 	# 	"/home/mango/Desktop/tspec_w50.csv",
 	# 	DataFrame(
@@ -387,37 +381,6 @@ let
 	# 	),
 	# )
 	
-	# Plot uncombined points
-	for (i, (transit, df)) in enumerate(antijoins)
-		wav = df.wav
-		f = value.(df.δ)
-		f_err = uncertainty.(df.δ)
-		errorbars!(ax, wav, f, f_err;
-			linewidth = 3,
-			color = (COLORS[i], 0.5),
-			whiskerwidth = 10,
-		)
-		scatter!(ax, wav, f;
-			color = (COLORS[i], 0.5),
-			markersize = 12,
-		)
-	end
-	
-	# All points
-	# df_all = let
-	
-	# 	N = 25
-
-	# 	df_blue = antijoins[1][2][1:4, :]
-
-	# 	δ_5600 = weightedmean2(
-	# 		(antijoins[1][2].δ[end], antijoins[2][2].δ[1], antijoins[4][2].δ[1])
-	# 	)
-
-	# 	df_middle = depths_adj
-
-	# 	df_red = antijoins[3][2]
-
 	# 	DataFrame(
 	# 	"Wlow" => [df_blue.Wav_d..., 5600.0, df_middle.Wav_d..., df_red.Wav_d...],
 	# 	"Wup" => [df_blue.Wav_u..., 5800.0, df_middle.Wav_u...,  df_red.Wav_u...],
@@ -446,77 +409,6 @@ let
 	
 	# CSV.write("/home/mango/Desktop/tspec_all.csv", df_all)
 	
-	#scatter!(ax, (df_all.Wlow .+ df_all.Wup) ./ 2, df_all.Depth, color=:red)
-
-	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
-	
-	path = "../../ACCESS_WASP-50b/figures/detrended"
-	mkpath(path)
-	save("$(path)/tspec.png", fig)
-		
-	fig #|> as_svg
-end
-
-# ╔═╡ 80b7b8a3-918f-4bc4-a59a-284cfbab5f8a
-depths_extra
-
-# ╔═╡ 07406bb6-7896-4cb9-83c0-73a92b5128c6
-A = [
-		3 ± 4 1 ± 2 2
-		1     2     3
-		4     5     6
-		0     3     0
-	]
-
-# ╔═╡ 008c0cc0-ae58-4c05-a8b6-752cbe0d5eef
-[weightedmean2(skipmissing(row)) for row in eachrow(A)]
-
-# ╔═╡ 4dbc1714-f804-41d0-8cb6-0d15d0bc5cc5
-mean_and_std(skipmissing([1, missing, 3]))
-
-# ╔═╡ d85d48f6-7b40-4f94-b18d-8e6a2c350883
-skipmissing([1, missing, 3])
-
-# ╔═╡ 6e610bd5-8c4c-43a6-9a16-f3733d4a701a
-# df_all = let
-	
-# 	N = 25
-	
-# 	df_blue = antijoins[1][2][1:4, :]
-	
-# 	δ_5600 = weightedmean2(
-# 		(antijoins[1][2].δ[end], antijoins[2][2].δ[1], antijoins[4][2].δ[1])
-# 	)
-	
-# 	df_middle = depths_adj
-	
-# 	df_red = antijoins[3][2]
-	
-# 	DataFrame(
-# 	"Wlow" => [df_blue.Wav_d..., 5600.0, df_middle.Wav_d..., df_red.Wav_d...],
-# 	"Wup" => [df_blue.Wav_u..., 5800.0, df_middle.Wav_u...,  df_red.Wav_u...],
-# 	"Depth" => [
-# 		value.(df_blue.δ)...,
-# 		δ_5600.val,
-# 		value.(df_middle.Combined)...,
-# 		value.(df_red.δ)...,
-# 	],
-# 	"ErrUp" => [
-# 		uncertainty.(df_blue.δ)...,
-# 		δ_5600.err,
-# 		uncertainty.(df_middle.Combined)...,
-# 		uncertainty.(df_red.δ)...,
-# 	],
-# 	"ErrLow" => [
-# 		uncertainty.(df_blue.δ)...,
-# 		δ_5600.err,
-# 		uncertainty.(df_middle.Combined)...,
-# 		uncertainty.(df_red.δ)...,
-# 	],
-# 	"Instrument" => fill("Magellan/IMACS", N),
-# 	"Offset?" => fill("NO", N)
-# )
-# end
 
 # ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
 md"""
@@ -571,15 +463,14 @@ body.disable_ui main {
 # ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
 # ╠═4b9cfc02-5e18-422d-b18e-6301a659561a
 # ╠═45acc116-e585-4ddf-943d-128db7736921
+# ╠═ed954843-34e5-49be-8643-e2671b659e06
+# ╠═b32273bc-1bb5-406a-acfe-57fd643ded51
 # ╟─5d25caa3-916a-40b1-ba7c-ea1295afb775
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
-# ╠═ed954843-34e5-49be-8643-e2671b659e06
-# ╠═80b7b8a3-918f-4bc4-a59a-284cfbab5f8a
-# ╠═07406bb6-7896-4cb9-83c0-73a92b5128c6
-# ╠═008c0cc0-ae58-4c05-a8b6-752cbe0d5eef
-# ╠═4dbc1714-f804-41d0-8cb6-0d15d0bc5cc5
-# ╠═d85d48f6-7b40-4f94-b18d-8e6a2c350883
-# ╠═6e610bd5-8c4c-43a6-9a16-f3733d4a701a
+# ╠═09887c41-022a-4109-8c5d-0ba033c50bcb
+# ╠═5718672b-1bc6-4676-8703-5fc06b83f0f9
+# ╠═c9c4910b-5bc2-41a4-a3ad-e1d67e170356
+# ╠═fa3a0fdd-9932-4691-b707-bc0d03ace5a8
 # ╟─f8a86915-f7d8-4462-980e-7b8124b13a3f
 # ╠═ef970c0c-d08a-4856-b10b-531bb5e7e53e
 # ╠═3510ead9-6e66-4fec-84ca-15c8a3ce4c3e
