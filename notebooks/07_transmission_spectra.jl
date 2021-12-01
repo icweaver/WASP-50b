@@ -77,6 +77,9 @@ using PhysicalConstants.CODATA2018: G
 # ╔═╡ 7021cefd-f750-4422-b17b-c9abdc35dd2f
 using UnitfulAstro
 
+# ╔═╡ ae18351e-60e9-4963-ba12-6dd26f86e7f2
+using Chain
+
 # ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 md"""
 # Transmission Spectra
@@ -359,56 +362,29 @@ let
 	fig #|> as_svg
 end
 
+# ╔═╡ 674e08fa-8ae9-45b7-a024-3e2e1b9b293c
+# Write to file for retrieval analysis
+
+# ╔═╡ cb02a053-d048-43d9-950a-de3106019520
+function create_df(df)
+	@chain df begin
+		@select begin
+			:Wlow
+			:Wup
+			:Depth = value.(:Combined)
+			:Errup = uncertainty(:Combined)
+			:ErrLow = uncertainty(:Combined)
+			:Instrument = "Magellan/IMACS"
+			:Offset = "NO"
+		end
+	end
+end
+
 # ╔═╡ 5718672b-1bc6-4676-8703-5fc06b83f0f9
-df_tspecs[!, [:Wlow, :Wup, :Combined]]
+CSV.write("$(DATA_DIR)/tspec_w50_all.csv", create_df(df_tspecs))
 
-# ╔═╡ c9c4910b-5bc2-41a4-a3ad-e1d67e170356
-
-
-# ╔═╡ fa3a0fdd-9932-4691-b707-bc0d03ace5a8
-# Write to file
-	#N = nrow(depths_adj)
-	# CSV.write(
-	# 	"/home/mango/Desktop/tspec_w50.csv",
-	# 	DataFrame(
-	# 	:Wlow => depths_adj.Wav_d,
-	# 	:Wup => depths_adj.Wav_u,
-	# 	:Depth => depth_combined,
-	# 	:ErrUp => depth_combined_err,
-	# 	:ErrLow => depth_combined_err,
-	# 	:Instrument => fill("Magellan/IMACS", N),
-	# 	:Offset => fill("NO", N)
-	# 	),
-	# )
-	
-	# 	DataFrame(
-	# 	"Wlow" => [df_blue.Wav_d..., 5600.0, df_middle.Wav_d..., df_red.Wav_d...],
-	# 	"Wup" => [df_blue.Wav_u..., 5800.0, df_middle.Wav_u...,  df_red.Wav_u...],
-	# 	"Depth" => [
-	# 		value.(df_blue.δ)...,
-	# 		δ_5600.val,
-	# 		value.(df_middle.Combined)...,
-	# 		value.(df_red.δ)...,
-	# 	],
-	# 	"ErrUp" => [
-	# 		uncertainty.(df_blue.δ)...,
-	# 		δ_5600.err,
-	# 		uncertainty.(df_middle.Combined)...,
-	# 		uncertainty.(df_red.δ)...,
-	# 	],
-	# 	"ErrLow" => [
-	# 		uncertainty.(df_blue.δ)...,
-	# 		δ_5600.err,
-	# 		uncertainty.(df_middle.Combined)...,
-	# 		uncertainty.(df_red.δ)...,
-	# 	],
-	# 	"Instrument" => fill("Magellan/IMACS", N),
-	# 	"Offset?" => fill("NO", N)
-	# )
-	# end
-	
-	# CSV.write("/home/mango/Desktop/tspec_all.csv", df_all)
-	
+# ╔═╡ b27f5a0a-812d-44c8-9c84-c74b0c58c794
+CSV.write("$(DATA_DIR)/tspec_w50.csv", create_df(depths_adj))
 
 # ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
 md"""
@@ -468,9 +444,11 @@ body.disable_ui main {
 # ╟─5d25caa3-916a-40b1-ba7c-ea1295afb775
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
 # ╠═09887c41-022a-4109-8c5d-0ba033c50bcb
+# ╠═674e08fa-8ae9-45b7-a024-3e2e1b9b293c
 # ╠═5718672b-1bc6-4676-8703-5fc06b83f0f9
-# ╠═c9c4910b-5bc2-41a4-a3ad-e1d67e170356
-# ╠═fa3a0fdd-9932-4691-b707-bc0d03ace5a8
+# ╠═b27f5a0a-812d-44c8-9c84-c74b0c58c794
+# ╠═cb02a053-d048-43d9-950a-de3106019520
 # ╟─f8a86915-f7d8-4462-980e-7b8124b13a3f
+# ╠═ae18351e-60e9-4963-ba12-6dd26f86e7f2
 # ╠═ef970c0c-d08a-4856-b10b-531bb5e7e53e
 # ╠═3510ead9-6e66-4fec-84ca-15c8a3ce4c3e
