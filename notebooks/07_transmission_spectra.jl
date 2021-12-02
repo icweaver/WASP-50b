@@ -200,12 +200,6 @@ dfs_unique = (
 	),
 );
 
-# ╔═╡ 3cd56ec3-3a4a-4d65-b4f9-a8259c96e54e
-#transform!(df_common, names(df_common, r"δ") .=> cubes.keys, renamecols=true)
-
-# ╔═╡ c6c8be53-6839-409b-95f5-4a7a4f6798fb
-rename(df_common_0[!, r"δ"], cubes.keys)
-
 # ╔═╡ 45acc116-e585-4ddf-943d-128db7736921
 function weightedmean2(m; corrected=true)
 	if length(collect(m)) == 1
@@ -219,18 +213,9 @@ function weightedmean2(m; corrected=true)
 	return a ± b
 end
 
-# ╔═╡ 4b9cfc02-5e18-422d-b18e-6301a659561a
-df_common = @chain df_common_0 begin
-	select(_, :Wav_d=>:Wlow, :Wav_u=>:Wup, :wav=>:Wcen, r"δ")
-	#transform(_, ) 
-	@rtransform :Combined = weightedmean2([:δ, :δ_1, :δ_2, :δ_3])
-	rename(_, names(_, r"δ") .=> cubes.keys)
-	# depths_adj = depths_common #.- Measurements.value.(wlc_offsets)
-end
-
 # ╔═╡ ed954843-34e5-49be-8643-e2671b659e06
-depths_extra = let
-	y = outerjoin((x[2] for x in antijoins)...;
+df_extra = let
+	y = outerjoin((x[2] for x in dfs_unique)...;
 		on = [:Wav_d, :Wav_u, :wav],
 		makeunique = true,
 	)
@@ -244,15 +229,6 @@ depths_extra = let
 	sort!(z, :Wcen)
 end
 
-# ╔═╡ b32273bc-1bb5-406a-acfe-57fd643ded51
-df_tspecs = sort(vcat(depths_adj, depths_extra), :Wcen)
-#df_tspecs = depths_adj
-
-# ╔═╡ 5d25caa3-916a-40b1-ba7c-ea1295afb775
-md"""
-Average precision per bin: $(round(Int, getproperty.(df_tspecs[!, :Combined], :err) |> median)) ppm
-"""
-
 # ╔═╡ 2f377692-2abf-404e-99ea-a18c7af1a840
 wlc_depths = [cube["δ_WLC"] for (transit, cube) in cubes]
 
@@ -261,6 +237,26 @@ mean_wlc_depth = weightedmean2(wlc_depths)
 
 # ╔═╡ a915f236-8dae-4c91-8f96-fb9a805a0a7f
 wlc_offsets = reshape(wlc_depths .- mean_wlc_depth, 1, :)
+
+# ╔═╡ 4b9cfc02-5e18-422d-b18e-6301a659561a
+df_common = @chain df_common_0 begin
+	select(_, :Wav_d=>:Wlow, :Wav_u=>:Wup, :wav=>:Wcen, r"δ")
+	@rtransform :δ = :δ - wlc_offsets[1]
+	@rtransform :δ_1= :δ_1 - wlc_offsets[2]
+	@rtransform :δ_2 = :δ_2 - wlc_offsets[3]
+	@rtransform :δ_3 = :δ_3 - wlc_offsets[4]
+	@rtransform :Combined = weightedmean2([:δ, :δ_1, :δ_2, :δ_3])
+	rename(_, names(_, r"δ") .=> cubes.keys)
+end
+
+# ╔═╡ b32273bc-1bb5-406a-acfe-57fd643ded51
+df_tspecs = sort(vcat(df_common, df_extra), :Wcen)
+#df_tspecs = depths_adj
+
+# ╔═╡ 5d25caa3-916a-40b1-ba7c-ea1295afb775
+md"""
+Average precision per bin: $(round(Int, getproperty.(df_tspecs[!, :Combined], :err) |> median)) ppm
+"""
 
 # ╔═╡ 09887c41-022a-4109-8c5d-0ba033c50bcb
 function plot_tspec!(ax, df, col;
@@ -293,9 +289,6 @@ let
 	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
 	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
 	mean_wlc_depth.val - mean_wlc_depth.err), linestyle=:dash, color=:grey)
-	
-	wav = depths_adj.Wcen
-	ΔWLC_depth = mean_wlc_depth.err
 	
 	# Individual nights
 	kwargs_errorbars = Dict(:whiskerwidth=>10.0, :linewidth=>1.0)
@@ -410,8 +403,6 @@ body.disable_ui main {
 # ╟─acde40fd-8ed4-4175-9a52-13ed91dc5495
 # ╠═461097e9-a687-4ef2-a5b4-8bf4d9e1c98f
 # ╠═4b9cfc02-5e18-422d-b18e-6301a659561a
-# ╠═3cd56ec3-3a4a-4d65-b4f9-a8259c96e54e
-# ╠═c6c8be53-6839-409b-95f5-4a7a4f6798fb
 # ╠═45acc116-e585-4ddf-943d-128db7736921
 # ╠═ed954843-34e5-49be-8643-e2671b659e06
 # ╠═b32273bc-1bb5-406a-acfe-57fd643ded51
