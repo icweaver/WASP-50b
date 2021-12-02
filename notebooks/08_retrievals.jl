@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.1
+# v0.17.2
 
 using Markdown
 using InteractiveUtils
@@ -74,7 +74,7 @@ $(TableOfContents(title="📖 Table of Contents"))
 """
 
 # ╔═╡ 60dc161c-2aa2-4264-884d-6da3ead0e57b
-base_dir = "./data/retrievals/all_WASP50"
+base_dir = "./data/retrievals/WASP50_all"
 
 # ╔═╡ d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
 fit_R0 = "fitR0"
@@ -91,6 +91,111 @@ model_names = OrderedDict(
 	#"clear+spot+cloud+haze" => "Het_FitP0_Clouds_Haze_$(fit_R0)",
 )
 
+# ╔═╡ 0f65d095-09af-44d2-907b-c30e2c16b609
+species = [
+	"Na",
+	"K",
+	"TiO",
+	"Na_TiO",
+	"K_TiO",
+	"Na_K_TiO",
+	"CO",
+	"H2O",
+	"NH3", # too low
+	"HCN", # too low
+	"CH4", # too low
+	"CO2", # too low
+	"FEH", # too low
+]
+
+# ╔═╡ 3c232a0a-7b05-4c1c-90bb-e6a225dcb8fb
+# Dir name
+
+# ╔═╡ b3fe4583-14a1-4db3-836f-30cca02d957c
+glob("$(base_dir)/*")
+
+# ╔═╡ 75d4eebe-0381-4a5b-8015-41156bc51f7d
+s_dir = "WASP50_E1_NoHet_FitP0_Clouds_NoHaze_NofitR0_Na_K_TiO"
+
+# ╔═╡ 112a03fe-7ab0-415d-9010-bb3f25dd6847
+het_dir, clouds_dir, haze_dir, fitR0_dir = occursin.(
+	("_Het", "_Clouds", "_Haze", "_fitR0"), s_dir)
+
+# ╔═╡ d2996a84-78b8-4721-b9ab-50ea82cd22bd
+species_dir = let
+	tokens_dir = split(s_dir, "_")
+	tokens_dir[findfirst(x -> occursin("fitR0", x), tokens_dir)+1:end]
+end
+
+# ╔═╡ 9cafa5de-9e42-42f2-9990-ea7d108d7d4d
+# Parse file options
+
+# ╔═╡ b58f3417-01c3-41f8-8409-acec508217b5
+flags_opts = ["heterogeneity", "clouds", "hazes", "fit_R0", "molecules"]
+
+# ╔═╡ 172c76d3-8ccf-4fd1-9770-36e3d0158b52
+begin
+	#with_terminal() do
+	dict_opts = Dict()
+	for line in eachline(open("/home/mango/Desktop/opts.py", "r"))
+		if (length(line) ≥ 1) && (line[1] != '#')
+			tokens = strip.(split(line, "="))
+			if tokens[1] ∈ flags_opts
+				if tokens[1] == "molecules"
+					println("here")
+					token = filter(x -> all(isletter, x), split(tokens[2], "\""))
+				elseif tokens[2] == "False"
+					token = false
+				else
+					token = true
+				end
+				dict_opts[tokens[1]] = token
+			end
+		end
+	end
+	#end
+end
+
+# ╔═╡ 50a2a8e8-fb38-4670-bcbe-5f7807ed4971
+dict_opts
+
+# ╔═╡ ea6dbecd-4da8-4f04-89cf-b98533fc683b
+het_dir, clouds_dir, haze_dir, fitR0_dir
+
+# ╔═╡ a113be3c-69c3-4fd3-961d-6b06aeece79d
+function check(dict_opts, name_opts, val_dir)
+	if dict_opts[name_opts] == val_dir
+		println("$(name_opts) passes and is set to $(val_dir)")
+	else
+		println("$(name_opts) fails: dir=$(val_dir) but opts=$(dict_opts[name_opts])")
+	end
+end
+
+# ╔═╡ f386049c-ea3a-4cb1-9eb8-a560b3d0406c
+with_terminal() do
+	# Check each other
+	check(dict_opts, "heterogeneity", het_dir)
+	check(dict_opts, "clouds", clouds_dir)
+	check(dict_opts, "hazes", haze_dir)
+	check(dict_opts, "fit_R0", fitR0_dir)
+	check(dict_opts, "molecules", species_dir)
+end
+
+# ╔═╡ d26b4a96-270e-4d92-ac34-717d5527705a
+species_opts = filter(x -> all(isletter, x), split("[\"Na\",\"K\", \"TiO\"]", "\""))
+
+# ╔═╡ 7b714c1e-2e3d-453f-a342-81df8283de5c
+# Check if missing files
+with_terminal() do
+	for sp ∈ species
+		for (model_name, model_id) ∈ model_names
+			!isfile("$(base_dir)/WASP50_E1_$(model_id)_$(sp)/retrieval.pkl") &&
+				println("WASP50_E1_$(model_id)_$(sp)")
+				#println("$(base_dir)/WASP50_E1_$(model_id)_$(sp)/retrieval.pkl")
+		end
+	end
+end
+
 # ╔═╡ 41370a85-7abc-42ac-b82e-f6d739d8b5a8
 md"""
 ## Table
@@ -105,35 +210,6 @@ end
 md"""
 ## Plot
 """
-
-# ╔═╡ 0f65d095-09af-44d2-907b-c30e2c16b609
-species = [
-	"Na",
-	"K",
-	"TiO",
-	"Na_TiO",
-	"K_TiO",
-	"Na_K_TiO",
-	#"CO",
-	#"H2O",
-	#"NH3", # too low
-	#"HCN", # too low
-	#"CH4", # too low
-	#"CO2", # too low
-	#"FEH", # too low
-]
-
-# ╔═╡ 7b714c1e-2e3d-453f-a342-81df8283de5c
-# Check if missing files
-with_terminal() do
-	for sp ∈ species
-		for (model_name, model_id) ∈ model_names
-			!isfile("$(base_dir)/WASP50_E1_$(model_id)_$(sp)/retrieval.pkl") &&
-				println("WASP50_E1_$(model_id)_$(sp)")
-				#println("$(base_dir)/WASP50_E1_$(model_id)_$(sp)/retrieval.pkl")
-		end
-	end
-end
 
 # ╔═╡ 812210c9-e294-4d61-bdf6-a03284199188
 function plot_evidences(nm)
@@ -196,7 +272,7 @@ end
 
 # ╔═╡ d97ec176-af5a-4f95-b891-7ceb5ae1b3e0
 begin
-	dirpath_Na_TiO = "data/retrievals/all_WASP50/WASP50_E1_NoHet_FitP0_NoClouds_NoHaze_fitR0_Na_TiO"
+	dirpath_Na_TiO = "$(base_dir)/WASP50_E1_NoHet_FitP0_NoClouds_NoHaze_fitR0_Na_TiO"
 	
 	retr_Na_TiO = CSV.read(
 		"$(dirpath_Na_TiO)/retr_Magellan_IMACS.txt", DataFrame;
@@ -282,7 +358,7 @@ cube = OrderedDict(
 		model_name => load_pickle(
 			"$(base_dir)/WASP50_E1_$(model_id)_$(sp)/retrieval.pkl"
 		)
-		for (model_name, model_id) ∈ model_names
+		for (model_name, model_id) ∈ model_names if (sp != "Na_K_TiO")
 	)
 	for sp ∈ species
 )
@@ -290,9 +366,11 @@ cube = OrderedDict(
 # ╔═╡ 65b51ff6-0991-491f-8945-dd889ffe71dd
 begin
 	n_species, n_models = length(species), length(model_names)
+	row_labels = model_names.keys
+	col_labels = species
 	evidences = NamedArray(
-		Matrix{Measurement{Float64}}(undef, n_models, n_species),
-		(String.(keys(model_names)), species),
+		zeros(Measurement, n_models, n_species),
+		(row_labels, col_labels),
 		("Model", "Species")
 	)
 	
@@ -302,7 +380,13 @@ begin
 		end
 	end
 	
-	ΔlnZ = evidences .- minimum(evidences)
+	# NamedArray{Measurement{T}}(...) .- blah seems to error
+	# https://github.com/davidavdav/NamedArrays.jl/issues/114
+	ΔlnZ = NamedArray(
+		Matrix(evidences) .- minimum(evidences),
+		(row_labels, col_labels),
+		("Model", "Species")
+	)
 end
 
 # ╔═╡ 6e24e7f4-61e5-470d-8ce0-399e0fe32e90
@@ -324,7 +408,21 @@ md"""
 # ╠═60dc161c-2aa2-4264-884d-6da3ead0e57b
 # ╠═d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
 # ╠═093156c7-9da7-4814-9260-5173f27fa497
+# ╠═0f65d095-09af-44d2-907b-c30e2c16b609
 # ╠═daacda36-1fc9-411f-b101-82944863c9f3
+# ╠═3c232a0a-7b05-4c1c-90bb-e6a225dcb8fb
+# ╠═b3fe4583-14a1-4db3-836f-30cca02d957c
+# ╠═75d4eebe-0381-4a5b-8015-41156bc51f7d
+# ╠═112a03fe-7ab0-415d-9010-bb3f25dd6847
+# ╠═d2996a84-78b8-4721-b9ab-50ea82cd22bd
+# ╠═9cafa5de-9e42-42f2-9990-ea7d108d7d4d
+# ╠═b58f3417-01c3-41f8-8409-acec508217b5
+# ╠═172c76d3-8ccf-4fd1-9770-36e3d0158b52
+# ╠═50a2a8e8-fb38-4670-bcbe-5f7807ed4971
+# ╠═ea6dbecd-4da8-4f04-89cf-b98533fc683b
+# ╠═f386049c-ea3a-4cb1-9eb8-a560b3d0406c
+# ╠═a113be3c-69c3-4fd3-961d-6b06aeece79d
+# ╠═d26b4a96-270e-4d92-ac34-717d5527705a
 # ╠═7b714c1e-2e3d-453f-a342-81df8283de5c
 # ╟─41370a85-7abc-42ac-b82e-f6d739d8b5a8
 # ╠═3dfe9e7d-3d77-4b49-b25b-3e7049906d26
@@ -333,7 +431,6 @@ md"""
 # ╠═750f830c-5818-4d8f-a673-f838a9d0da46
 # ╠═0064b4ce-c41d-4b4e-bba4-ef4be0430edc
 # ╟─869c4e1e-ef11-4048-bb83-6710ce0b3c8e
-# ╠═0f65d095-09af-44d2-907b-c30e2c16b609
 # ╠═8af2ffc6-b24d-46c3-b9f5-ecc81c61cd49
 # ╠═812210c9-e294-4d61-bdf6-a03284199188
 # ╠═db524678-9ee2-4934-b1bb-6a2f13bf0fa6

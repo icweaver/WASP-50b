@@ -213,6 +213,17 @@ function weightedmean2(m; corrected=true)
 	return a ± b
 end
 
+# ╔═╡ 4b9cfc02-5e18-422d-b18e-6301a659561a
+df_common = @chain df_common_0 begin
+	select(_, :Wav_d=>:Wlow, :Wav_u=>:Wup, :wav=>:Wcen, r"δ")
+	# @rtransform :δ = :δ - wlc_offsets[1]
+	# @rtransform :δ_1= :δ_1 - wlc_offsets[2]
+	# @rtransform :δ_2 = :δ_2 - wlc_offsets[3]
+	# @rtransform :δ_3 = :δ_3 - wlc_offsets[4]
+	@rtransform :Combined = weightedmean2([:δ, :δ_1, :δ_2, :δ_3])
+	rename(_, names(_, r"δ") .=> cubes.keys)
+end
+
 # ╔═╡ ed954843-34e5-49be-8643-e2671b659e06
 df_extra = let
 	y = outerjoin((x[2] for x in dfs_unique)...;
@@ -229,26 +240,6 @@ df_extra = let
 	sort!(z, :Wcen)
 end
 
-# ╔═╡ 2f377692-2abf-404e-99ea-a18c7af1a840
-wlc_depths = [cube["δ_WLC"] for (transit, cube) in cubes]
-
-# ╔═╡ c405941d-bdcc-458f-b0bf-01abf02982e0
-mean_wlc_depth = weightedmean2(wlc_depths)
-
-# ╔═╡ a915f236-8dae-4c91-8f96-fb9a805a0a7f
-wlc_offsets = reshape(wlc_depths .- mean_wlc_depth, 1, :)
-
-# ╔═╡ 4b9cfc02-5e18-422d-b18e-6301a659561a
-df_common = @chain df_common_0 begin
-	select(_, :Wav_d=>:Wlow, :Wav_u=>:Wup, :wav=>:Wcen, r"δ")
-	@rtransform :δ = :δ - wlc_offsets[1]
-	@rtransform :δ_1= :δ_1 - wlc_offsets[2]
-	@rtransform :δ_2 = :δ_2 - wlc_offsets[3]
-	@rtransform :δ_3 = :δ_3 - wlc_offsets[4]
-	@rtransform :Combined = weightedmean2([:δ, :δ_1, :δ_2, :δ_3])
-	rename(_, names(_, r"δ") .=> cubes.keys)
-end
-
 # ╔═╡ b32273bc-1bb5-406a-acfe-57fd643ded51
 df_tspecs = sort(vcat(df_common, df_extra), :Wcen)
 #df_tspecs = depths_adj
@@ -257,6 +248,15 @@ df_tspecs = sort(vcat(df_common, df_extra), :Wcen)
 md"""
 Average precision per bin: $(round(Int, getproperty.(df_tspecs[!, :Combined], :err) |> median)) ppm
 """
+
+# ╔═╡ 2f377692-2abf-404e-99ea-a18c7af1a840
+wlc_depths = [cube["δ_WLC"] for (transit, cube) in cubes]
+
+# ╔═╡ c405941d-bdcc-458f-b0bf-01abf02982e0
+mean_wlc_depth = weightedmean2(wlc_depths)
+
+# ╔═╡ a915f236-8dae-4c91-8f96-fb9a805a0a7f
+wlc_offsets = reshape(wlc_depths .- mean_wlc_depth, 1, :)
 
 # ╔═╡ ee102b39-9cd0-441b-9c64-eb61c52d96a1
 df = CSV.read("/home/mango/Desktop/tspec_w50_all.csv", DataFrame)
