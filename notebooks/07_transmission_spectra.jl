@@ -258,6 +258,9 @@ md"""
 Average precision per bin: $(round(Int, getproperty.(df_tspecs[!, :Combined], :err) |> median)) ppm
 """
 
+# ╔═╡ ee102b39-9cd0-441b-9c64-eb61c52d96a1
+df = CSV.read("/home/mango/Desktop/tspec_w50_all.csv", DataFrame)
+
 # ╔═╡ 09887c41-022a-4109-8c5d-0ba033c50bcb
 function plot_tspec!(ax, df, col;
 	nudge = 0.0,
@@ -318,7 +321,7 @@ let
 	path = "../../ACCESS_WASP-50b/figures/detrended"
 	mkpath(path)
 	save("$(path)/tspec.png", fig)
-		
+	
 	fig #|> as_svg
 end
 
@@ -363,7 +366,7 @@ end
 CSV.write("$(DATA_DIR)/tspec_w50_all.csv", create_df(df_tspecs))
 
 # ╔═╡ b27f5a0a-812d-44c8-9c84-c74b0c58c794
-CSV.write("$(DATA_DIR)/tspec_w50.csv", create_df(depths_adj))
+CSV.write("$(DATA_DIR)/tspec_w50.csv", create_df(df_common))
 
 # ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
 md"""
@@ -411,6 +414,7 @@ body.disable_ui main {
 # ╠═c405941d-bdcc-458f-b0bf-01abf02982e0
 # ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
+# ╠═ee102b39-9cd0-441b-9c64-eb61c52d96a1
 # ╠═09887c41-022a-4109-8c5d-0ba033c50bcb
 # ╟─146a2be7-1c08-4d7c-802f-41f65aeae0d5
 # ╠═5718672b-1bc6-4676-8703-5fc06b83f0f9
