@@ -111,11 +111,8 @@ species = [
 # ╔═╡ 3c232a0a-7b05-4c1c-90bb-e6a225dcb8fb
 # Dir name
 
-# ╔═╡ b3fe4583-14a1-4db3-836f-30cca02d957c
-glob("$(base_dir)/*")
-
 # ╔═╡ 75d4eebe-0381-4a5b-8015-41156bc51f7d
-s_dir = "WASP50_E1_NoHet_FitP0_Clouds_NoHaze_NofitR0_Na_K_TiO"
+s_dir = "WASP50_E1_NoHet_FitP0_Clouds_NoHaze_NofitR0_Na_K_CH4"
 
 # ╔═╡ 112a03fe-7ab0-415d-9010-bb3f25dd6847
 het_dir, clouds_dir, haze_dir, fitR0_dir = occursin.(
@@ -135,25 +132,25 @@ flags_opts = ["heterogeneity", "clouds", "hazes", "fit_R0", "molecules"]
 
 # ╔═╡ 172c76d3-8ccf-4fd1-9770-36e3d0158b52
 begin
-	#with_terminal() do
-	dict_opts = Dict()
-	for line in eachline(open("/home/mango/Desktop/opts.py", "r"))
-		if (length(line) ≥ 1) && (line[1] != '#')
-			tokens = strip.(split(line, "="))
-			if tokens[1] ∈ flags_opts
-				if tokens[1] == "molecules"
-					println("here")
-					token = filter(x -> all(isletter, x), split(tokens[2], "\""))
-				elseif tokens[2] == "False"
-					token = false
-				else
-					token = true
-				end
-				dict_opts[tokens[1]] = token
+#with_terminal() do
+dict_opts = Dict()
+for line in eachline(open("/home/mango/Desktop/opts.py", "r"))
+	if (length(line) ≥ 1) && (line[1] != '#')
+		tokens = strip.(split(line, "="))
+		if tokens[1] ∈ flags_opts
+			if tokens[1] == "molecules"
+				println("here")
+				token = filter(x -> any(isletter, x), split(tokens[2], "\""))
+			elseif tokens[2] == "False"
+				token = false
+			else
+				token = true
 			end
+			dict_opts[tokens[1]] = token
 		end
 	end
-	#end
+end
+#end
 end
 
 # ╔═╡ 50a2a8e8-fb38-4670-bcbe-5f7807ed4971
@@ -162,23 +159,29 @@ dict_opts
 # ╔═╡ ea6dbecd-4da8-4f04-89cf-b98533fc683b
 het_dir, clouds_dir, haze_dir, fitR0_dir
 
+# ╔═╡ 1255f796-983e-46e0-9dc4-db83c9745eac
+all((true, false))
+
 # ╔═╡ a113be3c-69c3-4fd3-961d-6b06aeece79d
 function check(dict_opts, name_opts, val_dir)
 	if dict_opts[name_opts] == val_dir
 		println("$(name_opts) passes and is set to $(val_dir)")
+		return true
 	else
 		println("$(name_opts) fails: dir=$(val_dir) but opts=$(dict_opts[name_opts])")
+		return false
 	end
 end
 
 # ╔═╡ f386049c-ea3a-4cb1-9eb8-a560b3d0406c
 with_terminal() do
 	# Check each other
-	check(dict_opts, "heterogeneity", het_dir)
-	check(dict_opts, "clouds", clouds_dir)
-	check(dict_opts, "hazes", haze_dir)
-	check(dict_opts, "fit_R0", fitR0_dir)
-	check(dict_opts, "molecules", species_dir)
+	all((check(dict_opts, "heterogeneity", het_dir),
+	check(dict_opts, "clouds", clouds_dir),
+	check(dict_opts, "hazes", haze_dir),
+	check(dict_opts, "fit_R0", fitR0_dir),
+	check(dict_opts, "molecules", species_dir),
+	))
 end
 
 # ╔═╡ d26b4a96-270e-4d92-ac34-717d5527705a
@@ -411,7 +414,6 @@ md"""
 # ╠═0f65d095-09af-44d2-907b-c30e2c16b609
 # ╠═daacda36-1fc9-411f-b101-82944863c9f3
 # ╠═3c232a0a-7b05-4c1c-90bb-e6a225dcb8fb
-# ╠═b3fe4583-14a1-4db3-836f-30cca02d957c
 # ╠═75d4eebe-0381-4a5b-8015-41156bc51f7d
 # ╠═112a03fe-7ab0-415d-9010-bb3f25dd6847
 # ╠═d2996a84-78b8-4721-b9ab-50ea82cd22bd
@@ -421,6 +423,7 @@ md"""
 # ╠═50a2a8e8-fb38-4670-bcbe-5f7807ed4971
 # ╠═ea6dbecd-4da8-4f04-89cf-b98533fc683b
 # ╠═f386049c-ea3a-4cb1-9eb8-a560b3d0406c
+# ╠═1255f796-983e-46e0-9dc4-db83c9745eac
 # ╠═a113be3c-69c3-4fd3-961d-6b06aeece79d
 # ╠═d26b4a96-270e-4d92-ac34-717d5527705a
 # ╠═7b714c1e-2e3d-453f-a342-81df8283de5c
