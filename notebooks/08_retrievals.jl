@@ -53,7 +53,7 @@ $(TableOfContents(title="📖 Table of Contents"))
 """
 
 # ╔═╡ 60dc161c-2aa2-4264-884d-6da3ead0e57b
-base_dir = "./data/retrievals/WASP50"
+base_dir = "./data/retrievals/WASP50_cm"
 
 # ╔═╡ d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
 fit_R0 = "fitR0"
@@ -106,9 +106,6 @@ cube
 
 ```
 """
-
-# ╔═╡ d8716ae9-de77-4d12-8b7b-1e5d06de4163
-
 
 # ╔═╡ 7b714c1e-2e3d-453f-a342-81df8283de5c
 # Check if missing files
@@ -311,9 +308,9 @@ function plot_evidences(nm)
 	
 	ylims!(ax, 0, 5.5)
 	
-	path = "../../ACCESS_WASP-50b/figures/detrended"
-	mkpath(path)
-	save("$(path)/retrieval_evidences.png", fig)
+	# path = "../../ACCESS_WASP-50b/figures/detrended"
+	# mkpath(path)
+	# save("$(path)/retrieval_evidences.png", fig)
 	
 	fig
 end
@@ -339,9 +336,9 @@ let
 
 	axislegend(orientation=:horizontal)
 
-	path = "../../ACCESS_WASP-50b/figures/retrievals"
-	mkpath(path)
-	save("$(path)/retr.png", fig)
+	# path = "../../ACCESS_WASP-50b/figures/retrievals"
+	# mkpath(path)
+	# save("$(path)/retr.png", fig)
 	
 	fig
 end
@@ -354,7 +351,6 @@ end
 # ╠═0f65d095-09af-44d2-907b-c30e2c16b609
 # ╟─704fa634-eee0-4eef-aacf-f75f2b53f4d2
 # ╠═a7c68d25-a799-421b-9799-38837fa8a188
-# ╠═d8716ae9-de77-4d12-8b7b-1e5d06de4163
 # ╠═7b714c1e-2e3d-453f-a342-81df8283de5c
 # ╟─41370a85-7abc-42ac-b82e-f6d739d8b5a8
 # ╠═3dfe9e7d-3d77-4b49-b25b-3e7049906d26

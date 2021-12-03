@@ -335,6 +335,12 @@ md"""
 Finally, we save the final combined transmission spectrum to file for our retrieval analysis, along with planet/star parameters computed from the WLC fits:
 """
 
+# ╔═╡ 5718672b-1bc6-4676-8703-5fc06b83f0f9
+CSV.write("$(DATA_DIR)/tspec_w50_all.csv", create_df(df_tspecs))
+
+# ╔═╡ b27f5a0a-812d-44c8-9c84-c74b0c58c794
+CSV.write("$(DATA_DIR)/tspec_w50.csv", create_df(df_common))
+
 # ╔═╡ 9141dba4-4c11-404d-b18a-b22f3466caba
 Rₛ = 0.873u"Rsun"
 
@@ -351,25 +357,19 @@ Mₚ = 1.78u"Mjup"
 gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 
 # ╔═╡ cb02a053-d048-43d9-950a-de3106019520
-function create_df(df)
-	@chain df begin
-		@select begin
-			:Wlow
-			:Wup
-			:Depth = value.(:Combined)
-			:Errup = uncertainty(:Combined)
-			:ErrLow = uncertainty(:Combined)
-			:Instrument = "Magellan/IMACS"
-			"Offset?" = "NO"
-		end
-	end
-end
-
-# ╔═╡ 5718672b-1bc6-4676-8703-5fc06b83f0f9
-CSV.write("$(DATA_DIR)/tspec_w50_all.csv", create_df(df_tspecs))
-
-# ╔═╡ b27f5a0a-812d-44c8-9c84-c74b0c58c794
-CSV.write("$(DATA_DIR)/tspec_w50.csv", create_df(df_common))
+# function create_df(df)
+# 	@chain df begin
+# 		@select begin
+# 			:Wlow
+# 			:Wup
+# 			:Depth = value.(:Combined)
+# 			:Errup = uncertainty(:Combined)
+# 			:ErrLow = uncertainty(:Combined)
+# 			:Instrument = "Magellan/IMACS"
+# 			"Offset?" = "NO"
+# 		end
+# 	end
+# end
 
 # ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
 md"""
