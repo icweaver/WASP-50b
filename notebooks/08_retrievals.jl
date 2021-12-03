@@ -15,7 +15,7 @@ begin
 	using CCDReduction: fitscollection
 	using Colors
 	using DataFrames
-	using DataFrameMacros
+	using DataFramesMeta
 	using Dates
 	using DelimitedFiles
 	using Glob
@@ -124,6 +124,12 @@ md"""
 ## Table
 """
 
+# ╔═╡ 3b056e28-a2e7-4c80-af1a-2bba100dbb79
+model_names.keys
+
+# ╔═╡ d14d5049-ec31-4740-96ab-f73d1cdf9a28
+replace.(species, "_"=>"+")
+
 # ╔═╡ 0064b4ce-c41d-4b4e-bba4-ef4be0430edc
 function print_results(x, y, arr, idx)
 	x[idx[1]], y[idx[2]], arr[idx]
@@ -131,8 +137,16 @@ end
 
 # ╔═╡ 869c4e1e-ef11-4048-bb83-6710ce0b3c8e
 md"""
-## Plot
+## Model evidences
 """
+
+# ╔═╡ 1c4fe72d-9872-4969-a62a-5163b5009bbb
+md"""
+## Retreived transmission spectra
+"""
+
+# ╔═╡ 698eff1f-1d3e-497c-bdab-ec23bd5d8ac1
+replace.(species, "_"=>"+")
 
 # ╔═╡ d9008477-bfae-4df3-9538-6994a639120e
 retr_instr = CSV.read(
@@ -212,14 +226,18 @@ begin
 		(row_labels, col_labels),
 		("Model", "Species")
 	)
-	
+	df_evidences = DataFrame(
+		Species=String[], Model=String[], lnZ=Float64[], lnZ_err=Float64[]
+	)
 	for (sp, model_dicts) ∈ cube
 		for (model, model_dict) ∈ model_dicts
 			data = model_dict["retr"]
 			evidences[model, sp] = data["lnZ"] ± data["lnZerr"]
+			push!(df_evidences, (sp, model, data["lnZ"], data["lnZerr"]))
 		end
 	end
 
+	@transform! df_evidences :lnZ = :lnZ .- minimum(:lnZ)
 	ΔlnZ = evidences .- minimum(evidences)
 end
 
@@ -275,6 +293,29 @@ begin
 	end
 end
 
+# ╔═╡ df43608e-7026-45ae-b87b-d7e0b6cea89c
+let
+	plt = data(df_evidences) *
+		mapping(
+			:Species => sorter(species),
+			:lnZ => "ΔlnZ",
+			dodge = :Model => sorter(model_names.keys),
+			color = :Model => sorter(model_names.keys) => "",
+		) *
+		visual(BarPlot)
+
+	draw(plt;
+		axis = (; limits=(nothing, nothing, 0, 3.5)),
+		legend = (
+			position = :top,
+			nbanks = 2,
+			orientation = :horizontal,
+			titlevisible = false,
+		),
+		palettes = (; color=COLORS),
+	)
+end
+
 # ╔═╡ 812210c9-e294-4d61-bdf6-a03284199188
 function plot_evidences(nm)
 	arr = nm.array
@@ -304,9 +345,9 @@ function plot_evidences(nm)
 	labels = String.(subgroup_labels)
 	elements = [PolyElement(polycolor = COLORS[i]) for i in 1:length(labels)]
 	
-	axislegend(ax, elements, labels, nbanks=2, orientation=:horizontal)
+	axislegend(ax, elements, labels, nbanks=2, orientation=:horizontal, titlevisible=true, legendtitle="hey")
 	
-	ylims!(ax, 0, 5.5)
+	ylims!(ax, 0, 3.5)
 	
 	# path = "../../ACCESS_WASP-50b/figures/detrended"
 	# mkpath(path)
@@ -355,15 +396,20 @@ end
 # ╟─41370a85-7abc-42ac-b82e-f6d739d8b5a8
 # ╠═3dfe9e7d-3d77-4b49-b25b-3e7049906d26
 # ╠═65b51ff6-0991-491f-8945-dd889ffe71dd
+# ╠═df43608e-7026-45ae-b87b-d7e0b6cea89c
+# ╠═3b056e28-a2e7-4c80-af1a-2bba100dbb79
+# ╠═d14d5049-ec31-4740-96ab-f73d1cdf9a28
 # ╠═6e24e7f4-61e5-470d-8ce0-399e0fe32e90
 # ╠═750f830c-5818-4d8f-a673-f838a9d0da46
 # ╠═0064b4ce-c41d-4b4e-bba4-ef4be0430edc
 # ╟─869c4e1e-ef11-4048-bb83-6710ce0b3c8e
 # ╠═8af2ffc6-b24d-46c3-b9f5-ecc81c61cd49
+# ╟─1c4fe72d-9872-4969-a62a-5163b5009bbb
+# ╠═698eff1f-1d3e-497c-bdab-ec23bd5d8ac1
 # ╠═812210c9-e294-4d61-bdf6-a03284199188
-# ╠═db524678-9ee2-4934-b1bb-6a2f13bf0fa6
 # ╠═d9008477-bfae-4df3-9538-6994a639120e
 # ╠═e801501c-a882-4f2d-bbc1-40028c1c91d8
+# ╠═db524678-9ee2-4934-b1bb-6a2f13bf0fa6
 # ╠═00a0f9c4-cd4d-4ae2-80b7-0c044239a571
 # ╠═cc011a66-37bd-4543-9a58-b11e1f785e52
 # ╟─41a233c7-5357-453c-b7ad-36fdf9f709cb
