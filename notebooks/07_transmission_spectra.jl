@@ -255,6 +255,9 @@ wlc_depths = [cube["δ_WLC"] for (transit, cube) in cubes]
 # ╔═╡ c405941d-bdcc-458f-b0bf-01abf02982e0
 mean_wlc_depth = weightedmean2(wlc_depths)
 
+# ╔═╡ 73d166bf-39cd-47a4-9958-286df9f0617c
+
+
 # ╔═╡ a915f236-8dae-4c91-8f96-fb9a805a0a7f
 wlc_offsets = reshape(wlc_depths .- mean_wlc_depth, 1, :)
 
@@ -412,6 +415,7 @@ body.disable_ui main {
 # ╟─5d25caa3-916a-40b1-ba7c-ea1295afb775
 # ╠═2f377692-2abf-404e-99ea-a18c7af1a840
 # ╠═c405941d-bdcc-458f-b0bf-01abf02982e0
+# ╠═73d166bf-39cd-47a4-9958-286df9f0617c
 # ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
 # ╠═ee102b39-9cd0-441b-9c64-eb61c52d96a1

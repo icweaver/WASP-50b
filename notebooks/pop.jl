@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.1
+# v0.17.2
 
 using Markdown
 using InteractiveUtils
@@ -220,7 +220,7 @@ df_HGHJs = @subset(
 # TODO: Place latitude constraints
 let
 	fig = Figure(resolution=(800, 700))
-	ax = Axis(fig[1, 1], limits=((0, nothing), (0, 60)))
+	ax = Axis(fig[1, 1], limits=((0, nothing), (10, 55)))
 
 	# HGHJ g boundary
 	hlines!(ax, 20.0, color=:darkgrey, linestyle=:dash)
