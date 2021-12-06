@@ -87,6 +87,11 @@ md"""
 ## Load data
 
 First let's load up all of the data, including the white light transit depths from each night.
+
+!!! note "Data download"
+	```
+	rclone sync -P drive_ACCESS:papers/WASP-50b/data/detrended data/detrended
+	```
 """
 
 # ╔═╡ c53be9cf-7722-4b43-928a-33e7b0463330
@@ -242,7 +247,7 @@ end
 
 # ╔═╡ b32273bc-1bb5-406a-acfe-57fd643ded51
 df_tspecs = sort(vcat(df_common, df_extra), :Wcen)
-#df_tspecs = depths_adj
+#df_tspecs = df_common
 
 # ╔═╡ 5d25caa3-916a-40b1-ba7c-ea1295afb775
 md"""
@@ -255,14 +260,8 @@ wlc_depths = [cube["δ_WLC"] for (transit, cube) in cubes]
 # ╔═╡ c405941d-bdcc-458f-b0bf-01abf02982e0
 mean_wlc_depth = weightedmean2(wlc_depths)
 
-# ╔═╡ 73d166bf-39cd-47a4-9958-286df9f0617c
-
-
 # ╔═╡ a915f236-8dae-4c91-8f96-fb9a805a0a7f
 wlc_offsets = reshape(wlc_depths .- mean_wlc_depth, 1, :)
-
-# ╔═╡ ee102b39-9cd0-441b-9c64-eb61c52d96a1
-df = CSV.read("/home/mango/Desktop/tspec_w50_all.csv", DataFrame)
 
 # ╔═╡ 09887c41-022a-4109-8c5d-0ba033c50bcb
 function plot_tspec!(ax, df, col;
@@ -286,7 +285,7 @@ let
 		
 	ax = Axis(
 		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
-		limits = (nothing, (15_500, 22_500)),
+		limits = (4_600, 9_800, 15_500, 22_500),
 		grid = (linewidth=(0, 0),),
 	)
 	
@@ -328,6 +327,91 @@ let
 	fig #|> as_svg
 end
 
+# ╔═╡ f92ecf4d-aab8-413e-a32d-5f77a969d1ca
+md"""
+## Offset test
+"""
+
+# ╔═╡ 1a6067ca-645a-448b-815f-6a2966548ca6
+df_IMACS = @chain df_tspecs begin
+	select(_, ["Wlow","Wup", "Wcen","Transit 1 (IMACS)", "Transit 2 (IMACS)", "Transit 3 (IMACS)"])
+	#z.Combined = [weightedmean2(skipmissing(row)) for row ∈ eachrow(z)]
+	rename(_, names(_, r"Tr") .=> [:x1, :x2, :x3])
+	#@rtransform :Combined = sum(skipmissing([:x1, :x2, :x3]))
+	dropmissing(_, :x1)
+	@rtransform :Combined = weightedmean2(skipmissing([:x1, :x2, :x3]))
+	rename(_, names(_, r"x") .=> ["Transit 1 (IMACS)", "Transit 2 (IMACS)", "Transit 3 (IMACS)"])
+end
+
+# ╔═╡ b555e372-2292-4f0e-b511-88b92588ad14
+df_LDSS3 = @chain df_tspecs begin
+	select(_, ["Wlow","Wup", "Wcen", "Transit 2 (LDSS3)"])
+	#z.Combined = [weightedmean2(skipmissing(row)) for row ∈ eachrow(z)]
+	rename(_, names(_, r"Tr") .=> [:x1])
+	#@rtransform :Combined = sum(skipmissing([:x1, :x2, :x3]))
+	dropmissing(_)
+	@transform :Combined = :x1
+	#@rtransform :Combined = weightedmean2(skipmissing([:x1, :x2, :x3]))
+	rename(_, names(_, r"x") .=> ["Transit 2 (LDSS3)"])
+end
+
+# ╔═╡ 72affb58-6f0c-4b76-9956-a027b57a0c8e
+let
+	fig = Figure(resolution=(1_000, 500))
+		
+	ax = Axis(
+		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
+		limits = (4_600, 9_800, 15_500, 22_500),
+		grid = (linewidth=(0, 0),),
+	)
+	
+	# Overplot lines
+	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
+	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
+	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
+	mean_wlc_depth.val - mean_wlc_depth.err), linestyle=:dash, color=:grey)
+	
+	# Individual nights
+	kwargs_errorbars = Dict(:whiskerwidth=>10.0, :linewidth=>1.0)
+	kwargs_scatter = Dict(:markersize=>12.0)
+	for (i, transit) in enumerate(keys(cubes))
+		if occursin("LDSS3", transit)
+			plot_tspec!(ax, df_tspecs, transit;
+				kwargs_errorbars = kwargs_errorbars,
+				kwargs_scatter = kwargs_scatter,
+				color = COLORS[i],
+				label = transit,
+			)
+		else
+			plot_tspec!(ax, df_IMACS, transit;
+				kwargs_errorbars = kwargs_errorbars,
+				kwargs_scatter = kwargs_scatter,
+				color = COLORS[i],
+				label = transit,
+			)
+		end
+	end
+	
+	# Combined
+	nudge = 25.0
+	kwargs_errorbars = Dict(:whiskerwidth=>10.0, :linewidth=>3.0)
+	kwargs_scatter = Dict(:color=>:white, :strokewidth=>3.0, :markersize=>16.0)
+	plot_tspec!(ax, df_IMACS, "Combined";
+			nudge = nudge,
+			kwargs_errorbars = kwargs_errorbars,
+			kwargs_scatter = kwargs_scatter,
+			label = "Combined",
+	)
+	
+	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
+	
+	# path = "../../ACCESS_WASP-50b/figures/detrended"
+	# mkpath(path)
+	# save("$(path)/tspec.png", fig)
+	
+	fig #|> as_svg
+end
+
 # ╔═╡ 146a2be7-1c08-4d7c-802f-41f65aeae0d5
 md"""
 ## Retrieval params
@@ -336,10 +420,10 @@ Finally, we save the final combined transmission spectrum to file for our retrie
 """
 
 # ╔═╡ 5718672b-1bc6-4676-8703-5fc06b83f0f9
-CSV.write("$(DATA_DIR)/tspec_w50_all.csv", create_df(df_tspecs))
+# CSV.write("$(DATA_DIR)/tspec_w50_all.csv", create_df(df_tspecs))
 
 # ╔═╡ b27f5a0a-812d-44c8-9c84-c74b0c58c794
-CSV.write("$(DATA_DIR)/tspec_w50.csv", create_df(df_common))
+# CSV.write("$(DATA_DIR)/tspec_w50.csv", create_df(df_common))
 
 # ╔═╡ 9141dba4-4c11-404d-b18a-b22f3466caba
 Rₛ = 0.873u"Rsun"
@@ -357,19 +441,27 @@ Mₚ = 1.78u"Mjup"
 gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 
 # ╔═╡ cb02a053-d048-43d9-950a-de3106019520
-# function create_df(df)
-# 	@chain df begin
-# 		@select begin
-# 			:Wlow
-# 			:Wup
-# 			:Depth = value.(:Combined)
-# 			:Errup = uncertainty(:Combined)
-# 			:ErrLow = uncertainty(:Combined)
-# 			:Instrument = "Magellan/IMACS"
-# 			"Offset?" = "NO"
-# 		end
-# 	end
-# end
+function create_df(df; instrument="add instrument")
+	@select df begin
+		:Wlow
+		:Wup
+		:Depth = value.(:Combined)
+		:Errup = uncertainty.(:Combined)
+		:ErrLow = uncertainty.(:Combined)
+		:Instrument = instrument
+		:Offset = "NO"
+	end
+end
+
+# ╔═╡ 3af0d3b0-c698-4845-a74e-c7186b03a721
+CSV.write("$(DATA_DIR)/tspec_w50_IMACS.csv",
+	create_df(df_IMACS, instrument="Magellan/IMACS")
+)
+
+# ╔═╡ 0fced6dc-fe96-4216-93b1-f8493f2402e9
+CSV.write("$(DATA_DIR)/tspec_w50_LDSS3.csv",
+	create_df(df_LDSS3, instrument="Clay/LDSS3")
+)
 
 # ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
 md"""
@@ -397,7 +489,7 @@ body.disable_ui main {
 
 # ╔═╡ Cell order:
 # ╟─e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
-# ╟─9413e640-22d9-4bfc-b4ea-f41c02a3bfde
+# ╠═9413e640-22d9-4bfc-b4ea-f41c02a3bfde
 # ╠═c53be9cf-7722-4b43-928a-33e7b0463330
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
 # ╠═1decb49e-a875-412c-938f-74b4fa0e2e85
@@ -415,11 +507,15 @@ body.disable_ui main {
 # ╟─5d25caa3-916a-40b1-ba7c-ea1295afb775
 # ╠═2f377692-2abf-404e-99ea-a18c7af1a840
 # ╠═c405941d-bdcc-458f-b0bf-01abf02982e0
-# ╠═73d166bf-39cd-47a4-9958-286df9f0617c
 # ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
-# ╠═ee102b39-9cd0-441b-9c64-eb61c52d96a1
 # ╠═09887c41-022a-4109-8c5d-0ba033c50bcb
+# ╟─f92ecf4d-aab8-413e-a32d-5f77a969d1ca
+# ╠═1a6067ca-645a-448b-815f-6a2966548ca6
+# ╠═b555e372-2292-4f0e-b511-88b92588ad14
+# ╠═72affb58-6f0c-4b76-9956-a027b57a0c8e
+# ╠═3af0d3b0-c698-4845-a74e-c7186b03a721
+# ╠═0fced6dc-fe96-4216-93b1-f8493f2402e9
 # ╟─146a2be7-1c08-4d7c-802f-41f65aeae0d5
 # ╠═5718672b-1bc6-4676-8703-5fc06b83f0f9
 # ╠═b27f5a0a-812d-44c8-9c84-c74b0c58c794
