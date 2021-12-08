@@ -73,6 +73,38 @@ begin
 )
 end
 
+# ╔═╡ eff793de-eaa7-464d-b27c-5c1ba6d7be20
+function check_logfile(fpath)
+	haze, clouds, fitR0, species = false, false, false, String[]
+	for (i, line) ∈ enumerate(eachline(fpath))
+		i > 4 && break
+		if occursin("Saving", line)			
+			# `out_folder` name
+			het, cloud, haze, fitR0 = occursin.(
+				("_Het", "_Clouds", "_Haze", "_fitR0"),
+				split(line, '/')[2]
+			)
+			species = split(line, "fitR0_")[2]
+
+			# logfile name
+			logfile = basename(fpath)
+
+			het_logfile, cloud_logfile, haze_logfile, fitR0_logfile = occursin.(("het", "cloud", "haze", "fit_R0"), logfile)
+			species_logfile = replace(
+				split(split(logfile, ".log")[1], '_')[end], '+' => '_'
+			)
+
+			return all((haze == haze_logfile))
+		end
+	end
+end
+
+# ╔═╡ fbfb0079-2591-4a9b-9707-b43821679c69
+all((true, true))
+
+# ╔═╡ 81e22822-66c5-4768-b6dd-37a31c6232f4
+check_logfile("/home/mango/Desktop/WASP50_er_fit_R0_haze_TiO.log")
+
 # ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 md"""
 # Transmission Spectra
@@ -488,8 +520,11 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
+# ╠═eff793de-eaa7-464d-b27c-5c1ba6d7be20
+# ╠═fbfb0079-2591-4a9b-9707-b43821679c69
+# ╠═81e22822-66c5-4768-b6dd-37a31c6232f4
 # ╟─e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
-# ╠═9413e640-22d9-4bfc-b4ea-f41c02a3bfde
+# ╟─9413e640-22d9-4bfc-b4ea-f41c02a3bfde
 # ╠═c53be9cf-7722-4b43-928a-33e7b0463330
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
 # ╠═1decb49e-a875-412c-938f-74b4fa0e2e85

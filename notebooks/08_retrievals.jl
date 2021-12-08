@@ -4,6 +4,16 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
+
 # ╔═╡ 239a91a6-f68a-11eb-14fd-0ba8d08b08f9
 begin
 	import Pkg
@@ -46,15 +56,19 @@ md"""
 
 !!! note "Data download"
 
-```
-rclone sync -P drive_ACCESS:papers/WASP-50b/data/retrievals data/retrievals
-```
+	```
+	rclone sync -P drive_ACCESS:papers/WASP-50b/data/retrievals data/retrievals
+	
+	rsync -azRP $H:/pool/sao_access/iweaver/exoretrievals/./"WASP50_offs/*/{*.pkl,*.txt}" data/retrievals/ --exclude "*nest*"
+
+	rsync -azRP $H:/pool/sao_access/iweaver/exoretrievals/WASP50_offs/"*/./WASP50_offs" data/retrievals/ --exclude "*nest*" 
+	```
 
 $(TableOfContents(title="📖 Table of Contents"))
 """
 
 # ╔═╡ 60dc161c-2aa2-4264-884d-6da3ead0e57b
-base_dir = "./data/retrievals/WASP50"
+@bind base_dir Select(glob("./data/retrievals/WASP50*"))
 
 # ╔═╡ d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
 fit_R0 = "fitR0"
@@ -111,31 +125,45 @@ cube
 # ╔═╡ 7b714c1e-2e3d-453f-a342-81df8283de5c
 # Check if missing files
 with_terminal() do
+	i = 0
 	for sp ∈ species
 		for (model_name, model_id) ∈ model_names
-			!isfile("$(base_dir)/WASP50_E1_$(model_id)_$(sp)/retrieval.pkl") &&
+			if !isfile("$(base_dir)/WASP50_E1_$(model_id)_$(sp)/retrieval.pkl")
 				println("WASP50_E1_$(model_id)_$(sp)")
+				i += 1
 				#println("$(base_dir)/WASP50_E1_$(model_id)_$(sp)/retrieval.pkl")
+			end
 		end
 	end
+	println("\n$(i) incomplete directories")
 end
 
-# ╔═╡ 41370a85-7abc-42ac-b82e-f6d739d8b5a8
-md"""
-## Table
-"""
+# ╔═╡ d4356ef7-abd7-47dd-83e3-38b6a782509e
+#df_wide = unstack(df_evidences, :Model, :Species, :lnZ, renamecols = dashplus)
+
+# ╔═╡ a0094689-a9d5-4810-baba-bd7a96c27839
+dashplus(x) = replace(x, '_' => '+')
 
 # ╔═╡ 1c4fe72d-9872-4969-a62a-5163b5009bbb
 md"""
 ## Retreived transmission spectra
 """
 
-# ╔═╡ d9008477-bfae-4df3-9538-6994a639120e
-retr_instr = CSV.read(
-		"$(base_dir)/../retr_Magellan_IMACS.txt", DataFrame;
+# ╔═╡ 5569b57c-0585-4300-927b-5d089dde0f43
+function plot_instr!(ax, fpath; color=:blue, label="add label")
+	retr_instr = CSV.read(
+		"$(base_dir)/$(fpath)", DataFrame;
 		header = [:wav, :flux, :wav_d, :wav_u, :flux_err],
 		comment = "#",
 	)
+	errorbars!(ax, retr_instr.wav, retr_instr.flux, retr_instr.flux_err)
+	scatter!(ax, retr_instr.wav, retr_instr.flux;
+		markersize = 15,
+		color = color,
+		strokewidth=1.5,
+		label = label
+	)
+end
 
 # ╔═╡ db524678-9ee2-4934-b1bb-6a2f13bf0fa6
 function get_retr_model(cube, sp, model)
@@ -163,7 +191,7 @@ end
 # ╔═╡ 00a0f9c4-cd4d-4ae2-80b7-0c044239a571
 function plot_retrieval!(ax, cube, sp, model; color=:blue)
 	retr_model, retr_model_sampled = get_retr_model(cube, sp, model)
-	label = replace(sp, "_"=>"+") * " ($(model))"
+	label = dashplus(sp) * " ($(model))"
 	retrieval!(ax, retr_model, retr_model_sampled, color=color, label=label)
 end
 
@@ -225,8 +253,15 @@ begin
 		end
 	end
 
-	@transform! df_evidences :lnZ = :lnZ .- minimum(:lnZ)
+	@transform! df_evidences begin
+		:lnZ = :lnZ .- minimum(:lnZ)
+		:Species = dashplus.(:Species)
+		:ΔlnZ_m = (:lnZ .± :lnZ_err) .- minimum(:lnZ .± :lnZ_err)
+	end
 end
+
+# ╔═╡ 42e909b4-92eb-4ed7-a19c-6e54b21ae07c
+unstack(df_evidences, :Model, :Species, :lnZ)
 
 # ╔═╡ 1eff1230-2423-4ac3-8e9b-f4e7bcd0121b
 md"""
@@ -265,13 +300,13 @@ let
 	sort_order = sorter(model_names.keys)
 	
 	plt = data(df_evidences) *
-		mapping(:Species => sorter(species), :lnZ => "ΔlnZ";
+		mapping(:Species => sorter(dashplus.(species)), :lnZ => "ΔlnZ";
 			dodge = :Model => sort_order,
-			color = :Model => sort_order,
+			color = :Model => sort_order => "",
 		) *
 		visual(BarPlot)
 	
-	draw(plt;
+	fg = draw(plt;
 		axis = (; limits=(nothing, nothing, 0, 3.5)),
 		legend = (
 			position = :top,
@@ -281,64 +316,28 @@ let
 		),
 		palettes = (; color=COLORS),
 	)
-end
 
-# ╔═╡ 812210c9-e294-4d61-bdf6-a03284199188
-function plot_evidences(nm)
-	arr = nm.array
-	n_subgroups, n_groups = size(arr)
-	group_labels = replace.(nm.dicts[2].keys, "_"=>"+")
-	subgroup_labels = nm.dicts[1].keys
-	
-	tbl = (
-		x = vcat((fill(n, n_subgroups) for n ∈ 1:n_groups)...),
-		height = value.(vcat((eachcol(arr) .|> copy)...)),
-		grp = vcat((1:n_subgroups for _ ∈ 1:n_groups)...),
-	)
-	
-	fig = Figure()
-	ax = Axis(
-		fig[1, 1],
-		xticks = (1:n_groups, group_labels),
-		xlabel = "Species",
-		ylabel = "Δln Z",
-	)
-	
-	barplot!(ax, tbl.x, tbl.height;
-		dodge = tbl.grp,
-		color = COLORS[tbl.grp]
-	)
-	
-	labels = String.(subgroup_labels)
-	elements = [PolyElement(polycolor = COLORS[i]) for i in 1:length(labels)]
-	
-	axislegend(ax, elements, labels, nbanks=2, orientation=:horizontal, titlevisible=true, legendtitle="hey")
-	
-	ylims!(ax, 0, 3.5)
-	
-	# path = "../../ACCESS_WASP-50b/figures/detrended"
+	# path = "../../ACCESS_WASP-50b/figures/retrievals"
 	# mkpath(path)
-	# save("$(path)/retrieval_evidences.png", fig)
-	
-	fig
+	# save("$(path)/evidences_$(basename(base_dir)).png", fg)
 end
 
 # ╔═╡ e801501c-a882-4f2d-bbc1-40028c1c91d8
 let
 	fig = Figure(resolution=(800, 500))
-	ax = Axis(fig[1, 1], xlabel="Wavelength (μm)", ylabel="Transit depth (ppm)")
+	ax = Axis(
+		fig[1, 1],
+		xlabel = "Wavelength (μm)",
+		ylabel = "Transit depth (ppm)",
+		#limits = (0.3, 1.1, 17_500, 21_000),
+	)
 
 	plot_retrieval!(ax, cube, "Na_TiO", "clear", color=COLORS[1])
 	plot_retrieval!(ax, cube, "TiO", "clear+haze+spot", color=COLORS[6])
+	plot_instr!(ax, "retr_Magellan_IMACS.txt", color=:white, label="IMACS + LDSS3")
+	#plot_instr!(ax, "retr_Clay_LDSS3.txt", color=:lightblue, label="IMACS + LDSS3")
 
 	# Instrument
-	errorbars!(ax, retr_instr.wav, retr_instr.flux, retr_instr.flux_err)
-	scatter!(ax, retr_instr.wav, retr_instr.flux;
-		markersize = 15,
-		color = :white,
-		strokewidth=1.5,
-		label = "IMACS + LDSS3"
-	)
 
 	axislegend(orientation=:horizontal)
 
@@ -350,7 +349,7 @@ let
 end
 
 # ╔═╡ Cell order:
-# ╠═0132b4ab-0447-4546-b412-ec598b20d21d
+# ╟─0132b4ab-0447-4546-b412-ec598b20d21d
 # ╠═60dc161c-2aa2-4264-884d-6da3ead0e57b
 # ╠═d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
 # ╠═093156c7-9da7-4814-9260-5173f27fa497
@@ -358,13 +357,14 @@ end
 # ╟─704fa634-eee0-4eef-aacf-f75f2b53f4d2
 # ╠═a7c68d25-a799-421b-9799-38837fa8a188
 # ╠═7b714c1e-2e3d-453f-a342-81df8283de5c
-# ╟─41370a85-7abc-42ac-b82e-f6d739d8b5a8
 # ╠═65b51ff6-0991-491f-8945-dd889ffe71dd
+# ╟─d4356ef7-abd7-47dd-83e3-38b6a782509e
+# ╠═a0094689-a9d5-4810-baba-bd7a96c27839
 # ╠═df43608e-7026-45ae-b87b-d7e0b6cea89c
+# ╠═42e909b4-92eb-4ed7-a19c-6e54b21ae07c
 # ╟─1c4fe72d-9872-4969-a62a-5163b5009bbb
-# ╠═812210c9-e294-4d61-bdf6-a03284199188
-# ╠═d9008477-bfae-4df3-9538-6994a639120e
 # ╠═e801501c-a882-4f2d-bbc1-40028c1c91d8
+# ╠═5569b57c-0585-4300-927b-5d089dde0f43
 # ╠═00a0f9c4-cd4d-4ae2-80b7-0c044239a571
 # ╠═db524678-9ee2-4934-b1bb-6a2f13bf0fa6
 # ╠═cc011a66-37bd-4543-9a58-b11e1f785e52
