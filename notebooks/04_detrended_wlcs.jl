@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.1
+# v0.17.3
 
 using Markdown
 using InteractiveUtils
@@ -27,7 +27,7 @@ begin
 	using Printf
 	using PyCall
 	using Statistics
-	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
+	using PlutoUI: TableOfContents, Select, Slider, as_svg, @with_terminal
 	
 	import CairoMakie.Makie.KernelDensity: kde
 end
@@ -364,50 +364,90 @@ begin
 	COLORS
 end
 
+# ╔═╡ 89c48710-651e-45ff-8fcb-e4173559defd
+function plot_lc!(gl, i, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
+	ax_top = Axis(gl[1, 1]; ax_top_kwargs...)
+	ax_bottom = Axis(gl[2, 1]; ax_bottom_kwargs...)
+
+	t₀ = val(cube["results"], "t0")
+	P = val(cube["results"], "P")
+	t = ϕ.(cube["models"]["t"], t₀, P)
+	t_interp = ϕ.(cube["models"]["t_interp"], t₀, P)
+	resids = cube["models"]["LC_det"] - cube["models"]["LC_transit_model"]
+	
+	scatter!(ax_top,
+		t,
+		cube["models"]["LC_det"],
+		color = COLORS[i],
+	)
+	lines!(ax_top,
+		t_interp,
+		cube["models"]["LC_det_model_interp"],
+		color = 0.75*COLORS[i],
+	)
+	scatter!(ax_bottom, t, resids)
+
+	linkxaxes!(ax_top, ax_bottom)
+	hidexdecorations!(ax_top)
+
+	rowsize!(gl, 2, Relative(1/4))
+end
+
 # ╔═╡ 4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
 let
-	fig = Figure(resolution=(1250, 500))
+	fig = Figure(resolution=(1250, 1000))
 	
 	grid = CartesianIndices((2, 2))
+	ax_top_kwargs = (; limits=(nothing, nothing, 0.98, 1.01))
+	ax_bottom_kwargs = (; limits=(nothing, nothing, -0.001, 0.001))
 	for (i, (transit, cube)) in enumerate(cubes)
-		t₀ = val(cube["results"], "t0")
-		P = val(cube["results"], "P")
+		g_idxs = grid[i]
+		gl = fig[g_idxs.I...] = GridLayout()
 		
-		ax = Axis(fig[Tuple(grid[i])...])
-		scatter!(ax,
-			ϕ.(cube["models"]["t"], t₀, P),
-			cube["models"]["LC_det"],
-			color = COLORS[i],
+		plot_lc!(gl, i, cube;
+			ax_top_kwargs = ax_top_kwargs,
+			ax_bottom_kwargs = ax_bottom_kwargs,
 		)
-		lines!(ax,
-			ϕ.(cube["models"]["t_interp"], t₀, P),
-			cube["models"]["LC_det_model_interp"],
-			color = 0.75*COLORS[i],
-		)
-		resids = cube["models"]["LC_det"] - cube["models"]["LC_transit_model"]
-		resid_σ = round(Int, std(resids) * 1e6)
-		text!(ax, "$transit\n$resid_σ ppm";
-			position = Point2f0(0.06, 0.980),
-			align = (:right, :bottom),
-			color = 0.75*COLORS[i],
-		)
+		# resid_σ = round(Int, std(resids) * 1e6)
+		# text!(ax, "$transit\n$resid_σ ppm";
+		# 	position = Point2f0(0.06, 0.980),
+		# 	align = (:right, :bottom),
+		# 	color = 0.75*COLORS[i],
+		# )
 	end
 	
-	axs = reshape(copy(fig.content), (2, 2))
-	linkaxes!(axs...)
-	hidexdecorations!.(axs[1, :], grid=false)
-	hideydecorations!.(axs[:, 2], grid=false)
+	# axs = reshape(copy(fig.content), (2, 2))
+	# linkaxes!(axs...)
+	# hidexdecorations!.(axs[1, :], grid=false)
+	# hideydecorations!.(axs[:, 2], grid=false)
 
 	#ylims!(axs[end], 0.96, 1.02)
-	Label(fig[3, 1:2], "Phase")
-	Label(fig[1:2, 0], "Relative flux", rotation=π/2)
-	#axs[end].ylabel = "Relative flux"
+	# Label(fig[3, 1:2], "Phase")
+	# Label(fig[1:2, 0], "Relative flux", rotation=π/2)
+	# #axs[end].ylabel = "Relative flux"
 	
-	path = "../../ACCESS_WASP-50b/figures/detrended"
-	mkpath(path)
-	save("$(path)/detrended_wlcs.png", fig)
+	# path = "../../ACCESS_WASP-50b/figures/detrended"
+	# mkpath(path)
+	# save("$(path)/detrended_wlcs.png", fig)
 	
 	fig #|> as_svg
+end
+
+# ╔═╡ 29fec954-2ce2-4ac2-96e3-eb01833031f0
+let
+	fig = Figure()
+
+	grid = CartesianIndices((2, 2))
+
+	g = fig[grid[1].I...] = GridLayout()
+	plot_lc!(g, 1, cubes["Transit 1 (IMACS)"])
+
+	# for g_idxs in grid
+	# 	g = fig[g_idxs.I...] = GridLayout()
+	# 	plot_lc!(g)
+	# end
+	
+	fig
 end
 
 # ╔═╡ d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
@@ -530,6 +570,8 @@ body.disable_ui main {
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
+# ╠═89c48710-651e-45ff-8fcb-e4173559defd
+# ╠═29fec954-2ce2-4ac2-96e3-eb01833031f0
 # ╠═6cfb1541-62af-4884-9c74-d19b56c3b02e
 # ╠═0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # ╠═d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c
