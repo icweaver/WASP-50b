@@ -1,8 +1,18 @@
 ### A Pluto.jl notebook ###
-# v0.17.2
+# v0.17.3
 
 using Markdown
 using InteractiveUtils
+
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
 
 # ╔═╡ ef970c0c-d08a-4856-b10b-531bb5e7e53e
 begin
@@ -73,6 +83,9 @@ begin
 )
 end
 
+# ╔═╡ 6f1bb4ef-93b7-42a2-bbe4-a761204a69fc
+using MarkdownLiteral
+
 # ╔═╡ eff793de-eaa7-464d-b27c-5c1ba6d7be20
 function check_logfile(fpath)
 	haze, clouds, fitR0, species = false, false, false, String[]
@@ -89,7 +102,8 @@ function check_logfile(fpath)
 			# logfile name
 			logfile = basename(fpath)
 
-			het_logfile, cloud_logfile, haze_logfile, fitR0_logfile = occursin.(("het", "cloud", "haze", "fit_R0"), logfile)
+			het_logfile, cloud_logfile, haze_logfile, fitR0_logfile =
+				occursin.(("het", "cloud", "haze", "fit_R0"), logfile)
 			species_logfile = replace(
 				split(split(logfile, ".log")[1], '_')[end], '+' => '_'
 			)
@@ -98,12 +112,6 @@ function check_logfile(fpath)
 		end
 	end
 end
-
-# ╔═╡ fbfb0079-2591-4a9b-9707-b43821679c69
-all((true, true))
-
-# ╔═╡ 81e22822-66c5-4768-b6dd-37a31c6232f4
-check_logfile("/home/mango/Desktop/WASP50_er_fit_R0_haze_TiO.log")
 
 # ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 md"""
@@ -114,7 +122,7 @@ In this notebook we will load in the individual transmission spectra from each n
 $(TableOfContents(title="📖 Table of Contents"))
 """
 
-# ╔═╡ 9413e640-22d9-4bfc-b4ea-f41c02a3bfde
+# ╔═╡ 0c752bd5-5232-4e82-b519-5ca23fff8a52
 md"""
 ## Load data
 
@@ -122,12 +130,14 @@ First let's load up all of the data, including the white light transit depths fr
 
 !!! note "Data download"
 	```
+	rsync -azRP $H:/pool/sao_access/iweaver/GPTransmissionSpectra/./"out_*" detrended/ --exclude={"*george*","*mnest*"}
+
 	rclone sync -P drive_ACCESS:papers/WASP-50b/data/detrended data/detrended
 	```
 """
 
 # ╔═╡ c53be9cf-7722-4b43-928a-33e7b0463330
-const DATA_DIR = "data/detrended/out_l/WASP50"
+@bind DATA_DIR Select(glob("data/detrended/out_*/WASP50"))
 
 # ╔═╡ 1decb49e-a875-412c-938f-74b4fa0e2e85
 maxmeasure(x, x_u, x_d) = x ± max(x_u, x_d)
@@ -155,7 +165,6 @@ begin
 		# Read tspec file
 		fpath = "$(dirpath)/transpec.csv"
 		transit = name(fpath, dates_to_names)
-		
 		cubes[transit] = OrderedDict()
 		
 		df = cubes[transit]["tspec"] = CSV.read(fpath, DataFrame;
@@ -295,6 +304,9 @@ mean_wlc_depth = weightedmean2(wlc_depths)
 # ╔═╡ a915f236-8dae-4c91-8f96-fb9a805a0a7f
 wlc_offsets = reshape(wlc_depths .- mean_wlc_depth, 1, :)
 
+# ╔═╡ 618aa031-1b09-4122-975b-562506beaae4
+basename(dirname(DATA_DIR))
+
 # ╔═╡ 09887c41-022a-4109-8c5d-0ba033c50bcb
 function plot_tspec!(ax, df, col;
 	nudge = 0.0,
@@ -354,7 +366,8 @@ let
 	
 	path = "../../ACCESS_WASP-50b/figures/detrended"
 	mkpath(path)
-	save("$(path)/tspec.png", fig)
+	suf = basename(dirname(DATA_DIR))
+	save("$(path)/tspec_$(suf).png", fig)
 	
 	fig #|> as_svg
 end
@@ -521,10 +534,9 @@ body.disable_ui main {
 
 # ╔═╡ Cell order:
 # ╠═eff793de-eaa7-464d-b27c-5c1ba6d7be20
-# ╠═fbfb0079-2591-4a9b-9707-b43821679c69
-# ╠═81e22822-66c5-4768-b6dd-37a31c6232f4
 # ╟─e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
-# ╟─9413e640-22d9-4bfc-b4ea-f41c02a3bfde
+# ╠═6f1bb4ef-93b7-42a2-bbe4-a761204a69fc
+# ╟─0c752bd5-5232-4e82-b519-5ca23fff8a52
 # ╠═c53be9cf-7722-4b43-928a-33e7b0463330
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
 # ╠═1decb49e-a875-412c-938f-74b4fa0e2e85
@@ -539,11 +551,12 @@ body.disable_ui main {
 # ╠═45acc116-e585-4ddf-943d-128db7736921
 # ╠═ed954843-34e5-49be-8643-e2671b659e06
 # ╠═b32273bc-1bb5-406a-acfe-57fd643ded51
-# ╟─5d25caa3-916a-40b1-ba7c-ea1295afb775
+# ╠═5d25caa3-916a-40b1-ba7c-ea1295afb775
 # ╠═2f377692-2abf-404e-99ea-a18c7af1a840
 # ╠═c405941d-bdcc-458f-b0bf-01abf02982e0
 # ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
+# ╠═618aa031-1b09-4122-975b-562506beaae4
 # ╠═09887c41-022a-4109-8c5d-0ba033c50bcb
 # ╟─f92ecf4d-aab8-413e-a32d-5f77a969d1ca
 # ╠═1a6067ca-645a-448b-815f-6a2966548ca6

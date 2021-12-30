@@ -1,8 +1,18 @@
 ### A Pluto.jl notebook ###
-# v0.17.2
+# v0.17.3
 
 using Markdown
 using InteractiveUtils
+
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
 
 # ╔═╡ 3433ed02-c27c-4fe5-bfda-a5108a58407c
 begin
@@ -15,7 +25,7 @@ begin
 	using CCDReduction: fitscollection, getdata, CCDData
 	using Colors
 	using DataFrames
-	using DataFrameMacros
+	using DataFramesMeta
 	using Dates
 	using DelimitedFiles
 	using Glob
@@ -71,95 +81,16 @@ In this notebook we will summarize the raw data and view a sample frame from eac
 !!! note "Data download"
 
 	```	
-	rclone sync -P drive_cfa,shared_with_me:LDSS3/LDSS3_e150927 drive_ACCESS:papers/WASP-50b/data/raw/LDSS3/ut150927 --include "*606*"
-	```
-	
-	```
-	rclone sync -P drive_ACCESS:papers/WASP-50b/data/raw data/raw
+	> rclone sync -P drive_ACCESS:IMACS/WASP50/wasp50_ut131219 drive_ACCESS:papers/WASP-50b/data/raw/IMACS/ut131219 --include "*ift0024*"
+ 
+	> rclone sync -P drive_cfa,shared_with_me:LDSS3/LDSS3_e150927 drive_ACCESS:papers/WASP-50b/data/raw/LDSS3/ut150927 --include "*606*"
+ 
+	> rclone sync -P drive_ACCESS:papers/WASP-50b/data/raw data/raw
 	```
 """
 
-# ╔═╡ 7e111d10-0aa8-47bd-9ea8-186c1aecc321
-md"""
-## Data overview
-"""
-
-# ╔═╡ 1e0db1d5-86b7-475c-897b-b0054575a5fa
-begin
-	DATA_DIR = "data/raw/IMACS/ut150927"
-	
-	df = fitscollection(
-		DATA_DIR;
-		recursive=false,
-		exclude=r"^((?!ift[0-9]{4}c1.fits).)*$",
-		exclude_key=("", "COMMENT"),
-	)
-	
-	@. df[!, "TIMESTAMP"] = DateTime(
-		parse(Date, df[!, "UT-DATE"]), parse(Time, df[!, "UT-TIME"])
-	)
-	
-	@. df[!, "JD"] = datetime2julian(df.TIMESTAMP) - 2.456e6
-			
-	# Select header items to show
-	cols = [
-		"FILENAME",
-		"TIMESTAMP",
-		"JD",
-		"OBJECT",
-		"DISPERSR",
-		"SLITMASK",
-		"SPEED",
-		"FILTER",
-		"EXPTIME",
-		"BINNING",
-		"UT-DATE",
-		"UT-TIME",
-		"RA",
-		"DEC",
-		"EQUINOX",
-		"EPOCH",
-		"AIRMASS",
-		"OBSERVER",
-	]
-	
-	night_log = select(df, cols)
-end
-
-# ╔═╡ 9257eef5-c18a-4226-9ff3-fc0ea90a1262
-combine(groupby(df, :OBJECT), nrow => :count)
-
-# ╔═╡ c3def15d-d41a-4e3f-bb49-d57d46a6474e
-obs_cols = [:TIMESTAMP, :JD, :EXPTIME, :AIRMASS, :FILTER, :SLITMASK, :DISPERSR]
-
-# ╔═╡ fbb58e2e-6dd4-42f5-acb1-037b2cc231c6
-df_sci = df[occursin.("sci", lowercase.(df[!, :OBJECT])), obs_cols];
-
-# ╔═╡ 3ca865bb-078a-4bd5-a632-a4b4b9d6e1e9
-combine(
-	groupby(
-		df_sci,
-		[:EXPTIME, :FILTER, :SLITMASK, :DISPERSR]
-	),
-	nrow => :count,
-)
-
-# ╔═╡ c3ac2517-3bac-4686-9b1e-16a5c5b5865f
-combine(
-	groupby(
-		df[df[!, :OBJECT] .== "Arc Lamps", :],
-		[:FILTER, :SLITMASK, :DISPERSR]
-	),
-	nrow => :count,
-)
-
-# ╔═╡ 2fdfc049-11b1-4972-9c48-e8724765126f
-let
-	airmass = data(df_sci) * mapping(
-		:JD=>"Time", :AIRMASS=>"Airmass",
-	)
-	draw(airmass)
-end
+# ╔═╡ 8b9581db-71c6-42b6-915b-bde307755bcd
+@bind DATA_DIR Select(glob("data/raw/IMACS/ut*"))
 
 # ╔═╡ 90845d70-35d9-402d-8936-74936b069577
 md"""
@@ -170,9 +101,18 @@ Let's take a quick look at a sample bias subtracted science frame. We do this to
 For each of the 8 fits files (1 for each chip), we extract just the portion on each chip specified by `DATASEC`, and then subtract out the median bias level measured in the overscan region (defined by `BIASSEC`). We then store the subtracted data in the ``2048 \times 1024 \times 8`` array `cube`:
 """
 
+# ╔═╡ fb6e6221-8136-44e2-979b-ecbbd71f740d
+df_headers = fitscollection(
+	DATA_DIR;
+	#exclude=r"^((?!ift[0-9]{4}c1.fits).)*$",
+	#exclude_key=("", "COMMENT"),
+)
+
 # ╔═╡ 86b4ace1-a891-41e5-a29f-f7eee5f8fb17
 begin
-	fpaths_glob = sort(glob("$(DATA_DIR)/ift0543c*.fits"))
+	fpaths_glob = sort(
+		(@subset df_headers @. occursin("science", lowercase(:OBJECT))).path
+	)
 	
 	# Pre-sort chips into IMACS order
 	chips = ["c1", "c6", "c2", "c5", "c3", "c8", "c4", "c7"]
@@ -230,13 +170,13 @@ let
 
 		# Label objects on chip
 		chip = chips[chip_idx]
-		for obj in eachrow(@subset coords :chip == chip)
+		for obj in eachrow(@subset coords :chip .== chip)
 			coord = (obj.x, obj.y) ./ step
 			text!(ax, split(obj.target, "_")[1];
 				position = coord,
 				textsize = 11,
 				align = (:center, :center),
-				color = :black,
+				color = :white,
 				rotation = π/2,
 			)
 		end
@@ -255,7 +195,7 @@ let
 	end
 	axs = reshape(axs, 2, 4)
 	
-	Colorbar(fig[:, end+1], hms[1], width=20, labelcolor=:black, label="Counts",)
+	Colorbar(fig[:, end+1], hms[1], width=20, label="Counts",)
 	
 	linkaxes!(axs...)
 	hidedecorations!.(axs)
@@ -279,8 +219,8 @@ begin
 	df_LDSS3 = fitscollection(
 		DATA_DIR_LDSS3;
 		recursive=false,
-		exclude=r"^((?!ccd[0-9]{4}c1.fits).)*$",
-		exclude_key=("", "COMMENT"),
+		#exclude=r"^((?!ccd[0-9]{4}c1.fits).)*$",
+		#exclude_key=("", "COMMENT"),
 	)
 	
 # 	@. df_LDSS3[!, "TIMESTAMP"] = DateTime(
@@ -368,13 +308,13 @@ let
 			ax,
 			d,
 			colormap = :magma,
-			colorrange = (0, 500),
+			colorrange = (0, 2500),
 		)
 
 		chip = "c$j"
 
 		# Label objects
-		for obj in eachrow(@subset coords_LDSS3 :chip == chip)
+		for obj in eachrow(@subset coords_LDSS3 :chip .== chip)
 			coord = (obj.x, obj.y)
 			text!(ax, obj.target;
 				position = coord,
@@ -398,7 +338,7 @@ let
 	end
 	axs = reshape(axs, 1, 2)
 	
-	Colorbar(fig[:, end+1], hms[1], width=20, labelcolor=:black, label="Counts",)
+	Colorbar(fig[:, end+1], hms[1], width=20, label="Counts",)
 	
 	linkaxes!(axs...)
 	hidedecorations!.(axs)
@@ -435,16 +375,10 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
-# ╠═fb39c593-86bd-4d4c-b9ec-e5e212a4de98
-# ╟─7e111d10-0aa8-47bd-9ea8-186c1aecc321
-# ╠═1e0db1d5-86b7-475c-897b-b0054575a5fa
-# ╠═9257eef5-c18a-4226-9ff3-fc0ea90a1262
-# ╠═c3def15d-d41a-4e3f-bb49-d57d46a6474e
-# ╠═fbb58e2e-6dd4-42f5-acb1-037b2cc231c6
-# ╠═3ca865bb-078a-4bd5-a632-a4b4b9d6e1e9
-# ╠═c3ac2517-3bac-4686-9b1e-16a5c5b5865f
-# ╠═2fdfc049-11b1-4972-9c48-e8724765126f
+# ╟─fb39c593-86bd-4d4c-b9ec-e5e212a4de98
+# ╠═8b9581db-71c6-42b6-915b-bde307755bcd
 # ╟─90845d70-35d9-402d-8936-74936b069577
+# ╠═fb6e6221-8136-44e2-979b-ecbbd71f740d
 # ╠═86b4ace1-a891-41e5-a29f-f7eee5f8fb17
 # ╠═26feb668-4e7e-4a9d-a2b6-a5dac81e3ab7
 # ╠═3a6ab0c0-ba08-4151-9646-c19d45749b9f

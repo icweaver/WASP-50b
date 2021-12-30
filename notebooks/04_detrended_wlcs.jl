@@ -155,6 +155,9 @@ md"""
 Plotting the data from the `models` cube returns the following detrended white-light curves:
 """
 
+# ╔═╡ ae7e7890-7d83-4411-89b8-7e1b23916266
+"../../ACCESS_WASP-50b/figures/detrended/"
+
 # ╔═╡ 6cfb1541-62af-4884-9c74-d19b56c3b02e
 detLC = CSV.File(
 	"data/detrended/out_l_C/WASP50/w50_150927_LDSS3_flat/white-light/PCA_3/detrended_lc.dat",
@@ -256,7 +259,7 @@ BMA = DataFrame(
 );
 
 # ╔═╡ c7a179a3-9966-452d-b430-a28b2f004bc5
-with_terminal() do
+@with_terminal begin
 	latextabular(BMA, latex=false) |> println
 end
 
@@ -364,8 +367,15 @@ begin
 	COLORS
 end
 
+# ╔═╡ c88dbdc1-4e95-4f15-96f4-1597042df3e6
+begin
+	size_in_inches = FIG_WIDE
+	dpi = 400
+	size_in_pixels = size_in_inches .* dpi
+end
+
 # ╔═╡ 89c48710-651e-45ff-8fcb-e4173559defd
-function plot_lc!(gl, i, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
+function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 	ax_top = Axis(gl[1, 1]; ax_top_kwargs...)
 	ax_bottom = Axis(gl[2, 1]; ax_bottom_kwargs...)
 
@@ -374,80 +384,77 @@ function plot_lc!(gl, i, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 	t = ϕ.(cube["models"]["t"], t₀, P)
 	t_interp = ϕ.(cube["models"]["t_interp"], t₀, P)
 	resids = cube["models"]["LC_det"] - cube["models"]["LC_transit_model"]
+	resids_σ = round(Int, std(resids) * 1e6)
+	resids .*= 1e6
 	
+	color = COLORS[i]
+	color_dark = 0.75 * COLORS[i]
+	
+	# Top panel
 	scatter!(ax_top,
 		t,
 		cube["models"]["LC_det"],
-		color = COLORS[i],
+		color = color,
 	)
 	lines!(ax_top,
 		t_interp,
 		cube["models"]["LC_det_model_interp"],
-		color = 0.75*COLORS[i],
+		color = color_dark,
 	)
-	scatter!(ax_bottom, t, resids)
+	text!(ax_top, "$transit";
+		position = Point2f0(-0.06, 0.9765),
+		align = (:left, :bottom),
+		color = color_dark,
+	)
+	
+	# Bottom panel
+	scatter!(ax_bottom, t, resids, color=color)
+	lines!(ax_bottom, t_interp, zero(t_interp), color=color_dark)
+	text!(ax_bottom, "$resids_σ ppm";
+		position = Point2f0(-0.06, 2300),
+		align = (:left, :top),
+		color = color_dark,
+	)
 
 	linkxaxes!(ax_top, ax_bottom)
 	hidexdecorations!(ax_top)
 
-	rowsize!(gl, 2, Relative(1/4))
+	rowsize!(gl, 2, Relative(1/3))
 end
 
 # ╔═╡ 4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
 let
-	fig = Figure(resolution=(1250, 1000))
+	fig = Figure(resolution=FIG_WIDE)
 	
 	grid = CartesianIndices((2, 2))
-	ax_top_kwargs = (; limits=(nothing, nothing, 0.98, 1.01))
-	ax_bottom_kwargs = (; limits=(nothing, nothing, -0.001, 0.001))
+	xlims = -0.065, 0.065
+	ax_top_kwargs = (
+		ylabel = "Relative flux",
+		limits = (xlims..., 0.975, 1.005),
+	)
+	ax_bottom_kwargs = (
+		xlabel = "Phase",
+		ylabel = "(ppm)",
+		limits=(xlims..., -3000, 3000),
+	)
 	for (i, (transit, cube)) in enumerate(cubes)
 		g_idxs = grid[i]
 		gl = fig[g_idxs.I...] = GridLayout()
 		
-		plot_lc!(gl, i, cube;
+		plot_lc!(gl, i, transit, cube;
 			ax_top_kwargs = ax_top_kwargs,
 			ax_bottom_kwargs = ax_bottom_kwargs,
 		)
-		# resid_σ = round(Int, std(resids) * 1e6)
-		# text!(ax, "$transit\n$resid_σ ppm";
-		# 	position = Point2f0(0.06, 0.980),
-		# 	align = (:right, :bottom),
-		# 	color = 0.75*COLORS[i],
-		# )
 	end
-	
-	# axs = reshape(copy(fig.content), (2, 2))
-	# linkaxes!(axs...)
-	# hidexdecorations!.(axs[1, :], grid=false)
-	# hideydecorations!.(axs[:, 2], grid=false)
 
-	#ylims!(axs[end], 0.96, 1.02)
-	# Label(fig[3, 1:2], "Phase")
-	# Label(fig[1:2, 0], "Relative flux", rotation=π/2)
-	# #axs[end].ylabel = "Relative flux"
+	rowgap!(fig.layout, 1, Relative(0.05))
+	colgap!(fig.layout, 1, Relative(0.05))
 	
-	# path = "../../ACCESS_WASP-50b/figures/detrended"
-	# mkpath(path)
-	# save("$(path)/detrended_wlcs.png", fig)
+	path = "../../ACCESS_WASP-50b/figures/detrended"
+	mkpath(path)
+	save("$(path)/detrended_wlcs.png", fig)
 	
 	fig #|> as_svg
-end
-
-# ╔═╡ 29fec954-2ce2-4ac2-96e3-eb01833031f0
-let
-	fig = Figure()
-
-	grid = CartesianIndices((2, 2))
-
-	g = fig[grid[1].I...] = GridLayout()
-	plot_lc!(g, 1, cubes["Transit 1 (IMACS)"])
-
-	# for g_idxs in grid
-	# 	g = fig[g_idxs.I...] = GridLayout()
-	# 	plot_lc!(g)
-	# end
-	
-	fig
 end
 
 # ╔═╡ d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
@@ -569,9 +576,10 @@ body.disable_ui main {
 # ╠═39dbca86-a4b9-11eb-1c64-9ddf1a9990ab
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
+# ╠═c88dbdc1-4e95-4f15-96f4-1597042df3e6
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
+# ╠═ae7e7890-7d83-4411-89b8-7e1b23916266
 # ╠═89c48710-651e-45ff-8fcb-e4173559defd
-# ╠═29fec954-2ce2-4ac2-96e3-eb01833031f0
 # ╠═6cfb1541-62af-4884-9c74-d19b56c3b02e
 # ╠═0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # ╠═d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c
