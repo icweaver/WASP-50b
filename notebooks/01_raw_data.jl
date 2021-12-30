@@ -19,33 +19,12 @@ begin
 	import Pkg
 	Pkg.activate(Base.current_project())
 	
-	using AlgebraOfGraphics
-	using CSV
-	using CairoMakie
-	using CCDReduction: fitscollection, getdata, CCDData
-	using Colors
-	using DataFrames
-	using DataFramesMeta
-	using Dates
-	using DelimitedFiles
+	using AlgebraOfGraphics, CairoMakie
+	using CSV, DataFrames, DataFramesMeta
+	using CCDReduction
+	using PlutoUI
 	using Glob
-	using ImageFiltering
-	import CairoMakie.Makie.KernelDensity: kde
-	using Latexify
-	using LaTeXStrings
-	using Measurements
-	using Measurements: value, uncertainty
-	using NaturalSort
-	using OrderedCollections
-	using Printf
 	using Statistics
-	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
-	using Unitful
-	
-	# Python setup
-	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP-50b/bin/python"
-	Pkg.build("PyCall")
-	using PyCall
 	
 	##############
 	# PLOT CONFIGS
@@ -74,9 +53,11 @@ end
 md"""
 # Raw Data
 
-$(TableOfContents())
+In this notebook we will view a bias-subtracted sample frame from each instrument. We do this to verify the mask slit placement, as well as the positions of WASP-50 and its comparison stars on each CCD chip.
 
-In this notebook we will summarize the raw data and view a sample frame from each instrument before moving on to the automated data reduction.
+For each fits files (1 for each chip), we extract just the portion on each chip specified by `DATASEC`, and then subtract out the median bias level measured in the overscan region (defined by `BIASSEC`). We then store the subtracted data in a data cube for each instrumet
+
+$(TableOfContents())
 
 !!! note "Data download"
 	```
@@ -84,65 +65,78 @@ In this notebook we will summarize the raw data and view a sample frame from eac
 	```
 """
 
-# ╔═╡ 8b9581db-71c6-42b6-915b-bde307755bcd
-@bind DATA_DIR Select(glob("data/raw/IMACS/ut*"))
-
 # ╔═╡ 90845d70-35d9-402d-8936-74936b069577
 md"""
 ## IMACS
-
-Let's take a quick look at a sample bias subtracted science frame. We do this to verify the mask slit placement, as well as the positions of WASP-50 and its comparison stars on each CCD chip.
-
-For each of the 8 fits files (1 for each chip), we extract just the portion on each chip specified by `DATASEC`, and then subtract out the median bias level measured in the overscan region (defined by `BIASSEC`). We then store the subtracted data in the ``2048 \times 1024 \times 8`` array `cube`:
+Starting with IMACS, let's first select the night we would like to visualize from the dropdown menu below:
 """
 
-# ╔═╡ fb6e6221-8136-44e2-979b-ecbbd71f740d
-df_headers = fitscollection(
-	DATA_DIR;
-	#exclude=r"^((?!ift[0-9]{4}c1.fits).)*$",
-	#exclude_key=("", "COMMENT"),
-)
+# ╔═╡ 8b9581db-71c6-42b6-915b-bde307755bcd
+@bind DATA_DIR_IMACS Select(glob("data/raw/IMACS/ut*"))
 
-# ╔═╡ 86b4ace1-a891-41e5-a29f-f7eee5f8fb17
-begin
-	fpaths_glob = sort(
-		(@subset df_headers @. occursin("science", lowercase(:OBJECT))).path
-	)
-	
-	# Pre-sort chips into IMACS order
-	chips = ["c1", "c6", "c2", "c5", "c3", "c8", "c4", "c7"]
-	fpaths = [
-		filter(s -> occursin(c, s), fpaths_glob)[1]
-		for c ∈ chips
-	]
-	
-	# Load science frames and perform bias subtraction
-	cube = Array{Float64}(undef, 2048, 1024, 8);	
-	for (i, fpath) ∈ enumerate(fpaths)
-		ccd = CCDData(fpath)
-		dxsec, dysec = ccd.hdr["DATASEC"] |> Meta.parse |> eval
-		oxsec, oysec = ccd.hdr["BIASSEC"] |> Meta.parse |> eval
-		cube[:, :, i] .= ccd[dysec, dxsec] .- median(ccd[oysec, oxsec])
-	end
+# ╔═╡ fb6e6221-8136-44e2-979b-ecbbd71f740d
+df_sci_IMACS = fitscollection(DATA_DIR_IMACS)
+
+# ╔═╡ b8de138b-282a-44b3-be8c-7fea2c88030d
+img_overscan_corrected = @views map(ccds(df_sci_IMACS)) do img
+	img_data = img[CCDReduction.fits_indices(img.hdr["DATASEC"])...]
+	img_bias = img[CCDReduction.fits_indices(img.hdr["BIASSEC"])...]
+	corr = img_data .- median(img_bias)
 end
 
+# ╔═╡ c83c2161-95e2-4d08-9934-6d9c12c42a44
+process_frames(df) = @views map(ccds(df)) do img
+	img_data = img[CCDReduction.fits_indices(img.hdr["DATASEC"])...]
+	img_bias = img[CCDReduction.fits_indices(img.hdr["BIASSEC"])...]
+	corr = img_data .- median(img_bias)
+end
+
+# ╔═╡ 0d42f6f9-d789-46a3-9e9a-381dbed2d5a5
+md"""
+We next compute the bias subtracted science frame for each of these $(nrow(df_sci_IMACS)) chips:
+"""
+
+# ╔═╡ 86b4ace1-a891-41e5-a29f-f7eee5f8fb17
+frames_IMACS = process_frames(df_sci_IMACS)
+
+# ╔═╡ fed5dd71-98e8-4212-b574-6150bccce2f7
+plot(frames_IMACS[3], colormap = :magma,
+			colorrange = (0, 500))
+
+# ╔═╡ 6732965f-9ab6-4b84-9703-c212bb89d353
+chip_order = [1, 6, 2, 5, 3, 8, 4, 7]
+
 # ╔═╡ 26feb668-4e7e-4a9d-a2b6-a5dac81e3ab7
-coords = CSV.read("$(DATA_DIR)/WASP50.coords", DataFrame;
+coords_IMACS = CSV.read("$(DATA_DIR_IMACS)/WASP50.coords", DataFrame;
 	delim = ' ',
 	ignorerepeated = true,
 	header = ["target", "chip", "x", "y"],
 )
 
+# ╔═╡ be8399c7-d817-476a-bf26-becaea8b6522
+@with_terminal begin
+	grid = CartesianIndices((2, 4))
+	chip_order = [1, 6, 2, 5, 3, 8, 4, 7]
+
+	for (ch, g) ∈ zip(chip_order, grid)
+		println(ch, g)
+	end
+end
+
+# ╔═╡ d00a2334-bee8-4819-b11b-17a5c7eb84e0
+2 ∈ 4:8
+
 # ╔═╡ 3a6ab0c0-ba08-4151-9646-c19d45749b9f
 let
 	fig = Figure(resolution = (800, 600))
 	step = 1 # For quick testing
-	chip_idx = 1
 	hms = []
 	axs = []
-	for j ∈ 1:4, i ∈ 1:2
+	grid = CartesianIndices((2, 4))
+	chip_order = [1, 6, 2, 5, 3, 8, 4, 7]
+	for (g, ch) ∈ zip(grid, chip_order)
 		# Set chip orientation based on IMACS conventions
-		if "$(chips[chip_idx])" ∈ ["c5", "c6", "c7", "c8"]
+		if ch ∈ 5:8
 			xflip = reverse
 			yflip = reverse
 			xreversed = false
@@ -153,10 +147,10 @@ let
 			xreversed = false
 			yreversed = true
 		end
-		ax = Axis(fig[i, j], xreversed=xreversed, yreversed=yreversed)
-		d = cube[yflip(begin:step:end), xflip(begin:step:end), chip_idx]'
+		ax = Axis(fig[g.I...], xreversed=xreversed, yreversed=yreversed)
+		d = frames_IMACS[ch][yflip(begin:step:end), xflip(begin:step:end)]'
 		nrows, ncols = size(d)
-		hm = heatmap!(
+		hm = plot!(
 			ax,
 			d,
 			colormap = :magma,
@@ -164,8 +158,8 @@ let
 		)
 
 		# Label objects on chip
-		chip = chips[chip_idx]
-		for obj in eachrow(@subset coords :chip .== chip)
+		chip = "c$ch"
+		for obj in eachrow(@subset coords_IMACS :chip .== chip)
 			coord = (obj.x, obj.y) ./ step
 			text!(ax, split(obj.target, "_")[1];
 				position = coord,
@@ -184,7 +178,6 @@ let
 			align = (:left, :baseline),
 			offset = 0.5 .* (20, 20),
 		)
-		chip_idx += 1
 		push!(axs, ax)
 		push!(hms, hm)
 	end
@@ -197,7 +190,7 @@ let
 	
 	path = "../../ACCESS_WASP-50b/figures/frames"
 	mkpath(path)
-	save("$(path)/sci_imacs_$(basename(DATA_DIR)).png", fig)
+	save("$(path)/sci_imacs_$(basename(DATA_DIR_IMACS)).png", fig)
 	
 	fig #|> as_svg
 end
@@ -207,78 +200,14 @@ md"""
 ## LDSS3
 """
 
-# ╔═╡ 5c6e6f7b-70e0-49a8-b064-60dcf1440223
-begin
-	DATA_DIR_LDSS3 = "data/raw/LDSS3/ut150927"
-	
-	df_LDSS3 = fitscollection(
-		DATA_DIR_LDSS3;
-		recursive=false,
-		#exclude=r"^((?!ccd[0-9]{4}c1.fits).)*$",
-		#exclude_key=("", "COMMENT"),
-	)
-	
-# 	@. df_LDSS3[!, "TIMESTAMP"] = DateTime(
-# 		parse(Date, df[!, "UT-DATE"]), parse(Time, df[!, "UT-TIME"])
-# 	)
-	
-# 	@. df_LDSS3[!, "JD"] = datetime2julian(df.TIMESTAMP) - 2.456e6
-			
-# 	# Select header items to show
-# 	cols = [
-# 		"FILENAME",
-# 		"TIMESTAMP",
-# 		"JD",
-# 		"OBJECT",
-# 		"DISPERSR",
-# 		"SLITMASK",
-# 		"SPEED",
-# 		"FILTER",
-# 		"EXPTIME",
-# 		"BINNING",
-# 		"UT-DATE",
-# 		"UT-TIME",
-# 		"RA",
-# 		"DEC",
-# 		"EQUINOX",
-# 		"EPOCH",
-# 		"AIRMASS",
-# 		"OBSERVER",
-# 	]
-	
-# 	night_log = select(df, cols)
-end
+# ╔═╡ 0e66d467-1098-46dc-8d06-36d488b14637
+@bind DATA_DIR_LDSS3 Select(glob("data/raw/LDSS3/ut*"))
 
-# ╔═╡ b5affee5-0322-43da-9f9a-05978fd90a21
-function compute_cube(fpaths)	
-	# Pre-sort chips into IMACS order
-# 	chips = ["c1", "c6", "c2", "c5", "c3", "c8", "c4", "c7"]
-# 	fpaths = [
-# 		filter(s -> occursin(c, s), fpaths_glob)[1]
-# 		for c in chips
-# 	]
-	
-	# Load science frames and perform bias subtraction
-	cube_list = []
-	for (i, fpath) in enumerate(fpaths)
-		ccd = CCDData(fpath)
-		dxsec, dysec = ccd.hdr["DATASEC"] |> Meta.parse |> eval
-		oxsec, oysec = ccd.hdr["BIASSEC"] |> Meta.parse |> eval
-		# @show dxsec, dysec
-		# @show oxsec, oysec
-		#@show size(ccd[dysec, dxsec]), size(ccd[oysec, oxsec])
-		push!(cube_list, ccd[dysec, dxsec] .- median(ccd[oysec, oxsec]))
-	end
-	
-	return cube_list
-end
+# ╔═╡ 5c6e6f7b-70e0-49a8-b064-60dcf1440223
+df_sci_LDSS3 = fitscollection(DATA_DIR_LDSS3)
 
 # ╔═╡ c488270a-3126-4e38-a0c8-ee242115a3ea
-#with_terminal() do
-cube_LDSS3 = compute_cube(
-	sort(glob("data/raw/LDSS3/ut150927/ccd0606c*.fits"))
-)
-#end
+frames_LDSS3 = process_frames(df_sci_LDSS3)
 
 # ╔═╡ 83a9357d-836b-4cee-a41f-eabc8f3f12e7
 coords_LDSS3 = DataFrame((
@@ -297,9 +226,9 @@ let
 	axs = []
 	for j in 1:2, i in 1
 		ax = Axis(fig[i, j])
-		d = cube_LDSS3[chip_idx][begin:step:end, begin:step:end]'
+		d = frames_LDSS3[chip_idx][begin:step:end, begin:step:end]'
 		nrows, ncols = size(d)
-		hm = heatmap!(
+		hm = plot!(
 			ax,
 			d,
 			colormap = :magma,
@@ -351,38 +280,45 @@ md"""
 """
 
 # ╔═╡ 6000db3d-0798-4f76-be31-617d43406b54
-html"""
-<style>
-#launch_binder {
-	display: none;
-}
-body.disable_ui main {
-		max-width : 95%;
-	}
-@media screen and (min-width: 1081px) {
-	body.disable_ui main {
-		margin-left : 10px;
-		max-width : 72%;
-		align-self: flex-start;
-	}
-}
-</style>
-"""
+#html"""
+# <style>
+# #launch_binder {
+# 	display: none;
+# }
+# body.disable_ui main {
+# 		max-width : 95%;
+# 	}
+# @media screen and (min-width: 1081px) {
+# 	body.disable_ui main {
+# 		margin-left : 10px;
+# 		max-width : 72%;
+# 		align-self: flex-start;
+# 	}
+# }
+# </style>
+# """
 
 # ╔═╡ Cell order:
-# ╠═fb39c593-86bd-4d4c-b9ec-e5e212a4de98
-# ╠═8b9581db-71c6-42b6-915b-bde307755bcd
+# ╟─fb39c593-86bd-4d4c-b9ec-e5e212a4de98
 # ╟─90845d70-35d9-402d-8936-74936b069577
+# ╟─8b9581db-71c6-42b6-915b-bde307755bcd
 # ╠═fb6e6221-8136-44e2-979b-ecbbd71f740d
+# ╠═b8de138b-282a-44b3-be8c-7fea2c88030d
+# ╠═c83c2161-95e2-4d08-9934-6d9c12c42a44
+# ╟─0d42f6f9-d789-46a3-9e9a-381dbed2d5a5
 # ╠═86b4ace1-a891-41e5-a29f-f7eee5f8fb17
+# ╠═fed5dd71-98e8-4212-b574-6150bccce2f7
+# ╠═6732965f-9ab6-4b84-9703-c212bb89d353
 # ╠═26feb668-4e7e-4a9d-a2b6-a5dac81e3ab7
+# ╠═be8399c7-d817-476a-bf26-becaea8b6522
+# ╠═d00a2334-bee8-4819-b11b-17a5c7eb84e0
 # ╠═3a6ab0c0-ba08-4151-9646-c19d45749b9f
 # ╟─06a834f0-8c90-4013-af34-725166970969
+# ╠═0e66d467-1098-46dc-8d06-36d488b14637
 # ╠═5c6e6f7b-70e0-49a8-b064-60dcf1440223
-# ╠═b5affee5-0322-43da-9f9a-05978fd90a21
 # ╠═c488270a-3126-4e38-a0c8-ee242115a3ea
 # ╠═83a9357d-836b-4cee-a41f-eabc8f3f12e7
 # ╠═71ba9181-90e4-4d12-97c0-462b3f1df077
 # ╟─4480ae72-3bb2-4e17-99be-28afc756332a
 # ╠═3433ed02-c27c-4fe5-bfda-a5108a58407c
-# ╟─6000db3d-0798-4f76-be31-617d43406b54
+# ╠═6000db3d-0798-4f76-be31-617d43406b54
