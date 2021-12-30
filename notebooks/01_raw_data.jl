@@ -79,13 +79,8 @@ $(TableOfContents())
 In this notebook we will summarize the raw data and view a sample frame from each instrument before moving on to the automated data reduction.
 
 !!! note "Data download"
-
-	```	
-	> rclone sync -P drive_ACCESS:IMACS/WASP50/wasp50_ut131219 drive_ACCESS:papers/WASP-50b/data/raw/IMACS/ut131219 --include "*ift0024*"
- 
-	> rclone sync -P drive_cfa,shared_with_me:LDSS3/LDSS3_e150927 drive_ACCESS:papers/WASP-50b/data/raw/LDSS3/ut150927 --include "*606*"
- 
-	> rclone sync -P drive_ACCESS:papers/WASP-50b/data/raw data/raw
+	```
+	 rclone sync ACCESS_box:WASP-50b/data/raw data/raw
 	```
 """
 
@@ -375,7 +370,7 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
-# ╟─fb39c593-86bd-4d4c-b9ec-e5e212a4de98
+# ╠═fb39c593-86bd-4d4c-b9ec-e5e212a4de98
 # ╠═8b9581db-71c6-42b6-915b-bde307755bcd
 # ╟─90845d70-35d9-402d-8936-74936b069577
 # ╠═fb6e6221-8136-44e2-979b-ecbbd71f740d
