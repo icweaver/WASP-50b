@@ -19,7 +19,6 @@ begin
 	import Pkg
 	Pkg.activate(Base.current_project())
 
-	using PythonCall, CondaPkg
 	using PlutoUI
 	using AlgebraOfGraphics
 	using CairoMakie
@@ -29,6 +28,15 @@ begin
 	using ImageFiltering
 	using Latexify
 	using Statistics
+end
+
+# ╔═╡ d07e895f-c43b-46c4-be47-5af44bfda47a
+begin
+	ENV["PYTHON"] = ""
+	Pkg.build("PyCall")
+	using PyCall
+	const Conda = PyCall.Conda
+	Conda.add("lightkurve", :WASP50b)
 end
 
 # ╔═╡ ee24f7df-c4db-4065-afe9-10be80cbcd6b
@@ -77,6 +85,27 @@ md"""
 ### Helper functions
 """
 
+# ╔═╡ 3653ee36-35a6-4e0a-8d46-4f8389381d45
+begin
+	py"""
+	import numpy as np
+	import pickle
+	
+	def load_npz(fpath, allow_pickle=False):
+		return np.load(fpath, allow_pickle=allow_pickle)[()]
+	
+	def load_pickle(fpath):
+		with open(fpath, "rb") as f:
+			data = pickle.load(f)
+		return data
+	"""
+	load_npz(s; allow_pickle=false) = py"load_npz"(s, allow_pickle=allow_pickle)
+	load_pickle(s) = py"load_pickle"(s)
+end;
+
+# ╔═╡ dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
+LC = load_pickle(FPATH);
+
 # ╔═╡ e774a20f-2d58-486a-ab71-6bde678b26f8
 md"""
 ## Stellar spectra ⭐
@@ -105,6 +134,24 @@ md"""
 Next, we will extract the integrated white-light curves from these spectra, divided by each comparison star:
 """
 
+# ╔═╡ bcda2043-f8c7-46bc-a5d4-b6f1f0883e9e
+LC_cNames = LC["cNames"]
+
+# ╔═╡ f519626c-a3e8-4390-b3af-40b7beb665ed
+LC_oLC = LC["oLC"]
+
+# ╔═╡ 9a9b688c-94f0-4944-a9b2-21702073e0c7
+LC_cLC = LC["cLC"]
+
+# ╔═╡ 18d58341-0173-4eb1-9f01-cfa893088613
+begin
+	comp_names = LC_cNames
+	sorted_cName_idxs = sortperm(comp_names)
+	
+	f_div_WLC = LC_oLC ./ LC_cLC[:, sorted_cName_idxs]
+	f_div_WLC_norm = f_div_WLC ./ median(f_div_WLC, dims=1)
+end
+
 # ╔═╡ 941cd721-07d8-4a8f-9d75-42854e6e8edb
 md"""
 !!! note
@@ -131,6 +178,9 @@ comps = Dict(
 # ╔═╡ 40bd44b4-a88d-487b-9767-823433f6a048
 utdate = basename(dirname(FPATH))
 
+# ╔═╡ 0997f1b0-28f2-4f0a-9d2a-91dacd2a9342
+comp_names
+
 # ╔═╡ 2df82761-b9fe-4d37-b57c-1eabb0ffa8dd
 use_comps = comps[utdate]
 
@@ -145,6 +195,9 @@ md"""
 !!! note
 	We divide the target WLC by each comparison star to minimize common systematics (e.g., air mass, local refractive atmospheric effects), and to make the transit shape more apparent. This allows us to select good comparison stars for that particular night and which timeseries points to include in the rest of the analysis.
 """
+
+# ╔═╡ 22b57aad-e886-4d36-bab8-baef5f3fabe6
+f_div_WLC_norm
 
 # ╔═╡ ad5b07e5-75d0-4e03-a5d6-9ce4f1efd949
 function filt(f_div_wlc, window_width; func=median, border="reflect")
@@ -171,10 +224,60 @@ function filt_idxs(f_div_wlc, window_width; ferr=0.002)
 	return f_filt, use_idxs, bad_idxs
 end
 
+# ╔═╡ df46d106-f186-4900-9d3f-b711bc803707
+@with_terminal begin
+	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
+	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
+	# Because python
+	println(bad_idxs .- 1)
+	println(use_comps_idxs .- 1)
+	println(length(bad_idxs))
+end
+
+# ╔═╡ 4e4cb513-1e88-4414-aa4d-a14d934874ce
+begin
+	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
+	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
+end;
+
 # ╔═╡ 0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
 md"""
 ### Raw flux
 """
+
+# ╔═╡ e6e1ea18-216a-41ae-8a1a-590793fcb669
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1];
+		xlabel="Index",
+		ylabel="Relative flux",
+		limits=(nothing, nothing, 0.975, 1.02),
+	)
+	
+	f_wlc_targ = LC_oLC ./ mean(LC_oLC, dims=1)
+	f_wlc_comps = LC_cLC[:, sorted_cName_idxs] ./ mean(
+		LC_cLC[:, sorted_cName_idxs], dims=1
+	)
+	
+	f_wlc_comps = LC_cLC[:, sorted_cName_idxs] ./ mean(
+		LC_cLC[:, sorted_cName_idxs], dims=1
+	)
+	
+	for (i, (cName, col)) in enumerate(zip(sort(comp_names), eachcol(f_wlc_comps)))
+		scatter!(ax, col; label=cName)
+	end
+	
+	scatter!(ax, f_wlc_targ ./ mean(f_wlc_targ, dims=1);
+		linewidth = 5,
+		color = :darkgrey,
+		label = "WASP-50",
+	)
+	
+	axislegend()
+	
+	fig #|> as_svg
+		
+end
 
 # ╔═╡ e98dee2e-a369-448e-bfe4-8fea0f318fa8
 md"""
@@ -184,8 +287,7 @@ We first compute `f_norm_w`, the binned target flux divided by each comparison s
 """
 
 # ╔═╡ 24594175-5f0e-4d5a-a9bf-e1fd441b70d3
-#let
-with_terminal() do
+@with_terminal begin
 	wl, wu = wbins[:, 1], wbins[:, 2]
 	Δw = @. wu - wl
 	wc = @. (wl + wu) / 2
@@ -197,6 +299,33 @@ with_terminal() do
 	)
 	latextabular(df, latex=false) |> println
 end
+
+# ╔═╡ 793c4d08-e2ee-4c9d-b7a0-11eaaddba895
+md"""
+We plot these below for each comparison star division. Move the slider to view the plot for the corresponding comparison star:
+
+comp star $(@bind comp_idx PlutoUI.Slider(1:length(comp_names), default=2, show_value=true))
+
+!!! note "Future"
+	Ability to interact with sliders completely in the browser coming soon!
+"""
+
+# ╔═╡ 3ca393d6-01c0-4f77-88ff-7c4f6388670e
+begin
+	oLCw, cLCw = LC["oLCw"], LC["cLCw"]
+	(ntimes, nbins), ncomps = size(oLCw), length(comp_names)
+	offs = reshape(range(0, 0.3, length=nbins), 1, :) # Arbitrary offsets for clarity
+	f_norm_w = Array{Float64}(undef, ntimes, ncomps, nbins)
+	for c_i in 1:ncomps
+		f_w = oLCw ./ cLCw[:, c_i, :]
+		f_norm_w[:, c_i, :] .= f_w ./ median(f_w, dims=1) .+ offs
+	end
+	baselines = ones(size(f_norm_w[:, comp_idx, :])) .+ offs # Reference baselines
+end;
+
+# ╔═╡ 2768623f-7904-4674-a2ee-ad809cdd508b
+# Median filtered curves for visualization purposes
+f_med, _, f_diff = filt(f_norm_w[:, comp_idx, :], window_width)
 
 # ╔═╡ eeb3da97-72d5-4317-acb9-d28637a06d67
 md"""
@@ -239,6 +368,37 @@ begin
 	)
 	
 	COLORS
+end
+
+# ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
+let
+	fig = Figure(resolution=FIG_WIDE)
+	ax = Axis(fig[1, 1], xlabel="Wavelength (Å)", ylabel="Relative flux")
+	
+	LC_spectra = LC["spectra"]
+	wav = LC_spectra["wavelengths"]
+	f_norm = median(LC_spectra["WASP50"])
+	
+	i = 1
+	for (name, f) in sort(LC_spectra)
+		if name != "wavelengths"
+			spec_plot!(ax, wav, f, color=COLORS_SERIES[i], norm=f_norm, label=name)
+			i += 1
+		end
+	end
+	
+	vlines!.(ax, wbins, linewidth=1.0, color=:lightgrey)
+	
+	axislegend()
+	
+	xlims!(ax, 4_500, 11_000)
+	ylims!(ax, 0, 2.6)
+	
+	path = "../../ACCESS_WASP-50b/figures/reduced_data"
+	mkpath(path)
+	save("$(path)/extracted_spectra_$(utdate)_IMACS.png", fig)
+	
+	fig #|> as_svg
 end
 
 # ╔═╡ ccabf5d2-5739-4284-a972-23c02a263a5c
@@ -286,105 +446,6 @@ function plot_div_WLCS!(
 	end
 end
 
-# ╔═╡ 55f25dea-57f5-4e2c-b064-15ac54df4603
-begin
-	CondaPkg.add.(("astropy", "numpy"))
-	CondaPkg.resolve()
-end
-
-# ╔═╡ d07e895f-c43b-46c4-be47-5af44bfda47a
-macro py_str(s)
-	if '\n' ∈ s || '=' ∈ s
-		pyexec(s, Main)
-	else
-		pyeval(s, Main)
-	end
-end;
-
-# ╔═╡ 3653ee36-35a6-4e0a-8d46-4f8389381d45
-begin
-	py"""
-	import numpy as np
-	import pickle
-	
-	def load_npz(fpath, allow_pickle=False):
-		return np.load(fpath, allow_pickle=allow_pickle)[()]
-	
-	def load_pickle(fpath):
-		with open(fpath, "rb") as f:
-			data = pickle.load(f)
-		return data
-	"""
-	load_npz(s; allow_pickle=false) = py"load_npz"(s, allow_pickle=allow_pickle)
-	load_pickle(s) = py"load_pickle"(s)
-end;
-
-# ╔═╡ dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
-LC = load_pickle(FPATH);
-
-# ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
-let
-	fig = Figure(resolution=FIG_WIDE)
-	ax = Axis(fig[1, 1], xlabel="Wavelength (Å)", ylabel="Relative flux")
-	
-	LC_spectra = pyconvert(Dict, LC["spectra"])
-	wav = LC_spectra["wavelengths"]
-	f_norm = median(LC_spectra["WASP50"])
-	
-	i = 1
-	for (name, f) in sort(LC_spectra)
-		if name != "wavelengths"
-			spec_plot!(ax, wav, f, color=COLORS_SERIES[i], norm=f_norm, label=name)
-			i += 1
-		end
-	end
-	
-	vlines!.(ax, wbins, linewidth=1.0, color=:lightgrey)
-	
-	axislegend()
-	
-	xlims!(ax, 4_500, 11_000)
-	ylims!(ax, 0, 2.6)
-	
-	path = "../../ACCESS_WASP-50b/figures/reduced_data"
-	mkpath(path)
-	save("$(path)/extracted_spectra_$(utdate)_IMACS.png", fig)
-	
-	fig #|> as_svg
-end
-
-# ╔═╡ bcda2043-f8c7-46bc-a5d4-b6f1f0883e9e
-LC_cNames = pyconvert(Vector, LC["cNames"])
-
-# ╔═╡ f519626c-a3e8-4390-b3af-40b7beb665ed
-LC_oLC = pyconvert(Vector, LC["oLC"])
-
-# ╔═╡ 9a9b688c-94f0-4944-a9b2-21702073e0c7
-LC_cLC = pyconvert(Matrix, LC["cLC"])
-
-# ╔═╡ 18d58341-0173-4eb1-9f01-cfa893088613
-begin
-	comp_names = pyconvert(Vector, LC["cNames"])
-	sorted_cName_idxs = sortperm(comp_names)
-	
-	f_div_WLC = LC_oLC ./ LC_cLC[:, sorted_cName_idxs]
-	f_div_WLC_norm = f_div_WLC ./ median(f_div_WLC, dims=1)
-end
-
-# ╔═╡ 0997f1b0-28f2-4f0a-9d2a-91dacd2a9342
-comp_names
-
-# ╔═╡ df46d106-f186-4900-9d3f-b711bc803707
-@with_terminal begin
-	use_comps = use_comps
-	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
-	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
-	# Because python
-	println(bad_idxs .- 1)
-	println(use_comps_idxs .- 1)
-	println(length(bad_idxs))
-end
-
 # ╔═╡ 13523326-a5f2-480d-9961-d23cd51192b8
 let
 	fig = Figure(resolution=FIG_WIDE)
@@ -413,76 +474,6 @@ let
 	
 	fig #|> as_svg
 end
-
-# ╔═╡ 4e4cb513-1e88-4414-aa4d-a14d934874ce
-begin
-	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
-	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
-end;
-
-# ╔═╡ 22b57aad-e886-4d36-bab8-baef5f3fabe6
-f_div_WLC_norm
-
-# ╔═╡ e6e1ea18-216a-41ae-8a1a-590793fcb669
-let
-	fig = Figure()
-	ax = Axis(fig[1, 1];
-		xlabel="Index",
-		ylabel="Relative flux",
-		limits=(nothing, nothing, 0.975, 1.02),
-	)
-	
-	f_wlc_targ = LC_oLC ./ mean(LC_oLC, dims=1)
-	f_wlc_comps = LC_cLC[:, sorted_cName_idxs] ./ mean(
-		LC_cLC[:, sorted_cName_idxs], dims=1
-	)
-	
-	f_wlc_comps = LC_cLC[:, sorted_cName_idxs] ./ mean(
-		LC_cLC[:, sorted_cName_idxs], dims=1
-	)
-	
-	for (i, (cName, col)) in enumerate(zip(sort(comp_names), eachcol(f_wlc_comps)))
-		scatter!(ax, col; label=cName)
-	end
-	
-	scatter!(ax, f_wlc_targ ./ mean(f_wlc_targ, dims=1);
-		linewidth = 5,
-		color = :darkgrey,
-		label = "WASP-50",
-	)
-	
-	axislegend()
-	
-	fig #|> as_svg
-		
-end
-
-# ╔═╡ 793c4d08-e2ee-4c9d-b7a0-11eaaddba895
-md"""
-We plot these below for each comparison star division. Move the slider to view the plot for the corresponding comparison star:
-
-comp star $(@bind comp_idx PlutoUI.Slider(1:length(comp_names), default=2, show_value=true))
-
-!!! note "Future"
-	Ability to interact with sliders completely in the browser coming soon!
-"""
-
-# ╔═╡ 3ca393d6-01c0-4f77-88ff-7c4f6388670e
-begin
-	oLCw, cLCw = pyconvert.(Ref(Array), (LC["oLCw"], LC["cLCw"]))
-	(ntimes, nbins), ncomps = size(oLCw), length(comp_names)
-	offs = reshape(range(0, 0.3, length=nbins), 1, :) # Arbitrary offsets for clarity
-	f_norm_w = Array{Float64}(undef, ntimes, ncomps, nbins)
-	for c_i in 1:ncomps
-		f_w = oLCw ./ cLCw[:, c_i, :]
-		f_norm_w[:, c_i, :] .= f_w ./ median(f_w, dims=1) .+ offs
-	end
-	baselines = ones(size(f_norm_w[:, comp_idx, :])) .+ offs # Reference baselines
-end;
-
-# ╔═╡ 2768623f-7904-4674-a2ee-ad809cdd508b
-# Median filtered curves for visualization purposes
-f_med, _, f_diff = filt(f_norm_w[:, comp_idx, :], window_width)
 
 # ╔═╡ 684c026a-b5d0-4694-8d29-a44b7cb0fd6c
 let
@@ -535,6 +526,9 @@ let
 	
 	fig #|> as_svg
 end
+
+# ╔═╡ e8478e36-10fc-4e95-bf09-e217cad0cb15
+@with_terminal Conda.list(:WASP50b)
 
 # ╔═╡ 03af71ac-673b-459b-a931-a600b13d7ee6
 html"""
@@ -601,7 +595,7 @@ body.disable_ui main {
 # ╠═684c026a-b5d0-4694-8d29-a44b7cb0fd6c
 # ╟─eeb3da97-72d5-4317-acb9-d28637a06d67
 # ╠═a8d1c3e6-c020-495f-a443-07203b7dcd50
-# ╠═55f25dea-57f5-4e2c-b064-15ac54df4603
 # ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23
 # ╟─d07e895f-c43b-46c4-be47-5af44bfda47a
+# ╠═e8478e36-10fc-4e95-bf09-e217cad0cb15
 # ╟─03af71ac-673b-459b-a931-a600b13d7ee6

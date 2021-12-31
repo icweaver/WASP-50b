@@ -1,5 +1,4 @@
 *.pdf
-.CondaPkg
 .ipynb_checkpoints/
 Manifest.toml
 __pycache__/
