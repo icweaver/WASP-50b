@@ -306,15 +306,11 @@ md"""
 We first compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `ncomps` ``\times`` `nbins`, where for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
 """
 
-# ╔═╡ 793c4d08-e2ee-4c9d-b7a0-11eaaddba895
-md"""
-We plot these below for each comparison star division. Move the slider to view the plot for the corresponding comparison star:
+# ╔═╡ 57b59c54-ab0a-44e1-9a9c-4840ce33fbb6
+comp_idx = get_idx("c18", comp_names)
 
-comp star $(@bind comp_idx PlutoUI.Slider(use_comps_idxs))
-
-!!! note "Future"
-	Ability to interact with sliders completely in the browser coming soon!
-"""
+# ╔═╡ df8983d1-4abd-4fad-ace6-9dfe74df4949
+use_comps
 
 # ╔═╡ 3ca393d6-01c0-4f77-88ff-7c4f6388670e
 begin
@@ -332,6 +328,11 @@ end;
 # ╔═╡ 2768623f-7904-4674-a2ee-ad809cdd508b
 # Median filtered curves for visualization purposes
 f_med, _, f_diff = filt(f_norm_w[:, comp_idx, :], window_width)
+
+# ╔═╡ 793c4d08-e2ee-4c9d-b7a0-11eaaddba895
+md"""
+We plot these below for each comparison star division.
+"""
 
 # ╔═╡ eeb3da97-72d5-4317-acb9-d28637a06d67
 md"""
@@ -400,9 +401,15 @@ let
 	xlims!(ax, 4_500, 11_000)
 	ylims!(ax, 0, 2.6)
 	
-	path = "../../ACCESS_WASP-50b/figures/reduced_data"
-	mkpath(path)
-	save("$(path)/extracted_spectra_IMACS_$(fname_suff).png", fig)
+	paths = (
+		"../../ACCESS_WASP-50b/figures/reduced_data",
+		"figures/reduced_data"
+	)
+	
+	for path ∈ paths
+		mkpath(path)
+		save("$(path)/extracted_spectra_IMACS_$(fname_suff).png", fig)
+	end
 	
 	fig
 end
@@ -471,15 +478,20 @@ let
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
 	fig[end+1, 2:end] = Label(fig, "Index")
 	
-	path = "../../ACCESS_WASP-50b/figures/reduced_data"
-	mkpath(path)
-	save("$(path)/div_wlcs_IMACS_$(fname_suff).png", fig)
+	paths = (
+		"../../ACCESS_WASP-50b/figures/reduced_data",
+		"figures/reduced_data",
+	)
+	for path ∈ paths
+		mkpath(path)
+		save("$(path)/div_wlcs_IMACS_$(fname_suff).png", fig)
+	end
 	
 	fig
 end
 
 # ╔═╡ 684c026a-b5d0-4694-8d29-a44b7cb0fd6c
-let
+function plot_binned_lcs(comp_idx; show_fig=false)
 	fig = Figure(resolution=FIG_TALL)
 	
 	comp_name = comp_names[comp_idx]
@@ -520,12 +532,25 @@ let
 	fig[1:2, 0] = Label(fig, "Relative flux + offset", rotation=π/2)
 	fig[end, 2:3] = Label(fig, "Index")
 	
-	path = "../../ACCESS_WASP-50b/figures/reduced_data"
-	mkpath(path)
-	save("$(path)/div_blcs_IMACS_$(fname_suff)_$(comp_name).png", fig)
-	
-	fig
+	if show_fig
+		path = "../../ACCESS_WASP-50b/figures/reduced_data"
+		mkpath(path)
+		save("$(path)/div_blcs_IMACS_$(fname_suff)_$(comp_name).png", fig)
+		fig
+	else
+		path = "figures/reduced_data"
+		mkpath(path)
+		fname = "div_blcs_IMACS_$(fname_suff)_$(comp_name).png"
+		save("$(path)/$(fname)", fig)
+		println("Figure $(fname) saved")
+	end
 end
+
+# ╔═╡ 60e45226-3f7d-4d71-b9b3-c208c034a05f
+plot_binned_lcs(comp_idx, show_fig=true)
+
+# ╔═╡ b64d7fa9-82fc-4fd0-b0ce-1b53286147cb
+@with_terminal plot_binned_lcs.(use_comps_idxs)
 
 # ╔═╡ e8478e36-10fc-4e95-bf09-e217cad0cb15
 @with_terminal Conda.list(:WASP50b)
@@ -587,9 +612,13 @@ body.disable_ui main {
 # ╟─0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
 # ╠═e6e1ea18-216a-41ae-8a1a-590793fcb669
 # ╟─e98dee2e-a369-448e-bfe4-8fea0f318fa8
+# ╠═57b59c54-ab0a-44e1-9a9c-4840ce33fbb6
+# ╠═df8983d1-4abd-4fad-ace6-9dfe74df4949
 # ╠═3ca393d6-01c0-4f77-88ff-7c4f6388670e
 # ╠═2768623f-7904-4674-a2ee-ad809cdd508b
 # ╟─793c4d08-e2ee-4c9d-b7a0-11eaaddba895
+# ╠═60e45226-3f7d-4d71-b9b3-c208c034a05f
+# ╠═b64d7fa9-82fc-4fd0-b0ce-1b53286147cb
 # ╠═684c026a-b5d0-4694-8d29-a44b7cb0fd6c
 # ╟─eeb3da97-72d5-4317-acb9-d28637a06d67
 # ╠═a8d1c3e6-c020-495f-a443-07203b7dcd50
