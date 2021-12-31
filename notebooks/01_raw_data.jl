@@ -30,7 +30,7 @@ end
 
 # ╔═╡ fb39c593-86bd-4d4c-b9ec-e5e212a4de98
 md"""
-# Raw Data
+# Raw data
 
 In this notebook we will view bias-subtracted sample frames from each instrument to verify the mask slit placement, as well as the positions of WASP-50 and its comparison stars on each CCD chip.
 
@@ -40,7 +40,7 @@ $(TableOfContents())
 
 !!! note "Data download"
 	```
-	 rclone sync ACCESS_box:WASP-50b/data/raw data/raw
+	 rclone sync -P ACCESS_box:WASP-50b/data/raw_data data/raw_data
 	```
 """
 
@@ -51,17 +51,15 @@ Starting with IMACS, let's first select the night we would like to visualize fro
 """
 
 # ╔═╡ 8b9581db-71c6-42b6-915b-bde307755bcd
-@bind DATA_DIR_IMACS Select(glob("data/raw/IMACS/ut*"))
+@bind DATA_DIR_IMACS Select(glob("data/raw_data/IMACS/ut*"))
 
 # ╔═╡ fb6e6221-8136-44e2-979b-ecbbd71f740d
 df_sci_IMACS = fitscollection(DATA_DIR_IMACS, abspath=false)
 
-# ╔═╡ b8de138b-282a-44b3-be8c-7fea2c88030d
-img_overscan_corrected = @views map(ccds(df_sci_IMACS)) do img
-	img_data = img[CCDReduction.fits_indices(img.hdr["DATASEC"])...]
-	img_bias = img[CCDReduction.fits_indices(img.hdr["BIASSEC"])...]
-	corr = img_data .- median(img_bias)
-end
+# ╔═╡ 0d42f6f9-d789-46a3-9e9a-381dbed2d5a5
+md"""
+We next compute the bias-subtracted science frame for each of these $(nrow(df_sci_IMACS)) chips:
+"""
 
 # ╔═╡ c83c2161-95e2-4d08-9934-6d9c12c42a44
 process_frames(df) = @views map(ccds(df)) do img
@@ -69,11 +67,6 @@ process_frames(df) = @views map(ccds(df)) do img
 	img_bias = img[fits_indices(img.hdr["BIASSEC"])...]
 	corr = img_data .- median(img_bias)
 end
-
-# ╔═╡ 0d42f6f9-d789-46a3-9e9a-381dbed2d5a5
-md"""
-We next compute the bias-subtracted science frame for each of these $(nrow(df_sci_IMACS)) chips:
-"""
 
 # ╔═╡ 86b4ace1-a891-41e5-a29f-f7eee5f8fb17
 frames_IMACS = process_frames(df_sci_IMACS)
@@ -90,8 +83,14 @@ coords_IMACS = CSV.read("$(DATA_DIR_IMACS)/WASP50.coords", DataFrame;
 	header = ["target", "chip", "x", "y"],
 );
 
+# ╔═╡ 4b247772-ca20-480d-b649-143d3489ce46
+f(a; f_kwargs=()) = (a, f_kwargs...)
+
+# ╔═╡ ab0a289c-21e4-4dee-9f70-4b3a6a5d67de
+f(3, f_kwargs=(b = 5,))
+
 # ╔═╡ 0e66d467-1098-46dc-8d06-36d488b14637
-@bind DATA_DIR_LDSS3 Select(glob("data/raw/LDSS3/ut*"))
+@bind DATA_DIR_LDSS3 Select(glob("data/raw_data/LDSS3/ut*"))
 
 # ╔═╡ 5c6e6f7b-70e0-49a8-b064-60dcf1440223
 df_sci_LDSS3 = fitscollection(DATA_DIR_LDSS3, abspath=false)
@@ -117,11 +116,11 @@ coords_LDSS3 = DataFrame((
 # ╔═╡ bf8ef5a9-0806-44b4-907d-c95d6926dabb
 function plot_frame!(ax, img=frames_LDSS3[1], i=1, coords=coords_LDSS3;
 	stepsize = 32,
-	colorrange = (0, 2500),
+	hm_kwargs = (),
 )
 	hm = plot!(ax, img;
 		colormap = :magma,
-		colorrange = colorrange,
+		hm_kwargs...,
 	)
 	
 	# Add labels
@@ -144,7 +143,7 @@ end
 let
 	fig = Figure(resolution = (800, 600))
 	hm = nothing
-	stepsize = 1
+	stepsize = 3
 	grid = CartesianIndices((2, 4))
 	chip_order = [1, 6, 2, 5, 3, 8, 4, 7]
 	for (g, ch) ∈ zip(grid, chip_order)
@@ -164,7 +163,7 @@ let
 
 		hm = plot_frame!(ax, img, ch, coords_IMACS;
 			stepsize = stepsize,
-			colorrange = (0, 200),
+			hm_kwargs = (colorrange=(0, 2500),),
 		)
 	end
 	
@@ -188,7 +187,10 @@ let
 	for j ∈ 1:2
 		ax = Axis(fig[1, j])
 		img = @view(frames_LDSS3[j][begin:stepsize:end, begin:stepsize:end])'
-		hm = plot_frame!(ax, img, j, coords_LDSS3, stepsize=stepsize)
+		hm = plot_frame!(ax, img, j, coords_LDSS3;
+			stepsize = stepsize,
+			hm_kwargs = (colorrange = (0, 2500),),
+		)
 		Label(fig[2, j], "c$(j)", tellwidth=false)
 	end
 
@@ -256,16 +258,17 @@ body.disable_ui main {
 # ╟─90845d70-35d9-402d-8936-74936b069577
 # ╟─8b9581db-71c6-42b6-915b-bde307755bcd
 # ╠═fb6e6221-8136-44e2-979b-ecbbd71f740d
-# ╠═b8de138b-282a-44b3-be8c-7fea2c88030d
-# ╠═c83c2161-95e2-4d08-9934-6d9c12c42a44
 # ╟─0d42f6f9-d789-46a3-9e9a-381dbed2d5a5
+# ╠═c83c2161-95e2-4d08-9934-6d9c12c42a44
 # ╠═86b4ace1-a891-41e5-a29f-f7eee5f8fb17
 # ╟─27b793f3-7a7c-48ad-8302-deffa2dd017b
 # ╠═26feb668-4e7e-4a9d-a2b6-a5dac81e3ab7
 # ╠═3a6ab0c0-ba08-4151-9646-c19d45749b9f
+# ╠═4b247772-ca20-480d-b649-143d3489ce46
+# ╠═ab0a289c-21e4-4dee-9f70-4b3a6a5d67de
 # ╠═bf8ef5a9-0806-44b4-907d-c95d6926dabb
 # ╟─06a834f0-8c90-4013-af34-725166970969
-# ╠═0e66d467-1098-46dc-8d06-36d488b14637
+# ╟─0e66d467-1098-46dc-8d06-36d488b14637
 # ╠═5c6e6f7b-70e0-49a8-b064-60dcf1440223
 # ╠═c488270a-3126-4e38-a0c8-ee242115a3ea
 # ╠═83a9357d-836b-4cee-a41f-eabc8f3f12e7

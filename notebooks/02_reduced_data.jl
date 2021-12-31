@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.2
+# v0.17.3
 
 using Markdown
 using InteractiveUtils
@@ -18,72 +18,34 @@ end
 begin
 	import Pkg
 	Pkg.activate(Base.current_project())
-	
-	using AlgebraOfGraphics
-	using CSV
-	using CairoMakie
-	using CCDReduction
-	using Colors
-	using DataFrames
-	using DataFrameMacros
-	using Dates
-	using DelimitedFiles
-	using Glob
-	using ImageFiltering
-	import CairoMakie.Makie.KernelDensity: kde
-	using Latexify
-	using Measurements
-	using Measurements: value, uncertainty
-	using NaturalSort
-	using OrderedCollections
-	using Printf
-	using Statistics
-	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
-	
-	# Python setup
-	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP-50b/bin/python"
-	Pkg.build("PyCall")
-	using PyCall
-	
-	##############
-	# PLOT CONFIGS
-	##############
-	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (1_350, 800)
-	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
-	const COLORS = parse.(Colorant,
-		[
-			"#a6cee3",  # Cyan
-			"#fdbf6f",  # Yellow
-			"#ff7f00",  # Orange
-			"#1f78b4",  # Blue
-			# "plum",
-			# "#956cb4",  # Purple
-			# "mediumaquamarine",
-			# "#029e73",  # Green,
-		]
-	)
-	
-	set_aog_theme!()
-	update_theme!(
-		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
-			Scatter = (linewidth=10,),
-			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
-			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
-		)
-	)
-	
-	COLORS
+
+	using PythonCall, CondaPkg
+	using PlutoUI
+	# using AlgebraOfGraphics
+	# using CSV
+	# using CairoMakie
+	# using CCDReduction
+	# using Colors
+	# using DataFrames
+	# using DataFrameMacros
+	# using Dates
+	# using DelimitedFiles
+	# using Glob
+	# using ImageFiltering
+	# import CairoMakie.Makie.KernelDensity: kde
+	# using Latexify
+	# using Measurements
+	# using Measurements: value, uncertainty
+	# using NaturalSort
+	# using OrderedCollections
+	# using Printf
+	# using Statistics
+	# using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
 end
 
 # ╔═╡ ee24f7df-c4db-4065-afe9-10be80cbcd6b
 md"""
-# Reduced Data -- IMACS
+# Reduced data -- IMACS
 
 In this notebook we will examine the stellar spectra, white-light, and wavelength binned light curves from the raw flux extracted from IMACS.
 
@@ -97,7 +59,7 @@ md"""
 The main data product from our custom pipeline for this instrument is a pickle file with the following naming scheme: `LCs_<target>_<wavelength bin scheme>.pkl`. 
 
 Each cube (`LC`) can be selected from the following drop-down menu, and will be used for the rest of this analysis:
-$(@bind fpath Select(sort(glob("data/reduced/IMACS/*/*.pkl"))))
+$(@bind fpath Select(sort(glob("data/reduced_data/IMACS/*/*.pkl"))))
 """
 
 # ╔═╡ 66052b03-35a0-4877-abef-f525766fd332
@@ -257,6 +219,184 @@ with_terminal() do
 	println(length(bad_idxs))
 end
 
+# ╔═╡ 4e4cb513-1e88-4414-aa4d-a14d934874ce
+begin
+	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
+	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
+end;
+
+# ╔═╡ 0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
+md"""
+### Raw flux
+"""
+
+# ╔═╡ e6e1ea18-216a-41ae-8a1a-590793fcb669
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1];
+		xlabel="Index",
+		ylabel="Relative flux",
+		limits=(nothing, nothing, 0.975, 1.02),
+	)
+	
+	f_wlc_targ = LC["oLC"] ./ mean(LC["oLC"], dims=1)
+	f_wlc_comps = LC["cLC"][:, sorted_cName_idxs] ./ mean(
+		LC["cLC"][:, sorted_cName_idxs], dims=1
+	)
+	
+	f_wlc_comps = LC["cLC"][:, sorted_cName_idxs] ./ mean(
+		LC["cLC"][:, sorted_cName_idxs], dims=1
+	)
+	
+	for (i, (cName, col)) in enumerate(zip(sort(comp_names), eachcol(f_wlc_comps)))
+		scatter!(ax, col; label=cName)
+	end
+	
+	scatter!(ax, f_wlc_targ ./ mean(f_wlc_targ, dims=1);
+		linewidth = 5,
+		color = :darkgrey,
+		label = "WASP-50",
+	)
+	
+	axislegend()
+	
+	fig #|> as_svg
+		
+end
+
+# ╔═╡ e98dee2e-a369-448e-bfe4-8fea0f318fa8
+md"""
+## Binned light curves 🌈
+
+We first compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `ncomps` ``\times`` `nbins`, where for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
+"""
+
+# ╔═╡ d06ef854-7503-4801-97ae-65d2f1883a0d
+wbins_name = occursin("131219", fpath) ? "w50_bins_ut131219.dat" : "w50_bins.dat"
+
+# ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
+wbins = readdlm("data/reduced/IMACS/$(wbins_name)", comments=true)
+#wbins = readdlm("data/reduced/w50_bins_species.dat", comments=true)
+
+# ╔═╡ 24594175-5f0e-4d5a-a9bf-e1fd441b70d3
+#let
+with_terminal() do
+	wl, wu = wbins[:, 1], wbins[:, 2]
+	Δw = @. wu - wl
+	wc = @. (wl + wu) / 2
+	df = DataFrame(
+		"Central wavelength" => wc,
+		"Lower wav." => wl,
+		"Upper wav." => wu,
+		L"$\Delta$ wav." => Δw,
+	)
+	latextabular(df, latex=false) |> println
+end
+
+# ╔═╡ 793c4d08-e2ee-4c9d-b7a0-11eaaddba895
+md"""
+We plot these below for each comparison star division. Move the slider to view the plot for the corresponding comparison star:
+
+comp star $(@bind comp_idx Slider(1:length(comp_names), default=2, show_value=true))
+
+!!! note "Future"
+	Ability to interact with sliders completely in the browser coming soon!
+"""
+
+# ╔═╡ 3ca393d6-01c0-4f77-88ff-7c4f6388670e
+begin
+	oLCw, cLCw = LC["oLCw"], LC["cLCw"]
+	(ntimes, nbins), ncomps = size(oLCw), length(comp_names)
+	offs = reshape(range(0, 0.3, length=nbins), 1, :) # Arbitrary offsets for clarity
+	f_norm_w = Array{Float64}(undef, ntimes, ncomps, nbins)
+	for c_i in 1:ncomps
+		f_w = oLCw ./ cLCw[:, c_i, :]
+		f_norm_w[:, c_i, :] .= f_w ./ median(f_w, dims=1) .+ offs
+	end
+	baselines = ones(size(f_norm_w[:, comp_idx, :])) .+ offs # Reference baselines
+end;
+
+# ╔═╡ 2768623f-7904-4674-a2ee-ad809cdd508b
+# Median filtered curves for visualization purposes
+f_med, _, f_diff = filt(f_norm_w[:, comp_idx, :], window_width)
+
+# ╔═╡ eeb3da97-72d5-4317-acb9-d28637a06d67
+md"""
+## Notebook setup
+"""
+
+# ╔═╡ a8d1c3e6-c020-495f-a443-07203b7dcd50
+begin
+	##############
+	# PLOT CONFIGS
+	##############
+	const FIG_TALL = (900, 1_200)
+	const FIG_WIDE = (1_350, 800)
+	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS = parse.(Colorant,
+		[
+			"#a6cee3",  # Cyan
+			"#fdbf6f",  # Yellow
+			"#ff7f00",  # Orange
+			"#1f78b4",  # Blue
+			# "plum",
+			# "#956cb4",  # Purple
+			# "mediumaquamarine",
+			# "#029e73",  # Green,
+		]
+	)
+	
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Scatter = (linewidth=10,),
+			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
+	
+	COLORS
+end
+
+# ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
+let
+	fig = Figure(resolution=(800, 400))
+	ax = Axis(fig[1, 1], xlabel="Wavelength (Å)", ylabel="Relative flux")
+	
+	wav = LC["spectra"]["wavelengths"]
+	f_norm = median(LC["spectra"]["WASP50"])
+	
+	i = 1
+	for (name, f) in sort(LC["spectra"])
+		if name != "wavelengths"
+			spec_plot!(ax, wav, f, color=COLORS_SERIES[i], norm=f_norm, label=name)
+			i += 1
+		end
+	end
+	
+	vlines!.(ax, wbins, linewidth=1.0, color=:lightgrey)
+	
+	axislegend()
+	
+	xlims!(ax, 4_500, 11_000)
+	ylims!(ax, 0, 2.6)
+	
+	path = "../../ACCESS_WASP-50b/figures/reduced"
+	mkpath(path)
+	save("$(path)/extracted_spectra_$(utdate)_IMACS.png", fig)
+	#save(
+	# 	"../../ACCESS_WASP-50b/figures/reduced/extracted_spectra_$(utdate)_IMACS.pdf",
+	# 	fig
+	# )
+	
+	fig #|> as_svg
+end
+
 # ╔═╡ ccabf5d2-5739-4284-a972-23c02a263a5c
 function plot_div_WLCS!(
 	axs, f_div_wlc, window_width, cNames, use_comps_idxs; ferr=0.002
@@ -331,141 +471,6 @@ let
 	fig #|> as_svg
 end
 
-# ╔═╡ 4e4cb513-1e88-4414-aa4d-a14d934874ce
-begin
-	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
-	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
-end;
-
-# ╔═╡ 0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
-md"""
-### Raw flux
-"""
-
-# ╔═╡ e6e1ea18-216a-41ae-8a1a-590793fcb669
-let
-	fig = Figure()
-	ax = Axis(fig[1, 1];
-		xlabel="Index",
-		ylabel="Relative flux",
-		limits=(nothing, nothing, 0.975, 1.02),
-	)
-	
-	f_wlc_targ = LC["oLC"] ./ mean(LC["oLC"], dims=1)
-	f_wlc_comps = LC["cLC"][:, sorted_cName_idxs] ./ mean(
-		LC["cLC"][:, sorted_cName_idxs], dims=1
-	)
-	
-	f_wlc_comps = LC["cLC"][:, sorted_cName_idxs] ./ mean(
-		LC["cLC"][:, sorted_cName_idxs], dims=1
-	)
-	
-	for (i, (cName, col)) in enumerate(zip(sort(comp_names), eachcol(f_wlc_comps)))
-		scatter!(ax, col; label=cName)
-	end
-	
-	scatter!(ax, f_wlc_targ ./ mean(f_wlc_targ, dims=1);
-		linewidth = 5,
-		color = :darkgrey,
-		label = "WASP-50",
-	)
-	
-	axislegend()
-	
-	fig #|> as_svg
-		
-end
-
-# ╔═╡ e98dee2e-a369-448e-bfe4-8fea0f318fa8
-md"""
-## Binned light curves 🌈
-
-We first compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `ncomps` ``\times`` `nbins`, where for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
-"""
-
-# ╔═╡ d06ef854-7503-4801-97ae-65d2f1883a0d
-wbins_name = occursin("131219", fpath) ? "w50_bins_ut131219.dat" : "w50_bins.dat"
-
-# ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
-wbins = readdlm("data/reduced/IMACS/$(wbins_name)", comments=true)
-#wbins = readdlm("data/reduced/w50_bins_species.dat", comments=true)
-
-# ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
-let
-	fig = Figure(resolution=(800, 400))
-	ax = Axis(fig[1, 1], xlabel="Wavelength (Å)", ylabel="Relative flux")
-	
-	wav = LC["spectra"]["wavelengths"]
-	f_norm = median(LC["spectra"]["WASP50"])
-	
-	i = 1
-	for (name, f) in sort(LC["spectra"])
-		if name != "wavelengths"
-			spec_plot!(ax, wav, f, color=COLORS_SERIES[i], norm=f_norm, label=name)
-			i += 1
-		end
-	end
-	
-	vlines!.(ax, wbins, linewidth=1.0, color=:lightgrey)
-	
-	axislegend()
-	
-	xlims!(ax, 4_500, 11_000)
-	ylims!(ax, 0, 2.6)
-	
-	path = "../../ACCESS_WASP-50b/figures/reduced"
-	mkpath(path)
-	save("$(path)/extracted_spectra_$(utdate)_IMACS.png", fig)
-	#save(
-	# 	"../../ACCESS_WASP-50b/figures/reduced/extracted_spectra_$(utdate)_IMACS.pdf",
-	# 	fig
-	# )
-	
-	fig #|> as_svg
-end
-
-# ╔═╡ 24594175-5f0e-4d5a-a9bf-e1fd441b70d3
-#let
-with_terminal() do
-	wl, wu = wbins[:, 1], wbins[:, 2]
-	Δw = @. wu - wl
-	wc = @. (wl + wu) / 2
-	df = DataFrame(
-		"Central wavelength" => wc,
-		"Lower wav." => wl,
-		"Upper wav." => wu,
-		L"$\Delta$ wav." => Δw,
-	)
-	latextabular(df, latex=false) |> println
-end
-
-# ╔═╡ 793c4d08-e2ee-4c9d-b7a0-11eaaddba895
-md"""
-We plot these below for each comparison star division. Move the slider to view the plot for the corresponding comparison star:
-
-comp star $(@bind comp_idx Slider(1:length(comp_names), default=2, show_value=true))
-
-!!! note "Future"
-	Ability to interact with sliders completely in the browser coming soon!
-"""
-
-# ╔═╡ 3ca393d6-01c0-4f77-88ff-7c4f6388670e
-begin
-	oLCw, cLCw = LC["oLCw"], LC["cLCw"]
-	(ntimes, nbins), ncomps = size(oLCw), length(comp_names)
-	offs = reshape(range(0, 0.3, length=nbins), 1, :) # Arbitrary offsets for clarity
-	f_norm_w = Array{Float64}(undef, ntimes, ncomps, nbins)
-	for c_i in 1:ncomps
-		f_w = oLCw ./ cLCw[:, c_i, :]
-		f_norm_w[:, c_i, :] .= f_w ./ median(f_w, dims=1) .+ offs
-	end
-	baselines = ones(size(f_norm_w[:, comp_idx, :])) .+ offs # Reference baselines
-end;
-
-# ╔═╡ 2768623f-7904-4674-a2ee-ad809cdd508b
-# Median filtered curves for visualization purposes
-f_med, _, f_diff = filt(f_norm_w[:, comp_idx, :], window_width)
-
 # ╔═╡ 684c026a-b5d0-4694-8d29-a44b7cb0fd6c
 let
 	fig = Figure(resolution=FIG_TALL)
@@ -518,10 +523,11 @@ let
 	fig #|> as_svg
 end
 
-# ╔═╡ eeb3da97-72d5-4317-acb9-d28637a06d67
-md"""
-## Notebook setup
-"""
+# ╔═╡ 55f25dea-57f5-4e2c-b064-15ac54df4603
+begin
+	CondaPkg.add("numpy")
+	CondaPkg.resolve()
+end
 
 # ╔═╡ 03af71ac-673b-459b-a931-a600b13d7ee6
 html"""
@@ -543,7 +549,7 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
-# ╠═ee24f7df-c4db-4065-afe9-10be80cbcd6b
+# ╟─ee24f7df-c4db-4065-afe9-10be80cbcd6b
 # ╟─9d180c21-e634-4a1e-8430-bdd089262f66
 # ╠═bd2cdf33-0c41-4948-82ab-9a28929f72b3
 # ╟─66052b03-35a0-4877-abef-f525766fd332
@@ -582,5 +588,7 @@ body.disable_ui main {
 # ╟─793c4d08-e2ee-4c9d-b7a0-11eaaddba895
 # ╠═684c026a-b5d0-4694-8d29-a44b7cb0fd6c
 # ╟─eeb3da97-72d5-4317-acb9-d28637a06d67
+# ╠═a8d1c3e6-c020-495f-a443-07203b7dcd50
+# ╠═55f25dea-57f5-4e2c-b064-15ac54df4603
 # ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23
 # ╟─03af71ac-673b-459b-a931-a600b13d7ee6

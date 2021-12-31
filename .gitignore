@@ -1,8 +1,9 @@
-_build
-__pycache__/
+*.pdf
+.CondaPkg
 .ipynb_checkpoints/
+Manifest.toml
+__pycache__/
+_build
 data*/
 overleaf/
 retrievals/
-Manifest.toml
-*.pdf
