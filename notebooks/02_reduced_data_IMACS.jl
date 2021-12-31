@@ -22,24 +22,13 @@ begin
 	using PythonCall, CondaPkg
 	using PlutoUI
 	using AlgebraOfGraphics
-	# using CSV
 	using CairoMakie
-	# using CCDReduction
 	using DataFrames
-	# using DataFrameMacros
-	# using Dates
 	using DelimitedFiles
 	using Glob
 	using ImageFiltering
-	# import CairoMakie.Makie.KernelDensity: kde
-	# using Latexify
-	# using Measurements
-	# using Measurements: value, uncertainty
-	# using NaturalSort
-	# using OrderedCollections
-	# using Printf
+	using Latexify
 	using Statistics
-	# using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
 end
 
 # ╔═╡ ee24f7df-c4db-4065-afe9-10be80cbcd6b
@@ -71,7 +60,6 @@ Each cube (`LC`) can be selected from the following drop-down menus, and will be
 
 # ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
 wbins = readdlm(FPATH_WBINS, comments=true)
-#wbins = readdlm("data/reduced/w50_bins_species.dat", comments=true)
 
 # ╔═╡ 66052b03-35a0-4877-abef-f525766fd332
 md"""
@@ -300,7 +288,7 @@ end
 
 # ╔═╡ 55f25dea-57f5-4e2c-b064-15ac54df4603
 begin
-	CondaPkg.add("numpy")
+	CondaPkg.add.(("astropy", "numpy"))
 	CondaPkg.resolve()
 end
 
@@ -311,7 +299,7 @@ macro py_str(s)
 	else
 		pyeval(s, Main)
 	end
-end
+end;
 
 # ╔═╡ 3653ee36-35a6-4e0a-8d46-4f8389381d45
 begin
@@ -336,7 +324,7 @@ LC = load_pickle(FPATH);
 
 # ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
 let
-	fig = Figure(resolution=(800, 400))
+	fig = Figure(resolution=FIG_WIDE)
 	ax = Axis(fig[1, 1], xlabel="Wavelength (Å)", ylabel="Relative flux")
 	
 	LC_spectra = pyconvert(Dict, LC["spectra"])
@@ -358,9 +346,9 @@ let
 	xlims!(ax, 4_500, 11_000)
 	ylims!(ax, 0, 2.6)
 	
-	# path = "../../ACCESS_WASP-50b/figures/reduced"
-	# mkpath(path)
-	# save("$(path)/extracted_spectra_$(utdate)_IMACS.png", fig)
+	path = "../../ACCESS_WASP-50b/figures/reduced_data"
+	mkpath(path)
+	save("$(path)/extracted_spectra_$(utdate)_IMACS.png", fig)
 	
 	fig #|> as_svg
 end
@@ -399,7 +387,7 @@ end
 
 # ╔═╡ 13523326-a5f2-480d-9961-d23cd51192b8
 let
-	fig = Figure(resolution=(800, 600))
+	fig = Figure(resolution=FIG_WIDE)
 	
 	ncomps = length(comp_names)
 	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
@@ -419,7 +407,7 @@ let
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
 	fig[end+1, 2:end] = Label(fig, "Index")
 	
-	path = "../../ACCESS_WASP-50b/figures/reduced"
+	path = "../../ACCESS_WASP-50b/figures/reduced_data"
 	mkpath(path)
 	save("$(path)/div_wlcs_$(utdate)_IMACS.png", fig)
 	
@@ -473,7 +461,7 @@ end
 md"""
 We plot these below for each comparison star division. Move the slider to view the plot for the corresponding comparison star:
 
-comp star $(@bind comp_idx Slider(1:length(comp_names), default=2, show_value=true))
+comp star $(@bind comp_idx PlutoUI.Slider(1:length(comp_names), default=2, show_value=true))
 
 !!! note "Future"
 	Ability to interact with sliders completely in the browser coming soon!
@@ -538,7 +526,7 @@ let
 	fig[end, 2:3] = Label(fig, "Index")
 	
 	# save(
-	# 	"../../ACCESS_WASP-50b/figures/reduced/divided_blcs_IMACS.pdf",
+	# 	"../../ACCESS_WASP-50b/figures/reduced_data/divided_blcs_IMACS.pdf",
 	# 	fig
 	# )
 	
@@ -583,7 +571,7 @@ body.disable_ui main {
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
 # ╠═1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
 # ╠═6fd88483-d005-4186-8dd2-82cea767ce90
-# ╠═e3468c61-782b-4f55-a4a1-9d1883655d11
+# ╟─e3468c61-782b-4f55-a4a1-9d1883655d11
 # ╠═bcda2043-f8c7-46bc-a5d4-b6f1f0883e9e
 # ╠═f519626c-a3e8-4390-b3af-40b7beb665ed
 # ╠═9a9b688c-94f0-4944-a9b2-21702073e0c7
@@ -614,6 +602,6 @@ body.disable_ui main {
 # ╟─eeb3da97-72d5-4317-acb9-d28637a06d67
 # ╠═a8d1c3e6-c020-495f-a443-07203b7dcd50
 # ╠═55f25dea-57f5-4e2c-b064-15ac54df4603
-# ╠═d07e895f-c43b-46c4-be47-5af44bfda47a
 # ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23
+# ╟─d07e895f-c43b-46c4-be47-5af44bfda47a
 # ╟─03af71ac-673b-459b-a931-a600b13d7ee6

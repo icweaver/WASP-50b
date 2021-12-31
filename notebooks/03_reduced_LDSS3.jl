@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.1
+# v0.17.3
 
 using Markdown
 using InteractiveUtils
@@ -14,74 +14,22 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ c911cecd-0747-4cd1-826f-941f2f58091c
+# ╔═╡ f883b759-65fc-466e-9c8f-e4f941def935
 begin
 	import Pkg
 	Pkg.activate(Base.current_project())
-	
-	Pkg.instantiate()
-	
+
+	using PythonCall, CondaPkg
+	using PlutoUI
 	using AlgebraOfGraphics
-	using CSV
 	using CairoMakie
-	using CCDReduction
-	using Colors
-	using DataFrames
-	using DataFrameMacros
-	using Dates
+	using CSV, DataFrames
 	using DelimitedFiles
 	using Glob
 	using ImageFiltering
 	using Latexify
-	using Measurements
-	using Measurements: value, uncertainty
-	using NaturalSort
-	using OrderedCollections
-	using Printf
 	using Statistics
-	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
-	
-	import CairoMakie.Makie.KernelDensity: kde
-	
-	# Python setup
-	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP-50b/bin/python"
-	Pkg.build("PyCall")
-	using PyCall
-	
-	##############
-	# PLOT CONFIGS
-	##############
-	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (1_350, 800)
-	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
-	const COLORS = parse.(Colorant,
-		[
-			"#a6cee3",  # Cyan
-			"#fdbf6f",  # Yellow
-			"#ff7f00",  # Orange
-			"#1f78b4",  # Blue
-			# "plum",
-			# "#956cb4",  # Purple
-			# "mediumaquamarine",
-			# "#029e73",  # Green,
-		]
-	)
-	
-	set_aog_theme!()
-	update_theme!(
-		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
-			Scatter = (linewidth=10,),
-			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
-			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
-		)
-	)
-	
-	COLORS
+	using OrderedCollections
 end
 
 # ╔═╡ 34ef4580-bb95-11eb-34c1-25893217f422
@@ -120,8 +68,11 @@ The data from this instrument is stored in an `npy` file that contains the follo
 	We will use `wavelength` and `raw_counts` for our analysis here, where `raw_counts` is the sky subtracted, cross-dispersion integrated flux from each star.
 
 Each cube (`LC`) can be selected from the following drop-down menu, and will be used for the rest of this analysis:
-$(@bind fpath Select(sort(glob("data/reduced/LDSS3/*/LC*.npy"))))
+$(@bind DIRPATH Select(sort(glob("data/reduced_data/LDSS3/ut*"))))
 """
+
+# ╔═╡ 48713a10-6ba7-4de5-a147-85a9cb136dd8
+@bind FPATH Select(glob("$(DIRPATH)/LCs*.npy"))
 
 # ╔═╡ 698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 md"""
@@ -134,8 +85,6 @@ obj_names = OrderedDict(
 	"aperture_153_1117" => "c06",
 	"aperture_830_689" => "c15",
 	"aperture_28_1189" => "c21",
-	
-	
 	"aperture_325_803" => "WASP50",
 	"aperture_157_1116" => "c06",
 	"aperture_830_693" => "c15",
@@ -149,9 +98,6 @@ md"""
 
 	**Add to paper:** "This research has made use of the VizieR catalogue access tool, CDS, Strasbourg, France (DOI: 10.26093/cds/vizier). The original description of the VizieR service was published in A&AS 143, 23"
 """
-
-# ╔═╡ 0d017105-e3a3-4a0e-9e5f-be4200b8cc2c
-CSV.File("data/reduced/LDSS3/catalog.tsv", comment="#")
 
 # ╔═╡ a687fa5d-1d98-4cb4-ae5d-978594d205dd
 md"""
@@ -201,7 +147,7 @@ wbins_species = round.(
 )
 
 # ╔═╡ 80d2f86f-377f-4dac-9b89-89518f001a6a
-writedlm("./data/reduced/w50_bins_species.dat", wbins_species, " ")
+writedlm("./data/reduced_data/w50_bins_species.dat", wbins_species, " ")
 
 # ╔═╡ 48f31cef-ee18-47f9-a71d-4a5b2c6efe71
 species = (Na=5892.9, K=7682.0, Na_8200=8189.0)
@@ -228,11 +174,11 @@ Next, we will extract the integrated white-light curves from these spectra. We i
 """
 
 # ╔═╡ 9697e26b-b6d9-413b-869f-47bc2ab99919
-wbins = readdlm("data/reduced/LDSS3/w50_bins_LDSS3.dat", comments=true)
+wbins = readdlm("$(DIRPATH)/../w50_bins_LDSS3.dat", comments=true)
 #wbins = readdlm("data/reduced/w50_bins_species.dat", comments=true)
 
 # ╔═╡ cb805821-5d2e-484c-93a5-10a897d2cfe7
-@bind window_width Slider(3:2:21, default=15, show_value=true)
+@bind window_width PlutoUI.Slider(3:2:21, default=15, show_value=true)
 
 # ╔═╡ 9372c69a-0aad-4e6e-9ea3-e934fa09b758
 get_idx(needle, haystack) = findfirst(==(needle), haystack)
@@ -242,15 +188,6 @@ md"""
 !!! note
 	We divide the target WLC by each comparison star to minimize common systematics (e.g., air mass, local refractive atmospheric effects), and to make the transit shape more apparent. This allows us to select good comparison stars for that particular night and which timeseries points to include in the rest of the analysis.
 """
-
-# ╔═╡ fda9022a-2b95-4d06-8a80-80321a1bf441
-x = rand(100, 100)
-
-# ╔═╡ 1d91f3b2-293f-467c-ba40-7dc6497152cd
-[
- 1 2
- 3     4	
-]
 
 # ╔═╡ 89256633-3c12-4b94-b245-4fdda44d686c
 function filt(f_div_wlc, window_width; func=median, border="reflect")
@@ -275,6 +212,131 @@ function filt_idxs(f_div_wlc, window_width; ferr=0.002)
 	bad_idxs = ∪(findall.(>(ferr), eachcol(f_diff))...) |> sort;
 	use_idxs = deleteat!(collect(1:size(f_div_wlc, 1)), bad_idxs)
 	return f_filt, use_idxs, bad_idxs
+end
+
+# ╔═╡ 97191c55-f673-46b4-82fd-147e7d150623
+md"""
+### Raw flux
+"""
+
+# ╔═╡ a5e742e5-fcca-40d7-b342-c6112e6899e5
+md"""
+## Binned light curves 🌈
+
+We next integrate the target and comparison star flux within each bin defined above to build the binned light curves. We store these in `oLCw` and `cLCw`, where `oLCw` is an `ntimes` ``\times`` `nbins` matrix that holds the binned target flux, where `ntimes` is the number of timeseries points ``N``. Similarly `cLCw` is an `ntimes` ``\times`` `ncomps` ``\times`` `nbins` matrix that holds the comparison star flux, where `ncomps` is the number of comparison stars:
+"""
+
+# ╔═╡ 90b26a58-834a-445b-9242-d7b2e04be614
+# For columnar data `A`, returns the sum of each row (for default `dims=2`)
+# along the range of columns specified by `idx_range`
+sum_flux(A, idx_range, dims=2) = sum(view(A, :, idx_range), dims=dims)[:, 1]
+
+# ╔═╡ 5837dc0e-3537-4a90-bd2c-494e7b3e6bb7
+md"""
+With `oLCw` and `cLCw` now computed, we next compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `ncomps` ``\times`` `nbins`, where for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
+"""
+
+# ╔═╡ af07dc54-eeb5-4fbe-8dd0-289dea97502a
+md"""
+## `GPTransmissionSpectra` inputs 🔩
+
+Finally, we export the external parameters and light curves (in magnitude space) to be used for detrending in `GPTransmissionSpectra`:
+"""
+
+# ╔═╡ 88cc640d-b58d-4cde-b793-6c66e74f6b3a
+md"""
+#### External parameters
+"""
+
+# ╔═╡ 301ff07c-8dd5-403a-bae8-a4c38deeb331
+target_name = "aperture_324_803" #"aperture_325_803" # "aperture_324_803"
+
+# ╔═╡ d14ab9de-23b4-4647-a823-9b318bb734e9
+median_eparam(param, cube, obj_name, wav_idxs) = cube[param][obj_name][:, wav_idxs] |>
+	x -> median(x, dims=2) |> vec |> x -> convert(Vector{Float64}, x)
+
+# ╔═╡ e6ed8da6-189a-4931-aac5-a4e8d0291723
+fmt_float(x) = @sprintf "%.10f" x
+
+# ╔═╡ 0be35b52-caea-4000-8cf8-ab99205bdb97
+function template_dir(fpath)
+	base_dir = "$(dirname(dirname(fpath)))/LDSS3_template/WASP50"
+	date, flat_status = split(basename(dirname(fpath)), '_')
+	return "$(base_dir)/w50_$(date[3:end])_LDSS3_$(flat_status)"
+end
+
+# ╔═╡ 2aba612a-7599-4a2d-9ff0-2fd398c2a0db
+let
+	savepath = template_dir(FPATH)
+	rm(savepath, force=true, recursive=true)
+	mkpath(savepath)
+end
+
+# ╔═╡ 4af35a95-99b3-4186-a47d-169b9cbf927b
+tdir = "$(template_dir(FPATH))"
+
+# ╔═╡ 2341920d-6db8-4f08-b8ed-4907ceab7357
+md"""
+#### WLCs (magnitude space)
+"""
+
+# ╔═╡ b5ef9d95-1a2a-4828-8e27-89727f2e288b
+md"""
+#### Binned LCs (magnitude space)
+"""
+
+# ╔═╡ 123d0c63-f05a-4a7d-be16-6a3b9abac044
+function f_to_med_mag(f)
+	mag = -2.51 * log10.(f)
+	return mag .- median(mag)
+end
+
+# ╔═╡ 3b6b57e2-46ab-46d9-b334-6264daf583f3
+md"""
+## Helper functions
+"""
+
+# ╔═╡ f788835c-8e81-4afe-805e-4caf2d5e5d5b
+md"""
+## Notebook setup
+"""
+
+# ╔═╡ c911cecd-0747-4cd1-826f-941f2f58091c
+begin
+	##############
+	# PLOT CONFIGS
+	##############
+	const FIG_TALL = (900, 1_200)
+	const FIG_WIDE = (800, 600)
+	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS = parse.(Makie.Colors.Colorant,
+		[
+			"#a6cee3",  # Cyan
+			"#fdbf6f",  # Yellow
+			"#ff7f00",  # Orange
+			"#1f78b4",  # Blue
+			# "plum",
+			# "#956cb4",  # Purple
+			# "mediumaquamarine",
+			# "#029e73",  # Green,
+		]
+	)
+	
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Scatter = (linewidth=10,),
+			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
+	
+	COLORS
 end
 
 # ╔═╡ 20d12d7b-c666-46c3-8f48-5501641e8df3
@@ -322,87 +384,20 @@ function plot_div_WLCS!(
 	end
 end
 
-# ╔═╡ 97191c55-f673-46b4-82fd-147e7d150623
-md"""
-### Raw flux
-"""
-
-# ╔═╡ a5e742e5-fcca-40d7-b342-c6112e6899e5
-md"""
-## Binned light curves 🌈
-
-We next integrate the target and comparison star flux within each bin defined above to build the binned light curves. We store these in `oLCw` and `cLCw`, where `oLCw` is an `ntimes` ``\times`` `nbins` matrix that holds the binned target flux, where `ntimes` is the number of timeseries points ``N``. Similarly `cLCw` is an `ntimes` ``\times`` `ncomps` ``\times`` `nbins` matrix that holds the comparison star flux, where `ncomps` is the number of comparison stars:
-"""
-
-# ╔═╡ 90b26a58-834a-445b-9242-d7b2e04be614
-# For columnar data `A`, returns the sum of each row (for default `dims=2`)
-# along the range of columns specified by `idx_range`
-sum_flux(A, idx_range, dims=2) = sum(view(A, :, idx_range), dims=dims)[:, 1]
-
-# ╔═╡ 5837dc0e-3537-4a90-bd2c-494e7b3e6bb7
-md"""
-With `oLCw` and `cLCw` now computed, we next compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `ncomps` ``\times`` `nbins`, where for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
-"""
-
-# ╔═╡ af07dc54-eeb5-4fbe-8dd0-289dea97502a
-md"""
-## `GPTransmissionSpectra` inputs 🔩
-
-Finally, we export the external parameters and light curves (in magnitude space) to be used for detrending in `GPTransmissionSpectra`:
-"""
-
-# ╔═╡ 88cc640d-b58d-4cde-b793-6c66e74f6b3a
-md"""
-#### External parameters
-"""
-
-# ╔═╡ 301ff07c-8dd5-403a-bae8-a4c38deeb331
-target_name = "aperture_325_803" # "aperture_324_803"
-
-# ╔═╡ d14ab9de-23b4-4647-a823-9b318bb734e9
-median_eparam(param, cube, obj_name, wav_idxs) = cube[param][obj_name][:, wav_idxs] |>
-	x -> median(x, dims=2) |> vec |> x -> convert(Vector{Float64}, x)
-
-# ╔═╡ e6ed8da6-189a-4931-aac5-a4e8d0291723
-fmt_float(x) = @sprintf "%.10f" x
-
-# ╔═╡ 0be35b52-caea-4000-8cf8-ab99205bdb97
-function template_dir(fpath)
-	base_dir = "$(dirname(dirname(fpath)))/LDSS3_template/WASP50"
-	date, flat_status = split(basename(dirname(fpath)), '_')
-	return "$(base_dir)/w50_$(date[3:end])_LDSS3_$(flat_status)"
+# ╔═╡ 26f18ff6-7baa-4905-b9d1-52cfa9396dfc
+begin
+	CondaPkg.add.(("astropy", "numpy"))
+	CondaPkg.resolve()
 end
 
-# ╔═╡ 2aba612a-7599-4a2d-9ff0-2fd398c2a0db
-let
-	savepath = template_dir(fpath)
-	rm(savepath, force=true, recursive=true)
-	mkpath(savepath)
-end
-
-# ╔═╡ 4af35a95-99b3-4186-a47d-169b9cbf927b
-tdir = "$(template_dir(fpath))"
-
-# ╔═╡ 2341920d-6db8-4f08-b8ed-4907ceab7357
-md"""
-#### WLCs (magnitude space)
-"""
-
-# ╔═╡ b5ef9d95-1a2a-4828-8e27-89727f2e288b
-md"""
-#### Binned LCs (magnitude space)
-"""
-
-# ╔═╡ 123d0c63-f05a-4a7d-be16-6a3b9abac044
-function f_to_med_mag(f)
-	mag = -2.51 * log10.(f)
-	return mag .- median(mag)
-end
-
-# ╔═╡ 3b6b57e2-46ab-46d9-b334-6264daf583f3
-md"""
-## Helper functions
-"""
+# ╔═╡ ae0e14fd-3fbf-46ba-ac3c-76fd2f38c224
+macro py_str(s)
+	if '\n' ∈ s || '=' ∈ s
+		pyexec(s, Main)
+	else
+		pyeval(s, Main)
+	end
+end;
 
 # ╔═╡ 2d34e125-548e-41bb-a530-ba212c0ca17c
 begin
@@ -423,18 +418,12 @@ begin
 end;
 
 # ╔═╡ 01e27cf6-0a1b-4741-828a-ef8bf7037ae9
-LC = load_npz(fpath, allow_pickle=true)
-
-# ╔═╡ 3ce1d29a-7219-49be-baba-4125b5a557de
-am = LC["temporal"].columns["airmass"]
-
-# ╔═╡ de51df33-1be5-473b-afa9-c5a2fc40493a
-lines(am)
+LC = load_npz(FPATH, allow_pickle=true)
 
 # ╔═╡ 9341c427-642a-4782-925a-6e07b91277a0
 fluxes = Dict(
 	obj_names[k] => convert(Matrix{Float64}, v)
-	for (k, v) ∈ LC["cubes"]["raw_counts"]
+	for (k, v) ∈ pyconvert(Dict, LC["cubes"]["raw_counts"])
 )
 
 # ╔═╡ 651b5782-c1ae-45f0-8de1-079e13387ca9
@@ -464,7 +453,7 @@ fluxes["WASP50"]
 median(fluxes["WASP50"], dims=2)
 
 # ╔═╡ dc62887d-746b-4503-8547-7a6814de66a8
-wav = LC["spectral"]["wavelength"][common_wav_idxs]
+wav = PyArray(LC["spectral"]["wavelength"])[common_wav_idxs]
 
 # ╔═╡ 45418bd3-74a3-4758-9fce-adddbeeec076
 let
@@ -501,7 +490,7 @@ let
 	
 	axislegend()
 	
-	path = "../../ACCESS_WASP-50b/figures/reduced"
+	path = "../../ACCESS_WASP-50b/figures/reduced_data"
 	mkpath(path)
 	save("$(path)/extracted_spectra_ut150927_LDSS3.png", fig)
 	
@@ -530,7 +519,7 @@ end
 
 # ╔═╡ 4b2ed9db-0a17-4e52-a04d-3a6a5bf2c054
 let
-	fig = Figure(resolution=(800, 600))
+	fig = Figure(resolution=FIG_WIDE)
 	
 	comp_names = obj_names.vals[2:4]
 	ncomps = length(comp_names)
@@ -562,7 +551,7 @@ end
 _, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm, window_width);
 
 # ╔═╡ ded63b4b-61b6-41b6-98d4-d13166bce76a
-with_terminal() do
+@with_terminal begin
 	println(bad_idxs .- 1) # For Python
 end
 
@@ -628,7 +617,7 @@ cLCw
 md"""
 We plot these below for each comparison star division. Move the slider to view the plot for the corresponding comparison star:
 
-comp star $(@bind comp_idx Slider(1:ncomps, show_value=true))
+comp star $(@bind comp_idx PlutoUI.Slider(1:ncomps, show_value=true))
 
 !!! note "Future"
 	Ability to interact with sliders completely in the browser coming soon!
@@ -700,7 +689,7 @@ let
 	# ax.ylabel = "Relative flux + offset"
 	
 	# save(
-	# 	"../../ACCESS_WASP-50b/figures/reduced/divided_blcs_LDSS3.pdf",
+	# 	"../../ACCESS_WASP-50b/figures/reduced_data/divided_blcs_LDSS3.pdf",
 	# 	fig
 	# )
 	
@@ -714,10 +703,10 @@ target_binned_mags = mapslices(f_to_med_mag, oLCw, dims=1)[use_idxs, :]
 comp_binned_mags = mapslices(f_to_med_mag, cLCw, dims=1)[use_idxs, :, :]
 
 # ╔═╡ c03cb527-d16d-47aa-ab63-6970f4ff0b1f
-times, airmass = getindex.(
-	Ref(LC["temporal"].columns),
-	["bjd", "airmass"]
-)
+begin
+	times = pyconvert(Vector, LC["temporal"]["bjd"])
+	airmass = pyconvert(Vector, LC["temporal"]["airmass"])
+end
 
 # ╔═╡ 354580e4-0aa9-496f-b024-665025a2eeda
 lc = let
@@ -749,24 +738,30 @@ let
 	end
 end
 
+# ╔═╡ 00edf76e-b4d1-442e-ac40-1dfb2ff00f0b
+pyconvert(Vector, LC["temporal"]["bjd"].value)
+
 # ╔═╡ c65c2298-e3a3-4666-be9d-73ee43d94847
 fwhm, trace_center, sky_flux = median_eparam.(
 	["width", "peak", "sky"],
-	Ref(LC["cubes"]),
+	Ref(pyconvert(Dict{String, Dict{String, Matrix}}, LC["cubes"])),
 	Ref(target_name),
 	Ref(common_wav_idxs[binned_wav_idxs_range])
 )
 
-# ╔═╡ ecc8917c-96a1-488c-9e0b-2e8f6ca6cd60
-LC["cubes"]["peak"] |> keys
+# ╔═╡ f66df037-3b96-44ad-8961-ccb974d91a95
+d = pyconvert(Dict{String, Dict{String, Matrix}}, LC["cubes"])
+
+# ╔═╡ 9f329b5e-dedd-47a1-85c8-debd8b39a6ac
+d["raw_counts"] |> keys
 
 # ╔═╡ 079c3915-33af-40db-a544-28453732c372
 specshifts = load_npz(
-	"$(dirname(fpath))/specshifts.npy", allow_pickle=true
+	"$(dirname(FPATH))/specshifts.npy", allow_pickle=true
 );
 
 # ╔═╡ e4960d1a-8e33-478a-8100-d1838782938d
-delta_wav = specshifts["shift"][target_name] |> 
+delta_wav = pyconvert(Dict{String, Float64}, specshifts["shift"][target_name]) |> 
 		sort |> values |> collect |> x -> convert(Vector{Float64}, x)
 
 # ╔═╡ e4388fba-64ef-4588-a1ed-283da2f52196
@@ -777,11 +772,6 @@ df_eparams = DataFrame(
 
 # ╔═╡ af7beb47-ecfa-4d08-b239-c27f7e8bdc4c
 CSV.write("$(tdir)/eparams.dat", df_eparams, delim=",    ")
-
-# ╔═╡ f788835c-8e81-4afe-805e-4caf2d5e5d5b
-md"""
-## Notebook setup
-"""
 
 # ╔═╡ b2c61d08-6fcf-4b0c-a21a-c0c5e3205210
 html"""
@@ -805,13 +795,11 @@ body.disable_ui main {
 # ╔═╡ Cell order:
 # ╟─34ef4580-bb95-11eb-34c1-25893217f422
 # ╟─a8e3b170-3fc2-4d12-b117-07bd37d27710
+# ╟─48713a10-6ba7-4de5-a147-85a9cb136dd8
 # ╠═01e27cf6-0a1b-4741-828a-ef8bf7037ae9
-# ╠═3ce1d29a-7219-49be-baba-4125b5a557de
-# ╠═de51df33-1be5-473b-afa9-c5a2fc40493a
 # ╟─698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 # ╠═d8236985-9a36-4357-ac78-7eb39dd0f080
 # ╟─b4f4e65b-bd50-4ee2-945f-7c130db21fdf
-# ╠═0d017105-e3a3-4a0e-9e5f-be4200b8cc2c
 # ╟─a687fa5d-1d98-4cb4-ae5d-978594d205dd
 # ╠═9341c427-642a-4782-925a-6e07b91277a0
 # ╟─ae81cf2b-e2cf-42af-9bba-955155c63647
@@ -847,8 +835,6 @@ body.disable_ui main {
 # ╠═20d12d7b-c666-46c3-8f48-5501641e8df3
 # ╠═470514e7-0f08-44a3-8519-5d704ea6b8d4
 # ╠═f80347e8-dc5a-4b0c-a6c0-db5c12eadcbb
-# ╠═fda9022a-2b95-4d06-8a80-80321a1bf441
-# ╠═1d91f3b2-293f-467c-ba40-7dc6497152cd
 # ╠═89256633-3c12-4b94-b245-4fdda44d686c
 # ╟─97191c55-f673-46b4-82fd-147e7d150623
 # ╠═56efa000-a943-4256-94f4-f0ae4764f634
@@ -868,8 +854,10 @@ body.disable_ui main {
 # ╟─88cc640d-b58d-4cde-b793-6c66e74f6b3a
 # ╠═301ff07c-8dd5-403a-bae8-a4c38deeb331
 # ╠═c03cb527-d16d-47aa-ab63-6970f4ff0b1f
+# ╠═00edf76e-b4d1-442e-ac40-1dfb2ff00f0b
 # ╠═c65c2298-e3a3-4666-be9d-73ee43d94847
-# ╠═ecc8917c-96a1-488c-9e0b-2e8f6ca6cd60
+# ╠═f66df037-3b96-44ad-8961-ccb974d91a95
+# ╠═9f329b5e-dedd-47a1-85c8-debd8b39a6ac
 # ╠═d14ab9de-23b4-4647-a823-9b318bb734e9
 # ╠═079c3915-33af-40db-a544-28453732c372
 # ╠═e4960d1a-8e33-478a-8100-d1838782938d
@@ -892,4 +880,7 @@ body.disable_ui main {
 # ╠═2d34e125-548e-41bb-a530-ba212c0ca17c
 # ╟─f788835c-8e81-4afe-805e-4caf2d5e5d5b
 # ╠═c911cecd-0747-4cd1-826f-941f2f58091c
+# ╠═26f18ff6-7baa-4905-b9d1-52cfa9396dfc
+# ╠═f883b759-65fc-466e-9c8f-e4f941def935
+# ╟─ae0e14fd-3fbf-46ba-ac3c-76fd2f38c224
 # ╟─b2c61d08-6fcf-4b0c-a21a-c0c5e3205210

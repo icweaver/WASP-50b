@@ -83,12 +83,6 @@ coords_IMACS = CSV.read("$(DATA_DIR_IMACS)/WASP50.coords", DataFrame;
 	header = ["target", "chip", "x", "y"],
 );
 
-# ╔═╡ 4b247772-ca20-480d-b649-143d3489ce46
-f(a; f_kwargs=()) = (a, f_kwargs...)
-
-# ╔═╡ ab0a289c-21e4-4dee-9f70-4b3a6a5d67de
-f(3, f_kwargs=(b = 5,))
-
 # ╔═╡ 0e66d467-1098-46dc-8d06-36d488b14637
 @bind DATA_DIR_LDSS3 Select(glob("data/raw_data/LDSS3/ut*"))
 
@@ -139,9 +133,36 @@ function plot_frame!(ax, img=frames_LDSS3[1], i=1, coords=coords_LDSS3;
 	return hm
 end
 
+# ╔═╡ 4480ae72-3bb2-4e17-99be-28afc756332a
+md"""
+## Notebook setup
+"""
+
+# ╔═╡ db4a4cd8-c5e8-4124-935f-0666f6e73fe2
+begin
+	const FIG_TALL = (900, 1_200)
+	const FIG_WIDE = (800, 600)
+	
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Text = (; font=AlgebraOfGraphics.firasans("Medium")),
+			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Scatter = (linewidth=10,),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
+	
+	COLORS = Makie.wong_colors()
+end
+
 # ╔═╡ 3a6ab0c0-ba08-4151-9646-c19d45749b9f
 let
-	fig = Figure(resolution = (800, 600))
+	fig = Figure(resolution = FIG_WIDE)
 	hm = nothing
 	stepsize = 3
 	grid = CartesianIndices((2, 4))
@@ -181,7 +202,7 @@ end
 
 # ╔═╡ 71ba9181-90e4-4d12-97c0-462b3f1df077
 let
-	fig = Figure(resolution = (800, 600))
+	fig = Figure(resolution = FIG_WIDE)
 	stepsize = 1
 	hm = nothing
 	for j ∈ 1:2
@@ -205,33 +226,6 @@ let
 	save("$(path)/sci_ldss3.png", fig)
 	
 	fig #|> as_svg
-end
-
-# ╔═╡ 4480ae72-3bb2-4e17-99be-28afc756332a
-md"""
-## Notebook setup
-"""
-
-# ╔═╡ db4a4cd8-c5e8-4124-935f-0666f6e73fe2
-begin
-	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (1_350, 800)
-	
-	set_aog_theme!()
-	update_theme!(
-		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
-			Text = (; font=AlgebraOfGraphics.firasans("Medium")),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
-			Scatter = (linewidth=10,),
-			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
-		)
-	)
-	
-	COLORS = Makie.wong_colors()
 end
 
 # ╔═╡ 6000db3d-0798-4f76-be31-617d43406b54
@@ -264,8 +258,6 @@ body.disable_ui main {
 # ╟─27b793f3-7a7c-48ad-8302-deffa2dd017b
 # ╠═26feb668-4e7e-4a9d-a2b6-a5dac81e3ab7
 # ╠═3a6ab0c0-ba08-4151-9646-c19d45749b9f
-# ╠═4b247772-ca20-480d-b649-143d3489ce46
-# ╠═ab0a289c-21e4-4dee-9f70-4b3a6a5d67de
 # ╠═bf8ef5a9-0806-44b4-907d-c95d6926dabb
 # ╟─06a834f0-8c90-4013-af34-725166970969
 # ╟─0e66d467-1098-46dc-8d06-36d488b14637
@@ -274,6 +266,6 @@ body.disable_ui main {
 # ╠═83a9357d-836b-4cee-a41f-eabc8f3f12e7
 # ╠═71ba9181-90e4-4d12-97c0-462b3f1df077
 # ╟─4480ae72-3bb2-4e17-99be-28afc756332a
-# ╠═db4a4cd8-c5e8-4124-935f-0666f6e73fe2
+# ╟─db4a4cd8-c5e8-4124-935f-0666f6e73fe2
 # ╠═3433ed02-c27c-4fe5-bfda-a5108a58407c
 # ╟─6000db3d-0798-4f76-be31-617d43406b54
