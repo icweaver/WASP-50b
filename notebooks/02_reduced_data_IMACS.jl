@@ -61,13 +61,39 @@ Each cube (`LC`) can be selected from the following drop-down menus, and will be
 @bind DIRPATH Select(sort(glob("data/reduced_data/IMACS/ut*")))
 
 # ╔═╡ bd2cdf33-0c41-4948-82ab-9a28929f72b3
-@bind FPATH Select(glob("$(DIRPATH)/*.pkl"))
+@bind FPATH_LC Select(glob("$(DIRPATH)/*.pkl"))
 
-# ╔═╡ 8daeb113-712a-4416-881e-3686303b1350
-@bind FPATH_WBINS Select(glob("$(DIRPATH)/../w50*.dat"))
+# ╔═╡ 3959e46c-87c9-4566-8ab1-f437323f0a9f
+fname_suff = let
+	suff = basename(DIRPATH)
+	occursin("species", FPATH_LC) ? (suff *= "_species") : suff
+end
 
 # ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
-wbins = readdlm(FPATH_WBINS, comments=true)
+wbins = let
+	if occursin("species", FPATH_LC)
+		wbins_name = "w50_bins_species.dat"
+	elseif occursin("ut131219", FPATH_LC)
+		wbins_name = "w50_bins_ut131219.dat"
+	else
+		wbins_name = "w50_bins.dat"
+	end
+	readdlm("$(DIRPATH)/../../wbins/$(wbins_name)", comments=true)
+end
+
+# ╔═╡ 7f30d3c2-d8a4-4c0d-bbca-b1d5b1e4c20b
+with_terminal() do
+	wl, wu = wbins[:, 1], wbins[:, 2]
+	Δw = @. wu - wl
+	wc = @. (wl + wu) / 2
+	df = DataFrame(
+		"Central wavelength" => wc,
+		"Lower wav." => wl,
+		"Upper wav." => wu,
+		L"$\Delta$ wav." => Δw,
+	)
+	latextabular(df, latex=false) |> println
+end
 
 # ╔═╡ 66052b03-35a0-4877-abef-f525766fd332
 md"""
@@ -104,7 +130,7 @@ begin
 end;
 
 # ╔═╡ dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
-LC = load_pickle(FPATH);
+LC = load_pickle(FPATH_LC);
 
 # ╔═╡ e774a20f-2d58-486a-ab71-6bde678b26f8
 md"""
@@ -175,14 +201,8 @@ comps = Dict(
 	#use_comps = ["c06", "c13"]
 )
 
-# ╔═╡ 40bd44b4-a88d-487b-9767-823433f6a048
-utdate = basename(dirname(FPATH))
-
-# ╔═╡ 0997f1b0-28f2-4f0a-9d2a-91dacd2a9342
-comp_names
-
 # ╔═╡ 2df82761-b9fe-4d37-b57c-1eabb0ffa8dd
-use_comps = comps[utdate]
+use_comps = comps[split(fname_suff, '_')[1]]
 
 # ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
 @bind window_width PlutoUI.Slider(3:2:21, default=15, show_value=true)
@@ -275,7 +295,7 @@ let
 	
 	axislegend()
 	
-	fig #|> as_svg
+	fig
 		
 end
 
@@ -286,25 +306,11 @@ md"""
 We first compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `ncomps` ``\times`` `nbins`, where for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
 """
 
-# ╔═╡ 24594175-5f0e-4d5a-a9bf-e1fd441b70d3
-@with_terminal begin
-	wl, wu = wbins[:, 1], wbins[:, 2]
-	Δw = @. wu - wl
-	wc = @. (wl + wu) / 2
-	df = DataFrame(
-		"Central wavelength" => wc,
-		"Lower wav." => wl,
-		"Upper wav." => wu,
-		L"$\Delta$ wav." => Δw,
-	)
-	latextabular(df, latex=false) |> println
-end
-
 # ╔═╡ 793c4d08-e2ee-4c9d-b7a0-11eaaddba895
 md"""
 We plot these below for each comparison star division. Move the slider to view the plot for the corresponding comparison star:
 
-comp star $(@bind comp_idx PlutoUI.Slider(1:length(comp_names), default=2, show_value=true))
+comp star $(@bind comp_idx PlutoUI.Slider(use_comps_idxs))
 
 !!! note "Future"
 	Ability to interact with sliders completely in the browser coming soon!
@@ -396,9 +402,9 @@ let
 	
 	path = "../../ACCESS_WASP-50b/figures/reduced_data"
 	mkpath(path)
-	save("$(path)/extracted_spectra_$(utdate)_IMACS.png", fig)
+	save("$(path)/extracted_spectra_IMACS_$(fname_suff).png", fig)
 	
-	fig #|> as_svg
+	fig
 end
 
 # ╔═╡ ccabf5d2-5739-4284-a972-23c02a263a5c
@@ -450,9 +456,6 @@ end
 let
 	fig = Figure(resolution=FIG_WIDE)
 	
-	ncomps = length(comp_names)
-	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
-	
 	axs = [Axis(fig[i, j]) for i ∈ 1:2, j ∈ 1:4]
 	axs = reshape(copy(fig.content), 2, 4)
 	
@@ -470,16 +473,17 @@ let
 	
 	path = "../../ACCESS_WASP-50b/figures/reduced_data"
 	mkpath(path)
-	save("$(path)/div_wlcs_$(utdate)_IMACS.png", fig)
+	save("$(path)/div_wlcs_IMACS_$(fname_suff).png", fig)
 	
-	fig #|> as_svg
+	fig
 end
 
 # ╔═╡ 684c026a-b5d0-4694-8d29-a44b7cb0fd6c
 let
 	fig = Figure(resolution=FIG_TALL)
 	
-	ax_left = Axis(fig[1, 1], title = "target / $(comp_names[comp_idx])")
+	comp_name = comp_names[comp_idx]
+	ax_left = Axis(fig[1, 1], title = "target / $(comp_name)")
 	ax_right = Axis(fig[1, 2], title = "residuals")
 	ax_label = Axis(fig[1, 3])
 	axs = reshape(copy(fig.content), 1, 3)
@@ -516,15 +520,11 @@ let
 	fig[1:2, 0] = Label(fig, "Relative flux + offset", rotation=π/2)
 	fig[end, 2:3] = Label(fig, "Index")
 	
-	# save(
-	# 	"../../ACCESS_WASP-50b/figures/reduced_data/divided_blcs_IMACS.pdf",
-	# 	fig
-	# )
+	path = "../../ACCESS_WASP-50b/figures/reduced_data"
+	mkpath(path)
+	save("$(path)/div_blcs_IMACS_$(fname_suff)_$(comp_name).png", fig)
 	
-	# ax.xlabel = "Index"
-	# ax.ylabel = "Relative flux + offset"
-	
-	fig #|> as_svg
+	fig
 end
 
 # ╔═╡ e8478e36-10fc-4e95-bf09-e217cad0cb15
@@ -554,9 +554,10 @@ body.disable_ui main {
 # ╟─9d180c21-e634-4a1e-8430-bdd089262f66
 # ╟─28d18f7f-2e41-4771-9f27-342bbda847dd
 # ╟─bd2cdf33-0c41-4948-82ab-9a28929f72b3
+# ╠═3959e46c-87c9-4566-8ab1-f437323f0a9f
 # ╠═dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
-# ╠═8daeb113-712a-4416-881e-3686303b1350
-# ╠═6471fc66-47a5-455e-9611-c6fd9d56e9dc
+# ╟─6471fc66-47a5-455e-9611-c6fd9d56e9dc
+# ╟─7f30d3c2-d8a4-4c0d-bbca-b1d5b1e4c20b
 # ╟─66052b03-35a0-4877-abef-f525766fd332
 # ╟─7bfc971c-8737-49ad-adec-ac57d176f10e
 # ╟─1c3e8cb3-2eff-47c2-8c17-01d0599556b8
@@ -572,8 +573,6 @@ body.disable_ui main {
 # ╠═18d58341-0173-4eb1-9f01-cfa893088613
 # ╟─941cd721-07d8-4a8f-9d75-42854e6e8edb
 # ╠═4b763b58-862e-4c88-a7c9-fe0b1271c0b4
-# ╠═40bd44b4-a88d-487b-9767-823433f6a048
-# ╠═0997f1b0-28f2-4f0a-9d2a-91dacd2a9342
 # ╠═2df82761-b9fe-4d37-b57c-1eabb0ffa8dd
 # ╠═df46d106-f186-4900-9d3f-b711bc803707
 # ╠═ab058d99-ce5f-4ed3-97bd-a62d2f258773
@@ -590,7 +589,6 @@ body.disable_ui main {
 # ╟─e98dee2e-a369-448e-bfe4-8fea0f318fa8
 # ╠═3ca393d6-01c0-4f77-88ff-7c4f6388670e
 # ╠═2768623f-7904-4674-a2ee-ad809cdd508b
-# ╠═24594175-5f0e-4d5a-a9bf-e1fd441b70d3
 # ╟─793c4d08-e2ee-4c9d-b7a0-11eaaddba895
 # ╠═684c026a-b5d0-4694-8d29-a44b7cb0fd6c
 # ╟─eeb3da97-72d5-4317-acb9-d28637a06d67

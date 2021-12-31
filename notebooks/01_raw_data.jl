@@ -225,7 +225,7 @@ let
 	mkpath(path)
 	save("$(path)/sci_ldss3.png", fig)
 	
-	fig #|> as_svg
+	fig
 end
 
 # ╔═╡ 6000db3d-0798-4f76-be31-617d43406b54

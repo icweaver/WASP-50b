@@ -397,7 +397,7 @@ let
 	axislegend()
 	
 
-	fig #|> as_svg
+	fig
 end
 
 # ╔═╡ bc54942e-38ef-4919-a3d4-28d5f4db8487
@@ -601,7 +601,7 @@ let
 	mkpath(path)
 	save("$(path)/extracted_spectra_ut150927_LDSS3.png", fig)
 	
-	fig #|> as_svg
+	fig
 end
 
 # ╔═╡ 20d12d7b-c666-46c3-8f48-5501641e8df3
@@ -676,7 +676,7 @@ let
 	mkpath(path)
 	save("$(path)/div_wlcs_ut150927_LDSS3.png", fig)
 	
-	fig #|> as_svg
+	fig
 end
 
 # ╔═╡ 9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
