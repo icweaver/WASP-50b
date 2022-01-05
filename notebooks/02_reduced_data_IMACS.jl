@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.3
+# v0.17.5
 
 using Markdown
 using InteractiveUtils
@@ -63,6 +63,9 @@ Each cube (`LC`) can be selected from the following drop-down menus, and will be
 # ╔═╡ bd2cdf33-0c41-4948-82ab-9a28929f72b3
 @bind FPATH_LC Select(glob("$(DIRPATH)/*.pkl"))
 
+# ╔═╡ 5ec299ff-bba9-4d66-a9f4-17f2b61d2a20
+const FIG_PATH = "figures/reduced_data"
+
 # ╔═╡ 3959e46c-87c9-4566-8ab1-f437323f0a9f
 fname_suff = let
 	suff = basename(DIRPATH)
@@ -111,30 +114,9 @@ md"""
 ### Helper functions
 """
 
-# ╔═╡ 3653ee36-35a6-4e0a-8d46-4f8389381d45
-begin
-	py"""
-	import numpy as np
-	import pickle
-	
-	def load_npz(fpath, allow_pickle=False):
-		return np.load(fpath, allow_pickle=allow_pickle)[()]
-	
-	def load_pickle(fpath):
-		with open(fpath, "rb") as f:
-			data = pickle.load(f)
-		return data
-	"""
-	load_npz(s; allow_pickle=false) = py"load_npz"(s, allow_pickle=allow_pickle)
-	load_pickle(s) = py"load_pickle"(s)
-end;
-
-# ╔═╡ dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
-LC = load_pickle(FPATH_LC);
-
 # ╔═╡ e774a20f-2d58-486a-ab71-6bde678b26f8
 md"""
-## Stellar spectra ⭐
+## $(@bind plot_stellar_spectra CheckBox()) Stellar spectra ⭐
 
 With the flux extracted for each object, we now turn to analyzing the resulting stellar spectra:
 """
@@ -155,28 +137,10 @@ end
 
 # ╔═╡ e3468c61-782b-4f55-a4a1-9d1883655d11
 md"""
-## White-light curves 🌅
+## $(@bind plot_lcs CheckBox()) White-light curves 🌅
 
 Next, we will extract the integrated white-light curves from these spectra, divided by each comparison star:
 """
-
-# ╔═╡ bcda2043-f8c7-46bc-a5d4-b6f1f0883e9e
-LC_cNames = LC["cNames"]
-
-# ╔═╡ f519626c-a3e8-4390-b3af-40b7beb665ed
-LC_oLC = LC["oLC"]
-
-# ╔═╡ 9a9b688c-94f0-4944-a9b2-21702073e0c7
-LC_cLC = LC["cLC"]
-
-# ╔═╡ 18d58341-0173-4eb1-9f01-cfa893088613
-begin
-	comp_names = LC_cNames
-	sorted_cName_idxs = sortperm(comp_names)
-	
-	f_div_WLC = LC_oLC ./ LC_cLC[:, sorted_cName_idxs]
-	f_div_WLC_norm = f_div_WLC ./ median(f_div_WLC, dims=1)
-end
 
 # ╔═╡ 941cd721-07d8-4a8f-9d75-42854e6e8edb
 md"""
@@ -216,9 +180,6 @@ md"""
 	We divide the target WLC by each comparison star to minimize common systematics (e.g., air mass, local refractive atmospheric effects), and to make the transit shape more apparent. This allows us to select good comparison stars for that particular night and which timeseries points to include in the rest of the analysis.
 """
 
-# ╔═╡ 22b57aad-e886-4d36-bab8-baef5f3fabe6
-f_div_WLC_norm
-
 # ╔═╡ ad5b07e5-75d0-4e03-a5d6-9ce4f1efd949
 function filt(f_div_wlc, window_width; func=median, border="reflect")
 	# Filtered light curves
@@ -244,6 +205,113 @@ function filt_idxs(f_div_wlc, window_width; ferr=0.002)
 	return f_filt, use_idxs, bad_idxs
 end
 
+# ╔═╡ 0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
+md"""
+### Raw flux
+
+Just as a quick check:
+"""
+
+# ╔═╡ e6e1ea18-216a-41ae-8a1a-590793fcb669
+# let
+# 	fig = Figure()
+# 	ax = Axis(fig[1, 1];
+# 		xlabel="Index",
+# 		ylabel="Relative flux",
+# 		#limits=(nothing, nothing, 0.975, 1.02),
+# 	)
+	
+# 	f_wlc_targ = LC_oLC ./ mean(LC_oLC, dims=1)
+# 	f_wlc_comps = LC_cLC[:, sorted_cName_idxs] ./ mean(
+# 		LC_cLC[:, sorted_cName_idxs], dims=1
+# 	)
+	
+# 	f_wlc_comps = LC_cLC[:, sorted_cName_idxs] ./ mean(
+# 		LC_cLC[:, sorted_cName_idxs], dims=1
+# 	)
+	
+# 	for (i, (cName, col)) in enumerate(zip(sort(comp_names), eachcol(f_wlc_comps)))
+# 		scatter!(ax, col; label=cName)
+# 	end
+	
+# 	scatter!(ax, f_wlc_targ ./ mean(f_wlc_targ, dims=1);
+# 		linewidth = 5,
+# 		color = :darkgrey,
+# 		label = "WASP-50",
+# 	)
+	
+# 	axislegend()
+	
+# 	fig
+		
+# end
+
+# ╔═╡ e98dee2e-a369-448e-bfe4-8fea0f318fa8
+md"""
+## $(@bind plot_blcs CheckBox()) Binned light curves 🌈
+
+We first compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `ncomps` ``\times`` `nbins`, where for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
+"""
+
+# ╔═╡ df8983d1-4abd-4fad-ace6-9dfe74df4949
+use_comps
+
+# ╔═╡ 793c4d08-e2ee-4c9d-b7a0-11eaaddba895
+md"""
+We plot these below for each comparison star division:
+"""
+
+# ╔═╡ eeb3da97-72d5-4317-acb9-d28637a06d67
+md"""
+## Notebook setup
+"""
+
+# ╔═╡ 06bbb3e4-9b30-43bd-941f-e357acaa80fc
+function savefig(fig, fpath)
+	mkpath(dirname(fpath))
+    save(fpath, fig)
+	@info "Saved to: $(fpath)"
+end
+
+# ╔═╡ 3653ee36-35a6-4e0a-8d46-4f8389381d45
+begin
+	py"""
+	import numpy as np
+	import pickle
+	
+	def load_npz(fpath, allow_pickle=False):
+		return np.load(fpath, allow_pickle=allow_pickle)[()]
+	
+	def load_pickle(fpath):
+		with open(fpath, "rb") as f:
+			data = pickle.load(f)
+		return data
+	"""
+	load_npz(s; allow_pickle=false) = py"load_npz"(s, allow_pickle=allow_pickle)
+	load_pickle(s) = py"load_pickle"(s)
+end;
+
+# ╔═╡ dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
+LC = load_pickle(FPATH_LC);
+
+# ╔═╡ bcda2043-f8c7-46bc-a5d4-b6f1f0883e9e
+LC_cNames = LC["cNames"]
+
+# ╔═╡ f519626c-a3e8-4390-b3af-40b7beb665ed
+LC_oLC = LC["oLC"]
+
+# ╔═╡ 9a9b688c-94f0-4944-a9b2-21702073e0c7
+LC_cLC = LC["cLC"]
+
+# ╔═╡ 18d58341-0173-4eb1-9f01-cfa893088613
+begin
+	comp_names = LC_cNames
+	sorted_cName_idxs = sortperm(comp_names)
+	
+	f_div_WLC = LC_oLC ./ LC_cLC[:, sorted_cName_idxs]
+	f_div_WLC_norm = f_div_WLC ./ median(f_div_WLC, dims=1)
+end
+
 # ╔═╡ df46d106-f186-4900-9d3f-b711bc803707
 @with_terminal begin
 	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
@@ -260,57 +328,11 @@ begin
 	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
 end;
 
-# ╔═╡ 0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
-md"""
-### Raw flux
-"""
-
-# ╔═╡ e6e1ea18-216a-41ae-8a1a-590793fcb669
-let
-	fig = Figure()
-	ax = Axis(fig[1, 1];
-		xlabel="Index",
-		ylabel="Relative flux",
-		limits=(nothing, nothing, 0.975, 1.02),
-	)
-	
-	f_wlc_targ = LC_oLC ./ mean(LC_oLC, dims=1)
-	f_wlc_comps = LC_cLC[:, sorted_cName_idxs] ./ mean(
-		LC_cLC[:, sorted_cName_idxs], dims=1
-	)
-	
-	f_wlc_comps = LC_cLC[:, sorted_cName_idxs] ./ mean(
-		LC_cLC[:, sorted_cName_idxs], dims=1
-	)
-	
-	for (i, (cName, col)) in enumerate(zip(sort(comp_names), eachcol(f_wlc_comps)))
-		scatter!(ax, col; label=cName)
-	end
-	
-	scatter!(ax, f_wlc_targ ./ mean(f_wlc_targ, dims=1);
-		linewidth = 5,
-		color = :darkgrey,
-		label = "WASP-50",
-	)
-	
-	axislegend()
-	
-	fig
-		
-end
-
-# ╔═╡ e98dee2e-a369-448e-bfe4-8fea0f318fa8
-md"""
-## Binned light curves 🌈
-
-We first compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `ncomps` ``\times`` `nbins`, where for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
-"""
+# ╔═╡ 22b57aad-e886-4d36-bab8-baef5f3fabe6
+f_div_WLC_norm
 
 # ╔═╡ 57b59c54-ab0a-44e1-9a9c-4840ce33fbb6
 comp_idx = get_idx("c18", comp_names)
-
-# ╔═╡ df8983d1-4abd-4fad-ace6-9dfe74df4949
-use_comps
 
 # ╔═╡ 3ca393d6-01c0-4f77-88ff-7c4f6388670e
 begin
@@ -328,16 +350,6 @@ end;
 # ╔═╡ 2768623f-7904-4674-a2ee-ad809cdd508b
 # Median filtered curves for visualization purposes
 f_med, _, f_diff = filt(f_norm_w[:, comp_idx, :], window_width)
-
-# ╔═╡ 793c4d08-e2ee-4c9d-b7a0-11eaaddba895
-md"""
-We plot these below for each comparison star division.
-"""
-
-# ╔═╡ eeb3da97-72d5-4317-acb9-d28637a06d67
-md"""
-## Notebook setup
-"""
 
 # ╔═╡ a8d1c3e6-c020-495f-a443-07203b7dcd50
 begin
@@ -378,7 +390,7 @@ begin
 end
 
 # ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
-let
+if plot_stellar_spectra let
 	fig = Figure(resolution=FIG_WIDE)
 	ax = Axis(fig[1, 1], xlabel="Wavelength (Å)", ylabel="Relative flux")
 	
@@ -401,17 +413,10 @@ let
 	xlims!(ax, 4_500, 11_000)
 	ylims!(ax, 0, 2.6)
 	
-	paths = (
-		"../../ACCESS_WASP-50b/figures/reduced_data",
-		"figures/reduced_data"
-	)
-	
-	for path ∈ paths
-		mkpath(path)
-		save("$(path)/extracted_spectra_IMACS_$(fname_suff).png", fig)
-	end
+	savefig(fig, "$(FIG_PATH)/extracted_spectra_IMACS_$(fname_suff).png")
 	
 	fig
+	end
 end
 
 # ╔═╡ ccabf5d2-5739-4284-a972-23c02a263a5c
@@ -460,7 +465,7 @@ function plot_div_WLCS!(
 end
 
 # ╔═╡ 13523326-a5f2-480d-9961-d23cd51192b8
-let
+if plot_lcs let
 	fig = Figure(resolution=FIG_WIDE)
 	
 	axs = [Axis(fig[i, j]) for i ∈ 1:2, j ∈ 1:4]
@@ -478,16 +483,10 @@ let
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
 	fig[end+1, 2:end] = Label(fig, "Index")
 	
-	paths = (
-		"../../ACCESS_WASP-50b/figures/reduced_data",
-		"figures/reduced_data",
-	)
-	for path ∈ paths
-		mkpath(path)
-		save("$(path)/div_wlcs_IMACS_$(fname_suff).png", fig)
-	end
+	savefig(fig, "$(FIG_PATH)/div_wlcs_IMACS_$(fname_suff).png")
 	
 	fig
+	end
 end
 
 # ╔═╡ 684c026a-b5d0-4694-8d29-a44b7cb0fd6c
@@ -531,26 +530,14 @@ function plot_binned_lcs(comp_idx; show_fig=false)
 	
 	fig[1:2, 0] = Label(fig, "Relative flux + offset", rotation=π/2)
 	fig[end, 2:3] = Label(fig, "Index")
-	
-	if show_fig
-		path = "../../ACCESS_WASP-50b/figures/reduced_data"
-		mkpath(path)
-		save("$(path)/div_blcs_IMACS_$(fname_suff)_$(comp_name).png", fig)
-		fig
-	else
-		path = "figures/reduced_data"
-		mkpath(path)
-		fname = "div_blcs_IMACS_$(fname_suff)_$(comp_name).png"
-		save("$(path)/$(fname)", fig)
-		println("Figure $(fname) saved")
-	end
+
+	savefig(fig, "$(FIG_PATH)/div_blcs_IMACS_$(fname_suff)_$(comp_name).png")
+
+	fig
 end
 
-# ╔═╡ 60e45226-3f7d-4d71-b9b3-c208c034a05f
-plot_binned_lcs(comp_idx, show_fig=true)
-
 # ╔═╡ b64d7fa9-82fc-4fd0-b0ce-1b53286147cb
-@with_terminal plot_binned_lcs.(use_comps_idxs)
+plot_blcs && plot_binned_lcs.(use_comps_idxs)
 
 # ╔═╡ e8478e36-10fc-4e95-bf09-e217cad0cb15
 @with_terminal Conda.list(:WASP50b)
@@ -579,6 +566,7 @@ body.disable_ui main {
 # ╟─9d180c21-e634-4a1e-8430-bdd089262f66
 # ╟─28d18f7f-2e41-4771-9f27-342bbda847dd
 # ╟─bd2cdf33-0c41-4948-82ab-9a28929f72b3
+# ╟─5ec299ff-bba9-4d66-a9f4-17f2b61d2a20
 # ╠═3959e46c-87c9-4566-8ab1-f437323f0a9f
 # ╠═dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
 # ╟─6471fc66-47a5-455e-9611-c6fd9d56e9dc
@@ -586,7 +574,6 @@ body.disable_ui main {
 # ╟─66052b03-35a0-4877-abef-f525766fd332
 # ╟─7bfc971c-8737-49ad-adec-ac57d176f10e
 # ╟─1c3e8cb3-2eff-47c2-8c17-01d0599556b8
-# ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
 # ╟─e774a20f-2d58-486a-ab71-6bde678b26f8
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
 # ╠═1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
@@ -617,12 +604,13 @@ body.disable_ui main {
 # ╠═3ca393d6-01c0-4f77-88ff-7c4f6388670e
 # ╠═2768623f-7904-4674-a2ee-ad809cdd508b
 # ╟─793c4d08-e2ee-4c9d-b7a0-11eaaddba895
-# ╠═60e45226-3f7d-4d71-b9b3-c208c034a05f
 # ╠═b64d7fa9-82fc-4fd0-b0ce-1b53286147cb
 # ╠═684c026a-b5d0-4694-8d29-a44b7cb0fd6c
 # ╟─eeb3da97-72d5-4317-acb9-d28637a06d67
+# ╟─06bbb3e4-9b30-43bd-941f-e357acaa80fc
+# ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
 # ╠═a8d1c3e6-c020-495f-a443-07203b7dcd50
-# ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23
-# ╟─d07e895f-c43b-46c4-be47-5af44bfda47a
 # ╠═e8478e36-10fc-4e95-bf09-e217cad0cb15
+# ╠═d07e895f-c43b-46c4-be47-5af44bfda47a
+# ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23
 # ╟─03af71ac-673b-459b-a931-a600b13d7ee6

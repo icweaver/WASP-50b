@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.3
+# v0.17.5
 
 using Markdown
 using InteractiveUtils
@@ -43,6 +43,9 @@ $(TableOfContents())
 	 rclone sync -P ACCESS_box:WASP-50b/data/raw_data data/raw_data
 	```
 """
+
+# ╔═╡ d8019fa7-380d-4f40-9e08-420a32c34483
+const FIG_PATH = "figures/frames"
 
 # ╔═╡ 90845d70-35d9-402d-8936-74936b069577
 md"""
@@ -160,11 +163,18 @@ begin
 	COLORS = Makie.wong_colors()
 end
 
+# ╔═╡ b44b6591-d57b-40bd-810c-a41386412b6c
+function savefig(fig, fpath)
+	mkpath(dirname(fpath))
+    save(fpath, fig)
+	@info "Saved to: $(fpath)"
+end
+
 # ╔═╡ 3a6ab0c0-ba08-4151-9646-c19d45749b9f
 let
 	fig = Figure(resolution = FIG_WIDE)
 	hm = nothing
-	stepsize = 3
+	stepsize = 1
 	grid = CartesianIndices((2, 4))
 	chip_order = [1, 6, 2, 5, 3, 8, 4, 7]
 	for (g, ch) ∈ zip(grid, chip_order)
@@ -193,11 +203,9 @@ let
 	linkaxes!(axs...)
 	hidedecorations!.(axs)
 	
-	path = "../../ACCESS_WASP-50b/figures/frames"
-	mkpath(path)
-	save("$(path)/sci_imacs_$(basename(DATA_DIR_IMACS)).png", fig)
-	
-	fig #|> as_svg
+	savefig(fig, "$(FIG_PATH)/sci_IMACS_$(basename(DATA_DIR_IMACS)).png")
+
+	fig
 end
 
 # ╔═╡ 71ba9181-90e4-4d12-97c0-462b3f1df077
@@ -221,9 +229,7 @@ let
 	linkaxes!(axs...)
 	hidedecorations!.(axs)
 	
-	path = "../../ACCESS_WASP-50b/figures/frames"
-	mkpath(path)
-	save("$(path)/sci_ldss3.png", fig)
+    savefig(fig, "$(FIG_PATH)/sci_LDSS3_$(basename(DATA_DIR_LDSS3)).png")
 	
 	fig
 end
@@ -249,6 +255,7 @@ body.disable_ui main {
 
 # ╔═╡ Cell order:
 # ╟─fb39c593-86bd-4d4c-b9ec-e5e212a4de98
+# ╟─d8019fa7-380d-4f40-9e08-420a32c34483
 # ╟─90845d70-35d9-402d-8936-74936b069577
 # ╟─8b9581db-71c6-42b6-915b-bde307755bcd
 # ╠═fb6e6221-8136-44e2-979b-ecbbd71f740d
@@ -267,5 +274,6 @@ body.disable_ui main {
 # ╠═71ba9181-90e4-4d12-97c0-462b3f1df077
 # ╟─4480ae72-3bb2-4e17-99be-28afc756332a
 # ╟─db4a4cd8-c5e8-4124-935f-0666f6e73fe2
+# ╟─b44b6591-d57b-40bd-810c-a41386412b6c
 # ╠═3433ed02-c27c-4fe5-bfda-a5108a58407c
 # ╟─6000db3d-0798-4f76-be31-617d43406b54
