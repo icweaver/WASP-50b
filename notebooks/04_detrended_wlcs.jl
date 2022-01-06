@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.3
+# v0.17.5
 
 using Markdown
 using InteractiveUtils
@@ -7,29 +7,52 @@ using InteractiveUtils
 # ╔═╡ 691eddff-f2eb-41a8-ab05-63afb46d15f2
 begin
 	import Pkg
-	Pkg.activate(joinpath(@__DIR__, ".."))
+	Pkg.activate(Base.current_project())
 
-	using AlgebraOfGraphics
-	using CCDReduction
-	using CSV
-	using CairoMakie
-	using Colors
-	using DataFrames
-	using DataFrameMacros
-	using Dates
-	using DelimitedFiles
-	using Glob
-	using ImageFiltering
-	using Latexify
-	using Measurements
-	using NaturalSort
-	using OrderedCollections
-	using Printf
-	using PyCall
+	using CSV, DataFrames, DataFramesMeta
 	using Statistics
-	using PlutoUI: TableOfContents, Select, Slider, as_svg, @with_terminal
+
+	# using AlgebraOfGraphics
+	# using CCDReduction
+	# using CSV
+	# using CairoMakie
+	# using Colors
+	# using DataFrames
+	# using DataFrameMacros
+	# using Dates
+	# using DelimitedFiles
+	# using Glob
+	# using ImageFiltering
+	# using Latexify
+	# using Measurements
+	# using NaturalSort
+	# using OrderedCollections
+	# using Printf
+	# using PyCall
+	# using Statistics
+	# using PlutoUI: TableOfContents, Select, Slider, as_svg, @with_terminal
 	
-	import CairoMakie.Makie.KernelDensity: kde
+	# import CairoMakie.Makie.KernelDensity: kde
+end
+
+# ╔═╡ 28ac126e-7045-4d92-862e-66fd75a0e9b4
+df_wbins = let
+	dirpath = "data/reduced_data/wbins"
+	CSV.read.(
+		("$(dirpath)/w50_bins$(fname).dat" for fname ∈ ("_ut131219", "", "_LDSS3")),
+		DataFrame,
+		header = [:wav_d, :wav_u],
+		comment = "#",
+	)
+end
+
+# ╔═╡ d12dfda1-540a-4f6d-81a8-7d0196cdf1a4
+df_wbins_comb = DataFrame(∪(eachrow.(df_wbins)...))
+
+# ╔═╡ d90b77cc-dc8d-4413-bfb5-263dd82308c1
+@transform df_wbins_comb begin
+	:wav_cen = mean((:wav_d, :wav_u))
+	:wav_Δ = :wav_u .- :wav_d
 end
 
 # ╔═╡ 506eeeb2-e56d-436b-91b8-605e52201563
@@ -562,6 +585,9 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
+# ╠═28ac126e-7045-4d92-862e-66fd75a0e9b4
+# ╠═d12dfda1-540a-4f6d-81a8-7d0196cdf1a4
+# ╠═d90b77cc-dc8d-4413-bfb5-263dd82308c1
 # ╟─506eeeb2-e56d-436b-91b8-605e52201563
 # ╟─782806a6-efd2-45a9-b898-788a276c282b
 # ╠═a8d91138-73e7-4382-a032-37daec54a9c0
