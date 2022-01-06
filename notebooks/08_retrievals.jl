@@ -22,12 +22,13 @@ begin
 	using PlutoUI
 	using AlgebraOfGraphics
 	using CairoMakie
-	using DataFrames
+	using CSV, DataFrames, DataFramesMeta
 	using DelimitedFiles
 	using Glob
 	using ImageFiltering
 	using Latexify
-	using Statistics
+	using Measurements, Statistics
+	using OrderedCollections
 end
 
 # ╔═╡ f2b2db32-f7fb-4735-849d-5bee761a5e85
@@ -58,6 +59,9 @@ $(TableOfContents(title="📖 Table of Contents"))
 
 # ╔═╡ 60dc161c-2aa2-4264-884d-6da3ead0e57b
 @bind base_dir Select(glob("./data/retrievals/WASP50*"))
+
+# ╔═╡ 56971ef4-7512-4e85-ac41-ee446006457f
+const FIG_PATH = "figures/retrievals"
 
 # ╔═╡ d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
 fit_R0 = "fitR0"
@@ -257,6 +261,13 @@ md"""
 ## Notebook setup
 """
 
+# ╔═╡ eab74923-a084-468c-9b0d-c2cc98a23913
+function savefig(fig, fpath)
+	mkpath(dirname(fpath))
+    save(fpath, fig)
+	@info "Saved to: $(fpath)"
+end
+
 # ╔═╡ e43f1834-73dd-4859-b847-f4c552561897
 begin
 	##############
@@ -306,9 +317,7 @@ let
 		palettes = (; color=COLORS),
 	)
 
-	# path = "../../ACCESS_WASP-50b/figures/retrievals"
-	# mkpath(path)
-	# save("$(path)/evidences_$(basename(base_dir)).png", fg)
+	savefig(fg.figure, "$(FIG_PATH)/evidences_$(basename(base_dir)).png")
 end
 
 # ╔═╡ e801501c-a882-4f2d-bbc1-40028c1c91d8
@@ -330,9 +339,7 @@ let
 
 	axislegend(orientation=:horizontal)
 
-	# path = "../../ACCESS_WASP-50b/figures/retrievals"
-	# mkpath(path)
-	# save("$(path)/retr.png", fig)
+	savefig(fig, "$(FIG_PATH)/retr_$(basename(base_dir)).png")
 	
 	fig
 end
@@ -343,6 +350,7 @@ end
 # ╔═╡ Cell order:
 # ╟─0132b4ab-0447-4546-b412-ec598b20d21d
 # ╠═60dc161c-2aa2-4264-884d-6da3ead0e57b
+# ╟─56971ef4-7512-4e85-ac41-ee446006457f
 # ╠═d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
 # ╠═093156c7-9da7-4814-9260-5173f27fa497
 # ╠═0f65d095-09af-44d2-907b-c30e2c16b609
@@ -363,6 +371,7 @@ end
 # ╟─41a233c7-5357-453c-b7ad-36fdf9f709cb
 # ╠═44b3b8cd-4b83-4b27-a948-d1230489552f
 # ╟─1eff1230-2423-4ac3-8e9b-f4e7bcd0121b
+# ╟─eab74923-a084-468c-9b0d-c2cc98a23913
 # ╠═e43f1834-73dd-4859-b847-f4c552561897
 # ╠═01bbee9f-66bf-4e08-a91b-9870def4e62a
 # ╠═f2b2db32-f7fb-4735-849d-5bee761a5e85

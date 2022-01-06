@@ -17,21 +17,6 @@ begin
 	using Unitful: k, G
 	using Chain
 	using NaturalSort
-	
-	set_aog_theme!()
-	
-	update_theme!(
-		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
-			Text = (font=AlgebraOfGraphics.firasans("Light"),),
-			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
-		)
-	)
-	COLORS = Makie.wong_colors()
 end
 
 # ╔═╡ cd13d7f3-0ea3-4631-afd9-5f3e359000e6
@@ -44,6 +29,9 @@ In this notebook we will explore the possible targets amenable to atmopsheric ch
 
 $(TableOfContents(title="📖 Table of Contents"))
 """
+
+# ╔═╡ 7493bb13-ee41-4798-99f6-dc1df97bd624
+const FIG_PATH = "figures/pop"
 
 # ╔═╡ 6b06701b-05e2-4284-a308-e9edeb65a648
 md"""
@@ -127,10 +115,10 @@ md"""
 # ╔═╡ 18094afc-b77f-4cae-a30c-2691d34125d8
 md"""
 !!! warning "TODO"
-* WASP-33: active star, difficult analysis
-* TOI 1581: double check
-* WASP-4 : Already in ACCESS survey, can re-analyze
-* Focus on top 6-12 targets, review targets in literature, what can be done from the South?
+	* WASP-33: active star, difficult analysis
+	* TOI 1581: double check
+	* WASP-4 : Already in ACCESS survey, can re-analyze
+	* Focus on top 6-12 targets, review targets in literature, what can be done from the South?
 """
 
 # ╔═╡ 958453c3-7993-4620-ab7f-e7ad79781dd5
@@ -216,93 +204,6 @@ df_HGHJs = @subset(
 	df_HGHJs_all, :pl_name .∈ Ref(["HAT-P-23 b", "WASP-43 b", "WASP-50 b"])
 )
 
-# ╔═╡ c1cd9292-28b9-4206-b128-608aaf30ff9c
-# TODO: Place latitude constraints
-let
-	fig = Figure(resolution=(800, 700))
-	ax = Axis(fig[1, 1], limits=((0, nothing), (10, 55)))
-
-	# HGHJ g boundary
-	hlines!(ax, 20.0, color=:darkgrey, linestyle=:dash)
-	
-	# Phase plot
-	markersize_factor = 10.0
-	m = mapping(
-		:pl_eqt => "Equilibrium temperature (K)",
-		:g_SI => "Surface gravity (m/s²)",
-		color = :ΔD_ppm => "ΔD (ppm)",
-		markersize = :TSMR => (x -> markersize_factor*x),
-	)
-	m2 = mapping(
-		:pl_eqt => "Equilibrium temperature (K)",
-		:g_SI => "Surface gravity (m/s²)",
-		#color = :ΔD_ppm => "ΔD (ppm)",
-		#markersize = :TSMR => (x -> markersize_factor*x),
-	)
-	marker_open = visual(marker='○') # ○ ●
-	marker_closed = visual(markersize=15, marker='+', color=:white)
-	plt = m*data(df_HGHJs_all)
-	fg = draw!(ax, plt)
-	colorbar!(fig[1, 2], fg)
-	
-	# HGHJ g boundary
-	# ax = fg.grid[1, 1].axis
-	#hlines!(ax, 20.0, color=:darkgrey, linestyle=:dash)
-	
-	# Annotate HGHJs with tspec observations
-	HP23x, HP23y = val.(Ref(df_HGHJs), Ref("HAT-P-23 b"), [:pl_eqt, :g_SI])
-	annotate_text!(
-		ax,
-		"HAT-P-23 b",
-		Point2f((HP23x[1], HP23y[1])) .- (-600, -3),
-		Point2f((HP23x[1], HP23y[1])),
-		0.5,
-		0.1;
-		align = (:center, :baseline),
-	)
-	W43x, W43y = val.(Ref(df_HGHJs), Ref("WASP-43 b"), [:pl_eqt, :g_SI])
-	annotate_text!(
-		ax,
-		"WASP-43 b",
-		Point2f((W43x[1], W43y[1])) .- (800, 5),
-		Point2f((W43x[1], W43y[1])),
-		0.3,
-		0.1;
-		align = (:center, :top),
-	)
-	W50x, W50y = val.(Ref(df_HGHJs), Ref("WASP-50 b"), [:pl_eqt, :g_SI])
-	annotate_text!(
-		ax,
-		"WASP-50 b",
-		Point2f((W50x[1], W50y[1])) .- (-300, -8),
-		Point2f((W50x[1], W50y[1])),
-		0.5,
-		0.1;
-		align = (:center, :baseline),
-	)
-	
-	# TSMR legend
-	tsmrs = [14, 4, 1]
-	axislegend(
-		ax,
-		[MarkerElement(marker='○', markersize=markersize_factor*ms) for ms ∈ tsmrs],
-		["$tsmr" for tsmr ∈ tsmrs],
-		"TSMR",
-		position = :rt,
-		patchsize = (120, 100),
-		framevisible = true,
-		padding = (5, 5, -24, 10),
-		margin = (10, 10, 0, 0),
-		titlegap = 24,
-	)
-
-    #path = "../../ACCESS_WASP-50b/figures/pop"
-	#mkpath(path)
-	#save("$(path)/hg_pop.png", fig)
-	
-	fig
-end
-
 # ╔═╡ d2d6452b-426c-4c61-8dc4-d210c0cd9d41
 @which println(1000000.)
 
@@ -317,10 +218,72 @@ For this population, we will make a similar plot and compare to the current list
 """
 
 # ╔═╡ 8cece13d-34cb-40df-8986-ac0dad210e58
-df_ACCESS = innerjoin(CSV.read("data/pop/ACCESS.csv", DataFrame), df, on=:pl_name)
+# df_ACCESS = innerjoin(CSV.read("data/ /ACCESS.csv", DataFrame), df, on=:pl_name)
 
 # ╔═╡ df499885-3f7d-4293-bcf5-9c761ac3ccd2
-sort(df_ACCESS, :pl_name, lt=natural)
+# sort(df_ACCESS, :pl_name, lt=natural)
+
+# ╔═╡ 60016c3f-6968-4d3c-ac73-d324b2a071e0
+# begin
+# 	fig = Figure()
+# 	ax = Axis(fig[1, 1], limits=(0, 3_600, 0, nothing))
+	
+# 	# Condensation temps
+# 	for (i, (name, (T, align))) in enumerate(species)
+# 		vlines!(ax, T, color=:darkgrey, linewidth=1.0, linestyle=:dash)
+# 		text!(ax, name, position=(T, 16.0 + i), align=align, textsize=16)
+# 	end
+# 	vspan!(ax, 1625.0, 1875.0, color=(:darkgrey, 0.25))
+# 	text!(ax, "Silicates/Metal-oxides";
+# 		position = (0.5*(1875.0+1625.0), 22.0),
+# 		textsize = 16,
+# 	)
+	
+# 	# Phase plot
+# 	m = mapping(
+# 		:pl_eqt => "Equilibrium temperature (K)",
+# 		:pl_rade => "Radius (Earth radii)",
+# 	)
+# 	m_ACCESS = mapping(
+# 		color = :status => 
+# 		sorter("Observing", "Data complete", "Published") => "Status",
+# 	)
+# 	marker_all = visual(color=(:darkgrey, 0.25))
+# 	marker_ACCESS = visual(markersize=18)
+# 	plt = m*(
+# 		data(df)*marker_all +
+# 		data(df_ACCESS) * m_ACCESS * marker_ACCESS
+# 	)
+# 	# colors = [
+# 	# 	"Observing"=>COLORS[2], "Data complete"=>COLORS[1], "Published"=>COLORS[3]
+# 	# ]
+# 	fg = draw!(ax, plt)#, palettes=(color=colors,))
+# 	lg = legend!(fig[1, 1], fg;
+# 		tellwidth = false,
+# 		halign = :right,
+# 		valign = :center,
+# 		framevisible = true,
+# 		padding = (15, 15, 15, 15),
+# 		#margin = (10, 10, 0, 0),
+# 		#titlegap = 24,
+# 	)
+	
+# 	# Annotate target names
+# 	for (name, T, R) in zip(df_ACCESS.name_abbrv, df_ACCESS.pl_eqt, df_ACCESS.pl_rade) 
+# 		if name == "W50b"
+# 			align = (:left, :top)
+# 		elseif name == "W96b"
+# 			align = (:right, :baseline)
+# 		elseif name == "W107b"
+# 			align = (:right, :top)
+# 		else
+# 			align = (:left, :baseline)
+# 		end
+# 		text!(ax, name, position=(T, R), align=align, textsize=12)
+# 	end
+	
+# 	fig
+# end
 
 # ╔═╡ d6791747-7503-49a9-903c-c479fc0c3d49
 species = (
@@ -331,68 +294,6 @@ species = (
 	"CO" => (1000.0, (:left, :baseline)),
 	"MnS" => (1350.0, (:center, :center)),
 )
-
-# ╔═╡ 60016c3f-6968-4d3c-ac73-d324b2a071e0
-begin
-	fig = Figure()
-	ax = Axis(fig[1, 1], limits=(0, 3_600, 0, nothing))
-	
-	# Condensation temps
-	for (i, (name, (T, align))) in enumerate(species)
-		vlines!(ax, T, color=:darkgrey, linewidth=1.0, linestyle=:dash)
-		text!(ax, name, position=(T, 16.0 + i), align=align, textsize=16)
-	end
-	vspan!(ax, 1625.0, 1875.0, color=(:darkgrey, 0.25))
-	text!(ax, "Silicates/Metal-oxides";
-		position = (0.5*(1875.0+1625.0), 22.0),
-		textsize = 16,
-	)
-	
-	# Phase plot
-	m = mapping(
-		:pl_eqt => "Equilibrium temperature (K)",
-		:pl_rade => "Radius (Earth radii)",
-	)
-	m_ACCESS = mapping(
-		color = :status => 
-		sorter("Observing", "Data complete", "Published") => "Status",
-	)
-	marker_all = visual(color=(:darkgrey, 0.25))
-	marker_ACCESS = visual(markersize=18)
-	plt = m*(
-		data(df)*marker_all +
-		data(df_ACCESS) * m_ACCESS * marker_ACCESS
-	)
-	# colors = [
-	# 	"Observing"=>COLORS[2], "Data complete"=>COLORS[1], "Published"=>COLORS[3]
-	# ]
-	fg = draw!(ax, plt)#, palettes=(color=colors,))
-	lg = legend!(fig[1, 1], fg;
-		tellwidth = false,
-		halign = :right,
-		valign = :center,
-		framevisible = true,
-		padding = (15, 15, 15, 15),
-		#margin = (10, 10, 0, 0),
-		#titlegap = 24,
-	)
-	
-	# Annotate target names
-	for (name, T, R) in zip(df_ACCESS.name_abbrv, df_ACCESS.pl_eqt, df_ACCESS.pl_rade) 
-		if name == "W50b"
-			align = (:left, :top)
-		elseif name == "W96b"
-			align = (:right, :baseline)
-		elseif name == "W107b"
-			align = (:right, :top)
-		else
-			align = (:left, :baseline)
-		end
-		text!(ax, name, position=(T, R), align=align, textsize=12)
-	end
-	
-	fig
-end
 
 # ╔═╡ b5c0dbc8-d700-473e-9f00-d89a319f6432
 md"""
@@ -489,8 +390,124 @@ let
 	fig
 end
 
+# ╔═╡ 683a8d85-b9a8-4eab-8a4b-e2b57d0783c0
+md"""
+## Notebook setup
+"""
+
+# ╔═╡ 95bb5b9e-0c50-48fa-bf4c-d0819c327bcc
+function savefig(fig, fpath)
+	mkpath(dirname(fpath))
+    save(fpath, fig)
+	@info "Saved to: $(fpath)"
+end
+
+# ╔═╡ c1cd9292-28b9-4206-b128-608aaf30ff9c
+# TODO: Place latitude constraints
+let
+	fig = Figure(resolution=(800, 700))
+	ax = Axis(fig[1, 1], limits=((0, nothing), (10, 55)))
+
+	# HGHJ g boundary
+	hlines!(ax, 20.0, color=:darkgrey, linestyle=:dash)
+	
+	# Phase plot
+	markersize_factor = 10.0
+	m = mapping(
+		:pl_eqt => "Equilibrium temperature (K)",
+		:g_SI => "Surface gravity (m/s²)",
+		color = :ΔD_ppm => "ΔD (ppm)",
+		markersize = :TSMR => (x -> markersize_factor*x),
+	)
+	m2 = mapping(
+		:pl_eqt => "Equilibrium temperature (K)",
+		:g_SI => "Surface gravity (m/s²)",
+		#color = :ΔD_ppm => "ΔD (ppm)",
+		#markersize = :TSMR => (x -> markersize_factor*x),
+	)
+	marker_open = visual(marker='○') # ○ ●
+	marker_closed = visual(markersize=15, marker='+', color=:white)
+	plt = m*data(df_HGHJs_all)
+	fg = draw!(ax, plt)
+	colorbar!(fig[1, 2], fg)
+	
+	# HGHJ g boundary
+	# ax = fg.grid[1, 1].axis
+	#hlines!(ax, 20.0, color=:darkgrey, linestyle=:dash)
+	
+	# Annotate HGHJs with tspec observations
+	HP23x, HP23y = val.(Ref(df_HGHJs), Ref("HAT-P-23 b"), [:pl_eqt, :g_SI])
+	annotate_text!(
+		ax,
+		"HAT-P-23 b",
+		Point2f((HP23x[1], HP23y[1])) .- (-600, -3),
+		Point2f((HP23x[1], HP23y[1])),
+		0.5,
+		0.1;
+		align = (:center, :baseline),
+	)
+	W43x, W43y = val.(Ref(df_HGHJs), Ref("WASP-43 b"), [:pl_eqt, :g_SI])
+	annotate_text!(
+		ax,
+		"WASP-43 b",
+		Point2f((W43x[1], W43y[1])) .- (800, 5),
+		Point2f((W43x[1], W43y[1])),
+		0.3,
+		0.1;
+		align = (:center, :top),
+	)
+	W50x, W50y = val.(Ref(df_HGHJs), Ref("WASP-50 b"), [:pl_eqt, :g_SI])
+	annotate_text!(
+		ax,
+		"WASP-50 b",
+		Point2f((W50x[1], W50y[1])) .- (-300, -8),
+		Point2f((W50x[1], W50y[1])),
+		0.5,
+		0.1;
+		align = (:center, :baseline),
+	)
+	
+	# TSMR legend
+	tsmrs = [14, 4, 1]
+	axislegend(
+		ax,
+		[MarkerElement(marker='○', markersize=markersize_factor*ms) for ms ∈ tsmrs],
+		["$tsmr" for tsmr ∈ tsmrs],
+		"TSMR",
+		position = :rt,
+		patchsize = (120, 100),
+		framevisible = true,
+		padding = (5, 5, -24, 10),
+		margin = (10, 10, 0, 0),
+		titlegap = 24,
+	)
+
+	savefig(fig, "$(FIG_PATH)/hg_pop.png")
+	
+	fig
+end
+
+# ╔═╡ 81e14e30-2880-40f8-b4fa-a48a2dc34db7
+begin
+	set_aog_theme!()
+	
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Text = (font=AlgebraOfGraphics.firasans("Light"),),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
+	COLORS = Makie.wong_colors()
+end
+
 # ╔═╡ Cell order:
 # ╟─cd13d7f3-0ea3-4631-afd9-5f3e359000e6
+# ╟─7493bb13-ee41-4798-99f6-dc1df97bd624
 # ╟─6b06701b-05e2-4284-a308-e9edeb65a648
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
@@ -524,4 +541,7 @@ end
 # ╠═0f118d0e-0eb6-4517-8378-9623337f73ca
 # ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
 # ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
+# ╟─683a8d85-b9a8-4eab-8a4b-e2b57d0783c0
+# ╟─95bb5b9e-0c50-48fa-bf4c-d0819c327bcc
+# ╠═81e14e30-2880-40f8-b4fa-a48a2dc34db7
 # ╠═24c6a2d0-0aea-11ec-2cd4-3de7ec08b83e
