@@ -9,55 +9,32 @@ begin
 	import Pkg
 	Pkg.activate(Base.current_project())
 
-	using CSV, DataFrames, DataFramesMeta
-	using Statistics
-
-	# using AlgebraOfGraphics
-	# using CCDReduction
-	# using CSV
-	# using CairoMakie
-	# using Colors
-	# using DataFrames
-	# using DataFrameMacros
-	# using Dates
-	# using DelimitedFiles
-	# using Glob
-	# using ImageFiltering
-	# using Latexify
-	# using Measurements
-	# using NaturalSort
-	# using OrderedCollections
-	# using Printf
-	# using PyCall
-	# using Statistics
-	# using PlutoUI: TableOfContents, Select, Slider, as_svg, @with_terminal
-	
-	# import CairoMakie.Makie.KernelDensity: kde
+	using PlutoUI
+	using AlgebraOfGraphics
+	using CairoMakie
+	import CairoMakie.Makie.KernelDensity: kde
+	using CSV, DataFrames
+	using DelimitedFiles
+	using Glob
+	using ImageFiltering
+	using Latexify
+	using Measurements, Statistics
+	using OrderedCollections
+	using Printf
 end
 
-# ╔═╡ 28ac126e-7045-4d92-862e-66fd75a0e9b4
-df_wbins = let
-	dirpath = "data/reduced_data/wbins"
-	CSV.read.(
-		("$(dirpath)/w50_bins$(fname).dat" for fname ∈ ("_ut131219", "", "_LDSS3")),
-		DataFrame,
-		header = [:wav_d, :wav_u],
-		comment = "#",
-	)
-end
-
-# ╔═╡ d12dfda1-540a-4f6d-81a8-7d0196cdf1a4
-df_wbins_comb = DataFrame(∪(eachrow.(df_wbins)...))
-
-# ╔═╡ d90b77cc-dc8d-4413-bfb5-263dd82308c1
-@transform df_wbins_comb begin
-	:wav_cen = mean((:wav_d, :wav_u))
-	:wav_Δ = :wav_u .- :wav_d
+# ╔═╡ 91fa7df7-5e2f-4cf5-83af-48dcae539726
+begin
+	ENV["PYTHON"] = ""
+	Pkg.build("PyCall")
+	using PyCall
+	const Conda = PyCall.Conda
+	Conda.add("lightkurve", :WASP50b)
 end
 
 # ╔═╡ 506eeeb2-e56d-436b-91b8-605e52201563
 md"""
-# Detrended White Light Curves
+# Detrended white-light curves
 
 In this notebook we will visualize the detrended white-light curves from IMACS and LDSS3. We used the average orbital and system parameters obtained from these detrended fits to place uniform constraints on the binned wavelength analysis **<ADD LINK>.**
 
@@ -74,6 +51,9 @@ First, let's load the relevant data needed for this notebook:
 # ╔═╡ a8d91138-73e7-4382-a032-37daec54a9c0
 const DATA_DIR = "data/detrended/out_l/WASP50"
 
+# ╔═╡ 2dd2ad78-b9a1-4cdf-97c9-b659599add63
+const FIG_PATH = "figures/detrended"
+
 # ╔═╡ 105762e1-15a2-4e7f-bff3-7740a5f53492
 glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")
 
@@ -87,7 +67,7 @@ end
 dates_to_names = Dict(
 	"131219_IMACS" => "Transit 1 (IMACS)",
 	"150927_IMACS" => "Transit 2 (IMACS)",
-	"150927_LDSS3_flat" => "Transit 2 (LDSS3 flat)",
+	"150927_LDSS3_flat" => "Transit 2 (LDSS3)",
 	"150927_LDSS3_noflat" => "Transit 2 (LDSS3 noflat)",
 	"161211_IMACS" => "Transit 3 (IMACS)",
  )
@@ -114,60 +94,6 @@ cubes
 where `samples` is a dictionary of the Bayesian model averaged posterior samples for each fitted parameter, `models` is a dictionary of the final detrended light curve and associated Gaussian Process parameters, and `results` is a table summarizing the mean and +/- 1σ uncertainty associated with each sample.
 """
 
-# ╔═╡ 583b3377-f4f6-4170-8658-d3ba17a5b86d
-md"""
-### Helper functions
-"""
-
-# ╔═╡ 39dbca86-a4b9-11eb-1c64-9ddf1a9990ab
-begin
-	py"""
-	import numpy as np
-	import pickle
-
-	def load_npz(fpath, allow_pickle=False):
-		return np.load(fpath, allow_pickle=allow_pickle)[()]
-
-	def load_pickle(fpath):
-		with open(fpath, "rb") as f:
-			data = pickle.load(f)
-		return data
-	"""
-	load_npz(s; allow_pickle=false) = py"load_npz"(s, allow_pickle=allow_pickle)
-	load_pickle(s) = py"load_pickle"(s)
-end;
-
-# ╔═╡ f539e06d-a1b5-413a-b90e-91cb0bbd5a4c
-load_data(fpath_sample, fpath_model, fpath_result; allow_pickle=true) = Dict(
-	"samples" => load_pickle(fpath_sample),
-	"models" => load_npz(fpath_model, allow_pickle=allow_pickle),
-	"results" => CSV.File(
-		fpath_result,
-		comment = "#",
-		normalizenames = true,
-	) |> DataFrame
-)
-
-# ╔═╡ 2191791b-df62-4f1b-88bf-060cc47896b2
-begin
-	cubes = Dict(
-		name(fpath_sample, dates_to_names) => load_data(
-			fpath_sample, fpath_model, fpath_result
-		)
-
-		for (fpath_sample, fpath_model, fpath_result) ∈ zip(
-			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")),
-			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_WLC.npy")),
-			sort(glob("$(DATA_DIR)/w50*/white-light/results.dat")),
-		)
-	)
-
-	cubes = sort(cubes)
-end
-
-# ╔═╡ d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
-cubes |> keys
-
 # ╔═╡ a8cf11e2-796e-45ff-bdc9-e273b927700e
 md"""
 ## Transit curves 🌅
@@ -177,17 +103,6 @@ md"""
 md"""
 Plotting the data from the `models` cube returns the following detrended white-light curves:
 """
-
-# ╔═╡ ae7e7890-7d83-4411-89b8-7e1b23916266
-"../../ACCESS_WASP-50b/figures/detrended/"
-
-# ╔═╡ 6cfb1541-62af-4884-9c74-d19b56c3b02e
-detLC = CSV.File(
-	"data/detrended/out_l_C/WASP50/w50_150927_LDSS3_flat/white-light/PCA_3/detrended_lc.dat",
-	header = ["Time", "DetFlux", "DetFluxErr", "Model"],
-	comment = "#",
-	#normalizenames = true,
-) |> DataFrame
 
 # ╔═╡ 0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # Returns value `v` from `Variables` columns in results.dat file 
@@ -251,6 +166,243 @@ const PARAMS = OrderedDict(
 	"q1" => "u",
 );
 
+# ╔═╡ 6fcd1377-8364-45a3-9ff6-89d61df1ef42
+# Number of levels `n` to show in contour plots
+compute_levels(A, n) = reverse(
+	range(maximum(A), step=-maximum(A)/(n+1), length=(n+1))
+)
+
+# ╔═╡ 2cbc6ddb-210e-41e8-b745-5c41eba4e778
+function plot_corner!(fig, samples, params; n_levels=4, color=:blue)
+	for (j, p1) in enumerate(params), (i, p2) in enumerate(params)
+		# 1D plot
+		if i == j
+			density!(fig[i, i], samples[p1];
+				color = (color, 0.125),
+				strokewidth = 3,
+				strokecolor = color,
+				strokearound = true,
+			)
+		end
+		# 2D plot
+		if i > j
+			Z = kde((samples[p1], samples[p2]), npoints=(2^4, 2^4),)
+			contourf!(fig[i, j], Z;
+				levels = compute_levels(Z.density, n_levels),
+				colormap = cgrad(
+					range(Makie.Colors.colorant"white", color, length=n_levels),
+					alpha=0.5,
+				),
+			)
+			contour!(fig[i, j], Z;
+				levels = compute_levels(Z.density, n_levels),
+				color = color,
+				linewidth = 3,
+			)
+		end
+	end
+end
+
+# ╔═╡ 82a23101-9e1f-4eae-b529-e750a44c98b1
+md"""
+!!! note
+	The sampled values have been scaled so that the distance of each sample from its literature "truth" value is in units of that truth value's reported uncertainty. We show this operation below.
+"""
+
+# ╔═╡ 30ae3744-0e7e-4c16-b91a-91eb518fba5b
+md"""
+## Notebook setup
+"""
+
+# ╔═╡ bf9c0b95-fe17-425d-8904-8298f7e5451c
+function savefig(fig, fpath)
+	mkpath(dirname(fpath))
+    save(fpath, fig)
+	@info "Saved to: $(fpath)"
+end
+
+# ╔═╡ 1f7b883c-0192-45bd-a206-2a9fde1409ca
+begin
+	##############
+	# PLOT CONFIGS
+	##############
+	const FIG_TALL = (900, 1_200)
+	const FIG_WIDE = (800, 600)
+	const FIG_LARGE = (1_200, 1_000)
+	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS = parse.(Makie.Colors.Colorant,
+		[
+			"#a6cee3",  # Cyan
+			"#fdbf6f",  # Yellow
+			"#ff7f00",  # Orange
+			"#1f78b4",  # Blue
+			# "plum",
+			# "#956cb4",  # Purple
+			# "mediumaquamarine",
+			# "#029e73",  # Green,
+		]
+	)
+	
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Scatter = (linewidth=10,),
+			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
+	
+	COLORS
+end
+
+# ╔═╡ 89c48710-651e-45ff-8fcb-e4173559defd
+function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
+	ax_top = Axis(gl[1, 1]; ax_top_kwargs...)
+	ax_bottom = Axis(gl[2, 1]; ax_bottom_kwargs...)
+
+	t₀ = val(cube["results"], "t0")
+	P = val(cube["results"], "P")
+	t = ϕ.(cube["models"]["t"], t₀, P)
+	t_interp = ϕ.(cube["models"]["t_interp"], t₀, P)
+	resids = cube["models"]["LC_det"] - cube["models"]["LC_transit_model"]
+	resids_σ = round(Int, std(resids) * 1e6)
+	resids .*= 1e6
+	
+	color = COLORS[i]
+	color_dark = 0.75 * COLORS[i]
+	
+	# Top panel
+	scatter!(ax_top,
+		t,
+		cube["models"]["LC_det"],
+		color = color,
+	)
+	lines!(ax_top,
+		t_interp,
+		cube["models"]["LC_det_model_interp"],
+		color = color_dark,
+	)
+	t_x = 0.06
+	text!(ax_top, "$transit";
+		position = Point2f0(t_x, 0.9765),
+		align = (:right, :bottom),
+		color = color_dark,
+	)
+	
+	# Bottom panel
+	scatter!(ax_bottom, t, resids, color=color)
+	lines!(ax_bottom, t_interp, zero(t_interp), color=color_dark)
+	text!(ax_bottom, "$resids_σ ppm";
+		position = Point2f0(t_x, 2300),
+		align = (:right, :top),
+		color = color_dark,
+	)
+
+	linkxaxes!(ax_top, ax_bottom)
+	hidexdecorations!(ax_top)
+
+	rowsize!(gl, 2, Relative(1/3))
+end
+
+# ╔═╡ baeadfce-535a-46c3-8cb9-79cf6bde8555
+md"""
+## Packages
+"""
+
+# ╔═╡ db539901-f0b0-4692-a8d2-6c72dff41196
+begin
+	py"""
+	import numpy as np
+	import pickle
+
+	def load_npz(fpath, allow_pickle=False):
+		return np.load(fpath, allow_pickle=allow_pickle)[()]
+
+	def load_pickle(fpath):
+		with open(fpath, "rb") as f:
+			data = pickle.load(f)
+		return data
+	"""
+	load_npz(s; allow_pickle=false) = py"load_npz"(s, allow_pickle=allow_pickle)
+	load_pickle(s) = py"load_pickle"(s)
+end;
+
+# ╔═╡ f539e06d-a1b5-413a-b90e-91cb0bbd5a4c
+load_data(fpath_sample, fpath_model, fpath_result; allow_pickle=true) = Dict(
+	"samples" => load_pickle(fpath_sample),
+	"models" => load_npz(fpath_model, allow_pickle=allow_pickle),
+	"results" => CSV.File(
+		fpath_result,
+		comment = "#",
+		normalizenames = true,
+	) |> DataFrame
+)
+
+# ╔═╡ 2191791b-df62-4f1b-88bf-060cc47896b2
+begin
+	cubes = Dict(
+		name(fpath_sample, dates_to_names) => load_data(
+			fpath_sample, fpath_model, fpath_result
+		)
+
+		for (fpath_sample, fpath_model, fpath_result) ∈ zip(
+			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")),
+			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_WLC.npy")),
+			sort(glob("$(DATA_DIR)/w50*/white-light/results.dat")),
+		)
+	)
+
+	cubes = sort(cubes)
+end
+
+# ╔═╡ d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
+cubes |> keys
+
+# ╔═╡ 4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
+let
+	fig = Figure(resolution=FIG_LARGE)
+	
+	grid = CartesianIndices((2, 2))
+	xlims = -0.065, 0.065
+	ax_top_kwargs = (
+		ylabel = "Relative flux",
+		#limits = (xlims..., 0.975, 1.005),
+	)
+	ax_bottom_kwargs = (
+		xlabel = "Phase",
+		ylabel = "(ppm)",
+		#limits=(xlims..., -3000, 3000),
+	)
+	for (i, (transit, cube)) in enumerate(cubes)
+		g_idxs = grid[i]
+		gl = fig[g_idxs.I...] = GridLayout()
+		
+		plot_lc!(gl, i, transit, cube;
+			ax_top_kwargs = ax_top_kwargs,
+			ax_bottom_kwargs = ax_bottom_kwargs,
+		)
+	end
+
+	# rowgap!(fig.layout, 1, Relative(0.05))
+	# colgap!(fig.layout, 1, Relative(0.05))
+
+	axs = reshape(fig.content, 4, 2)
+	linkxaxes!(axs...)
+	linkyaxes!.(axs[1, 1], axs[3, 1], axs[1, 2], axs[3, 2])
+	linkyaxes!.(axs[2, 1], axs[4, 1], axs[2, 2], axs[4, 2])
+	hidexdecorations!.(axs[2, :])
+	hideydecorations!.(axs[:, 2])
+
+	savefig(fig, "$(FIG_PATH)/detrended_wlcs.png")
+	
+	fig
+end
+
 # ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
 begin
 	summary_tables = DataFrame[]
@@ -305,179 +457,6 @@ begin
 			for param in keys(PARAMS)
 		)
 	end
-end
-
-# ╔═╡ 6fcd1377-8364-45a3-9ff6-89d61df1ef42
-# Number of levels `n` to show in contour plots
-compute_levels(A, n) = reverse(
-	range(maximum(A), step=-maximum(A)/(n+1), length=(n+1))
-)
-
-# ╔═╡ 2cbc6ddb-210e-41e8-b745-5c41eba4e778
-function plot_corner!(fig, samples, params; n_levels=4, color=:blue)
-	for (j, p1) in enumerate(params), (i, p2) in enumerate(params)
-		# 1D plot
-		if i == j
-			density!(fig[i, i], samples[p1];
-				color = (color, 0.125),
-				strokewidth = 3,
-				strokecolor = color,
-				strokearound = true,
-			)
-		end
-		# 2D plot
-		if i > j
-			Z = kde((samples[p1], samples[p2]), npoints=(2^4, 2^4),)
-			contourf!(fig[i, j], Z;
-				levels = compute_levels(Z.density, n_levels),
-				colormap = cgrad(
-					range(colorant"white", color, length=n_levels),
-					alpha=0.5,
-				),
-			)
-			contour!(fig[i, j], Z;
-				levels = compute_levels(Z.density, n_levels),
-				color = color,
-				linewidth = 3,
-			)
-		end
-	end
-end
-
-# ╔═╡ 82a23101-9e1f-4eae-b529-e750a44c98b1
-md"""
-!!! note
-	The sampled values have been scaled so that the distance of each sample from its literature "truth" value is in units of that truth value's reported uncertainty. We show this operation below.
-"""
-
-# ╔═╡ 30ae3744-0e7e-4c16-b91a-91eb518fba5b
-md"""
-## Plot configs
-"""
-
-# ╔═╡ 1f7b883c-0192-45bd-a206-2a9fde1409ca
-begin
-	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (1_350, 800)
-	#const COLORS = to_colormap(:seaborn_colorblind6, 8)[[8, 6, 4, 1]]
-	const COLORS = parse.(Colorant,
-		[
-			"#a6cee3",  # Cyan
-			"#fdbf6f",  # Yellow
-			"#ff7f00",  # Orange
-			"#1f78b4",  # Blue
-			# "plum",
-			# "#956cb4",  # Purple
-			# "mediumaquamarine",
-			# "#029e73",  # Green
-		]
-	)
-	
-	set_aog_theme!()
-	update_theme!(
-		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
-			Scatter = (linewidth=10,),
-			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
-			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
-		)
-	)
-	
-	COLORS
-end
-
-# ╔═╡ c88dbdc1-4e95-4f15-96f4-1597042df3e6
-begin
-	size_in_inches = FIG_WIDE
-	dpi = 400
-	size_in_pixels = size_in_inches .* dpi
-end
-
-# ╔═╡ 89c48710-651e-45ff-8fcb-e4173559defd
-function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
-	ax_top = Axis(gl[1, 1]; ax_top_kwargs...)
-	ax_bottom = Axis(gl[2, 1]; ax_bottom_kwargs...)
-
-	t₀ = val(cube["results"], "t0")
-	P = val(cube["results"], "P")
-	t = ϕ.(cube["models"]["t"], t₀, P)
-	t_interp = ϕ.(cube["models"]["t_interp"], t₀, P)
-	resids = cube["models"]["LC_det"] - cube["models"]["LC_transit_model"]
-	resids_σ = round(Int, std(resids) * 1e6)
-	resids .*= 1e6
-	
-	color = COLORS[i]
-	color_dark = 0.75 * COLORS[i]
-	
-	# Top panel
-	scatter!(ax_top,
-		t,
-		cube["models"]["LC_det"],
-		color = color,
-	)
-	lines!(ax_top,
-		t_interp,
-		cube["models"]["LC_det_model_interp"],
-		color = color_dark,
-	)
-	text!(ax_top, "$transit";
-		position = Point2f0(-0.06, 0.9765),
-		align = (:left, :bottom),
-		color = color_dark,
-	)
-	
-	# Bottom panel
-	scatter!(ax_bottom, t, resids, color=color)
-	lines!(ax_bottom, t_interp, zero(t_interp), color=color_dark)
-	text!(ax_bottom, "$resids_σ ppm";
-		position = Point2f0(-0.06, 2300),
-		align = (:left, :top),
-		color = color_dark,
-	)
-
-	linkxaxes!(ax_top, ax_bottom)
-	hidexdecorations!(ax_top)
-
-	rowsize!(gl, 2, Relative(1/3))
-end
-
-# ╔═╡ 4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
-let
-	fig = Figure(resolution=FIG_WIDE)
-	
-	grid = CartesianIndices((2, 2))
-	xlims = -0.065, 0.065
-	ax_top_kwargs = (
-		ylabel = "Relative flux",
-		limits = (xlims..., 0.975, 1.005),
-	)
-	ax_bottom_kwargs = (
-		xlabel = "Phase",
-		ylabel = "(ppm)",
-		limits=(xlims..., -3000, 3000),
-	)
-	for (i, (transit, cube)) in enumerate(cubes)
-		g_idxs = grid[i]
-		gl = fig[g_idxs.I...] = GridLayout()
-		
-		plot_lc!(gl, i, transit, cube;
-			ax_top_kwargs = ax_top_kwargs,
-			ax_bottom_kwargs = ax_bottom_kwargs,
-		)
-	end
-
-	rowgap!(fig.layout, 1, Relative(0.05))
-	colgap!(fig.layout, 1, Relative(0.05))
-	
-	path = "../../ACCESS_WASP-50b/figures/detrended"
-	mkpath(path)
-	save("$(path)/detrended_wlcs.png", fig)
-	
-	fig #|> as_svg
 end
 
 # ╔═╡ d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
@@ -553,17 +532,13 @@ let
 		orientation = :horizontal,
 	)
 
-	path = "../../ACCESS_WASP-50b/figures/detrended"
-	mkpath(path)
-	save("$(path)/detrended_wlcs_corner.png", fig)
+	savefig(fig, "$(FIG_PATH)/detrended_wlcs_corner.png")
 	
-	fig #|> as_svg
+	fig
 end
 
-# ╔═╡ baeadfce-535a-46c3-8cb9-79cf6bde8555
-md"""
-## Packages
-"""
+# ╔═╡ 89c8fcd6-6a2f-4e4e-882d-569901487966
+@with_terminal Conda.list(:WASP50b)
 
 # ╔═╡ 2c3f26b9-410a-4cfa-befd-194daddefb4e
 html"""
@@ -585,12 +560,10 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
-# ╠═28ac126e-7045-4d92-862e-66fd75a0e9b4
-# ╠═d12dfda1-540a-4f6d-81a8-7d0196cdf1a4
-# ╠═d90b77cc-dc8d-4413-bfb5-263dd82308c1
 # ╟─506eeeb2-e56d-436b-91b8-605e52201563
 # ╟─782806a6-efd2-45a9-b898-788a276c282b
-# ╠═a8d91138-73e7-4382-a032-37daec54a9c0
+# ╟─a8d91138-73e7-4382-a032-37daec54a9c0
+# ╟─2dd2ad78-b9a1-4cdf-97c9-b659599add63
 # ╠═d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
 # ╠═2191791b-df62-4f1b-88bf-060cc47896b2
 # ╠═105762e1-15a2-4e7f-bff3-7740a5f53492
@@ -598,15 +571,10 @@ body.disable_ui main {
 # ╠═e873f9c6-fd1a-4227-9df1-70c626e4a0a1
 # ╠═e72dba55-6a33-462f-aeac-5f62b25cb46a
 # ╟─579e62da-7ffb-4639-bd73-3826ade1cfa2
-# ╟─583b3377-f4f6-4170-8658-d3ba17a5b86d
-# ╠═39dbca86-a4b9-11eb-1c64-9ddf1a9990ab
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
-# ╠═c88dbdc1-4e95-4f15-96f4-1597042df3e6
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
-# ╠═ae7e7890-7d83-4411-89b8-7e1b23916266
 # ╠═89c48710-651e-45ff-8fcb-e4173559defd
-# ╠═6cfb1541-62af-4884-9c74-d19b56c3b02e
 # ╠═0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # ╠═d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c
 # ╟─b28bb1b6-c148-41c4-9f94-0833e365cad4
@@ -628,7 +596,11 @@ body.disable_ui main {
 # ╠═6fcd1377-8364-45a3-9ff6-89d61df1ef42
 # ╟─82a23101-9e1f-4eae-b529-e750a44c98b1
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
+# ╟─bf9c0b95-fe17-425d-8904-8298f7e5451c
 # ╠═1f7b883c-0192-45bd-a206-2a9fde1409ca
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
+# ╠═db539901-f0b0-4692-a8d2-6c72dff41196
+# ╠═89c8fcd6-6a2f-4e4e-882d-569901487966
+# ╠═91fa7df7-5e2f-4cf5-83af-48dcae539726
 # ╠═691eddff-f2eb-41a8-ab05-63afb46d15f2
 # ╟─2c3f26b9-410a-4cfa-befd-194daddefb4e

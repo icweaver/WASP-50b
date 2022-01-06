@@ -126,7 +126,7 @@ $(TableOfContents(title="📖 Table of Contents"))
 md"""
 ## Load data
 
-First let's load up all of the data, including the white light transit depths from each night.
+First let's load up all of the data, including the white-light transit depths from each night.
 
 !!! note "Data download"
 	```

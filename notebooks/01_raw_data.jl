@@ -26,6 +26,7 @@ begin
 	using PlutoUI
 	using Glob
 	using Statistics
+	using Latexify
 end
 
 # ╔═╡ fb39c593-86bd-4d4c-b9ec-e5e212a4de98
@@ -135,6 +136,32 @@ function plot_frame!(ax, img=frames_LDSS3[1], i=1, coords=coords_LDSS3;
 
 	return hm
 end
+
+# ╔═╡ 8fadd0b6-6ff8-42e5-9014-4e79593e3502
+md"""
+## Wavelength bins
+
+We generate the wavelength bins used for each instrument here:
+"""
+
+# ╔═╡ f58aba9d-bccb-4d8b-ab83-559d6ff1ea62
+df_wbins = let
+	dirpath = "data/reduced_data/wbins"
+	df = CSV.read.(
+		("$(dirpath)/w50_bins$(fname).dat" for fname ∈ ("_ut131219", "", "_LDSS3")),
+		DataFrame,
+		header = [:wav_d, :wav_u],
+		comment = "#",
+	)
+	df_wbins_comb = DataFrame(∪(eachrow.(df)...))
+	@transform df_wbins_comb begin
+		:wav_cen = mean((:wav_d, :wav_u))
+		:wav_Δ = :wav_u .- :wav_d
+	end
+end
+
+# ╔═╡ 0d2476b1-2864-4bfc-ac37-f771aab77368
+@with_terminal println(latextabular(df_wbins, latex=false))
 
 # ╔═╡ 4480ae72-3bb2-4e17-99be-28afc756332a
 md"""
@@ -272,6 +299,9 @@ body.disable_ui main {
 # ╠═c488270a-3126-4e38-a0c8-ee242115a3ea
 # ╠═83a9357d-836b-4cee-a41f-eabc8f3f12e7
 # ╠═71ba9181-90e4-4d12-97c0-462b3f1df077
+# ╟─8fadd0b6-6ff8-42e5-9014-4e79593e3502
+# ╠═f58aba9d-bccb-4d8b-ab83-559d6ff1ea62
+# ╟─0d2476b1-2864-4bfc-ac37-f771aab77368
 # ╟─4480ae72-3bb2-4e17-99be-28afc756332a
 # ╟─db4a4cd8-c5e8-4124-935f-0666f6e73fe2
 # ╟─b44b6591-d57b-40bd-810c-a41386412b6c
