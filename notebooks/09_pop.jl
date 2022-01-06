@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.3
+# v0.17.5
 
 using Markdown
 using InteractiveUtils
@@ -296,9 +296,9 @@ let
 		titlegap = 24,
 	)
 
-	path = "../../ACCESS_WASP-50b/figures/pop"
-	mkpath(path)
-	save("$(path)/hg_pop.png", fig)
+    #path = "../../ACCESS_WASP-50b/figures/pop"
+	#mkpath(path)
+	#save("$(path)/hg_pop.png", fig)
 	
 	fig
 end
@@ -482,9 +482,9 @@ let
 
 	hlines!(ax, 20, color=:darkgrey, linestyle=:dash)
 
-	path = "../../ACCESS_WASP-50b/figures/pop"
-	mkpath(path)
-	save("$(path)/tspec_pop.png", fig)
+    #path = "../../ACCESS_WASP-50b/figures/pop"
+	#mkpath(path)
+	#save("$(path)/tspec_pop.png", fig)
 
 	fig
 end

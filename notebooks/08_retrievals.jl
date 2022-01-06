@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.3
+# v0.17.5
 
 using Markdown
 using InteractiveUtils
@@ -18,36 +18,25 @@ end
 begin
 	import Pkg
 	Pkg.activate(Base.current_project())
-	
+
+	using PlutoUI
 	using AlgebraOfGraphics
-	using CSV
 	using CairoMakie
-	using CCDReduction: fitscollection
-	using Colors
 	using DataFrames
-	using DataFramesMeta
-	using Dates
 	using DelimitedFiles
 	using Glob
 	using ImageFiltering
 	using Latexify
-	using LaTeXStrings
-	using LombScargle
-	using Measurements
-	using Measurements: value, uncertainty
-	using NaturalSort
-	using OrderedCollections
-	using Printf
 	using Statistics
-	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
-	using Unitful
-	
-	import CairoMakie.Makie.KernelDensity: kde
-	
-	# Python setup
-	#ENV["PYTHON"] = "~/miniconda3/envs/WASP-50b/bin/python"
+end
+
+# ╔═╡ f2b2db32-f7fb-4735-849d-5bee761a5e85
+begin
+	ENV["PYTHON"] = ""
 	Pkg.build("PyCall")
 	using PyCall
+	const Conda = PyCall.Conda
+	Conda.add("lightkurve", :WASP50b)
 end
 
 # ╔═╡ 0132b4ab-0447-4546-b412-ec598b20d21d
@@ -348,6 +337,9 @@ let
 	fig
 end
 
+# ╔═╡ 01bbee9f-66bf-4e08-a91b-9870def4e62a
+@with_terminal Conda.list(:WASP50b)
+
 # ╔═╡ Cell order:
 # ╟─0132b4ab-0447-4546-b412-ec598b20d21d
 # ╠═60dc161c-2aa2-4264-884d-6da3ead0e57b
@@ -372,4 +364,6 @@ end
 # ╠═44b3b8cd-4b83-4b27-a948-d1230489552f
 # ╟─1eff1230-2423-4ac3-8e9b-f4e7bcd0121b
 # ╠═e43f1834-73dd-4859-b847-f4c552561897
+# ╠═01bbee9f-66bf-4e08-a91b-9870def4e62a
+# ╠═f2b2db32-f7fb-4735-849d-5bee761a5e85
 # ╠═239a91a6-f68a-11eb-14fd-0ba8d08b08f9

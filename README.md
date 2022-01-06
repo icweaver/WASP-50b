@@ -8,4 +8,4 @@
 1. [Photometric Monitoring](https://icweaver.github.io/WASP-50b/html/06_photometric_monitoring.jl.html)
 1. [Transmission Spectra](https://icweaver.github.io/WASP-50b/html/07_transmission_spectra.jl.html)
 1. [Retrievals](https://icweaver.github.io/WASP-50b/html/08_retrievals.jl.html)
-1. [HGHJ Population](https://icweaver.github.io/WASP-50b/html/pop.jl.html)
+1. [HGHJ Population](https://icweaver.github.io/WASP-50b/html/09_pop.jl.html)

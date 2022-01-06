@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.3
+# v0.17.5
 
 using Markdown
 using InteractiveUtils
@@ -14,103 +14,28 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ ef970c0c-d08a-4856-b10b-531bb5e7e53e
+# ╔═╡ e917bd8d-7f4a-44e4-9eb9-84199dd061f5
 begin
 	import Pkg
 	Pkg.activate(Base.current_project())
-	
+
+	using PlutoUI
 	using AlgebraOfGraphics
-	using CSV
 	using CairoMakie
-	using CCDReduction: fitscollection
-	using Colors
-	using DataFrames
-	using DataFramesMeta
-	using Dates
+	import CairoMakie.Makie.KernelDensity: kde
+	using CSV, DataFrames, DataFramesMeta
 	using DelimitedFiles
 	using Glob
 	using ImageFiltering
 	using Latexify
-	using LaTeXStrings
-	using Measurements
-	using Measurements: value, uncertainty
-	using NaturalSort
+	using Measurements, StatsBase, Unitful, UnitfulAstro
+	import Measurements: value, uncertainty
+	
 	using OrderedCollections
 	using Printf
-	using Statistics
-	using StatsBase
-	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
-	using Unitful, UnitfulAstro
+	using NaturalSort
 
 	const G = Unitful.G
-	
-	# Python setup
-	ENV["PYTHON"] = "/home/mango/miniconda3/envs/WASP-50b/bin/python"
-	Pkg.build("PyCall")
-	using PyCall
-	
-	##############
-	# PLOT CONFIGS
-	##############
-	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (1_350, 800)
-	
-	set_aog_theme!()
-	update_theme!(
-		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
-			Scatter = (linewidth=10,),
-			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
-		)
-	)
-	
-	# const COLORS = Makie.wong_colors()
-	const COLORS = parse.(Colorant,
-	[
-		"#a6cee3",  # Cyan
-		"#fdbf6f",  # Yellow
-		"#ff7f00",  # Orange
-		"#1f78b4",  # Blue
-		# "plum",
-		# "#956cb4",  # Purple
-		# "mediumaquamarine",
-		# "#029e73",  # Green
-	]
-)
-end
-
-# ╔═╡ 6f1bb4ef-93b7-42a2-bbe4-a761204a69fc
-using MarkdownLiteral
-
-# ╔═╡ eff793de-eaa7-464d-b27c-5c1ba6d7be20
-function check_logfile(fpath)
-	haze, clouds, fitR0, species = false, false, false, String[]
-	for (i, line) ∈ enumerate(eachline(fpath))
-		i > 4 && break
-		if occursin("Saving", line)			
-			# `out_folder` name
-			het, cloud, haze, fitR0 = occursin.(
-				("_Het", "_Clouds", "_Haze", "_fitR0"),
-				split(line, '/')[2]
-			)
-			species = split(line, "fitR0_")[2]
-
-			# logfile name
-			logfile = basename(fpath)
-
-			het_logfile, cloud_logfile, haze_logfile, fitR0_logfile =
-				occursin.(("het", "cloud", "haze", "fit_R0"), logfile)
-			species_logfile = replace(
-				split(split(logfile, ".log")[1], '_')[end], '+' => '_'
-			)
-
-			return all((haze == haze_logfile))
-		end
-	end
 end
 
 # ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
@@ -121,6 +46,9 @@ In this notebook we will load in the individual transmission spectra from each n
 
 $(TableOfContents(title="📖 Table of Contents"))
 """
+
+# ╔═╡ bd80f202-b4bb-4682-aa62-e8245867208c
+const FIG_PATH = "figures/detrended"
 
 # ╔═╡ 0c752bd5-5232-4e82-b519-5ca23fff8a52
 md"""
@@ -323,6 +251,136 @@ function plot_tspec!(ax, df, col;
 	scatter!(ax, wav .+ nudge, f; color=color, kwargs_scatter..., label=label)
 end
 
+# ╔═╡ f92ecf4d-aab8-413e-a32d-5f77a969d1ca
+md"""
+## Offset test
+"""
+
+# ╔═╡ 1a6067ca-645a-448b-815f-6a2966548ca6
+df_IMACS = @chain df_tspecs begin
+	select(_, ["Wlow","Wup", "Wcen","Transit 1 (IMACS)", "Transit 2 (IMACS)", "Transit 3 (IMACS)"])
+	#z.Combined = [weightedmean2(skipmissing(row)) for row ∈ eachrow(z)]
+	rename(_, names(_, r"Tr") .=> [:x1, :x2, :x3])
+	#@rtransform :Combined = sum(skipmissing([:x1, :x2, :x3]))
+	dropmissing(_, :x1)
+	@rtransform :Combined = weightedmean2(skipmissing([:x1, :x2, :x3]))
+	rename(_, names(_, r"x") .=> ["Transit 1 (IMACS)", "Transit 2 (IMACS)", "Transit 3 (IMACS)"])
+end
+
+# ╔═╡ b555e372-2292-4f0e-b511-88b92588ad14
+df_LDSS3 = @chain df_tspecs begin
+	select(_, ["Wlow","Wup", "Wcen", "Transit 2 (LDSS3)"])
+	#z.Combined = [weightedmean2(skipmissing(row)) for row ∈ eachrow(z)]
+	rename(_, names(_, r"Tr") .=> [:x1])
+	#@rtransform :Combined = sum(skipmissing([:x1, :x2, :x3]))
+	dropmissing(_)
+	@transform :Combined = :x1
+	#@rtransform :Combined = weightedmean2(skipmissing([:x1, :x2, :x3]))
+	rename(_, names(_, r"x") .=> ["Transit 2 (LDSS3)"])
+end
+
+# ╔═╡ 3af0d3b0-c698-4845-a74e-c7186b03a721
+#CSV.write("$(DATA_DIR)/tspec_w50_IMACS.csv",
+#	create_df(df_IMACS, instrument="Magellan/IMACS")
+#)
+
+# ╔═╡ 0fced6dc-fe96-4216-93b1-f8493f2402e9
+#CSV.write("$(DATA_DIR)/tspec_w50_LDSS3.csv",
+#	create_df(df_LDSS3, instrument="Clay/LDSS3")
+#)
+
+# ╔═╡ 146a2be7-1c08-4d7c-802f-41f65aeae0d5
+md"""
+## Retrieval params
+
+Finally, we save the final combined transmission spectrum to file for our retrieval analysis, along with planet/star parameters computed from the WLC fits:
+"""
+
+# ╔═╡ 5718672b-1bc6-4676-8703-5fc06b83f0f9
+# CSV.write("$(DATA_DIR)/tspec_w50_all.csv", create_df(df_tspecs))
+
+# ╔═╡ b27f5a0a-812d-44c8-9c84-c74b0c58c794
+# CSV.write("$(DATA_DIR)/tspec_w50.csv", create_df(df_common))
+
+# ╔═╡ 9141dba4-4c11-404d-b18a-b22f3466caba
+Rₛ = 0.873u"Rsun"
+
+# ╔═╡ 54c341d9-2065-48cf-89bd-11acf72bdf9d
+Rₚ = √(mean_wlc_depth * 1e-6 * Rₛ^2)
+
+# ╔═╡ cc3aec2c-6ca3-4817-9100-3e1c01df4651
+Rₚ |> u"Rjup"
+
+# ╔═╡ 520d2cc3-00e0-46d8-83b2-5c740fd3bdd0
+Mₚ = 1.78u"Mjup"
+
+# ╔═╡ eaed62d7-5733-44b8-bd98-8b0fc4a18fe5
+gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
+
+# ╔═╡ cb02a053-d048-43d9-950a-de3106019520
+function create_df(df; instrument="add instrument")
+	@select df begin
+		:Wlow
+		:Wup
+		:Depth = value.(:Combined)
+		:Errup = uncertainty.(:Combined)
+		:ErrLow = uncertainty.(:Combined)
+		:Instrument = instrument
+		:Offset = "NO"
+	end
+end
+
+# ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
+md"""
+## Notebook setup
+"""
+
+# ╔═╡ e9b22d93-1994-4c31-a951-1ab00dc4c102
+function savefig(fig, fpath)
+	mkpath(dirname(fpath))
+    save(fpath, fig)
+	@info "Saved to: $(fpath)"
+end
+
+# ╔═╡ ef970c0c-d08a-4856-b10b-531bb5e7e53e
+begin
+	##############
+	# PLOT CONFIGS
+	##############
+	const FIG_TALL = (900, 1_200)
+	const FIG_WIDE = (800, 600)
+	const FIG_LARGE = (1_200, 1_000)
+	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS = parse.(Makie.Colors.Colorant,
+		[
+			"#a6cee3",  # Cyan
+			"#fdbf6f",  # Yellow
+			"#ff7f00",  # Orange
+			"#1f78b4",  # Blue
+			# "plum",
+			# "#956cb4",  # Purple
+			# "mediumaquamarine",
+			# "#029e73",  # Green,
+		]
+	)
+	
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Scatter = (linewidth=10,),
+			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
+	
+	COLORS
+end
+
 # ╔═╡ 8c077881-fc5f-4fad-8497-1cb6106c6ed5
 let
 	fig = Figure(resolution=(1_000, 500))
@@ -364,40 +422,10 @@ let
 	
 	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
 	
-	path = "../../ACCESS_WASP-50b/figures/detrended"
-	mkpath(path)
 	suf = basename(dirname(DATA_DIR))
-	save("$(path)/tspec_$(suf).png", fig)
+	savefig(fig, "$(FIG_PATH)/tspec_$(suf).png")
 	
-	fig #|> as_svg
-end
-
-# ╔═╡ f92ecf4d-aab8-413e-a32d-5f77a969d1ca
-md"""
-## Offset test
-"""
-
-# ╔═╡ 1a6067ca-645a-448b-815f-6a2966548ca6
-df_IMACS = @chain df_tspecs begin
-	select(_, ["Wlow","Wup", "Wcen","Transit 1 (IMACS)", "Transit 2 (IMACS)", "Transit 3 (IMACS)"])
-	#z.Combined = [weightedmean2(skipmissing(row)) for row ∈ eachrow(z)]
-	rename(_, names(_, r"Tr") .=> [:x1, :x2, :x3])
-	#@rtransform :Combined = sum(skipmissing([:x1, :x2, :x3]))
-	dropmissing(_, :x1)
-	@rtransform :Combined = weightedmean2(skipmissing([:x1, :x2, :x3]))
-	rename(_, names(_, r"x") .=> ["Transit 1 (IMACS)", "Transit 2 (IMACS)", "Transit 3 (IMACS)"])
-end
-
-# ╔═╡ b555e372-2292-4f0e-b511-88b92588ad14
-df_LDSS3 = @chain df_tspecs begin
-	select(_, ["Wlow","Wup", "Wcen", "Transit 2 (LDSS3)"])
-	#z.Combined = [weightedmean2(skipmissing(row)) for row ∈ eachrow(z)]
-	rename(_, names(_, r"Tr") .=> [:x1])
-	#@rtransform :Combined = sum(skipmissing([:x1, :x2, :x3]))
-	dropmissing(_)
-	@transform :Combined = :x1
-	#@rtransform :Combined = weightedmean2(skipmissing([:x1, :x2, :x3]))
-	rename(_, names(_, r"x") .=> ["Transit 2 (LDSS3)"])
+	fig
 end
 
 # ╔═╡ 72affb58-6f0c-4b76-9956-a027b57a0c8e
@@ -450,68 +478,8 @@ let
 	
 	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
 	
-	# path = "../../ACCESS_WASP-50b/figures/detrended"
-	# mkpath(path)
-	# save("$(path)/tspec.png", fig)
-	
-	fig #|> as_svg
+	fig
 end
-
-# ╔═╡ 146a2be7-1c08-4d7c-802f-41f65aeae0d5
-md"""
-## Retrieval params
-
-Finally, we save the final combined transmission spectrum to file for our retrieval analysis, along with planet/star parameters computed from the WLC fits:
-"""
-
-# ╔═╡ 5718672b-1bc6-4676-8703-5fc06b83f0f9
-# CSV.write("$(DATA_DIR)/tspec_w50_all.csv", create_df(df_tspecs))
-
-# ╔═╡ b27f5a0a-812d-44c8-9c84-c74b0c58c794
-# CSV.write("$(DATA_DIR)/tspec_w50.csv", create_df(df_common))
-
-# ╔═╡ 9141dba4-4c11-404d-b18a-b22f3466caba
-Rₛ = 0.873u"Rsun"
-
-# ╔═╡ 54c341d9-2065-48cf-89bd-11acf72bdf9d
-Rₚ = √(mean_wlc_depth * 1e-6 * Rₛ^2)
-
-# ╔═╡ cc3aec2c-6ca3-4817-9100-3e1c01df4651
-Rₚ |> u"Rjup"
-
-# ╔═╡ 520d2cc3-00e0-46d8-83b2-5c740fd3bdd0
-Mₚ = 1.78u"Mjup"
-
-# ╔═╡ eaed62d7-5733-44b8-bd98-8b0fc4a18fe5
-gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
-
-# ╔═╡ cb02a053-d048-43d9-950a-de3106019520
-function create_df(df; instrument="add instrument")
-	@select df begin
-		:Wlow
-		:Wup
-		:Depth = value.(:Combined)
-		:Errup = uncertainty.(:Combined)
-		:ErrLow = uncertainty.(:Combined)
-		:Instrument = instrument
-		:Offset = "NO"
-	end
-end
-
-# ╔═╡ 3af0d3b0-c698-4845-a74e-c7186b03a721
-CSV.write("$(DATA_DIR)/tspec_w50_IMACS.csv",
-	create_df(df_IMACS, instrument="Magellan/IMACS")
-)
-
-# ╔═╡ 0fced6dc-fe96-4216-93b1-f8493f2402e9
-CSV.write("$(DATA_DIR)/tspec_w50_LDSS3.csv",
-	create_df(df_LDSS3, instrument="Clay/LDSS3")
-)
-
-# ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
-md"""
-## Notebook setup
-"""
 
 # ╔═╡ 3510ead9-6e66-4fec-84ca-15c8a3ce4c3e
 html"""
@@ -533,9 +501,8 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
-# ╠═eff793de-eaa7-464d-b27c-5c1ba6d7be20
 # ╟─e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
-# ╠═6f1bb4ef-93b7-42a2-bbe4-a761204a69fc
+# ╟─bd80f202-b4bb-4682-aa62-e8245867208c
 # ╟─0c752bd5-5232-4e82-b519-5ca23fff8a52
 # ╠═c53be9cf-7722-4b43-928a-33e7b0463330
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
@@ -574,5 +541,7 @@ body.disable_ui main {
 # ╠═eaed62d7-5733-44b8-bd98-8b0fc4a18fe5
 # ╠═cb02a053-d048-43d9-950a-de3106019520
 # ╟─f8a86915-f7d8-4462-980e-7b8124b13a3f
+# ╟─e9b22d93-1994-4c31-a951-1ab00dc4c102
 # ╠═ef970c0c-d08a-4856-b10b-531bb5e7e53e
+# ╠═e917bd8d-7f4a-44e4-9eb9-84199dd061f5
 # ╟─3510ead9-6e66-4fec-84ca-15c8a3ce4c3e
