@@ -14,60 +14,29 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ 9e2ce576-c9bd-11eb-0699-47af13e79589
+# ╔═╡ 55beac98-0929-4a55-91f7-cee7c781498c
 begin
 	import Pkg
 	Pkg.activate(Base.current_project())
-	
+
+	using PlutoUI
 	using AlgebraOfGraphics
-	using CSV
 	using CairoMakie
-	using CCDReduction: fitscollection
-	using Colors
-	using DataFrames
-	using DataFrameMacros
-	using Dates
+	using CSV, DataFrames
 	using DelimitedFiles
 	using Glob
 	using ImageFiltering
-	import CairoMakie.Makie.KernelDensity: kde
 	using Latexify
-	using LaTeXStrings
-	using LombScargle
-	using Measurements
-	using Measurements: value, uncertainty
-	using NaturalSort
-	using OrderedCollections
-	using Printf
-	using Statistics
-	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
-	using Unitful
-	
-	# Python setup
-	#ENV["PYTHON"] = "~/miniconda3/envs/WASP-50b/bin/python"
+	using LombScargle, Measurements, Statistics
+end
+
+# ╔═╡ b85cbebb-3334-4672-bf36-1070fd5dff46
+begin
+	ENV["PYTHON"] = ""
 	Pkg.build("PyCall")
 	using PyCall
-	
-	##############
-	# PLOT CONFIGS
-	##############
-	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (1_350, 800)
-	
-	set_aog_theme!()
-	update_theme!(
-		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
-			Scatter = (linewidth=10,),
-			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
-		)
-	)
-	
-	COLORS = Makie.wong_colors()
+	const Conda = PyCall.Conda
+	Conda.add("lightkurve", :WASP50b)
 end
 
 # ╔═╡ 670b88e4-1e96-494d-bfcc-235092bb6e96
@@ -78,6 +47,9 @@ In this notebook we gather and analyze the available photometric data for this t
 
 $(TableOfContents(title="📖 Table of Contents"))
 """
+
+# ╔═╡ 8d42d1c7-c517-41c4-9a5d-2908d2ac2463
+const FIG_PATH = "figures/stellar_activity"
 
 # ╔═╡ 0cbe4263-799f-4ee3-9a94-3ba879528b01
 md"""
@@ -98,9 +70,6 @@ df_ASASSN = CSV.File(
 	"data/photometric/ASAS-SN/AP37847073.csv",
 	normalizenames = true,
 ) |> DataFrame
-
-# ╔═╡ 3345ff07-b04c-498e-8161-f87082448137
-nrow(df_ASASSN)
 
 # ╔═╡ 9094c4a4-3b75-4e21-97a7-600de734867b
 describe(df_ASASSN, :all)
@@ -151,11 +120,7 @@ let
 		)
 	end
 		
-	path = "../../ACCESS_WASP-50b/figures/stellar_activity"
-	mkpath(path)
-	save("$(path)/ASAS-SN_flux.png", fig)
-	
-	fig #|> as_svg
+	fig
 end
 
 # ╔═╡ 7e5ea835-8eb2-44d5-905d-433767b6b91a
@@ -233,7 +198,7 @@ end;
 
 # ╔═╡ dbe317fe-540d-44e8-b8e7-6c465c79559f
 md"""
-``Δt_\text{ASAS-SN}`` = $(@bind binsize_ASASSN Slider(1:30, default=7, show_value=true)) days
+``Δt_\text{ASAS-SN}`` = $(@bind binsize_ASASSN PlutoUI.Slider(1:30, default=7, show_value=true)) days
 """
 
 # ╔═╡ 9a195365-e68f-43e2-8870-c09153e2ce91
@@ -244,9 +209,9 @@ With the BJD times computed, we can now plot the ASAS-SN photometry, binned to *
 """
 
 # ╔═╡ 682499cb-af79-48f7-9e74-0185894f65fe
-#= md"""
-For comparison, the cadence for this data has an average of $(t_ASASSN |> diff |> mean) days.
-""" =#
+md"""
+For comparison, the average cadence for this data is $(t_ASASSN |> diff |> mean) days.
+"""
 
 # ╔═╡ 78d85c7c-da06-41ab-915b-48d93a010967
 md"""
@@ -356,46 +321,6 @@ begin
 	push!(lcs_oot, lk.LightCurveCollection([lcs_oot...]).stitch())
 end;
 
-# ╔═╡ a3a0d365-fd08-4d6d-93cd-f73548da1feb
-P
-
-# ╔═╡ 82222ee8-f759-499d-a072-c219cc33ccad
-let
-	fig = Figure(resolution=FIG_TALL)
-	
-	for (i, (lc, lc_oot)) ∈ enumerate(zip(lcs_cleaned[1:end-1], lcs_oot[1:end-1]))
-		ax = Axis(fig[i, 1])
-		errorbars!(ax, lc.time.value, lc.flux, lc.flux_err;
-			color = (:darkgrey, 0.25),
-			markersize = 15,
-			label = """
-			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
-			"""
-		)
-		
-		ylims!(ax, 0.97, 1.02)
-		#scatter!(fig[i, 1], lc.time.value, lc.flux)
-		
-		scatter!(ax, lc_oot.time.value, lc_oot.flux;
-			color = :darkgrey, label="OOT baseline",
-			#markersize = 5,
-		)
-
-		axislegend()
-	end
-
-	linkyaxes!(filter(x -> x isa Axis, fig.content)...)
-
-	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
-	Label(fig[1:end-1, 0], "Relative flux", rotation=π/2)
-	
-	path = "../../ACCESS_WASP-50b/figures/stellar_activity"
-	mkpath(path)
-	save("$(path)/TESS_flux.png", fig)
-	
-	fig
-end
-
 # ╔═╡ 99fcf959-665b-44cf-9b5f-fd68a919f846
 md"""
 ### Periodogram
@@ -451,15 +376,6 @@ begin
 		)
 	hlines!(ax_pg, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))), linestyle=:dash)
 	axislegend(ax_pg, position=:lc)
-	
-# 	CSV.write(
-# 		"/home/mango/Desktop/WASP50LC_ASASSN_binned.csv",
-# 		DataFrame(:t=>t_binned, :f=>f_binned, :f_err=>f_err_binned),
-# 	)
-
-	path = "../../ACCESS_WASP-50b/figures/stellar_activity"
-	mkpath(path)
-	save("$(path)/ASAS-SN_pg.png", fig)
 			
 	fig
 end
@@ -486,48 +402,6 @@ begin
 		push!(plans, plan)
 		push!(P_maxs, P_max)
 	end
-end
-
-# ╔═╡ 94d05a5b-b05e-4407-bcd3-7d625680a262
-let
-	fig = Figure()
-	
-	ax_window = Axis(fig[1, 1])
-	for pgram_window in pgrams_window
-		lines!(ax_window, periodpower(pgram_window)...)
-	end
-	text!(ax_window, "Window function", position=(1, 0.3))
-	
-	ax = Axis(fig[2, 1], xlabel="Period (days)")
-	sectors = ("Sector 04", "Sector 31", "Combined")
-	for (pgram, plan, P_max, sector) in zip(pgrams, plans, P_maxs, sectors)
-		# Compute FAPs
-		b = LombScargle.bootstrap(100, plan)
-		
-		# Plot
-		lines!(ax, periodpower(pgram)...;
-			label="$(sector): $(round(P_max, digits=2))"
-		)
-		hlines!(ax, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))))
-	end
-	
-	axislegend("P_max (days)", position=(0.05, 0.8))
-	
-	hidexdecorations!(ax_window)
-	linkaxes!(ax_window, ax)
-	
-	#xlims!(ax, 0, 10)
-	#ylims!(ax, 0, 0.3)
-	
-	Label(fig[1:2, 0], "Normalized power", rotation=π/2)
-	
-	#axislegend()
-	
-	path = "../../ACCESS_WASP-50b/figures/stellar_activity"
-	mkpath(path)
-	save("$(path)/TESS_pg.png", fig)
-	
-	fig
 end
 
 # ╔═╡ d1f7ed4b-4599-48bd-aac5-93920dae9151
@@ -571,7 +445,7 @@ function compute_pgram_model(lc, P)
 		lc.time.value,
 		lc.flux,
 		lc.flux_err,
-		1 / P,
+		inv(P),
 	)
 	lc_fit = lk.LightCurve(time=t_fit, flux=s_fit)
 	lc_fit_folded = lc_fit.fold(P)
@@ -594,38 +468,6 @@ begin
 		lc_fit_folded = compute_pgram_model(lc, P)	
 		push!(lcs_fit_folded, lc_fit_folded)
 	end
-end
-
-# ╔═╡ 49bcddbe-d413-48ae-91d8-92bcebf40518
-let
-	fig = Figure()
-	
-	axs = []
-	sectors = ("Sector 04", "Sector 31", "Combined")
-	for (i, (lc_folded, lc_folded_binned, lc_fit_folded)) in enumerate(zip(
-				lcs_folded, lcs_folded_binned, lcs_fit_folded
-		))
-		ax = Axis(fig[i, 1])
-		push!(axs, ax)
-		scatter!(ax, lc_folded.time.value, lc_folded.flux, color=(:darkgrey, 0.5))
-		scatter!(ax, lc_folded_binned.time.value, lc_folded_binned.flux, color=COLORS[2])
-		lines!(ax, lc_fit_folded.time.value, lc_fit_folded.flux, color=0.5 .*(COLORS[2], 1.0))
-		text!(ax, "$(sectors[i])";
-			position = (3.5, 1.007),
-		)
-		ylims!(ax, 0.991, 1.01)
-	end
-	
-	linkaxes!(axs...)
-	
-	axs[end].xlabel = "Phase"
-	axs[2].ylabel = "Normalized flux"
-	
-	path = "../../ACCESS_WASP-50b/figures/stellar_activity"
-	mkpath(path)
-	save("$(path)/TESS_phase.png", fig)
-	
-	fig
 end
 
 # ╔═╡ 056281a2-4786-45eb-a9fa-57515153f66c
@@ -675,12 +517,154 @@ md"""
 ## Notebook setup
 """
 
+# ╔═╡ 79acbb60-803a-4047-b26d-1cf6262274a0
+function savefig(fig, fpath)
+	mkpath(dirname(fpath))
+    save(fpath, fig)
+	@info "Saved to: $(fpath)"
+end
+
+# ╔═╡ 94d05a5b-b05e-4407-bcd3-7d625680a262
+let
+	fig = Figure()
+	
+	ax_window = Axis(fig[1, 1])
+	for pgram_window in pgrams_window
+		lines!(ax_window, periodpower(pgram_window)...)
+	end
+	text!(ax_window, "Window function", position=(1, 0.3))
+	
+	ax = Axis(fig[2, 1], xlabel="Period (days)")
+	sectors = ("Sector 04", "Sector 31", "Combined")
+	for (pgram, plan, P_max, sector) in zip(pgrams, plans, P_maxs, sectors)
+		# Compute FAPs
+		b = LombScargle.bootstrap(100, plan)
+		
+		# Plot
+		lines!(ax, periodpower(pgram)...;
+			label="$(sector): $(round(P_max, digits=2))"
+		)
+		hlines!(ax, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))))
+	end
+	
+	axislegend("P_max (days)", position=(0.05, 0.8))
+	
+	hidexdecorations!(ax_window)
+	linkaxes!(ax_window, ax)
+	
+	#xlims!(ax, 0, 10)
+	#ylims!(ax, 0, 0.3)
+	
+	Label(fig[1:2, 0], "Normalized power", rotation=π/2)
+	
+	#axislegend()
+	
+	savefig(fig, "$(FIG_PATH)/stellar_activity_pg.png")
+	
+	fig
+end
+
+# ╔═╡ 9e2ce576-c9bd-11eb-0699-47af13e79589
+begin
+	##############
+	# PLOT CONFIGS
+	##############
+	const FIG_TALL = (900, 1_200)
+	const FIG_WIDE = (800, 600)
+	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS = Makie.wong_colors()
+	
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (xlabelsize=18, ylabelsize=18,),
+			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Scatter = (linewidth=10,),
+			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
+			fontsize = 18,
+			rowgap = 0,
+			colgap = 0,
+		)
+	)
+	
+	COLORS
+end
+
+# ╔═╡ 82222ee8-f759-499d-a072-c219cc33ccad
+let
+	fig = Figure(resolution=FIG_TALL)
+	
+	for (i, (lc, lc_oot)) ∈ enumerate(zip(lcs_cleaned[1:end-1], lcs_oot[1:end-1]))
+		ax = Axis(fig[i, 1])
+		errorbars!(ax, lc.time.value, lc.flux, lc.flux_err;
+			color = (:darkgrey, 0.25),
+			markersize = 15,
+			label = """
+			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
+			"""
+		)
+		
+		ylims!(ax, 0.97, 1.02)
+		#scatter!(fig[i, 1], lc.time.value, lc.flux)
+		
+		scatter!(ax, lc_oot.time.value, lc_oot.flux;
+			color = :darkgrey, label="OOT baseline",
+			#markersize = 5,
+		)
+
+		axislegend()
+	end
+
+	linkyaxes!(filter(x -> x isa Axis, fig.content)...)
+
+	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
+	Label(fig[1:end-1, 0], "Relative flux", rotation=π/2)
+
+	savefig(fig, "$(FIG_PATH)/TESS_flux.png")
+	
+	fig
+end
+
+# ╔═╡ 49bcddbe-d413-48ae-91d8-92bcebf40518
+let
+	fig = Figure()
+	
+	axs = []
+	sectors = ("Sector 04", "Sector 31", "Combined")
+	for (i, (lc_folded, lc_folded_binned, lc_fit_folded)) in enumerate(zip(
+				lcs_folded, lcs_folded_binned, lcs_fit_folded
+		))
+		ax = Axis(fig[i, 1])
+		push!(axs, ax)
+		scatter!(ax, lc_folded.time.value, lc_folded.flux, color=(:darkgrey, 0.5))
+		scatter!(ax, lc_folded_binned.time.value, lc_folded_binned.flux, color=COLORS[2])
+		lines!(ax, lc_fit_folded.time.value, lc_fit_folded.flux, color=0.5 .*(COLORS[2], 1.0))
+		text!(ax, "$(sectors[i])";
+			position = (3.5, 1.007),
+		)
+		ylims!(ax, 0.991, 1.01)
+	end
+	
+	linkaxes!(axs...)
+	
+	axs[end].xlabel = "Phase"
+	axs[2].ylabel = "Normalized flux"
+	
+	savefig(fig, "$(FIG_PATH)/stellar_activity_phase.png")
+	
+	fig
+end
+
+# ╔═╡ 61c6dd34-5712-4077-abae-2ee2634dc709
+@with_terminal Conda.list(:WASP50b)
+
 # ╔═╡ Cell order:
 # ╟─670b88e4-1e96-494d-bfcc-235092bb6e96
+# ╟─8d42d1c7-c517-41c4-9a5d-2908d2ac2463
 # ╟─0cbe4263-799f-4ee3-9a94-3ba879528b01
 # ╟─b00c28a2-26b1-442e-a347-39fb66b825a0
 # ╠═fa233a2c-7e89-4e71-85b8-824c5c341650
-# ╠═3345ff07-b04c-498e-8161-f87082448137
 # ╠═9094c4a4-3b75-4e21-97a7-600de734867b
 # ╟─6eaf882c-0cb5-415f-b8fe-c071ee25a895
 # ╟─2b2dd83b-ce99-4551-b8aa-79ca6db5dd06
@@ -696,7 +680,7 @@ md"""
 # ╟─9a195365-e68f-43e2-8870-c09153e2ce91
 # ╠═92548af3-9a26-4202-88f2-ba3a31181686
 # ╠═3033c5f2-dd7a-4490-9d67-0ee26d8b57a0
-# ╟─dbe317fe-540d-44e8-b8e7-6c465c79559f
+# ╠═dbe317fe-540d-44e8-b8e7-6c465c79559f
 # ╠═f3425d9c-861e-4b26-b352-bd0669c7f1f9
 # ╠═7370a1d9-4f8e-4788-adac-b8be2bcc9643
 # ╟─682499cb-af79-48f7-9e74-0185894f65fe
@@ -704,7 +688,6 @@ md"""
 # ╟─97e7feee-11b2-4a35-9327-b5c0d05b2a23
 # ╠═0c790d2f-64d4-4e13-9629-a9725cd7086d
 # ╠═2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
-# ╠═a3a0d365-fd08-4d6d-93cd-f73548da1feb
 # ╠═ec12acb8-9124-4cc0-8c9f-6525c1565dfd
 # ╠═708d54a5-95fd-4f15-9681-f6d8e7b9b05c
 # ╟─34fcd73d-a49c-4597-8e63-cfe2495eee48
@@ -733,4 +716,8 @@ md"""
 # ╟─18223d42-66d8-40d1-9d89-be8af46853e2
 # ╠═682c3732-e68f-4fdb-bd63-553223308364
 # ╟─ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd
+# ╟─79acbb60-803a-4047-b26d-1cf6262274a0
 # ╠═9e2ce576-c9bd-11eb-0699-47af13e79589
+# ╠═61c6dd34-5712-4077-abae-2ee2634dc709
+# ╠═b85cbebb-3334-4672-bf36-1070fd5dff46
+# ╠═55beac98-0929-4a55-91f7-cee7c781498c
