@@ -68,9 +68,14 @@ const FIG_PATH = "figures/reduced_data"
 
 # ╔═╡ 3959e46c-87c9-4566-8ab1-f437323f0a9f
 fname_suff = let
-	suff = basename(DIRPATH)
+	suff = "IMACS_" * basename(DIRPATH)
 	occursin("species", FPATH_LC) ? (suff *= "_species") : suff
 end
+
+# ╔═╡ 32b9a326-ddc8-4557-bcf5-9dcc54ed83e5
+transits = Dict("IMACS_ut$(d)" => "Transit $(i) (IMACS)"
+	for (i, d) ∈ enumerate(("131219", "150927", "161211"))
+)
 
 # ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
 wbins = let
@@ -166,7 +171,7 @@ comps = Dict(
 )
 
 # ╔═╡ 2df82761-b9fe-4d37-b57c-1eabb0ffa8dd
-use_comps = comps[split(fname_suff, '_')[1]]
+use_comps = comps[split(fname_suff, '_')[end]]
 
 # ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
 @bind window_width PlutoUI.Slider(3:2:21, default=15, show_value=true)
@@ -392,7 +397,10 @@ end
 # ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
 if plot_stellar_spectra let
 	fig = Figure(resolution=FIG_WIDE)
-	ax = Axis(fig[1, 1], xlabel="Wavelength (Å)", ylabel="Relative flux")
+	ax = Axis(fig[1, 1];
+		xlabel = "Wavelength (Å)",
+		ylabel = "Relative flux",
+	)
 	
 	LC_spectra = LC["spectra"]
 	wav = LC_spectra["wavelengths"]
@@ -408,12 +416,12 @@ if plot_stellar_spectra let
 	
 	vlines!.(ax, wbins, linewidth=1.0, color=:lightgrey)
 	
-	axislegend()
+	axislegend(transits[fname_suff])
 	
 	xlims!(ax, 4_500, 11_000)
 	ylims!(ax, 0, 2.6)
 	
-	savefig(fig, "$(FIG_PATH)/extracted_spectra_IMACS_$(fname_suff).png")
+	savefig(fig, "$(FIG_PATH)/extracted_spectra_$(fname_suff).png")
 	
 	fig
 	end
@@ -482,8 +490,14 @@ if plot_lcs let
 	
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
 	fig[end+1, 2:end] = Label(fig, "Index")
+
+	Label(fig[0, end], transits[fname_suff];
+		tellwidth = false,
+		halign = :right,
+		font = AlgebraOfGraphics.firasans("Bold"),
+	)
 	
-	savefig(fig, "$(FIG_PATH)/div_wlcs_IMACS_$(fname_suff).png")
+	savefig(fig, "$(FIG_PATH)/div_wlcs_$(fname_suff).png")
 	
 	fig
 	end
@@ -531,7 +545,7 @@ function plot_binned_lcs(comp_idx; show_fig=false)
 	fig[1:2, 0] = Label(fig, "Relative flux + offset", rotation=π/2)
 	fig[end, 2:3] = Label(fig, "Index")
 
-	savefig(fig, "$(FIG_PATH)/div_blcs_IMACS_$(fname_suff)_$(comp_name).png")
+	savefig(fig, "$(FIG_PATH)/div_blcs_$(fname_suff)_$(comp_name).png")
 
 	fig
 end
@@ -568,8 +582,9 @@ body.disable_ui main {
 # ╟─bd2cdf33-0c41-4948-82ab-9a28929f72b3
 # ╟─5ec299ff-bba9-4d66-a9f4-17f2b61d2a20
 # ╠═3959e46c-87c9-4566-8ab1-f437323f0a9f
+# ╠═32b9a326-ddc8-4557-bcf5-9dcc54ed83e5
 # ╠═dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
-# ╟─6471fc66-47a5-455e-9611-c6fd9d56e9dc
+# ╠═6471fc66-47a5-455e-9611-c6fd9d56e9dc
 # ╟─7f30d3c2-d8a4-4c0d-bbca-b1d5b1e4c20b
 # ╟─66052b03-35a0-4877-abef-f525766fd332
 # ╟─7bfc971c-8737-49ad-adec-ac57d176f10e

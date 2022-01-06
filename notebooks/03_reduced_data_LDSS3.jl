@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.3
+# v0.17.5
 
 using Markdown
 using InteractiveUtils
@@ -77,11 +77,13 @@ The data from this instrument is stored in an `npy` file that contains the follo
 	We will use `wavelength` and `raw_counts` for our analysis here, where `raw_counts` is the sky subtracted, cross-dispersion integrated flux from each star.
 
 Each cube (`LC`) can be selected from the following drop-down menu, and will be used for the rest of this analysis:
-$(@bind DIRPATH Select(sort(glob("data/reduced_data/LDSS3/ut*"))))
 """
 
 # ╔═╡ 48713a10-6ba7-4de5-a147-85a9cb136dd8
-@bind FPATH Select(glob("$(DIRPATH)/LCs*.npy"))
+@bind FPATH Select(glob("data/reduced_data/LDSS3/ut150927_*/LCs_*.npy"))
+
+# ╔═╡ 99a310b2-b802-4b29-9354-796b2dec2820
+const FIG_PATH = "figures/reduced_data"
 
 # ╔═╡ 698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 md"""
@@ -136,10 +138,25 @@ end
 
 # ╔═╡ 299dda0e-a214-45ca-9a68-947f60fcf404
 md"""
-## Stellar spectra ⭐
+## $(@bind plot_stell_spec CheckBox()) Stellar spectra ⭐
 
-With the flux extracted for each object, we now turn to analyzing the resulting stellar spectra:
+With the flux extracted for each object, we now turn to analyzing the resulting stellar spectra, selected from the wavelength bins scheme below:
 """
+
+# ╔═╡ 9697e26b-b6d9-413b-869f-47bc2ab99919
+@bind FPATH_WBINS let
+	dirpath = "data/reduced_data/wbins"
+	Select(["$(dirpath)/w50_bins_LDSS3.dat", "$(dirpath)/w50_bins_species.dat"])
+end
+
+# ╔═╡ db933939-b8df-48b2-b53e-1dbd7ec1b07c
+wbins = readdlm(FPATH_WBINS, comments=true)
+
+# ╔═╡ 25903146-2f23-4e54-bd7d-aed1025f2fa5
+fname_suff = let
+	suff = "LDSS3_" * basename(dirname(FPATH))
+	occursin("species", FPATH_WBINS) ? (suff *= "_species") : suff
+end
 
 # ╔═╡ 979895ea-9b13-494c-be08-2496562ccf07
 Na_bins = range(5800.0, stop=5986.0, length=6)
@@ -169,14 +186,10 @@ end
 
 # ╔═╡ bd937d51-17e9-4de3-a5d0-4c436d413940
 md"""
-## White-light curves 🌅
+## $(@bind plot_lcs CheckBox()) White-light curves 🌅
 
 Next, we will extract the integrated white-light curves from these spectra. We integrate over the same wavelength bins used in the IMACS analysis:
 """
-
-# ╔═╡ 9697e26b-b6d9-413b-869f-47bc2ab99919
-wbins = readdlm("$(DIRPATH)/../w50_bins_LDSS3.dat", comments=true)
-#wbins = readdlm("data/reduced/w50_bins_species.dat", comments=true)
 
 # ╔═╡ cb805821-5d2e-484c-93a5-10a897d2cfe7
 @bind window_width PlutoUI.Slider(3:2:21, default=15, show_value=true)
@@ -259,18 +272,18 @@ median_eparam(param, cube, obj_name, wav_idxs) = cube[param][obj_name][:, wav_id
 # ╔═╡ e6ed8da6-189a-4931-aac5-a4e8d0291723
 fmt_float(x) = @sprintf "%.10f" x
 
+# ╔═╡ 2aba612a-7599-4a2d-9ff0-2fd398c2a0db
+let
+    #savepath = template_dir(FPATH)
+	#rm(savepath, force=true, recursive=true)
+	#mkpath(savepath)
+end
+
 # ╔═╡ 0be35b52-caea-4000-8cf8-ab99205bdb97
 function template_dir(fpath)
 	base_dir = "$(dirname(dirname(fpath)))/LDSS3_template/WASP50"
 	date, flat_status = split(basename(dirname(fpath)), '_')
 	return "$(base_dir)/w50_$(date[3:end])_LDSS3_$(flat_status)"
-end
-
-# ╔═╡ 2aba612a-7599-4a2d-9ff0-2fd398c2a0db
-let
-	savepath = template_dir(FPATH)
-	rm(savepath, force=true, recursive=true)
-	mkpath(savepath)
 end
 
 # ╔═╡ 4af35a95-99b3-4186-a47d-169b9cbf927b
@@ -281,10 +294,34 @@ md"""
 #### WLCs (magnitude space)
 """
 
+# ╔═╡ 898a390b-49f7-45f4-b1a1-b22922d69a29
+let
+    #savepath = "$(tdir)/white-light"
+	#rm(savepath, force=true, recursive=true)
+	#mkpath(savepath)
+	#writedlm("$(savepath)/lc.dat", lc, ",    ")
+	#writedlm("$(savepath)/comps.dat", comps, ",    ")
+end
+
 # ╔═╡ b5ef9d95-1a2a-4828-8e27-89727f2e288b
 md"""
 #### Binned LCs (magnitude space)
 """
+
+# ╔═╡ 631c4d02-58cc-4c70-947f-22c8e8b11015
+let
+    #savepath = "$(tdir)/wavelength"
+	#rm(savepath, force=true, recursive=true)
+	#for i in 1:nbins
+	#	save_path_w = "$(savepath)/wbin$(i-1)"
+	#	mkpath("$(save_path_w)")
+	#	lc_w = hcat(
+	#		times[use_idxs], target_binned_mags[:, i], zeros(length(times[use_idxs]))
+	#	)
+	#	writedlm("$(save_path_w)/lc.dat", lc_w, ",    ")
+	#	writedlm("$(save_path_w)/comps.dat", comp_binned_mags[:, :, i], ",    ")
+	#end
+end
 
 # ╔═╡ 123d0c63-f05a-4a7d-be16-6a3b9abac044
 function f_to_med_mag(f)
@@ -292,10 +329,17 @@ function f_to_med_mag(f)
 	return mag .- median(mag)
 end
 
-# ╔═╡ 3b6b57e2-46ab-46d9-b334-6264daf583f3
+# ╔═╡ f788835c-8e81-4afe-805e-4caf2d5e5d5b
 md"""
-## Helper functions
+## Notebook setup
 """
+
+# ╔═╡ 36c1aa6d-cde9-4ff0-b55c-13f43e94256d
+function savefig(fig, fpath)
+	mkpath(dirname(fpath))
+    save(fpath, fig)
+	@info "Saved to: $(fpath)"
+end
 
 # ╔═╡ 2d34e125-548e-41bb-a530-ba212c0ca17c
 begin
@@ -479,30 +523,6 @@ lc = let
 	hcat(times, med_mag, zeros(length(times)))[use_idxs, :]
 end
 
-# ╔═╡ 898a390b-49f7-45f4-b1a1-b22922d69a29
-let
-	savepath = "$(tdir)/white-light"
-	rm(savepath, force=true, recursive=true)
-	mkpath(savepath)
-	writedlm("$(savepath)/lc.dat", lc, ",    ")
-	writedlm("$(savepath)/comps.dat", comps, ",    ")
-end
-
-# ╔═╡ 631c4d02-58cc-4c70-947f-22c8e8b11015
-let
-	savepath = "$(tdir)/wavelength"
-	rm(savepath, force=true, recursive=true)
-	for i in 1:nbins
-		save_path_w = "$(savepath)/wbin$(i-1)"
-		mkpath("$(save_path_w)")
-		lc_w = hcat(
-			times[use_idxs], target_binned_mags[:, i], zeros(length(times[use_idxs]))
-		)
-		writedlm("$(save_path_w)/lc.dat", lc_w, ",    ")
-		writedlm("$(save_path_w)/comps.dat", comp_binned_mags[:, :, i], ",    ")
-	end
-end
-
 # ╔═╡ c65c2298-e3a3-4666-be9d-73ee43d94847
 fwhm, trace_center, sky_flux = median_eparam.(
 	["width", "peak", "sky"],
@@ -528,11 +548,6 @@ df_eparams = DataFrame(
 
 # ╔═╡ af7beb47-ecfa-4d08-b239-c27f7e8bdc4c
 CSV.write("$(tdir)/eparams.dat", df_eparams, delim=",    ")
-
-# ╔═╡ f788835c-8e81-4afe-805e-4caf2d5e5d5b
-md"""
-## Notebook setup
-"""
 
 # ╔═╡ c911cecd-0747-4cd1-826f-941f2f58091c
 begin
@@ -573,9 +588,12 @@ begin
 end
 
 # ╔═╡ 45418bd3-74a3-4758-9fce-adddbeeec076
-let
-	fig = Figure(resolution=(800, 400))
-	ax = Axis(fig[1, 1], xlabel="Wavelength Å", ylabel="Relative flux")
+if plot_stell_spec let
+	fig = Figure(resolution=FIG_WIDE)
+	ax = Axis(fig[1, 1];
+		xlabel = "Wavelength Å",
+		ylabel = "Relative flux",
+	)
 	
 	fluxes = [f_target, [f_comps[:, :, i] for i in 1:3]...]
 	labels = obj_names.vals
@@ -595,13 +613,12 @@ let
 	xlims!(ax, 4_500, 11_000)
 	ylims!(ax, 0, 2.6)
 	
-	axislegend()
+	axislegend("Transit 2 (LDSS3)")
 	
-	path = "../../ACCESS_WASP-50b/figures/reduced_data"
-	mkpath(path)
-	save("$(path)/extracted_spectra_ut150927_LDSS3.png", fig)
+	savefig(fig, "$(FIG_PATH)/extracted_spectra_$(fname_suff).png")
 	
 	fig
+	end
 end
 
 # ╔═╡ 20d12d7b-c666-46c3-8f48-5501641e8df3
@@ -650,7 +667,7 @@ function plot_div_WLCS!(
 end
 
 # ╔═╡ 4b2ed9db-0a17-4e52-a04d-3a6a5bf2c054
-let
+if plot_lcs let
 	fig = Figure(resolution=FIG_WIDE)
 	
 	comp_names = obj_names.vals[2:4]
@@ -671,12 +688,17 @@ let
 	
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2, tellheight=false)
 	axs[2].xlabel = "Index"
-	
-	path = "../../ACCESS_WASP-50b/figures/reduced"
-	mkpath(path)
-	save("$(path)/div_wlcs_ut150927_LDSS3.png", fig)
+
+	Label(fig[0, end], "Transit 2 (LDSS3)";
+		tellwidth = false,
+		halign = :right,
+		font = AlgebraOfGraphics.firasans("Bold"),
+	)
+
+	savefig(fig, "$(FIG_PATH)/div_wlcs_$(fname_suff).png")
 	
 	fig
+	end
 end
 
 # ╔═╡ 9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
@@ -757,6 +779,7 @@ body.disable_ui main {
 # ╟─34ef4580-bb95-11eb-34c1-25893217f422
 # ╟─a8e3b170-3fc2-4d12-b117-07bd37d27710
 # ╟─48713a10-6ba7-4de5-a147-85a9cb136dd8
+# ╟─99a310b2-b802-4b29-9354-796b2dec2820
 # ╠═01e27cf6-0a1b-4741-828a-ef8bf7037ae9
 # ╟─698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 # ╠═d8236985-9a36-4357-ac78-7eb39dd0f080
@@ -772,6 +795,9 @@ body.disable_ui main {
 # ╠═9cdc7e8b-be59-44f9-9bee-4591e2ad788d
 # ╠═0d5749ac-4c94-4228-b721-83aaf84891c2
 # ╟─299dda0e-a214-45ca-9a68-947f60fcf404
+# ╟─9697e26b-b6d9-413b-869f-47bc2ab99919
+# ╟─db933939-b8df-48b2-b53e-1dbd7ec1b07c
+# ╟─25903146-2f23-4e54-bd7d-aed1025f2fa5
 # ╠═45418bd3-74a3-4758-9fce-adddbeeec076
 # ╠═979895ea-9b13-494c-be08-2496562ccf07
 # ╠═ce86c8d1-1900-413f-90be-c9f4eb386a5a
@@ -780,7 +806,6 @@ body.disable_ui main {
 # ╠═7d68ad39-3e39-48fa-939a-e56c6659d2b3
 # ╠═a6088ea2-904f-4909-b1be-9470e7ec2010
 # ╟─bd937d51-17e9-4de3-a5d0-4c436d413940
-# ╠═9697e26b-b6d9-413b-869f-47bc2ab99919
 # ╠═8c82a78d-7382-40d4-a76b-02e7cd061d67
 # ╠═cf38810c-9b0c-4194-bea3-e0aa26e7cf98
 # ╠═13385b21-fbd7-484d-a1ac-0687834f92c7
@@ -830,11 +855,11 @@ body.disable_ui main {
 # ╠═53f5a645-93e0-499a-bb36-e4ff0153a63c
 # ╠═631c4d02-58cc-4c70-947f-22c8e8b11015
 # ╠═123d0c63-f05a-4a7d-be16-6a3b9abac044
-# ╟─3b6b57e2-46ab-46d9-b334-6264daf583f3
-# ╠═2d34e125-548e-41bb-a530-ba212c0ca17c
 # ╟─f788835c-8e81-4afe-805e-4caf2d5e5d5b
+# ╟─36c1aa6d-cde9-4ff0-b55c-13f43e94256d
+# ╠═2d34e125-548e-41bb-a530-ba212c0ca17c
 # ╠═c911cecd-0747-4cd1-826f-941f2f58091c
-# ╠═f883b759-65fc-466e-9c8f-e4f941def935
-# ╠═26f18ff6-7baa-4905-b9d1-52cfa9396dfc
 # ╠═0cd62849-c726-47d3-94dd-625e6c058cb1
+# ╠═26f18ff6-7baa-4905-b9d1-52cfa9396dfc
+# ╠═f883b759-65fc-466e-9c8f-e4f941def935
 # ╟─b2c61d08-6fcf-4b0c-a21a-c0c5e3205210
