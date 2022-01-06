@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.1
+# v0.17.5
 
 using Markdown
 using InteractiveUtils
@@ -17,33 +17,26 @@ end
 # ╔═╡ 818783f8-7164-466e-b5a7-b75eaefe6bb4
 begin
 	import Pkg
-	Pkg.activate(joinpath(@__DIR__, ".."))
+	Pkg.activate(Base.current_project())
 
+	using PlutoUI
 	using AlgebraOfGraphics
-	using CCDReduction
-	using CSV
 	using CairoMakie
-	using Colors
-	using DataFrames
-	using DataFrameMacros
-	using Dates
+	import CairoMakie.Makie.KernelDensity: kde
+	using CSV, DataFrames
 	using DelimitedFiles
 	using Glob
 	using ImageFiltering
-	import CairoMakie.Makie.KernelDensity: kde
 	using Latexify
-	using Measurements
-	using NaturalSort
+	using Measurements, Statistics
 	using OrderedCollections
 	using Printf
-	using PyCall
-	using Statistics
-	using PlutoUI: TableOfContents, Select, Slider, as_svg, with_terminal
+	using NaturalSort
 end
 
 # ╔═╡ ebef52bc-2acf-4cf8-aca7-90cd6684c061
 md"""
-# Detrended Binned Light Curves
+# Detrended binned light curves
 
 $(TableOfContents(title="📖 Table of Contents"))
 """
@@ -56,7 +49,10 @@ First, let's load the relevant data needed for this notebook:
 """
 
 # ╔═╡ 4b09c729-3395-4cee-bb69-bab59390845c
-const DATA_DIR = "data/detrended/out_l_C/WASP50"
+const DATA_DIR = "data/detrended/out_l/WASP50"
+
+# ╔═╡ b63189de-7f78-46d3-a119-3064e275dbe4
+const FIG_PATH = "figures/detrended"
 
 # ╔═╡ 737c135a-7412-4b87-a718-642472d4bf4b
 function name(dirpath, dates_to_names)
@@ -79,8 +75,10 @@ begin
 	
 	for dirpath ∈ sort(glob("$(DATA_DIR)/w50*/wavelength"))
 		fpaths = sort!(glob("$(dirpath)/wbin*/PCA_1/detrended_lc.dat"), lt=natural)
-		
 		dirpath_WLC = "$(dirname(dirpath))/white-light"
+
+		# TODO, track this down
+		deleteat!(fpaths, findfirst(s -> occursin("wbin3", s), fpaths))
 		
 		# WLC BMA t₀
 		t₀ = let
@@ -101,19 +99,20 @@ begin
 		# Populate each matrix
 		for (fpath, lc, model) in zip(
 			fpaths, eachcol(det_BLC_fluxes), eachcol(det_BLC_models)
-			)
-			df = CSV.File(
-				fpath,
+		)
+			df = CSV.read(fpath, DataFrame;
 				header=["Time", "DetFlux", "DetFluxErr", "Model"],
 				comment = "#",
 				select=[:DetFlux, :Model],
 			)
+			#@info fpath nrow(df)
 			lc .= df.DetFlux
 			model .= df.Model
 		end
-				
+		
 		# Save
-		cubes[name(dirpath, dates_to_names)] = Dict(
+		transit = name(dirpath, dates_to_names)
+		cubes[transit] = Dict(
 			"fluxes" => det_BLC_fluxes,
 			"models" => det_BLC_models,
 			"t₀" => t₀,
@@ -134,40 +133,28 @@ cubes |> keys
 # ╔═╡ ded314ba-1ebe-4f01-bd1b-652a0258f955
 @bind transit Select(cubes.keys)
 
-# ╔═╡ 2c0406e7-96e0-4a87-a91c-02d463e32ebc
-md"""
-## Helper functions
-"""
-
-# ╔═╡ f2da7123-cda9-47c3-aa72-4f47f4f8dfda
-begin
-	py"""
-	import numpy as np
-	import pickle
-	
-	def load_npz(fpath, allow_pickle=False):
-		return np.load(fpath, allow_pickle=allow_pickle)[()]
-	
-	def load_pickle(fpath):
-		with open(fpath, "rb") as f:
-			data = pickle.load(f)
-		return data
-	"""
-	load_npz(s; allow_pickle=false) = py"load_npz"(s, allow_pickle=allow_pickle)
-	load_pickle(s) = py"load_pickle"(s)
-end;
-
 # ╔═╡ 1dd4968e-959a-4f6e-a0e2-9fe9b8ecdd74
 md"""
-## Plot configs
+## Notebook setup
 """
+
+# ╔═╡ c59e2697-d2a3-4bdb-ba64-059246697c1c
+function savefig(fig, fpath)
+	mkpath(dirname(fpath))
+    save(fpath, fig)
+	@info "Saved to: $(fpath)"
+end
 
 # ╔═╡ 0af97a94-cb08-40e2-8011-11c8696684fa
 begin
+	##############
+	# PLOT CONFIGS
+	##############
 	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (1_350, 800)
-	#const COLORS = to_colormap(:seaborn_colorblind6, 8)[[8, 6, 4, 1]]
-	const COLORS = parse.(Colorant,
+	const FIG_WIDE = (800, 600)
+	const FIG_LARGE = (1_200, 1_000)
+	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS = parse.(Makie.Colors.Colorant,
 		[
 			"#a6cee3",  # Cyan
 			"#fdbf6f",  # Yellow
@@ -176,7 +163,7 @@ begin
 			# "plum",
 			# "#956cb4",  # Purple
 			# "mediumaquamarine",
-			# "#029e73",  # Green
+			# "#029e73",  # Green,
 		]
 	)
 	
@@ -184,7 +171,7 @@ begin
 	update_theme!(
 		Theme(
 			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,),
+			Label = (textsize=18,  padding=(0, 10, 0, 0)),
 			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
 			Scatter = (linewidth=10,),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
@@ -262,11 +249,9 @@ let
 		round.(Int, errs),
 	)
 	
-	path = "../../ACCESS_WASP-50b/figures/detrended"
-	mkpath(path)
-	save("$(path)/detrended_blcs_$(transit).png", fig)
+	savefig(fig, "$(FIG_PATH)/detrended_blcs_$(transit).png")
 		
-	fig #|> as_svg
+	fig
 end
 
 # ╔═╡ c50473cd-ac09-4196-a291-9e3f5472dc23
@@ -291,7 +276,8 @@ body.disable_ui main {
 # ╔═╡ Cell order:
 # ╟─ebef52bc-2acf-4cf8-aca7-90cd6684c061
 # ╟─0158a760-1229-4089-bf90-7c7b2f1f548a
-# ╠═4b09c729-3395-4cee-bb69-bab59390845c
+# ╟─4b09c729-3395-4cee-bb69-bab59390845c
+# ╟─b63189de-7f78-46d3-a119-3064e275dbe4
 # ╠═b6007d1d-fb9e-4f56-a38a-febb80ea7f09
 # ╠═100af59b-3a24-41d0-9cda-05592bd1778f
 # ╠═737c135a-7412-4b87-a718-642472d4bf4b
@@ -299,9 +285,8 @@ body.disable_ui main {
 # ╟─ded314ba-1ebe-4f01-bd1b-652a0258f955
 # ╠═df1a160c-22ff-4c5e-a71f-b903d8a23ef1
 # ╠═bec88974-b150-4f53-9497-ddec4883ae17
-# ╟─2c0406e7-96e0-4a87-a91c-02d463e32ebc
-# ╠═f2da7123-cda9-47c3-aa72-4f47f4f8dfda
 # ╟─1dd4968e-959a-4f6e-a0e2-9fe9b8ecdd74
+# ╟─c59e2697-d2a3-4bdb-ba64-059246697c1c
 # ╠═0af97a94-cb08-40e2-8011-11c8696684fa
 # ╠═818783f8-7164-466e-b5a7-b75eaefe6bb4
 # ╟─c50473cd-ac09-4196-a291-9e3f5472dc23
