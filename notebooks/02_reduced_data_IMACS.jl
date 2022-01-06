@@ -336,9 +336,6 @@ end;
 # ╔═╡ 22b57aad-e886-4d36-bab8-baef5f3fabe6
 f_div_WLC_norm
 
-# ╔═╡ 57b59c54-ab0a-44e1-9a9c-4840ce33fbb6
-comp_idx = get_idx("c18", comp_names)
-
 # ╔═╡ 3ca393d6-01c0-4f77-88ff-7c4f6388670e
 begin
 	oLCw, cLCw = LC["oLCw"], LC["cLCw"]
@@ -349,12 +346,8 @@ begin
 		f_w = oLCw ./ cLCw[:, c_i, :]
 		f_norm_w[:, c_i, :] .= f_w ./ median(f_w, dims=1) .+ offs
 	end
-	baselines = ones(size(f_norm_w[:, comp_idx, :])) .+ offs # Reference baselines
+	baselines = ones(ntimes, nbins) .+ offs # Reference baselines
 end;
-
-# ╔═╡ 2768623f-7904-4674-a2ee-ad809cdd508b
-# Median filtered curves for visualization purposes
-f_med, _, f_diff = filt(f_norm_w[:, comp_idx, :], window_width)
 
 # ╔═╡ a8d1c3e6-c020-495f-a443-07203b7dcd50
 begin
@@ -513,6 +506,9 @@ function plot_binned_lcs(comp_idx; show_fig=false)
 	ax_label = Axis(fig[1, 3])
 	axs = reshape(copy(fig.content), 1, 3)
 	linkaxes!(axs...)
+
+	# Median filtered curves for visualization purposes
+	f_med, _, f_diff = filt(f_norm_w[:, comp_idx, :], window_width)
 		
 	colors = to_colormap(:Spectral_4, nbins) |> reverse
 	for (f, f_med, resid, b, c, w) in zip(
@@ -614,10 +610,8 @@ body.disable_ui main {
 # ╟─0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
 # ╠═e6e1ea18-216a-41ae-8a1a-590793fcb669
 # ╟─e98dee2e-a369-448e-bfe4-8fea0f318fa8
-# ╠═57b59c54-ab0a-44e1-9a9c-4840ce33fbb6
 # ╠═df8983d1-4abd-4fad-ace6-9dfe74df4949
 # ╠═3ca393d6-01c0-4f77-88ff-7c4f6388670e
-# ╠═2768623f-7904-4674-a2ee-ad809cdd508b
 # ╟─793c4d08-e2ee-4c9d-b7a0-11eaaddba895
 # ╠═b64d7fa9-82fc-4fd0-b0ce-1b53286147cb
 # ╠═684c026a-b5d0-4694-8d29-a44b7cb0fd6c

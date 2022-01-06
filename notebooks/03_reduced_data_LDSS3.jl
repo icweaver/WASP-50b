@@ -194,8 +194,17 @@ Next, we will extract the integrated white-light curves from these spectra. We i
 # ╔═╡ cb805821-5d2e-484c-93a5-10a897d2cfe7
 @bind window_width PlutoUI.Slider(3:2:21, default=15, show_value=true)
 
+# ╔═╡ 83263daf-a902-4414-850b-aa6949752fbb
+comp_names = obj_names.vals[2:4]
+
+# ╔═╡ cd10cbf3-22f4-46cd-8345-cec3d141e3ca
+use_comps = comp_names 
+
 # ╔═╡ 9372c69a-0aad-4e6e-9ea3-e934fa09b758
 get_idx(needle, haystack) = findfirst(==(needle), haystack)
+
+# ╔═╡ 4f71ba8d-bfa0-4adc-8d82-cd3bca8b6c14
+use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
 
 # ╔═╡ d5c6d058-17c6-4cf0-97b8-d863b1529161
 md"""
@@ -231,11 +240,41 @@ end
 # ╔═╡ 97191c55-f673-46b4-82fd-147e7d150623
 md"""
 ### Raw flux
+
+Just as a quick check:
 """
+
+# ╔═╡ 56efa000-a943-4256-94f4-f0ae4764f634
+# let
+# 	fig = Figure()
+# 	ax = Axis(fig[1, 1];
+# 		xlabel="Index",
+# 		ylabel="Relative flux",
+# 	)
+	
+# 	comp_names = obj_names.vals[2:4]
+# 	f_wlc_targ = f_target_wlc[:]
+# 	f_wlc_comps = f_comps_wlc ./ mean(f_comps_wlc, dims=1)
+	
+# 	for (cName, col) in zip(sort(comp_names), eachcol(f_wlc_comps))
+# 		lines!(ax, col; label=cName)
+# 	end
+	
+# 	lines!(ax, f_wlc_targ ./ mean(f_wlc_targ, dims=1);
+# 		linewidth = 5,
+# 		color = :darkgrey,
+# 		label = "WASP-50",
+# 	)
+	
+# 	axislegend()
+	
+
+# 	fig
+# end
 
 # ╔═╡ a5e742e5-fcca-40d7-b342-c6112e6899e5
 md"""
-## Binned light curves 🌈
+## $(@bind plot_blcs CheckBox()) Binned light curves 🌈
 
 We next integrate the target and comparison star flux within each bin defined above to build the binned light curves. We store these in `oLCw` and `cLCw`, where `oLCw` is an `ntimes` ``\times`` `nbins` matrix that holds the binned target flux, where `ntimes` is the number of timeseries points ``N``. Similarly `cLCw` is an `ntimes` ``\times`` `ncomps` ``\times`` `nbins` matrix that holds the comparison star flux, where `ncomps` is the number of comparison stars:
 """
@@ -416,34 +455,6 @@ _, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm, window_width);
 	println(bad_idxs .- 1) # For Python
 end
 
-# ╔═╡ 56efa000-a943-4256-94f4-f0ae4764f634
-let
-	fig = Figure()
-	ax = Axis(fig[1, 1];
-		xlabel="Index",
-		ylabel="Relative flux",
-	)
-	
-	comp_names = obj_names.vals[2:4]
-	f_wlc_targ = f_target_wlc[:]
-	f_wlc_comps = f_comps_wlc ./ mean(f_comps_wlc, dims=1)
-	
-	for (cName, col) in zip(sort(comp_names), eachcol(f_wlc_comps))
-		lines!(ax, col; label=cName)
-	end
-	
-	lines!(ax, f_wlc_targ ./ mean(f_wlc_targ, dims=1);
-		linewidth = 5,
-		color = :darkgrey,
-		label = "WASP-50",
-	)
-	
-	axislegend()
-	
-
-	fig
-end
-
 # ╔═╡ bc54942e-38ef-4919-a3d4-28d5f4db8487
 comps = let
 	mag = -2.51 * log10.(f_comps_wlc)
@@ -474,16 +485,6 @@ oLCw
 # ╔═╡ 66b637dd-4a7f-4589-9460-67057f7945fd
 cLCw
 
-# ╔═╡ bd00ebca-4ed2-479b-b1c6-4ba0a7a1043c
-md"""
-We plot these below for each comparison star division. Move the slider to view the plot for the corresponding comparison star:
-
-comp star $(@bind comp_idx PlutoUI.Slider(1:ncomps, show_value=true))
-
-!!! note "Future"
-	Ability to interact with sliders completely in the browser coming soon!
-"""
-
 # ╔═╡ 49d04cf9-2bec-4350-973e-880e376ab428
 begin	
 	offs = reshape(range(0, 0.3, length=nbins), 1, :) # Arbitrary offsets for clarity
@@ -492,18 +493,8 @@ begin
 		f_w = oLCw ./ cLCw[:, c_i, :]
 		f_norm_w[:, c_i, :] .= f_w ./ median(f_w, dims=1) .+ offs
 	end
-	baselines = ones(size(f_norm_w[:, comp_idx, :])) .+ offs # Reference baselines
+	baselines = ones(ntimes, nbins) .+ offs # Reference baselines
 end;
-
-# ╔═╡ 852d8bdf-96de-4564-83ec-c83d18893970
-# Median filtered curves for visualization purposes
-f_med, _, f_diff = filt(f_norm_w[:, comp_idx, :], window_width)
-
-# ╔═╡ af8109e7-aac2-480d-a83b-c6dd8c53d380
-filt(f_norm_w[:, comp_idx, :], window_width)
-
-# ╔═╡ 97d7166f-bcb2-4ecf-80ed-15d185580cf3
-f_norm_w[:, comp_idx, :], window_width
 
 # ╔═╡ 5110de9a-3721-4043-b8b7-493daacb4137
 target_binned_mags = mapslices(f_to_med_mag, oLCw, dims=1)[use_idxs, :]
@@ -670,10 +661,10 @@ end
 if plot_lcs let
 	fig = Figure(resolution=FIG_WIDE)
 	
-	comp_names = obj_names.vals[2:4]
-	ncomps = length(comp_names)
-	use_comps = comp_names # use all comps
-	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
+	# comp_names = obj_names.vals[2:4]
+	# ncomps = length(comp_names)
+	# use_comps = comp_names # use all comps
+	# use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
 	
 	axs = [Axis(fig[1, i]) for i in 1:ncomps]
 	axs = reshape(copy(fig.content), ncomps, 1)
@@ -701,15 +692,19 @@ if plot_lcs let
 	end
 end
 
-# ╔═╡ 9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
-let
+# ╔═╡ 31b7e180-207e-459b-bd6a-a965da0ad70c
+function plot_binned_lcs(comp_idx; show_fig=false)
 	fig = Figure(resolution=FIG_TALL)
-	comp_names = obj_names.vals[begin+1:end]
-	ax_left = Axis(fig[1, 1], title = "target / $(comp_names[comp_idx])")
+	
+	comp_name = obj_names.vals[begin+1:end][comp_idx]
+	ax_left = Axis(fig[1, 1], title = "target / $(comp_name)")
 	ax_right = Axis(fig[1, 2], title = "residuals")
 	ax_label = Axis(fig[1, 3])
 	axs = reshape(copy(fig.content), 1, 3)
 	linkaxes!(axs...)
+
+	# Median filtered curves for visualization purposes
+	f_med, _, f_diff = filt(f_norm_w[:, comp_idx, :], window_width)
 		
 	colors = to_colormap(:Spectral_4, nbins) |> reverse
 	for (f, f_med, resid, b, c, w) in zip(
@@ -741,17 +736,14 @@ let
 	
 	fig[1:2, 0] = Label(fig, "Relative flux + offset", rotation=π/2)
 	fig[end, 2:3] = Label(fig, "Index")
-	
-	# ax.xlabel = "Index"
-	# ax.ylabel = "Relative flux + offset"
-	
-	# save(
-	# 	"../../ACCESS_WASP-50b/figures/reduced_data/divided_blcs_LDSS3.pdf",
-	# 	fig
-	# )
-	
-	fig #|> as_svg
+
+	savefig(fig, "$(FIG_PATH)/div_blcs_$(fname_suff)_$(comp_name).png")
+
+	fig
 end
+
+# ╔═╡ 9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
+plot_blcs && plot_binned_lcs.(use_comps_idxs)
 
 # ╔═╡ 0cd62849-c726-47d3-94dd-625e6c058cb1
 @with_terminal Conda.list(:WASP50b)
@@ -811,6 +803,9 @@ body.disable_ui main {
 # ╠═13385b21-fbd7-484d-a1ac-0687834f92c7
 # ╠═cb805821-5d2e-484c-93a5-10a897d2cfe7
 # ╠═ded63b4b-61b6-41b6-98d4-d13166bce76a
+# ╠═cd10cbf3-22f4-46cd-8345-cec3d141e3ca
+# ╠═83263daf-a902-4414-850b-aa6949752fbb
+# ╠═4f71ba8d-bfa0-4adc-8d82-cd3bca8b6c14
 # ╠═4b2ed9db-0a17-4e52-a04d-3a6a5bf2c054
 # ╠═9372c69a-0aad-4e6e-9ea3-e934fa09b758
 # ╟─d5c6d058-17c6-4cf0-97b8-d863b1529161
@@ -827,11 +822,8 @@ body.disable_ui main {
 # ╠═66b637dd-4a7f-4589-9460-67057f7945fd
 # ╟─5837dc0e-3537-4a90-bd2c-494e7b3e6bb7
 # ╠═49d04cf9-2bec-4350-973e-880e376ab428
-# ╠═852d8bdf-96de-4564-83ec-c83d18893970
-# ╠═af8109e7-aac2-480d-a83b-c6dd8c53d380
-# ╠═97d7166f-bcb2-4ecf-80ed-15d185580cf3
-# ╟─bd00ebca-4ed2-479b-b1c6-4ba0a7a1043c
 # ╠═9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
+# ╠═31b7e180-207e-459b-bd6a-a965da0ad70c
 # ╟─af07dc54-eeb5-4fbe-8dd0-289dea97502a
 # ╟─88cc640d-b58d-4cde-b793-6c66e74f6b3a
 # ╠═301ff07c-8dd5-403a-bae8-a4c38deeb331
