@@ -170,8 +170,17 @@ comps = Dict(
 	#use_comps = ["c06", "c13"]
 )
 
+# ╔═╡ 15745120-f0e4-44d8-98b3-1f9732dacc5d
+fname_suff
+
+# ╔═╡ c2eecbe7-488c-4378-b660-49d3e172501a
+comps
+
+# ╔═╡ 9654bb17-458c-4797-95b9-3cb9060349a7
+split(fname_suff, "_ut")
+
 # ╔═╡ 2df82761-b9fe-4d37-b57c-1eabb0ffa8dd
-use_comps = comps[split(fname_suff, '_')[end]]
+use_comps = comps[match(r"ut[0-9]{6}", fname_suff).match]
 
 # ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
 @bind window_width PlutoUI.Slider(3:2:21, default=15, show_value=true)
@@ -356,6 +365,7 @@ begin
 	##############
 	const FIG_TALL = (900, 1_200)
 	const FIG_WIDE = (800, 600)
+	const FIG_LARGE = (1_200, 1_000)
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
@@ -363,24 +373,27 @@ begin
 			"#fdbf6f",  # Yellow
 			"#ff7f00",  # Orange
 			"#1f78b4",  # Blue
-			# "plum",
-			# "#956cb4",  # Purple
-			# "mediumaquamarine",
-			# "#029e73",  # Green,
 		]
 	)
 	
 	set_aog_theme!()
 	update_theme!(
 		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
+			Axis = (
+				xlabelsize = 18,
+				ylabelsize = 18,
+				topspinevisible = true,
+				rightspinevisible = true,
+				topspinecolor = :darkgrey,
+				rightspinecolor = :darkgrey
+			),
 			Label = (textsize=18,  padding=(0, 10, 0, 0)),
 			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
 			Scatter = (linewidth=10,),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
 			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
+			rowgap = 5,
+			colgap = 5,
 		)
 	)
 	
@@ -469,7 +482,7 @@ end
 if plot_lcs let
 	fig = Figure(resolution=FIG_WIDE)
 	
-	axs = [Axis(fig[i, j]) for i ∈ 1:2, j ∈ 1:4]
+	axs = [Axis(fig[i, j], limits=(-60, 380, 0.97, 1.03)) for i ∈ 1:2, j ∈ 1:4]
 	axs = reshape(copy(fig.content), 2, 4)
 	
 	plot_div_WLCS!(
@@ -479,7 +492,6 @@ if plot_lcs let
 	linkaxes!(axs...)
 	hidexdecorations!.(axs[begin:end-1, :], grid=false)
 	hideydecorations!.(axs[:, begin+1:end], grid=false)
-	ylims!(axs[end], 0.97, 1.02)
 	
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
 	fig[end+1, 2:end] = Label(fig, "Index")
@@ -596,6 +608,9 @@ body.disable_ui main {
 # ╠═18d58341-0173-4eb1-9f01-cfa893088613
 # ╟─941cd721-07d8-4a8f-9d75-42854e6e8edb
 # ╠═4b763b58-862e-4c88-a7c9-fe0b1271c0b4
+# ╠═15745120-f0e4-44d8-98b3-1f9732dacc5d
+# ╠═c2eecbe7-488c-4378-b660-49d3e172501a
+# ╠═9654bb17-458c-4797-95b9-3cb9060349a7
 # ╠═2df82761-b9fe-4d37-b57c-1eabb0ffa8dd
 # ╠═df46d106-f186-4900-9d3f-b711bc803707
 # ╠═ab058d99-ce5f-4ed3-97bd-a62d2f258773

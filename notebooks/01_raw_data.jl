@@ -46,11 +46,11 @@ $(TableOfContents())
 """
 
 # ╔═╡ d8019fa7-380d-4f40-9e08-420a32c34483
-const FIG_PATH = "figures/frames"
+const FIG_PATH = "figures/raw_data"
 
 # ╔═╡ 90845d70-35d9-402d-8936-74936b069577
 md"""
-## IMACS 🎱
+## $(@bind plot_IMACS CheckBox()) IMACS 🎱
 Starting with IMACS, let's first select the night we would like to visualize from the dropdown menu below:
 """
 
@@ -95,7 +95,7 @@ df_sci_LDSS3 = fitscollection(DATA_DIR_LDSS3, abspath=false)
 
 # ╔═╡ 06a834f0-8c90-4013-af34-725166970969
 md"""
-## LDSS3 2️⃣
+## $(@bind plot_LDSS3 CheckBox()) LDSS3 2️⃣
 
 We follow the same operations to visualize the $(nrow(df_sci_LDSS3)) chips for LDSS3 below.
 """
@@ -170,24 +170,44 @@ md"""
 
 # ╔═╡ db4a4cd8-c5e8-4124-935f-0666f6e73fe2
 begin
+	##############
+	# PLOT CONFIGS
+	##############
 	const FIG_TALL = (900, 1_200)
 	const FIG_WIDE = (800, 600)
+	const FIG_LARGE = (1_200, 1_000)
+	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS = parse.(Makie.Colors.Colorant,
+		[
+			"#a6cee3",  # Cyan
+			"#fdbf6f",  # Yellow
+			"#ff7f00",  # Orange
+			"#1f78b4",  # Blue
+		]
+	)
 	
 	set_aog_theme!()
 	update_theme!(
 		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
+			Axis = (
+				xlabelsize = 18,
+				ylabelsize = 18,
+				topspinevisible = true,
+				rightspinevisible = true,
+				topspinecolor = :darkgrey,
+				rightspinecolor = :darkgrey
+			),
 			Label = (textsize=18,  padding=(0, 10, 0, 0)),
-			Text = (; font=AlgebraOfGraphics.firasans("Medium")),
 			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
 			Scatter = (linewidth=10,),
+			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
 			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
+			rowgap = 5,
+			colgap = 5,
 		)
 	)
 	
-	COLORS = Makie.wong_colors()
+	COLORS
 end
 
 # ╔═╡ b44b6591-d57b-40bd-810c-a41386412b6c
@@ -198,7 +218,7 @@ function savefig(fig, fpath)
 end
 
 # ╔═╡ 3a6ab0c0-ba08-4151-9646-c19d45749b9f
-let
+if plot_IMACS let
 	fig = Figure(resolution = FIG_WIDE)
 	hm = nothing
 	stepsize = 1
@@ -224,6 +244,9 @@ let
 			hm_kwargs = (colorrange=(0, 2500),),
 		)
 	end
+
+	rowgap!(fig.layout, 0)
+	colgap!(fig.layout, 0)
 	
 	Colorbar(fig[2:3, end+1], hm, width=20, label="Counts",)
 	axs = filter(x -> x isa Axis, fig.content)
@@ -233,10 +256,11 @@ let
 	savefig(fig, "$(FIG_PATH)/sci_IMACS_$(basename(DATA_DIR_IMACS)).png")
 
 	fig
+	end
 end
 
 # ╔═╡ 71ba9181-90e4-4d12-97c0-462b3f1df077
-let
+if plot_LDSS3 let
 	fig = Figure(resolution = FIG_WIDE)
 	stepsize = 1
 	hm = nothing
@@ -250,6 +274,9 @@ let
 		Label(fig[2, j], "c$(j)", tellwidth=false)
 	end
 
+	rowgap!(fig.layout, 0)
+	colgap!(fig.layout, 0)
+
 	Colorbar(fig[1, end+1], hm, width=20, label="Counts",)
 	
 	axs = filter(x -> x isa Axis, fig.content)
@@ -259,6 +286,7 @@ let
     savefig(fig, "$(FIG_PATH)/sci_LDSS3_$(basename(DATA_DIR_LDSS3)).png")
 	
 	fig
+	end
 end
 
 # ╔═╡ 6000db3d-0798-4f76-be31-617d43406b54
@@ -303,7 +331,7 @@ body.disable_ui main {
 # ╠═f58aba9d-bccb-4d8b-ab83-559d6ff1ea62
 # ╟─0d2476b1-2864-4bfc-ac37-f771aab77368
 # ╟─4480ae72-3bb2-4e17-99be-28afc756332a
-# ╟─db4a4cd8-c5e8-4124-935f-0666f6e73fe2
+# ╠═db4a4cd8-c5e8-4124-935f-0666f6e73fe2
 # ╟─b44b6591-d57b-40bd-810c-a41386412b6c
 # ╠═3433ed02-c27c-4fe5-bfda-a5108a58407c
 # ╟─6000db3d-0798-4f76-be31-617d43406b54

@@ -34,8 +34,6 @@ begin
 	using OrderedCollections
 	using Printf
 	using NaturalSort
-
-	const G = Unitful.G
 end
 
 # ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
@@ -314,9 +312,6 @@ Rₚ |> u"Rjup"
 # ╔═╡ 520d2cc3-00e0-46d8-83b2-5c740fd3bdd0
 Mₚ = 1.78u"Mjup"
 
-# ╔═╡ eaed62d7-5733-44b8-bd98-8b0fc4a18fe5
-gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
-
 # ╔═╡ cb02a053-d048-43d9-950a-de3106019520
 function create_df(df; instrument="add instrument")
 	@select df begin
@@ -357,17 +352,20 @@ begin
 			"#fdbf6f",  # Yellow
 			"#ff7f00",  # Orange
 			"#1f78b4",  # Blue
-			# "plum",
-			# "#956cb4",  # Purple
-			# "mediumaquamarine",
-			# "#029e73",  # Green,
 		]
 	)
 	
 	set_aog_theme!()
 	update_theme!(
 		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
+			Axis = (
+				xlabelsize = 18,
+				ylabelsize = 18,
+				topspinevisible = true,
+				rightspinevisible = true,
+				topspinecolor = :darkgrey,
+				rightspinecolor = :darkgrey
+			),
 			Label = (textsize=18,  padding=(0, 10, 0, 0)),
 			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
 			Scatter = (linewidth=10,),
@@ -481,6 +479,12 @@ let
 	fig
 end
 
+# ╔═╡ 6cb26c91-8a7c-4bd3-8978-d0c23105863c
+const G = Unitful.G
+
+# ╔═╡ eaed62d7-5733-44b8-bd98-8b0fc4a18fe5
+gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
+
 # ╔═╡ 3510ead9-6e66-4fec-84ca-15c8a3ce4c3e
 html"""
 <style>
@@ -543,5 +547,6 @@ body.disable_ui main {
 # ╟─f8a86915-f7d8-4462-980e-7b8124b13a3f
 # ╟─e9b22d93-1994-4c31-a951-1ab00dc4c102
 # ╠═ef970c0c-d08a-4856-b10b-531bb5e7e53e
+# ╠═6cb26c91-8a7c-4bd3-8978-d0c23105863c
 # ╠═e917bd8d-7f4a-44e4-9eb9-84199dd061f5
 # ╟─3510ead9-6e66-4fec-84ca-15c8a3ce4c3e

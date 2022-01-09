@@ -160,24 +160,27 @@ begin
 			"#fdbf6f",  # Yellow
 			"#ff7f00",  # Orange
 			"#1f78b4",  # Blue
-			# "plum",
-			# "#956cb4",  # Purple
-			# "mediumaquamarine",
-			# "#029e73",  # Green,
 		]
 	)
 	
 	set_aog_theme!()
 	update_theme!(
 		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
+			Axis = (
+				xlabelsize = 18,
+				ylabelsize = 18,
+				topspinevisible = true,
+				rightspinevisible = true,
+				topspinecolor = :darkgrey,
+				rightspinecolor = :darkgrey
+			),
 			Label = (textsize=18,  padding=(0, 10, 0, 0)),
 			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
 			Scatter = (linewidth=10,),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
 			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
+			rowgap = 5,
+			colgap = 5,
 		)
 	)
 	
