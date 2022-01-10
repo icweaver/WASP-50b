@@ -60,6 +60,9 @@ Starting with IMACS, let's first select the night we would like to visualize fro
 # ╔═╡ fb6e6221-8136-44e2-979b-ecbbd71f740d
 df_sci_IMACS = fitscollection(DATA_DIR_IMACS, abspath=false)
 
+# ╔═╡ 1ae830c3-fe46-48bc-ba26-bd53b82d7926
+df_sci_IMACS.FILTER
+
 # ╔═╡ 0d42f6f9-d789-46a3-9e9a-381dbed2d5a5
 md"""
 We next compute the bias-subtracted science frame for each of these $(nrow(df_sci_IMACS)) chips:
@@ -86,6 +89,16 @@ coords_IMACS = CSV.read("$(DATA_DIR_IMACS)/WASP50.coords", DataFrame;
 	ignorerepeated = true,
 	header = ["target", "chip", "x", "y"],
 );
+
+# ╔═╡ 8c5a4e21-897f-4fbc-bd4f-18adf71fa926
+transits = merge(
+	Dict("data/raw_data/IMACS/ut$(d)" => "Transit $(i) (IMACS)"
+		for (i, d) ∈ enumerate(("131219", "150927", "161211"))
+	),
+)
+
+# ╔═╡ 44217f22-1378-4368-9fbd-489bcaabbef8
+frame_imacs = frames_IMACS[1]
 
 # ╔═╡ 0e66d467-1098-46dc-8d06-36d488b14637
 @bind DATA_DIR_LDSS3 Select(glob("data/raw_data/LDSS3/ut*"))
@@ -177,14 +190,10 @@ begin
 	const FIG_WIDE = (800, 600)
 	const FIG_LARGE = (1_200, 1_000)
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
-	const COLORS = parse.(Makie.Colors.Colorant,
-		[
-			"#a6cee3",  # Cyan
-			"#fdbf6f",  # Yellow
-			"#ff7f00",  # Orange
-			"#1f78b4",  # Blue
-		]
-	)
+	const COLORS = let
+		pal = Makie.ColorSchemes.Paired_8 |> reverse
+		[pal[7:8] ; pal[5:6] ; pal[1:2]]
+	end
 	
 	set_aog_theme!()
 	update_theme!(
@@ -197,9 +206,14 @@ begin
 				topspinecolor = :darkgrey,
 				rightspinecolor = :darkgrey
 			),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Label = (
+				textsize = 18,
+				padding = (0, 10, 0, 0),
+				font = AlgebraOfGraphics.firasans("Medium")
+			),
 			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
 			Scatter = (linewidth=10,),
+			Text = (font = AlgebraOfGraphics.firasans("Medium"),),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
 			fontsize = 18,
 			rowgap = 5,
@@ -211,9 +225,9 @@ begin
 end
 
 # ╔═╡ b44b6591-d57b-40bd-810c-a41386412b6c
-function savefig(fig, fpath)
+function savefig(fig, fpath; save_kwargs=())
 	mkpath(dirname(fpath))
-    save(fpath, fig)
+    save(fpath, fig; save_kwargs...)
 	@info "Saved to: $(fpath)"
 end
 
@@ -241,7 +255,7 @@ if plot_IMACS let
 
 		hm = plot_frame!(ax, img, ch, coords_IMACS;
 			stepsize = stepsize,
-			hm_kwargs = (colorrange=(0, 2500),),
+			hm_kwargs = (highclip=:yellow, colorrange=(0, 200),),
 		)
 	end
 
@@ -252,6 +266,8 @@ if plot_IMACS let
 	axs = filter(x -> x isa Axis, fig.content)
 	linkaxes!(axs...)
 	hidedecorations!.(axs)
+
+	Label(fig[0, end], transits[DATA_DIR_IMACS], tellwidth=false, halign=:right)
 	
 	savefig(fig, "$(FIG_PATH)/sci_IMACS_$(basename(DATA_DIR_IMACS)).png")
 
@@ -265,25 +281,30 @@ if plot_LDSS3 let
 	stepsize = 1
 	hm = nothing
 	for j ∈ 1:2
-		ax = Axis(fig[1, j])
+		ax = Axis(fig[2, j])
 		img = @view(frames_LDSS3[j][begin:stepsize:end, begin:stepsize:end])'
 		hm = plot_frame!(ax, img, j, coords_LDSS3;
 			stepsize = stepsize,
-			hm_kwargs = (colorrange = (0, 2500),),
+			hm_kwargs = (highclip=:yellow, colorrange=(0, 200),),
 		)
-		Label(fig[2, j], "c$(j)", tellwidth=false)
+		Label(fig[1, j], "c$(j)", tellwidth=false)
+		Label(fig[3, j], "c$(j)", tellwidth=false)
 	end
 
 	rowgap!(fig.layout, 0)
 	colgap!(fig.layout, 0)
 
-	Colorbar(fig[1, end+1], hm, width=20, label="Counts",)
+	Colorbar(fig[2, end+1], hm, width=20, label="Counts",)
 	
 	axs = filter(x -> x isa Axis, fig.content)
 	linkaxes!(axs...)
 	hidedecorations!.(axs)
+
+	Label(fig[0, end], "Transit 2 (LDSS3)", tellwidth=false, halign=:right)
 	
-    savefig(fig, "$(FIG_PATH)/sci_LDSS3_$(basename(DATA_DIR_LDSS3)).png")
+    savefig(fig, "$(FIG_PATH)/sci_LDSS3_$(basename(DATA_DIR_LDSS3)).png";
+		#save_kwargs = (px_per_unit=0.5,),
+	)
 	
 	fig
 	end
@@ -314,12 +335,15 @@ body.disable_ui main {
 # ╟─90845d70-35d9-402d-8936-74936b069577
 # ╟─8b9581db-71c6-42b6-915b-bde307755bcd
 # ╠═fb6e6221-8136-44e2-979b-ecbbd71f740d
+# ╠═1ae830c3-fe46-48bc-ba26-bd53b82d7926
 # ╟─0d42f6f9-d789-46a3-9e9a-381dbed2d5a5
 # ╠═c83c2161-95e2-4d08-9934-6d9c12c42a44
 # ╠═86b4ace1-a891-41e5-a29f-f7eee5f8fb17
 # ╟─27b793f3-7a7c-48ad-8302-deffa2dd017b
 # ╠═26feb668-4e7e-4a9d-a2b6-a5dac81e3ab7
 # ╠═3a6ab0c0-ba08-4151-9646-c19d45749b9f
+# ╠═8c5a4e21-897f-4fbc-bd4f-18adf71fa926
+# ╠═44217f22-1378-4368-9fbd-489bcaabbef8
 # ╠═bf8ef5a9-0806-44b4-907d-c95d6926dabb
 # ╟─06a834f0-8c90-4013-af34-725166970969
 # ╟─0e66d467-1098-46dc-8d06-36d488b14637
@@ -332,6 +356,6 @@ body.disable_ui main {
 # ╟─0d2476b1-2864-4bfc-ac37-f771aab77368
 # ╟─4480ae72-3bb2-4e17-99be-28afc756332a
 # ╠═db4a4cd8-c5e8-4124-935f-0666f6e73fe2
-# ╟─b44b6591-d57b-40bd-810c-a41386412b6c
+# ╠═b44b6591-d57b-40bd-810c-a41386412b6c
 # ╠═3433ed02-c27c-4fe5-bfda-a5108a58407c
 # ╟─6000db3d-0798-4f76-be31-617d43406b54

@@ -23,7 +23,7 @@ begin
 	using AlgebraOfGraphics
 	using CairoMakie
 	using CSV, DataFrames
-	using DelimitedFiles
+	using Dates, DelimitedFiles
 	using Glob
 	using ImageFiltering
 	using Latexify
@@ -53,7 +53,7 @@ const FIG_PATH = "figures/stellar_activity"
 
 # ╔═╡ 0cbe4263-799f-4ee3-9a94-3ba879528b01
 md"""
-## ASAS-SN 🌍
+## $(@bind plot_ASASSN CheckBox()) ASAS-SN 🌍
 
 We start by downloading [all photometric monitoring data](https://asas-sn.osu.edu/photometry/7df0eb29-0b68-57ef-8ce2-83dc7b5684da) gathered by the [ASAS-SN](https://asas-sn.osu.edu/) survey, which we include below.
 """
@@ -177,7 +177,7 @@ loc_to_BJD(t, coords, camera) = camera == "Haleakala" ?
 	helio_to_bary(coords, t, "CTIO")
 
 # ╔═╡ 42b72605-f89e-42c4-a159-d43e4620140f
-df_ASASSN[!, :bjd] = loc_to_BJD.(df_ASASSN.hjd, coords_W50, df_ASASSN.camera);
+df_ASASSN.bjd = loc_to_BJD.(df_ASASSN.hjd, coords_W50, df_ASASSN.camera);
 
 # ╔═╡ 79d08932-66f3-4ed9-bc13-f1ac3229e95d
 df_ASASSN
@@ -323,7 +323,7 @@ end;
 
 # ╔═╡ 99fcf959-665b-44cf-9b5f-fd68a919f846
 md"""
-### Periodogram
+### $(@bind plot_pg CheckBox()) Periodogram
 """
 
 # ╔═╡ de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
@@ -337,7 +337,7 @@ function compute_pgram(lc; min_period=0.5, max_period=30.0)
 end
 
 # ╔═╡ f3425d9c-861e-4b26-b352-bd0669c7f1f9
-begin
+if plot_ASASSN let
 	fig = Figure(resolution=(800, 800))
 	
 	### Photometry plot ####
@@ -378,6 +378,7 @@ begin
 	axislegend(ax_pg, position=:lc)
 			
 	fig
+	end
 end
 
 # ╔═╡ 2215ed86-fa78-4811-88ab-e3521e4a1dea
@@ -435,7 +436,7 @@ end
 
 # ╔═╡ a50ef756-ade6-48a3-8d3a-17b56ce03c26
 md"""
-### Folded lightcurves
+### $(@bind plot_folded CheckBox()) Folded lightcurves
 """
 
 # ╔═╡ 3128e57f-df4f-4811-b867-8a293d7d536d
@@ -460,7 +461,7 @@ begin
 	for (lc, P) in zip(lcs_oot, P_maxs)
 		# Data
 		lc_folded = lc.fold(P)
-		Δt = (lc_folded.time.value |> diff |> median) * 5
+		#Δt = (lc_folded.time.value |> diff |> median) * 5
 		push!(lcs_folded, lc_folded)
 		push!(lcs_folded_binned, lc_folded.bin(bins=200))
 		
@@ -496,6 +497,46 @@ Ts = 10.0:10.0:5_000
 # ╔═╡ df370404-2f12-4925-8827-6198793ae842
 extrema(f_sp.(Ts, ΔLs[end], T₀))
 
+# ╔═╡ 8bd502e8-e67d-44be-8a60-d7ad2c147d70
+lcs_oot_comb = lcs_oot[end]
+
+# ╔═╡ 8c7dcfab-a357-4024-94f3-42d1df80c3c2
+P_maxs
+
+# ╔═╡ 06abb8cb-9acb-49ba-81b6-37b9f52c89b1
+function yee(lc)
+	lcs_folded = []
+	lcs_folded_binned = []
+	lcs_fit_folded = []
+	for P ∈ (5.1, 5.4, 5.8)
+		# Data
+		lc_folded = lc.fold(P)
+		push!(lcs_folded, lc_folded)
+		push!(lcs_folded_binned, lc_folded.bin(bins=200))
+		
+		# Model
+		lc_fit_folded = compute_pgram_model(lc, P)	
+		push!(lcs_fit_folded, lc_fit_folded)
+	end
+	
+	return lcs_folded, lcs_folded_binned, lcs_fit_folded
+end
+
+# ╔═╡ 7a9dd8e0-3c2d-4c99-ae86-401554ad8558
+x = yee(lcs_oot_comb)
+
+# ╔═╡ 241d1675-007d-4b85-a818-d792681cb45a
+x[3]
+
+# ╔═╡ 2429035b-5b8e-45d5-9957-99ad772324af
+ΔLs2 = [
+	minimum(lc.flux) / median(lc.flux)
+	for lc in x[3]
+]
+
+# ╔═╡ 377c1376-b81f-40e5-8ab3-22cc7d77d7a5
+extrema(f_sp.(Ts, ΔLs2[end], T₀))
+
 # ╔═╡ 18223d42-66d8-40d1-9d89-be8af46853e2
 md"""
 ## Helper Functions
@@ -524,46 +565,6 @@ function savefig(fig, fpath)
 	@info "Saved to: $(fpath)"
 end
 
-# ╔═╡ 94d05a5b-b05e-4407-bcd3-7d625680a262
-let
-	fig = Figure()
-	
-	ax_window = Axis(fig[1, 1])
-	for pgram_window in pgrams_window
-		lines!(ax_window, periodpower(pgram_window)...)
-	end
-	text!(ax_window, "Window function", position=(1, 0.3))
-	
-	ax = Axis(fig[2, 1], xlabel="Period (days)")
-	sectors = ("Sector 04", "Sector 31", "Combined")
-	for (pgram, plan, P_max, sector) in zip(pgrams, plans, P_maxs, sectors)
-		# Compute FAPs
-		b = LombScargle.bootstrap(100, plan)
-		
-		# Plot
-		lines!(ax, periodpower(pgram)...;
-			label="$(sector): $(round(P_max, digits=2))"
-		)
-		hlines!(ax, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))))
-	end
-	
-	axislegend("P_max (days)", position=(0.05, 0.8))
-	
-	hidexdecorations!(ax_window)
-	linkaxes!(ax_window, ax)
-	
-	#xlims!(ax, 0, 10)
-	#ylims!(ax, 0, 0.3)
-	
-	Label(fig[1:2, 0], "Normalized power", rotation=π/2)
-	
-	#axislegend()
-	
-	savefig(fig, "$(FIG_PATH)/stellar_activity_pg.png")
-	
-	fig
-end
-
 # ╔═╡ 9e2ce576-c9bd-11eb-0699-47af13e79589
 begin
 	##############
@@ -571,29 +572,50 @@ begin
 	##############
 	const FIG_TALL = (900, 1_200)
 	const FIG_WIDE = (800, 600)
+	const FIG_LARGE = (1_200, 1_000)
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
-	const COLORS = Makie.wong_colors()
+	const COLORS = parse.(Makie.Colors.Colorant,
+		[
+			"#a6cee3",  # Cyan
+			"#fdbf6f",  # Yellow
+			"#ff7f00",  # Orange
+			"#1f78b4",  # Blue
+		]
+	)
 	
 	set_aog_theme!()
 	update_theme!(
 		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Axis = (
+				xlabelsize = 18,
+				ylabelsize = 18,
+				topspinevisible = true,
+				rightspinevisible = true,
+				topspinecolor = :darkgrey,
+				rightspinecolor = :darkgrey
+			),
+			Label = (
+				textsize = 18,
+				padding = (0, 10, 0, 0),
+				font = AlgebraOfGraphics.firasans("Medium")
+			),
 			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
 			Scatter = (linewidth=10,),
+			Text = (font = AlgebraOfGraphics.firasans("Medium"),),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
 			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
+			rowgap = 5,
+			colgap = 5,
 		)
 	)
 	
 	COLORS
+
 end
 
 # ╔═╡ 82222ee8-f759-499d-a072-c219cc33ccad
 let
-	fig = Figure(resolution=FIG_TALL)
+	fig = Figure(resolution=FIG_WIDE)
 	
 	for (i, (lc, lc_oot)) ∈ enumerate(zip(lcs_cleaned[1:end-1], lcs_oot[1:end-1]))
 		ax = Axis(fig[i, 1])
@@ -626,9 +648,53 @@ let
 	fig
 end
 
+# ╔═╡ 94d05a5b-b05e-4407-bcd3-7d625680a262
+if plot_pg let
+	fig = Figure(resolution=FIG_WIDE)
+	
+	ax_window = Axis(fig[1, 1])
+	for (i, pgram_window) ∈ enumerate(pgrams_window)
+		lines!(ax_window, periodpower(pgram_window)..., color=COLORS_SERIES[i])
+	end
+	text!(ax_window, "Window function", position=(1, 0.3))
+	
+	ax = Axis(fig[2, 1], xlabel="Period (days)")
+	sectors = ("Sector 04", "Sector 31", "Combined")
+	for (i, (pgram, plan, P_max, sector)) ∈ enumerate(
+		zip(pgrams, plans, P_maxs, sectors)
+	)
+		# Compute FAPs
+		b = LombScargle.bootstrap(100, plan)
+		
+		# Plot
+		lines!(ax, periodpower(pgram)...;
+			color = COLORS_SERIES[i],
+			label="$(sector): $(round(P_max, digits=2))"
+		)
+		hlines!(ax, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))), color=:darkgrey)
+	end
+	
+	axislegend("P_max (days)", position=(0.05, 0.8))
+	
+	hidexdecorations!(ax_window)
+	linkaxes!(ax_window, ax)
+	
+	#xlims!(ax, 0, 10)
+	#ylims!(ax, 0, 0.3)
+	
+	Label(fig[1:2, 0], "Normalized power", rotation=π/2)
+	
+	#axislegend()
+	
+	savefig(fig, "$(FIG_PATH)/stellar_activity_pg.png")
+	
+	fig
+	end
+end
+
 # ╔═╡ 49bcddbe-d413-48ae-91d8-92bcebf40518
-let
-	fig = Figure()
+if plot_folded let
+	fig = Figure(resolution=FIG_WIDE)
 	
 	axs = []
 	sectors = ("Sector 04", "Sector 31", "Combined")
@@ -641,7 +707,7 @@ let
 		scatter!(ax, lc_folded_binned.time.value, lc_folded_binned.flux, color=COLORS[2])
 		lines!(ax, lc_fit_folded.time.value, lc_fit_folded.flux, color=0.5 .*(COLORS[2], 1.0))
 		text!(ax, "$(sectors[i])";
-			position = (3.5, 1.007),
+			position = (3.8, 1.006),
 		)
 		ylims!(ax, 0.991, 1.01)
 	end
@@ -654,6 +720,7 @@ let
 	savefig(fig, "$(FIG_PATH)/stellar_activity_phase.png")
 	
 	fig
+	end
 end
 
 # ╔═╡ 61c6dd34-5712-4077-abae-2ee2634dc709
@@ -713,6 +780,13 @@ end
 # ╠═c0d53fc0-467b-4e49-a829-f149e14e3d08
 # ╠═3077c3bf-9ddd-46db-94b7-b7a8120f1485
 # ╠═df370404-2f12-4925-8827-6198793ae842
+# ╠═377c1376-b81f-40e5-8ab3-22cc7d77d7a5
+# ╠═8bd502e8-e67d-44be-8a60-d7ad2c147d70
+# ╠═8c7dcfab-a357-4024-94f3-42d1df80c3c2
+# ╠═06abb8cb-9acb-49ba-81b6-37b9f52c89b1
+# ╠═7a9dd8e0-3c2d-4c99-ae86-401554ad8558
+# ╠═241d1675-007d-4b85-a818-d792681cb45a
+# ╠═2429035b-5b8e-45d5-9957-99ad772324af
 # ╟─18223d42-66d8-40d1-9d89-be8af46853e2
 # ╠═682c3732-e68f-4fdb-bd63-553223308364
 # ╟─ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd

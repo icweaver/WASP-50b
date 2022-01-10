@@ -66,6 +66,13 @@ const FIG_PATH = "figures/retrievals"
 # ╔═╡ d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
 fit_R0 = "fitR0"
 
+# ╔═╡ 8c6e3fd8-f6cb-4250-acb8-c17c00b1b2eb
+fname_suff = let
+	b = basename(base_dir)
+	label = occursin("offs", b) ? "offs" : "no_offs"
+	label *= "_$(fit_R0)"
+end
+
 # ╔═╡ 093156c7-9da7-4814-9260-5173f27fa497
 model_names = OrderedDict(
 	"clear" => "NoHet_FitP0_NoClouds_NoHaze_$(fit_R0)",
@@ -149,8 +156,9 @@ function plot_instr!(ax, fpath; color=:blue, label="add label")
 		header = [:wav, :flux, :wav_d, :wav_u, :flux_err],
 		comment = "#",
 	)
-	errorbars!(ax, retr_instr.wav, retr_instr.flux, retr_instr.flux_err)
-	scatter!(ax, retr_instr.wav, retr_instr.flux;
+	wav = retr_instr.wav .* 10_000
+	errorbars!(ax, wav, retr_instr.flux, retr_instr.flux_err)
+	scatter!(ax, wav, retr_instr.flux;
 		markersize = 15,
 		color = color,
 		strokewidth=1.5,
@@ -167,16 +175,18 @@ end
 
 # ╔═╡ cc011a66-37bd-4543-9a58-b11e1f785e52
 function retrieval!(ax, model0, model_sampled; color=:blue, label="")
-	model = @rsubset model0 0.5 < :wav < 1.0
-	lines!(ax, model.wav, model.flux, color=color, label=label)
-	scatter!(ax, model_sampled.wav, model_sampled.flux;
+	model = @rsubset model0 :wav < 1.0
+	wav = model.wav .* 10_000
+	wav_sampled = model_sampled.wav .* 10_000
+	lines!(ax, wav, model.flux, color=color, label=label)
+	scatter!(ax, wav_sampled, model_sampled.flux;
 		marker = :rect,
 		markersize = 15,
 		color = color,
 		strokewidth = 1.5,
 		strokecolor = color,
 	)
-	band!(ax, model.wav, model.flux_d, model.flux_u;
+	band!(ax, wav, model.flux_d, model.flux_u;
 		color = (color, 0.25),
 	)
 end
@@ -274,25 +284,42 @@ begin
 	# PLOT CONFIGS
 	##############
 	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (1_350, 800)
+	const FIG_WIDE = (800, 600)
+	const FIG_LARGE = (1_200, 1_000)
+	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS = let
+		pal = Makie.ColorSchemes.Paired_8 |> reverse
+		[pal[7:8] ; pal[5:6] ; pal[1:2]]
+	end
 	
 	set_aog_theme!()
 	update_theme!(
 		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Axis = (
+				xlabelsize = 18,
+				ylabelsize = 18,
+				topspinevisible = true,
+				rightspinevisible = true,
+				topspinecolor = :darkgrey,
+				rightspinecolor = :darkgrey
+			),
+			Label = (
+				textsize = 18,
+				padding = (0, 10, 0, 0),
+				font = AlgebraOfGraphics.firasans("Medium")
+			),
 			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
 			Scatter = (linewidth=10,),
+			Text = (font = AlgebraOfGraphics.firasans("Medium"),),
+			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
 			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
+			rowgap = 5,
+			colgap = 5,
 		)
 	)
 	
-	COLORS = let
-		pal = Makie.ColorSchemes.Paired_8 |> reverse
-		[pal[7:8] ; pal[5:6] ; pal[1:2]]
-	end
+	COLORS
+
 end
 
 # ╔═╡ df43608e-7026-45ae-b87b-d7e0b6cea89c
@@ -302,7 +329,7 @@ let
 	plt = data(df_evidences) *
 		mapping(:Species => sorter(dashplus.(species)), :lnZ => "ΔlnZ";
 			dodge = :Model => sort_order,
-			color = :Model => sort_order => "",
+			color = :Model => sort_order,
 		) *
 		visual(BarPlot)
 	
@@ -312,34 +339,64 @@ let
 			position = :top,
 			nbanks = 2,
 			orientation = :horizontal,
-			titlevisible = false,
+			titleposition = :left,
+			titlegap = 25,
 		),
 		palettes = (; color=COLORS),
+		figure = (; resolution=FIG_WIDE),
 	)
+	
+	Label(fg.figure[2, 1], fname_suff;
+		halign = :right,
+		valign = :top,
+		tellwidth = false,
+		tellheight = false,
+		padding = (0, 30, 0, 20),
+		#textsize = 26,
+	)
+	
+	savefig(fg.figure, "$(FIG_PATH)/evidences_$(fname_suff).png")
 
-	savefig(fg.figure, "$(FIG_PATH)/evidences_$(basename(base_dir)).png")
+	fg
 end
 
 # ╔═╡ e801501c-a882-4f2d-bbc1-40028c1c91d8
 let
-	fig = Figure(resolution=(800, 500))
+	fig = Figure(resolution=(1_200, 400))
 	ax = Axis(
 		fig[1, 1],
-		xlabel = "Wavelength (μm)",
+		xlabel = "Wavelength (Å)",
 		ylabel = "Transit depth (ppm)",
 		#limits = (0.3, 1.1, 17_500, 21_000),
+		#limits = (4_600, 9_800, 15_500, 22_500),
+		limits = (4_600, 9_800, 17_500, 21_500)
 	)
 
 	plot_retrieval!(ax, cube, "Na_TiO", "clear", color=COLORS[1])
 	plot_retrieval!(ax, cube, "TiO", "clear+haze+spot", color=COLORS[6])
-	plot_instr!(ax, "retr_Magellan_IMACS.txt", color=:white, label="IMACS + LDSS3")
-	#plot_instr!(ax, "retr_Clay_LDSS3.txt", color=:lightblue, label="IMACS + LDSS3")
+	
+	fpath_suff = basename(base_dir)
+	if occursin("offs", fpath_suff)
+		plot_instr!(ax, "retr_Clay_LDSS3.txt";
+			color = :black,
+			label = "LDSS3",
+		)
+		plot_instr!(ax, "retr_Magellan_IMACS.txt";
+			color = :white,
+			label = "IMACS",
+		)
+	else
+		plot_instr!(ax, "retr_Magellan_IMACS.txt";
+			color = :white,
+			label = "IMACS + LDSS3",
+		)
+	end
 
 	# Instrument
 
 	axislegend(orientation=:horizontal)
 
-	savefig(fig, "$(FIG_PATH)/retr_$(basename(base_dir)).png")
+	savefig(fig, "$(FIG_PATH)/retr_$(fname_suff).png")
 	
 	fig
 end
@@ -347,25 +404,45 @@ end
 # ╔═╡ 01bbee9f-66bf-4e08-a91b-9870def4e62a
 @with_terminal Conda.list(:WASP50b)
 
+# ╔═╡ e3708d6f-d9a9-4e42-b25b-2d1c333fddff
+html"""
+<style>
+#launch_binder {
+	display: none;
+}
+body.disable_ui main {
+		max-width : 95%;
+	}
+@media screen and (min-width: 1081px) {
+	body.disable_ui main {
+		margin-left : 10px;
+		max-width : 72%;
+		align-self: flex-start;
+	}
+}
+</style>
+"""
+
 # ╔═╡ Cell order:
 # ╟─0132b4ab-0447-4546-b412-ec598b20d21d
 # ╠═60dc161c-2aa2-4264-884d-6da3ead0e57b
 # ╟─56971ef4-7512-4e85-ac41-ee446006457f
 # ╠═d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
+# ╠═8c6e3fd8-f6cb-4250-acb8-c17c00b1b2eb
 # ╠═093156c7-9da7-4814-9260-5173f27fa497
 # ╠═0f65d095-09af-44d2-907b-c30e2c16b609
 # ╟─704fa634-eee0-4eef-aacf-f75f2b53f4d2
 # ╠═a7c68d25-a799-421b-9799-38837fa8a188
 # ╠═7b714c1e-2e3d-453f-a342-81df8283de5c
 # ╠═65b51ff6-0991-491f-8945-dd889ffe71dd
-# ╟─d4356ef7-abd7-47dd-83e3-38b6a782509e
+# ╠═d4356ef7-abd7-47dd-83e3-38b6a782509e
 # ╠═a0094689-a9d5-4810-baba-bd7a96c27839
 # ╠═df43608e-7026-45ae-b87b-d7e0b6cea89c
 # ╠═42e909b4-92eb-4ed7-a19c-6e54b21ae07c
 # ╟─1c4fe72d-9872-4969-a62a-5163b5009bbb
 # ╠═e801501c-a882-4f2d-bbc1-40028c1c91d8
-# ╠═5569b57c-0585-4300-927b-5d089dde0f43
 # ╠═00a0f9c4-cd4d-4ae2-80b7-0c044239a571
+# ╠═5569b57c-0585-4300-927b-5d089dde0f43
 # ╠═db524678-9ee2-4934-b1bb-6a2f13bf0fa6
 # ╠═cc011a66-37bd-4543-9a58-b11e1f785e52
 # ╟─41a233c7-5357-453c-b7ad-36fdf9f709cb
@@ -376,3 +453,4 @@ end
 # ╠═01bbee9f-66bf-4e08-a91b-9870def4e62a
 # ╠═f2b2db32-f7fb-4735-849d-5bee761a5e85
 # ╠═239a91a6-f68a-11eb-14fd-0ba8d08b08f9
+# ╟─e3708d6f-d9a9-4e42-b25b-2d1c333fddff

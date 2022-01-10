@@ -73,8 +73,13 @@ fname_suff = let
 end
 
 # ╔═╡ 32b9a326-ddc8-4557-bcf5-9dcc54ed83e5
-transits = Dict("IMACS_ut$(d)" => "Transit $(i) (IMACS)"
-	for (i, d) ∈ enumerate(("131219", "150927", "161211"))
+transits = merge(
+	Dict("IMACS_ut$(d)" => "Transit $(i) (IMACS)"
+		for (i, d) ∈ enumerate(("131219", "150927", "161211"))
+	),
+	Dict("IMACS_ut$(d)_species" => "Transit $(i) (IMACS) sp"
+		for (i, d) ∈ enumerate(("131219", "150927", "161211"))
+	),
 )
 
 # ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
@@ -387,9 +392,14 @@ begin
 				topspinecolor = :darkgrey,
 				rightspinecolor = :darkgrey
 			),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Label = (
+				textsize = 18,
+				padding = (0, 10, 0, 0),
+				font = AlgebraOfGraphics.firasans("Medium")
+			),
 			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
 			Scatter = (linewidth=10,),
+			Text = (font = AlgebraOfGraphics.firasans("Medium"),),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
 			fontsize = 18,
 			rowgap = 5,
@@ -496,6 +506,7 @@ if plot_lcs let
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
 	fig[end+1, 2:end] = Label(fig, "Index")
 
+	@show fname_suff
 	Label(fig[0, end], transits[fname_suff];
 		tellwidth = false,
 		halign = :right,

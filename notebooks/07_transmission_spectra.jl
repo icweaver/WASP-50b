@@ -68,6 +68,12 @@ First let's load up all of the data, including the white-light transit depths fr
 # ╔═╡ 1decb49e-a875-412c-938f-74b4fa0e2e85
 maxmeasure(x, x_u, x_d) = x ± max(x_u, x_d)
 
+# ╔═╡ b8abb240-65d6-4358-bd95-955be047371a
+#fpath = "data/detrended/out_sp/WASP50/w50_131219_sp_IMACS/transpec.csv"
+
+# ╔═╡ 774c4ab2-ad34-4a0d-a523-7234ac3d98e5
+#fpath = "data/detrended/out_l/WASP50/w50_161211_IMACS/transpec.csv"
+
 # ╔═╡ 7b6d3a33-cb3b-4776-86f6-3af1663b9e49
 dates_to_names = OrderedDict(
 	"131219_IMACS" => "Transit 1 (IMACS)",
@@ -75,11 +81,18 @@ dates_to_names = OrderedDict(
 	"150927_LDSS3_flat" => "Transit 2 (LDSS3)",
 	"150927_LDSS3_noflat" => "Transit 2 (LDSS3 noflat)",
 	"161211_IMACS" => "Transit 3 (IMACS)",
+	
+	"131219_sp_IMACS" => "Transit 1 (IMACS) sp",
+	"150927_sp_IMACS" => "Transit 2 (IMACS) sp",
+	"150927_sp_LDSS3_flat" => "Transit 2 (LDSS3) sp",
+	"150927_sp_LDSS3_noflat" => "Transit 2 (LDSS3 noflat) sp",
+	"161211_sp_IMACS" => "Transit 3 (IMACS) sp",
  )
 
 # ╔═╡ 1e8524c4-a732-4e2f-80a9-b5e7548ef2b2
 function name(fpath, data_to_names)
-	date_target = splitpath(split(glob(fpath)[1], "w50_")[2])[1]
+	@show fpath
+	date_target = splitpath(split(fpath, "w50_")[2])[1]
 	return dates_to_names[date_target]
 end
 
@@ -216,9 +229,12 @@ end
 df_tspecs = sort(vcat(df_common, df_extra), :Wcen)
 #df_tspecs = df_common
 
+# ╔═╡ fe04e248-c47b-4913-8405-26365c6027f4
+avg_prec = round(Int, getproperty.(df_tspecs[!, :Combined], :err) |> median)
+
 # ╔═╡ 5d25caa3-916a-40b1-ba7c-ea1295afb775
 md"""
-Average precision per bin: $(round(Int, getproperty.(df_tspecs[!, :Combined], :err) |> median)) ppm
+Average precision per bin: $(avg_prec) ppm
 """
 
 # ╔═╡ 2f377692-2abf-404e-99ea-a18c7af1a840
@@ -252,6 +268,8 @@ end
 # ╔═╡ f92ecf4d-aab8-413e-a32d-5f77a969d1ca
 md"""
 ## Offset test
+
+Here we combine only the IMACS data and plot it along with the LDSS3 data set.
 """
 
 # ╔═╡ 1a6067ca-645a-448b-815f-6a2966548ca6
@@ -276,6 +294,12 @@ df_LDSS3 = @chain df_tspecs begin
 	#@rtransform :Combined = weightedmean2(skipmissing([:x1, :x2, :x3]))
 	rename(_, names(_, r"x") .=> ["Transit 2 (LDSS3)"])
 end
+
+# ╔═╡ f37d9e45-575c-40d9-8f26-31bd6cc6d145
+avg_prec_IMACS = round(Int, getproperty.(df_IMACS[!, :Combined], :err) |> median)
+
+# ╔═╡ b6fa6c00-14cf-47af-9593-c70514373db5
+avg_prec_LDSS3 = round(Int, getproperty.(df_LDSS3[!, :Combined], :err) |> median)
 
 # ╔═╡ 3af0d3b0-c698-4845-a74e-c7186b03a721
 #CSV.write("$(DATA_DIR)/tspec_w50_IMACS.csv",
@@ -366,22 +390,28 @@ begin
 				topspinecolor = :darkgrey,
 				rightspinecolor = :darkgrey
 			),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Label = (
+				textsize = 18,
+				padding = (0, 10, 0, 0),
+				font = AlgebraOfGraphics.firasans("Medium")
+			),
 			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
 			Scatter = (linewidth=10,),
+			Text = (font = AlgebraOfGraphics.firasans("Medium"),),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
 			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
+			rowgap = 5,
+			colgap = 5,
 		)
 	)
 	
 	COLORS
+
 end
 
 # ╔═╡ 8c077881-fc5f-4fad-8497-1cb6106c6ed5
 let
-	fig = Figure(resolution=(1_000, 500))
+	fig = Figure(resolution=(1_200, 400))
 		
 	ax = Axis(
 		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
@@ -417,6 +447,11 @@ let
 			kwargs_scatter = kwargs_scatter,
 			label = "Combined",
 	)
+
+	text!(ax, "Average precision: $(avg_prec) ppm";
+		position = (4700, 16000),
+		align = (:left, :center),
+	)
 	
 	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
 	
@@ -428,7 +463,7 @@ end
 
 # ╔═╡ 72affb58-6f0c-4b76-9956-a027b57a0c8e
 let
-	fig = Figure(resolution=(1_000, 500))
+	fig = Figure(resolution=(1_200, 400))
 		
 	ax = Axis(
 		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
@@ -473,8 +508,20 @@ let
 			kwargs_scatter = kwargs_scatter,
 			label = "Combined",
 	)
+
+	text!(ax, "Average precision (IMACS): $(avg_prec_IMACS) ppm";
+		position = (4700, 16500),
+		align = (:left, :center),
+	)
+	text!(ax, "Average precision (LDSS3): $(avg_prec_LDSS3)  ppm";
+		position = (4700, 16000),
+		align = (:left, :center),
+	)
 	
 	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
+
+	suf = basename(dirname(DATA_DIR))
+	savefig(fig, "$(FIG_PATH)/tspec_$(suf)_uncombined.png")
 	
 	fig
 end
@@ -512,6 +559,8 @@ body.disable_ui main {
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
 # ╠═1decb49e-a875-412c-938f-74b4fa0e2e85
 # ╠═1e8524c4-a732-4e2f-80a9-b5e7548ef2b2
+# ╠═b8abb240-65d6-4358-bd95-955be047371a
+# ╠═774c4ab2-ad34-4a0d-a523-7234ac3d98e5
 # ╠═7b6d3a33-cb3b-4776-86f6-3af1663b9e49
 # ╟─e58ec082-d654-44e3-bcd4-906fc34171c8
 # ╟─11066667-9da2-4b36-b784-c3515c04a659
@@ -522,7 +571,8 @@ body.disable_ui main {
 # ╠═45acc116-e585-4ddf-943d-128db7736921
 # ╠═ed954843-34e5-49be-8643-e2671b659e06
 # ╠═b32273bc-1bb5-406a-acfe-57fd643ded51
-# ╠═5d25caa3-916a-40b1-ba7c-ea1295afb775
+# ╟─5d25caa3-916a-40b1-ba7c-ea1295afb775
+# ╠═fe04e248-c47b-4913-8405-26365c6027f4
 # ╠═2f377692-2abf-404e-99ea-a18c7af1a840
 # ╠═c405941d-bdcc-458f-b0bf-01abf02982e0
 # ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
@@ -532,6 +582,8 @@ body.disable_ui main {
 # ╟─f92ecf4d-aab8-413e-a32d-5f77a969d1ca
 # ╠═1a6067ca-645a-448b-815f-6a2966548ca6
 # ╠═b555e372-2292-4f0e-b511-88b92588ad14
+# ╠═f37d9e45-575c-40d9-8f26-31bd6cc6d145
+# ╠═b6fa6c00-14cf-47af-9593-c70514373db5
 # ╠═72affb58-6f0c-4b76-9956-a027b57a0c8e
 # ╠═3af0d3b0-c698-4845-a74e-c7186b03a721
 # ╠═0fced6dc-fe96-4216-93b1-f8493f2402e9

@@ -17,15 +17,14 @@ begin
 	using Unitful: k, G
 	using Chain
 	using NaturalSort
+	using Latexify
 end
 
 # ╔═╡ cd13d7f3-0ea3-4631-afd9-5f3e359000e6
 md"""
-# HGJH and CO/CH₄ population
+# HGJH population
 
-In this notebook we will explore the possible targets amenable to atmopsheric characterization near:
-1. the high-gravity hot-Jupiter (HGHJ) parameter space (Tₚ ∼ 1000 K, g ∼ 30 m/s²)
-1. the potential molecular transition between CO – CH₄ near the 1200 K boundary predicted from analagous studies of brown dwarfs (BDs)
+In this notebook we will explore the possible targets amenable to atmopsheric characterization near the high-gravity hot-Jupiter (HGHJ) parameter space (Tₚ ∼ 1000 K, g ∼ 30 m/s²).
 
 $(TableOfContents(title="📖 Table of Contents"))
 """
@@ -199,9 +198,20 @@ df_HGHJs_all = @chain df begin
 	sort(:TSMR, rev=true)
 end
 
+# ╔═╡ 53c4fd02-7a48-47a1-9341-ede3e8d497f7
+y = @chain df_HGHJs_all begin
+	@select :pl_name :pl_eqt :g_SI :ΔD_ppm :TSMR
+	first(20)
+end
+
+# ╔═╡ 94a5f868-d043-4c1f-831c-17ebabd3df6c
+@with_terminal begin
+	println(latextabular(y, latex=false, fmt="%.2f"))
+end
+
 # ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
 df_HGHJs = @subset(
-	df_HGHJs_all, :pl_name .∈ Ref(["HAT-P-23 b", "WASP-43 b", "WASP-50 b"])
+	df_HGHJs_all, :pl_name .∈ Ref(["HAT-P-23 b", "WASP-43 b", "WASP-50 b", "HD 189733 b"])
 )
 
 # ╔═╡ d2d6452b-426c-4c61-8dc4-d210c0cd9d41
@@ -361,35 +371,6 @@ function yee!(ax, targ; al_x=:center, al_y=:bottom, df=df_HGHJs, offset=nothing)
 	text!(ax, targ, position=(x, y), align=(al_x, al_y), textsize=16, offset=offset)
 end
 
-# ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
-let
-	fig = Figure(resolution=(800, 700))
-	ax = Axis(fig[1, 1], limits=((0, nothing), (0, 60)))
-	
-	p = (
-		data(df) * visual(color=(:darkgrey, 0.25)) +
-		data(df_tspecs) * visual(markersize=15, color=:grey)
-		) *
-		mapping(
-			:pl_eqt => "Equilibrium temperature (K)",
-			:g_SI => "Surface gravity (m/s²)",
-		)
-
-	draw!(ax, p)
-
-	yee!(ax, "WASP-43 b (Weaver+ 2020)", offset=(0, 5))
-	yee!(ax, "HAT-P-23 b (Weaver+ 2021)", al_x=:left, offset=(0, 5))
-	yee!(ax, "WASP-50 b (Weaver+ in prep.)", al_x=:right, offset=(0, 5))
-
-	hlines!(ax, 20, color=:darkgrey, linestyle=:dash)
-
-    #path = "../../ACCESS_WASP-50b/figures/pop"
-	#mkpath(path)
-	#save("$(path)/tspec_pop.png", fig)
-
-	fig
-end
-
 # ╔═╡ 683a8d85-b9a8-4eab-8a4b-e2b57d0783c0
 md"""
 ## Notebook setup
@@ -402,10 +383,58 @@ function savefig(fig, fpath)
 	@info "Saved to: $(fpath)"
 end
 
+# ╔═╡ 81e14e30-2880-40f8-b4fa-a48a2dc34db7
+begin
+	##############
+	# PLOT CONFIGS
+	##############
+	const FIG_TALL = (900, 1_200)
+	const FIG_WIDE = (800, 600)
+	const FIG_LARGE = (1_200, 1_000)
+	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS = parse.(Makie.Colors.Colorant,
+		[
+			"#a6cee3",  # Cyan
+			"#fdbf6f",  # Yellow
+			"#ff7f00",  # Orange
+			"#1f78b4",  # Blue
+		]
+	)
+	
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (
+				xlabelsize = 18,
+				ylabelsize = 18,
+				topspinevisible = true,
+				rightspinevisible = true,
+				topspinecolor = :darkgrey,
+				rightspinecolor = :darkgrey
+			),
+			Label = (
+				textsize = 18,
+				padding = (0, 10, 0, 0),
+				font = AlgebraOfGraphics.firasans("Medium")
+			),
+			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Scatter = (linewidth=10,),
+			Text = (font = AlgebraOfGraphics.firasans("Medium"),),
+			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
+			fontsize = 18,
+			rowgap = 5,
+			colgap = 5,
+		)
+	)
+	
+	COLORS
+
+end
+
 # ╔═╡ c1cd9292-28b9-4206-b128-608aaf30ff9c
 # TODO: Place latitude constraints
 let
-	fig = Figure(resolution=(800, 700))
+	fig = Figure(resolution=FIG_WIDE)
 	ax = Axis(fig[1, 1], limits=((0, nothing), (10, 55)))
 
 	# HGHJ g boundary
@@ -478,7 +507,7 @@ let
 		patchsize = (120, 100),
 		framevisible = true,
 		padding = (5, 5, -24, 10),
-		margin = (10, 10, 0, 0),
+		margin = (0, 0, 0, 0),
 		titlegap = 24,
 	)
 
@@ -487,22 +516,32 @@ let
 	fig
 end
 
-# ╔═╡ 81e14e30-2880-40f8-b4fa-a48a2dc34db7
-begin
-	set_aog_theme!()
+# ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
+let
+	fig = Figure(resolution=FIG_WIDE)
+	ax = Axis(fig[1, 1], limits=((0, nothing), (10, 55)))
 	
-	update_theme!(
-		Theme(
-			Axis = (xlabelsize=18, ylabelsize=18,),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
-			Text = (font=AlgebraOfGraphics.firasans("Light"),),
-			fontsize = 18,
-			rowgap = 0,
-			colgap = 0,
+	p = (
+		data(df) * visual(color=(:darkgrey, 0.25)) +
+		data(df_tspecs) * visual(markersize=15, color=:grey)
+		) *
+		mapping(
+			:pl_eqt => "Equilibrium temperature (K)",
+			:g_SI => "Surface gravity (m/s²)",
 		)
-	)
-	COLORS = Makie.wong_colors()
+
+	draw!(ax, p)
+
+	yee!(ax, "WASP-43 b (Weaver+ 2020)", offset=(0, 5))
+	yee!(ax, "HAT-P-23 b (Weaver+ 2021)", al_x=:left, offset=(0, 5))
+	yee!(ax, "WASP-50 b (this work)", al_x=:right, offset=(0, 5))
+	yee!(ax, "HD 189733 b (Sing+ 2016.)", al_x=:left, offset=(0, 5))
+
+	hlines!(ax, 20, color=:darkgrey, linestyle=:dash)
+
+    savefig(fig, "$(FIG_PATH)/t_vs_g.png")
+
+	fig
 end
 
 # ╔═╡ Cell order:
@@ -518,6 +557,8 @@ end
 # ╟─7f956b36-ce65-4e4e-afa5-9b97b9e06954
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d
 # ╠═c98c5618-4bac-4322-b4c3-c76181f47889
+# ╠═94a5f868-d043-4c1f-831c-17ebabd3df6c
+# ╠═53c4fd02-7a48-47a1-9341-ede3e8d497f7
 # ╟─18094afc-b77f-4cae-a30c-2691d34125d8
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╠═958453c3-7993-4620-ab7f-e7ad79781dd5
