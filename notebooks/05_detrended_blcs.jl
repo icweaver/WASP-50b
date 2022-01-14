@@ -232,7 +232,7 @@ function plot_BLCs(datas, models, wbins, errs; offset=0.3)
 	hideydecorations!.(axs[:, 2:3], grid=false)
 	hidespines!(axs[end])
 	hidedecorations!(axs[end])
-	#ylims!(ax_left, 0.95, 1.34)
+	ylims!(ax_left, 0.95, 1.34)
 	
 	Label(fig[1:2, 0], "Relative flux + offset", rotation=π/2)
 	Label(fig[end, 2:3], "Index")
