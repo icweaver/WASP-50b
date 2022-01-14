@@ -610,10 +610,10 @@ plot_blcs && for comp_idx ∈ use_comps_idxs
 	datas = f_norm_w[:, comp_idx, :]
 	f_med, _, f_diff = filt(datas, window_width)
 	plot_BLCs(
-		datas,
-		f_med,
+		datas[use_idxs, :],
+		f_med[use_idxs, :],
 		wbins,
-		round.(Int, reshape(std(f_diff, dims=1), :, 1) * 1e6),
+		round.(Int, reshape(std(f_diff[use_idxs, : ], dims=1), :, 1) * 1e6),
 		comp_names[comp_idx],
 	)
 end

@@ -743,40 +743,48 @@ if plot_lcs let
 	end
 end
 
-# ╔═╡ 31b7e180-207e-459b-bd6a-a965da0ad70c
-function plot_binned_lcs(comp_idx; show_fig=false)
+# ╔═╡ 2419e060-f5ab-441b-9ec2-51ce4e57e319
+function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 	fig = Figure(resolution=FIG_TALL)
+	median_prec = round(Int, median(errs))
 	
-	comp_name = obj_names.vals[begin+1:end][comp_idx]
-	ax_left = Axis(fig[1, 1], title = "target / $(comp_name)")
-	ax_right = Axis(fig[1, 2], title = "residuals")
-	ax_label = Axis(fig[1, 3])
+	ax_left = Axis(fig[1, 1], title = "Detrended BLCs")
+	ax_right = Axis(fig[1, 2], title = "Residuals")
+	ax_label = Axis(fig[1, 3], title = "Median precision: $(median_prec) ppm")
 	axs = reshape(copy(fig.content), 1, 3)
 	linkaxes!(axs...)
 
-	# Median filtered curves for visualization purposes
-	f_med, _, f_diff = filt(f_norm_w[:, comp_idx, :], window_width)
-		
-	colors = to_colormap(:Spectral_4, nbins) |> reverse
-	for (f, f_med, resid, b, c, w) in zip(
-			eachcol(f_norm_w[:, comp_idx, :]),
-			eachcol(f_med),
-			eachcol(f_diff),
-			eachcol(baselines),
+	# Color palette
+	N_bins = size(datas, 2)
+	resids = datas - models
+	colors = to_colormap(:Spectral_4, N_bins) |> reverse
+	
+	# Arbitrary offsets for clarity
+	offs = reshape(range(0, offset, length=N_bins), 1, :)
+	baselines = ones(size(datas))
+	for (data, model, resid, baseline, color, wbin, err) in zip(
+			eachcol(datas),
+			eachcol(models),
+			eachcol(resids),
+			eachcol(baselines .+ offs),
 			colors,
 			eachrow(wbins),
-		)	
-		scatter!(ax_left, f[use_idxs], markersize=5, color=c)
-		lines!(ax_left, f_med[use_idxs], linewidth=3, color=0.75*c)
+			errs,
+		)
+		scatter!(ax_left, data, strokewidth=0, markersize=5, color=color)
+		lines!(ax_left, model, linewidth=3, color=0.75*color)
+
+		scatter!(ax_right, baseline + resid, markersize=5, color=color)
+		lines!(ax_right, baseline, linewidth=3, color=0.75*color)
 		
-		scatter!(ax_right, (b + resid)[use_idxs], markersize=5, color=c)
-		lines!(ax_right, b[use_idxs], linewidth=3, color=0.75*c)
-		text!(ax_label, "$(w[1]) - $(w[2]) Å";
-			position = Point2f0(0, b[1]),
+		scatter!(ax_right, baseline + resid, markersize=5, color=color)
+		lines!(ax_right, baseline, linewidth=3, color=0.75*color)
+		text!(ax_label, "$(wbin[1]) - $(wbin[2]) Å, $(err) ppm";
+			position = (0, baseline[1]),
 			textsize = 16,
 			align = (:left, :center),
-			offset = Point2f0(0, 2),
-			color = 0.75*c,
+			offset = Point2f0(-10, 2),
+			color = 0.75*color,
 		)
 	end
 	
@@ -793,8 +801,18 @@ function plot_binned_lcs(comp_idx; show_fig=false)
 	fig
 end
 
-# ╔═╡ 9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
-plot_blcs && plot_binned_lcs.(use_comps_idxs)
+# ╔═╡ 65c91d63-10e7-41ab-9c21-f136f4c5cb96
+plot_blcs && for comp_idx ∈ use_comps_idxs
+	datas = f_norm_w[:, comp_idx, :]
+	f_med, _, f_diff = filt(datas, window_width)
+	plot_BLCs(
+		datas[use_idxs, :],
+		f_med[use_idxs, :],
+		wbins,
+		round.(Int, reshape(std(f_diff[use_idxs, : ], dims=1), :, 1) * 1e6),
+		comp_names[comp_idx],
+	)
+end
 
 # ╔═╡ 0cd62849-c726-47d3-94dd-625e6c058cb1
 @with_terminal Conda.list(:WASP50b)
@@ -880,8 +898,8 @@ body.disable_ui main {
 # ╠═66b637dd-4a7f-4589-9460-67057f7945fd
 # ╟─5837dc0e-3537-4a90-bd2c-494e7b3e6bb7
 # ╠═49d04cf9-2bec-4350-973e-880e376ab428
-# ╠═9a6d25a2-6a44-49a7-a9e8-aa3651d67ae0
-# ╠═31b7e180-207e-459b-bd6a-a965da0ad70c
+# ╠═65c91d63-10e7-41ab-9c21-f136f4c5cb96
+# ╠═2419e060-f5ab-441b-9ec2-51ce4e57e319
 # ╟─af07dc54-eeb5-4fbe-8dd0-289dea97502a
 # ╟─88cc640d-b58d-4cde-b793-6c66e74f6b3a
 # ╠═301ff07c-8dd5-403a-bae8-a4c38deeb331

@@ -153,6 +153,9 @@ df_common_0 = innerjoin(
 	makeunique = true,
 );
 
+# ╔═╡ 59cc9c0a-332a-4f32-9f22-824f4c8f81b3
+df_common_0
+
 # ╔═╡ acde40fd-8ed4-4175-9a52-13ed91dc5495
 md"""
 Conversely, we also store which points in the spectrum are not common between all nights. `Transit 2 (LDSS3)` encompasses the spectra from all other nights, so we `antijoin` relative to this dataset:
@@ -199,14 +202,22 @@ function weightedmean2(m; corrected=true)
 end
 
 # ╔═╡ 4b9cfc02-5e18-422d-b18e-6301a659561a
-df_common = @chain df_common_0 begin
-	select(_, :Wav_d=>:Wlow, :Wav_u=>:Wup, :wav=>:Wcen, r"δ")
-	# @rtransform :δ = :δ - wlc_offsets[1]
-	# @rtransform :δ_1= :δ_1 - wlc_offsets[2]
-	# @rtransform :δ_2 = :δ_2 - wlc_offsets[3]
-	# @rtransform :δ_3 = :δ_3 - wlc_offsets[4]
-	@rtransform :Combined = weightedmean2([:δ, :δ_1, :δ_2, :δ_3])
-	rename(_, names(_, r"δ") .=> cubes.keys)
+begin
+	df_common = @chain df_common_0 begin
+		select(_, :Wav_d=>:Wlow, :Wav_u=>:Wup, :wav=>:Wcen, r"δ")
+		# @rtransform :δ = :δ - wlc_offsets[1]
+		# @rtransform :δ_1= :δ_1 - wlc_offsets[2]
+		# @rtransform :δ_2 = :δ_2 - wlc_offsets[3]
+		# @rtransform :δ_3 = :δ_3 - wlc_offsets[4]
+		@rtransform :Combined = weightedmean2([:δ, :δ_1, :δ_2, :δ_3])
+		rename(_, names(_, r"δ") .=> cubes.keys)
+	end
+	
+	insertcols!(df_common, 4,
+		:ΔW => df_common.Wup .- df_common.Wlow
+	)
+	
+	df_common
 end
 
 # ╔═╡ ed954843-34e5-49be-8643-e2671b659e06
@@ -221,6 +232,7 @@ df_extra = let
 		:Wlow => y.Wav_d,
 		:Wup => y.Wav_u,
 		:Wcen => y.wav,
+		:ΔW => y.Wav_u .- y.Wav_d
 	)
 	sort!(z, :Wcen)
 end
@@ -228,6 +240,14 @@ end
 # ╔═╡ b32273bc-1bb5-406a-acfe-57fd643ded51
 df_tspecs = sort(vcat(df_common, df_extra), :Wcen)
 #df_tspecs = df_common
+
+# ╔═╡ 64f608b9-76df-402e-801c-006dc3096f94
+@with_terminal begin
+	latextabular(df_tspecs, latex=false) |> print
+end
+
+# ╔═╡ 4ce88d88-ff08-4ea8-b397-fc61c22adc4e
+df_tspecs[3, 5].err
 
 # ╔═╡ fe04e248-c47b-4913-8405-26365c6027f4
 avg_prec = round(Int, getproperty.(df_tspecs[!, :Combined], :err) |> median)
@@ -273,27 +293,48 @@ Here we combine only the IMACS data and plot it along with the LDSS3 data set.
 """
 
 # ╔═╡ 1a6067ca-645a-448b-815f-6a2966548ca6
-df_IMACS = @chain df_tspecs begin
-	select(_, ["Wlow","Wup", "Wcen","Transit 1 (IMACS)", "Transit 2 (IMACS)", "Transit 3 (IMACS)"])
-	#z.Combined = [weightedmean2(skipmissing(row)) for row ∈ eachrow(z)]
-	rename(_, names(_, r"Tr") .=> [:x1, :x2, :x3])
-	#@rtransform :Combined = sum(skipmissing([:x1, :x2, :x3]))
-	dropmissing(_, :x1)
-	@rtransform :Combined = weightedmean2(skipmissing([:x1, :x2, :x3]))
-	rename(_, names(_, r"x") .=> ["Transit 1 (IMACS)", "Transit 2 (IMACS)", "Transit 3 (IMACS)"])
+begin
+	df_IMACS = @chain df_tspecs begin
+		select(_, ["Wlow","Wup", "Wcen","Transit 1 (IMACS)", "Transit 2 (IMACS)", "Transit 3 (IMACS)"])
+		#z.Combined = [weightedmean2(skipmissing(row)) for row ∈ eachrow(z)]
+		rename(_, names(_, r"Tr") .=> [:x1, :x2, :x3])
+		#@rtransform :Combined = sum(skipmissing([:x1, :x2, :x3]))
+		dropmissing(_, :x1)
+		@rtransform :Combined = weightedmean2(skipmissing([:x1, :x2, :x3]))
+		rename(_, names(_, r"x") .=> ["Transit 1 (IMACS)", "Transit 2 (IMACS)", "Transit 3 (IMACS)"])
+	end
+	insertcols!(df_IMACS, 4,
+		:ΔW => df_IMACS.Wup .- df_IMACS.Wlow
+	)
 end
 
+# ╔═╡ 9c729d01-9a68-46dd-993c-20ed4975bee2
+(6420 + 6185) / 2
+
 # ╔═╡ b555e372-2292-4f0e-b511-88b92588ad14
-df_LDSS3 = @chain df_tspecs begin
-	select(_, ["Wlow","Wup", "Wcen", "Transit 2 (LDSS3)"])
-	#z.Combined = [weightedmean2(skipmissing(row)) for row ∈ eachrow(z)]
-	rename(_, names(_, r"Tr") .=> [:x1])
-	#@rtransform :Combined = sum(skipmissing([:x1, :x2, :x3]))
-	dropmissing(_)
-	@transform :Combined = :x1
-	#@rtransform :Combined = weightedmean2(skipmissing([:x1, :x2, :x3]))
-	rename(_, names(_, r"x") .=> ["Transit 2 (LDSS3)"])
+begin
+	df_LDSS3 = @chain df_tspecs begin
+		select(_, ["Wlow","Wup", "Wcen", "Transit 2 (LDSS3)"])
+		#z.Combined = [weightedmean2(skipmissing(row)) for row ∈ eachrow(z)]
+		rename(_, names(_, r"Tr") .=> [:x1])
+		#@rtransform :Combined = sum(skipmissing([:x1, :x2, :x3]))
+		dropmissing(_)
+		@transform :Combined = :x1
+		#@rtransform :Combined = weightedmean2(skipmissing([:x1, :x2, :x3]))
+		rename(_, names(_, r"x") .=> ["Transit 2 (LDSS3)"])
+	end
+	insertcols!(df_LDSS3, 4,
+		:ΔW => df_LDSS3.Wup .- df_LDSS3.Wlow
+	)
 end
+
+# ╔═╡ 940ad41b-910c-40a8-8752-e68e13ff4a1f
+@with_terminal begin
+	latextabular(df_IMACS, latex=false) |> print
+end
+
+# ╔═╡ 094bd22d-8e42-440f-a78c-3a2787f380ea
+df_LDSS3
 
 # ╔═╡ f37d9e45-575c-40d9-8f26-31bd6cc6d145
 avg_prec_IMACS = round(Int, getproperty.(df_IMACS[!, :Combined], :err) |> median)
@@ -565,12 +606,15 @@ body.disable_ui main {
 # ╟─e58ec082-d654-44e3-bcd4-906fc34171c8
 # ╟─11066667-9da2-4b36-b784-c3515c04a659
 # ╠═cb1b277b-aa92-44de-91ce-88122bc34bb9
+# ╠═59cc9c0a-332a-4f32-9f22-824f4c8f81b3
 # ╟─acde40fd-8ed4-4175-9a52-13ed91dc5495
 # ╠═461097e9-a687-4ef2-a5b4-8bf4d9e1c98f
 # ╠═4b9cfc02-5e18-422d-b18e-6301a659561a
 # ╠═45acc116-e585-4ddf-943d-128db7736921
 # ╠═ed954843-34e5-49be-8643-e2671b659e06
 # ╠═b32273bc-1bb5-406a-acfe-57fd643ded51
+# ╠═64f608b9-76df-402e-801c-006dc3096f94
+# ╠═4ce88d88-ff08-4ea8-b397-fc61c22adc4e
 # ╟─5d25caa3-916a-40b1-ba7c-ea1295afb775
 # ╠═fe04e248-c47b-4913-8405-26365c6027f4
 # ╠═2f377692-2abf-404e-99ea-a18c7af1a840
@@ -581,7 +625,10 @@ body.disable_ui main {
 # ╠═09887c41-022a-4109-8c5d-0ba033c50bcb
 # ╟─f92ecf4d-aab8-413e-a32d-5f77a969d1ca
 # ╠═1a6067ca-645a-448b-815f-6a2966548ca6
+# ╠═9c729d01-9a68-46dd-993c-20ed4975bee2
 # ╠═b555e372-2292-4f0e-b511-88b92588ad14
+# ╠═940ad41b-910c-40a8-8752-e68e13ff4a1f
+# ╠═094bd22d-8e42-440f-a78c-3a2787f380ea
 # ╠═f37d9e45-575c-40d9-8f26-31bd6cc6d145
 # ╠═b6fa6c00-14cf-47af-9593-c70514373db5
 # ╠═72affb58-6f0c-4b76-9956-a027b57a0c8e
