@@ -30,6 +30,9 @@ begin
 	using LombScargle, Measurements, Statistics
 end
 
+# ╔═╡ 68f870ba-3825-4f19-a237-7f04d06ee0eb
+using CommonMark
+
 # ╔═╡ b85cbebb-3334-4672-bf36-1070fd5dff46
 begin
 	ENV["PYTHON"] = ""
@@ -122,6 +125,9 @@ let
 		
 	fig
 end
+
+# ╔═╡ 50ee0fbb-30f8-4e29-9de8-0173efcee364
+1e6 * median(df_ASASSN.flux_err)
 
 # ╔═╡ 7e5ea835-8eb2-44d5-905d-433767b6b91a
 md"""
@@ -321,6 +327,14 @@ begin
 	push!(lcs_oot, lk.LightCurveCollection([lcs_oot...]).stitch())
 end;
 
+# ╔═╡ 43de00bf-e616-43c5-92ce-1044cbd8cfe5
+1e6 .* [median(lc.flux_err) for lc ∈ lcs_oot]
+
+# ╔═╡ 2aebd994-1490-43d0-a9d1-e68652aebc32
+cm"""
+~~h~~
+"""
+
 # ╔═╡ 99fcf959-665b-44cf-9b5f-fd68a919f846
 md"""
 ### $(@bind plot_pg CheckBox()) Periodogram
@@ -500,6 +514,9 @@ extrema(f_sp.(Ts, ΔLs[end], T₀))
 # ╔═╡ 8bd502e8-e67d-44be-8a60-d7ad2c147d70
 lcs_oot_comb = lcs_oot[end]
 
+# ╔═╡ 3551787f-0a83-408f-9d78-41309ae3dae3
+(lcs_oot_comb.flux_err |> median)
+
 # ╔═╡ 8c7dcfab-a357-4024-94f3-42d1df80c3c2
 P_maxs
 
@@ -508,7 +525,7 @@ function yee(lc)
 	lcs_folded = []
 	lcs_folded_binned = []
 	lcs_fit_folded = []
-	for P ∈ (5.1, 5.4, 5.8)
+	for P ∈ (16.3)
 		# Data
 		lc_folded = lc.fold(P)
 		push!(lcs_folded, lc_folded)
@@ -737,6 +754,7 @@ end
 # ╟─2b2dd83b-ce99-4551-b8aa-79ca6db5dd06
 # ╠═98704543-8cb7-4fca-b601-2a8d2dfa4833
 # ╠═8e6008ca-a762-4450-a09e-bd0c2bbac4f2
+# ╠═50ee0fbb-30f8-4e29-9de8-0173efcee364
 # ╟─7e5ea835-8eb2-44d5-905d-433767b6b91a
 # ╟─5bc41820-3782-4f82-80b6-6da62805ca8f
 # ╠═5bf1136b-2d13-4463-8d74-9ade1e2cee96
@@ -763,6 +781,10 @@ end
 # ╟─241c462c-3cd9-402d-b948-b9b1f608b727
 # ╠═31d5bc92-a1f2-4c82-82f2-67755f9aa235
 # ╠═82222ee8-f759-499d-a072-c219cc33ccad
+# ╠═3551787f-0a83-408f-9d78-41309ae3dae3
+# ╠═43de00bf-e616-43c5-92ce-1044cbd8cfe5
+# ╠═68f870ba-3825-4f19-a237-7f04d06ee0eb
+# ╠═2aebd994-1490-43d0-a9d1-e68652aebc32
 # ╟─99fcf959-665b-44cf-9b5f-fd68a919f846
 # ╠═94d05a5b-b05e-4407-bcd3-7d625680a262
 # ╠═d7f034c5-5925-4b91-9bea-1068a7ce9252

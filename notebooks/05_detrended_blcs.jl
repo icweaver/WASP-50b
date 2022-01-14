@@ -189,8 +189,8 @@ end
 
 # ╔═╡ bec88974-b150-4f53-9497-ddec4883ae17
 function plot_BLCs(datas, models, wbins, errs; offset=0.3)
-	median_prec = round(Int, median(errs))
 	fig = Figure(resolution=FIG_TALL)
+	median_prec = round(Int, median(errs))
 	ax_left = Axis(fig[1, 1], title = "Detrended BLCs")
 	ax_right = Axis(fig[1, 2], title = "Residuals")
 	ax_label = Axis(fig[1, 3], title = "Median precision: $(median_prec) ppm")

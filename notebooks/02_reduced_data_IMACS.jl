@@ -30,6 +30,9 @@ begin
 	using Statistics
 end
 
+# ╔═╡ 01cc9f96-bc14-443f-9231-9a423fdce342
+using Dates
+
 # ╔═╡ d07e895f-c43b-46c4-be47-5af44bfda47a
 begin
 	ENV["PYTHON"] = ""
@@ -81,32 +84,6 @@ transits = merge(
 		for (i, d) ∈ enumerate(("131219", "150927", "161211"))
 	),
 )
-
-# ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
-wbins = let
-	if occursin("species", FPATH_LC)
-		wbins_name = "w50_bins_species.dat"
-	elseif occursin("ut131219", FPATH_LC)
-		wbins_name = "w50_bins_ut131219.dat"
-	else
-		wbins_name = "w50_bins.dat"
-	end
-	readdlm("$(DIRPATH)/../../wbins/$(wbins_name)", comments=true)
-end
-
-# ╔═╡ 7f30d3c2-d8a4-4c0d-bbca-b1d5b1e4c20b
-with_terminal() do
-	wl, wu = wbins[:, 1], wbins[:, 2]
-	Δw = @. wu - wl
-	wc = @. (wl + wu) / 2
-	df = DataFrame(
-		"Central wavelength" => wc,
-		"Lower wav." => wl,
-		"Upper wav." => wu,
-		L"$\Delta$ wav." => Δw,
-	)
-	latextabular(df, latex=false) |> println
-end
 
 # ╔═╡ 66052b03-35a0-4877-abef-f525766fd332
 md"""
@@ -280,6 +257,9 @@ md"""
 We plot these below for each comparison star division:
 """
 
+# ╔═╡ b64d7fa9-82fc-4fd0-b0ce-1b53286147cb
+#plot_blcs && plot_binned_lcs.(use_comps_idxs)
+
 # ╔═╡ eeb3da97-72d5-4317-acb9-d28637a06d67
 md"""
 ## Notebook setup
@@ -312,6 +292,53 @@ end;
 
 # ╔═╡ dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
 LC = load_pickle(FPATH_LC);
+
+# ╔═╡ 418bb00c-070f-4b12-9877-b2936f999e5c
+AM = LC["Z"];
+
+# ╔═╡ 0c9e1227-9087-4a87-86a9-cb7c2e4aeaf7
+lines(AM)
+
+# ╔═╡ 20f79ab6-b69e-4528-9856-ffa316442b75
+round.(extrema(AM), digits=1)
+
+# ╔═╡ f90cefa7-8304-4d4d-801d-8eb27d842d41
+round.(AM[[begin, end]], digits=1)
+
+# ╔═╡ cc25d4d4-0fb7-4bc4-9aaf-2e2d9ff4e27d
+LC |> keys
+
+# ╔═╡ f8afc0b6-a170-483f-b923-47fad6a8e89f
+LC["wbins"]
+
+# ╔═╡ d5f859c2-f7ae-41c0-92bd-3eaf7bd16a7e
+LC["etimes"] |> unique
+
+# ╔═╡ f85aefff-3178-4e59-adc5-5072adae02f8
+t = LC["t"]
+
+# ╔═╡ 15db6161-7a4c-4468-bab1-df26ff19561c
+round.(julian2datetime.((t[begin], t[end])), Dates.Minute)
+
+# ╔═╡ 2ed6befa-e08c-464b-9685-597f99a51c1e
+length(t)
+
+# ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
+wbins = LC["wbins"]
+
+# ╔═╡ 7f30d3c2-d8a4-4c0d-bbca-b1d5b1e4c20b
+with_terminal() do
+	wl, wu = wbins[:, 1], wbins[:, 2]
+	Δw = @. wu - wl
+	wc = @. (wl + wu) / 2
+	df = DataFrame(
+		"Central wavelength" => wc,
+		"Lower wav." => wl,
+		"Upper wav." => wu,
+		L"$\Delta$ wav." => Δw,
+	)
+	latextabular(df, latex=false) |> println
+end
 
 # ╔═╡ bcda2043-f8c7-46bc-a5d4-b6f1f0883e9e
 LC_cNames = LC["cNames"]
@@ -347,6 +374,9 @@ begin
 	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
 end;
 
+# ╔═╡ e703c0a8-2a4a-41dc-b4ec-798d98302930
+comp_idx = use_comps_idxs[1]
+
 # ╔═╡ 22b57aad-e886-4d36-bab8-baef5f3fabe6
 f_div_WLC_norm
 
@@ -356,12 +386,34 @@ begin
 	(ntimes, nbins), ncomps = size(oLCw), length(comp_names)
 	offs = reshape(range(0, 0.3, length=nbins), 1, :) # Arbitrary offsets for clarity
 	f_norm_w = Array{Float64}(undef, ntimes, ncomps, nbins)
-	for c_i in 1:ncomps
-		f_w = oLCw ./ cLCw[:, c_i, :]
+	for c_i ∈ 1:ncomps
+		if 0.0 ∈ cLCw[:, c_i, :]
+			f_w = oLCw
+		else
+			f_w = oLCw ./ cLCw[:, c_i, :]
+		end
 		f_norm_w[:, c_i, :] .= f_w ./ median(f_w, dims=1) .+ offs
 	end
 	baselines = ones(ntimes, nbins) .+ offs # Reference baselines
 end;
+
+# ╔═╡ a2cccaf7-987c-4c27-94b9-eb9ef452ac48
+datas = f_norm_w[:, comp_idx, :]
+
+# ╔═╡ 70507e91-a645-4805-9fa2-3b8febf5670c
+f_med, _, f_diff = filt(f_norm_w[:, comp_idx, :], window_width)
+
+# ╔═╡ 7962e716-8b0e-4c58-9d14-f51bbf72d419
+for comp_idx ∈ use_comps_idxs
+	datas = f_norm_w[:, comp_idx, :]
+	f_med, _, f_diff = filt(datas, window_width)
+	# plot_BLCs(
+	# 	datas,
+	# 	f_med,
+	# 	wbins,
+	# 	round.(Int, reshape(std(f_diff, dims=1), :, 1) * 1e6), 
+	# )
+end
 
 # ╔═╡ a8d1c3e6-c020-495f-a443-07203b7dcd50
 begin
@@ -519,6 +571,73 @@ if plot_lcs let
 	end
 end
 
+# ╔═╡ c2c326df-1474-4b06-b183-668f0d6502aa
+function plot_BLCs(datas, models, wbins, errs; offset=0.3)
+	fig = Figure(resolution=FIG_TALL)
+	median_prec = round(Int, median(errs))
+	
+	comp_name = comp_names[comp_idx]
+	ax_left = Axis(fig[1, 1], title = "Detrended BLCs")
+	ax_right = Axis(fig[1, 2], title = "Residuals")
+	ax_label = Axis(fig[1, 3], title = "Median precision: $(median_prec) ppm")
+	axs = reshape(copy(fig.content), 1, 3)
+	linkaxes!(axs...)
+
+	# Color palette
+	N_bins = size(datas, 2)
+	resids = datas - models
+	colors = to_colormap(:Spectral_4, N_bins) |> reverse
+	
+	# Arbitrary offsets for clarity
+	offs = reshape(range(0, offset, length=N_bins), 1, :)
+	baselines = ones(size(datas))
+	for (data, model, resid, baseline, color, wbin, err) in zip(
+			eachcol(datas),
+			eachcol(models),
+			eachcol(resids),
+			eachcol(baselines .+ offs),
+			colors,
+			eachrow(wbins),
+			errs,
+		)
+		scatter!(ax_left, data, strokewidth=0, markersize=5, color=color)
+		lines!(ax_left, model, linewidth=3, color=0.75*color)
+
+		scatter!(ax_right, baseline + resid, markersize=5, color=color)
+		lines!(ax_right, baseline, linewidth=3, color=0.75*color)
+		
+		# scatter!(ax_right, (b + resid)[use_idxs], markersize=5, color=c)
+		# lines!(ax_right, b[use_idxs], linewidth=3, color=0.75*c)
+		# text!(ax_label, "$(w[1]) - $(w[2]) Å";
+		# 	position = Point2f0(0, b[1]),
+		# 	textsize = 16,
+		# 	align = (:left, :center),
+		# 	offset = Point2f0(0, 2),
+		# 	color = 0.75*c,
+		# )
+	end
+	
+	hideydecorations!.(axs[:, 2:3], grid=false)
+	hidespines!(axs[end])
+	hidedecorations!(axs[end])
+	ylims!(ax_left, 0.95, 1.34)
+	
+	fig[1:2, 0] = Label(fig, "Relative flux + offset", rotation=π/2)
+	fig[end, 2:3] = Label(fig, "Index")
+
+	# savefig(fig, "$(FIG_PATH)/div_blcs_$(fname_suff)_$(comp_name).png")
+
+	fig
+end
+
+# ╔═╡ 5df54b0e-520f-4bfe-86b8-df46037268c3
+plot_BLCs(
+	datas[use_idxs, :],
+	f_med[use_idxs, :],
+	wbins,
+	round.(Int, reshape(std(f_diff[use_idxs, :], dims=1), :, 1) * 1e6), 
+)
+
 # ╔═╡ 684c026a-b5d0-4694-8d29-a44b7cb0fd6c
 function plot_binned_lcs(comp_idx; show_fig=false)
 	fig = Figure(resolution=FIG_TALL)
@@ -569,8 +688,8 @@ function plot_binned_lcs(comp_idx; show_fig=false)
 	fig
 end
 
-# ╔═╡ b64d7fa9-82fc-4fd0-b0ce-1b53286147cb
-plot_blcs && plot_binned_lcs.(use_comps_idxs)
+# ╔═╡ 99a6fa5b-afe9-4310-bb3e-02960f8d8196
+plot_binned_lcs(use_comps_idxs[1])
 
 # ╔═╡ e8478e36-10fc-4e95-bf09-e217cad0cb15
 @with_terminal Conda.list(:WASP50b)
@@ -603,6 +722,17 @@ body.disable_ui main {
 # ╠═3959e46c-87c9-4566-8ab1-f437323f0a9f
 # ╠═32b9a326-ddc8-4557-bcf5-9dcc54ed83e5
 # ╠═dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
+# ╠═418bb00c-070f-4b12-9877-b2936f999e5c
+# ╠═0c9e1227-9087-4a87-86a9-cb7c2e4aeaf7
+# ╠═cc25d4d4-0fb7-4bc4-9aaf-2e2d9ff4e27d
+# ╠═f8afc0b6-a170-483f-b923-47fad6a8e89f
+# ╠═15db6161-7a4c-4468-bab1-df26ff19561c
+# ╠═d5f859c2-f7ae-41c0-92bd-3eaf7bd16a7e
+# ╠═2ed6befa-e08c-464b-9685-597f99a51c1e
+# ╠═f85aefff-3178-4e59-adc5-5072adae02f8
+# ╠═01cc9f96-bc14-443f-9231-9a423fdce342
+# ╠═20f79ab6-b69e-4528-9856-ffa316442b75
+# ╠═f90cefa7-8304-4d4d-801d-8eb27d842d41
 # ╠═6471fc66-47a5-455e-9611-c6fd9d56e9dc
 # ╟─7f30d3c2-d8a4-4c0d-bbca-b1d5b1e4c20b
 # ╟─66052b03-35a0-4877-abef-f525766fd332
@@ -638,8 +768,15 @@ body.disable_ui main {
 # ╟─e98dee2e-a369-448e-bfe4-8fea0f318fa8
 # ╠═df8983d1-4abd-4fad-ace6-9dfe74df4949
 # ╠═3ca393d6-01c0-4f77-88ff-7c4f6388670e
+# ╠═e703c0a8-2a4a-41dc-b4ec-798d98302930
+# ╠═a2cccaf7-987c-4c27-94b9-eb9ef452ac48
+# ╠═70507e91-a645-4805-9fa2-3b8febf5670c
+# ╠═5df54b0e-520f-4bfe-86b8-df46037268c3
 # ╟─793c4d08-e2ee-4c9d-b7a0-11eaaddba895
+# ╠═7962e716-8b0e-4c58-9d14-f51bbf72d419
 # ╠═b64d7fa9-82fc-4fd0-b0ce-1b53286147cb
+# ╠═c2c326df-1474-4b06-b183-668f0d6502aa
+# ╠═99a6fa5b-afe9-4310-bb3e-02960f8d8196
 # ╠═684c026a-b5d0-4694-8d29-a44b7cb0fd6c
 # ╟─eeb3da97-72d5-4317-acb9-d28637a06d67
 # ╟─06bbb3e4-9b30-43bd-941f-e357acaa80fc

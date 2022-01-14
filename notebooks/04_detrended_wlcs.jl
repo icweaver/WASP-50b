@@ -4,6 +4,16 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
+
 # ╔═╡ 691eddff-f2eb-41a8-ab05-63afb46d15f2
 begin
 	import Pkg
@@ -53,6 +63,9 @@ const DATA_DIR = "data/detrended/out_l/WASP50"
 
 # ╔═╡ 2dd2ad78-b9a1-4cdf-97c9-b659599add63
 const FIG_PATH = "figures/detrended"
+
+# ╔═╡ dc773d5e-76b8-4850-a838-964b0c355e3a
+
 
 # ╔═╡ 105762e1-15a2-4e7f-bff3-7740a5f53492
 glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")
@@ -133,7 +146,7 @@ md"""
 
 # ╔═╡ 68ec4343-5f6c-4dfd-90b5-6393b4c819b9
 md"""
-## Corner plots 📐
+## $(@bind plot_corner CheckBox()) Corner plots 📐
 """
 
 # ╔═╡ e452d2b1-1010-4ce3-8d32-9e9f1d0dfa0b
@@ -378,7 +391,7 @@ let
 	)
 	ax_bottom_kwargs = (
 		xlabel = "Phase",
-		ylabel = "(ppm)",
+		ylabel = "Residuals (ppm)",
 		#limits=(xlims..., -3000, 3000),
 	)
 	for (i, (transit, cube)) in enumerate(cubes)
@@ -460,7 +473,7 @@ begin
 end
 
 # ╔═╡ d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
-let
+if plot_corner let
 	n_params = length(PARAMS) # Number of fitted parameters
 	
 	# Create empty corner plot grid
@@ -535,6 +548,7 @@ let
 	savefig(fig, "$(FIG_PATH)/detrended_wlcs_corner.png")
 	
 	fig
+	end
 end
 
 # ╔═╡ 89c8fcd6-6a2f-4e4e-882d-569901487966
@@ -565,6 +579,7 @@ body.disable_ui main {
 # ╟─a8d91138-73e7-4382-a032-37daec54a9c0
 # ╟─2dd2ad78-b9a1-4cdf-97c9-b659599add63
 # ╠═d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
+# ╠═dc773d5e-76b8-4850-a838-964b0c355e3a
 # ╠═2191791b-df62-4f1b-88bf-060cc47896b2
 # ╠═105762e1-15a2-4e7f-bff3-7740a5f53492
 # ╠═f539e06d-a1b5-413a-b90e-91cb0bbd5a4c

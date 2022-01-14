@@ -113,6 +113,18 @@ md"""
 We follow the same operations to visualize the $(nrow(df_sci_LDSS3)) chips for LDSS3 below.
 """
 
+# ╔═╡ 5fe61a6a-7147-4c48-a3a7-41183a015325
+df_sci_LDSS3.GRISM
+
+# ╔═╡ aa94926c-ffc3-44b4-ab8b-0aa98c0fcecf
+df_sci_LDSS3.FILTER
+
+# ╔═╡ e57832a4-3375-4052-bdb7-54ffccabe5e9
+df_sci_LDSS3.OBJECT
+
+# ╔═╡ 7aa57c15-263c-4eb4-b6c7-048ff7af5fc7
+df_sci_LDSS3.APERTURE
+
 # ╔═╡ c488270a-3126-4e38-a0c8-ee242115a3ea
 frames_LDSS3 = process_frames(df_sci_LDSS3)
 
@@ -348,6 +360,10 @@ body.disable_ui main {
 # ╟─06a834f0-8c90-4013-af34-725166970969
 # ╟─0e66d467-1098-46dc-8d06-36d488b14637
 # ╠═5c6e6f7b-70e0-49a8-b064-60dcf1440223
+# ╠═5fe61a6a-7147-4c48-a3a7-41183a015325
+# ╠═aa94926c-ffc3-44b4-ab8b-0aa98c0fcecf
+# ╠═e57832a4-3375-4052-bdb7-54ffccabe5e9
+# ╠═7aa57c15-263c-4eb4-b6c7-048ff7af5fc7
 # ╠═c488270a-3126-4e38-a0c8-ee242115a3ea
 # ╠═83a9357d-836b-4cee-a41f-eabc8f3f12e7
 # ╠═71ba9181-90e4-4d12-97c0-462b3f1df077

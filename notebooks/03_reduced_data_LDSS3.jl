@@ -32,6 +32,9 @@ begin
 	using Printf
 end
 
+# ╔═╡ bda7227d-a952-4380-ade4-7cf784a1e5cd
+using Dates
+
 # ╔═╡ 26f18ff6-7baa-4905-b9d1-52cfa9396dfc
 begin
 	ENV["PYTHON"] = ""
@@ -85,22 +88,13 @@ Each cube (`LC`) can be selected from the following drop-down menu, and will be 
 # ╔═╡ 99a310b2-b802-4b29-9354-796b2dec2820
 const FIG_PATH = "figures/reduced_data"
 
+# ╔═╡ 4b8d9fc4-3d00-4311-89c4-56478122b2b4
+julian2datetime.((2457292.705208333,2457292.7103152038))
+
 # ╔═╡ 698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 md"""
 We next define the mapping between the standard aperture names defined in `stellar` and the target/comparison star names used:
 """
-
-# ╔═╡ d8236985-9a36-4357-ac78-7eb39dd0f080
-obj_names = OrderedDict(
-	"aperture_324_803" => "WASP50",
-	"aperture_153_1117" => "c06",
-	"aperture_830_689" => "c15",
-	"aperture_28_1189" => "c21",
-	"aperture_325_803" => "WASP50",
-	"aperture_157_1116" => "c06",
-	"aperture_830_693" => "c15",
-	"aperture_35_1188" => "c21",
-)
 
 # ╔═╡ b4f4e65b-bd50-4ee2-945f-7c130db21fdf
 md"""
@@ -194,23 +188,35 @@ Next, we will extract the integrated white-light curves from these spectra. We i
 # ╔═╡ cb805821-5d2e-484c-93a5-10a897d2cfe7
 @bind window_width PlutoUI.Slider(3:2:21, default=15, show_value=true)
 
-# ╔═╡ 83263daf-a902-4414-850b-aa6949752fbb
-comp_names = obj_names.vals[2:4]
-
-# ╔═╡ cd10cbf3-22f4-46cd-8345-cec3d141e3ca
-use_comps = comp_names 
-
 # ╔═╡ 9372c69a-0aad-4e6e-9ea3-e934fa09b758
 get_idx(needle, haystack) = findfirst(==(needle), haystack)
-
-# ╔═╡ 4f71ba8d-bfa0-4adc-8d82-cd3bca8b6c14
-use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
 
 # ╔═╡ d5c6d058-17c6-4cf0-97b8-d863b1529161
 md"""
 !!! note
 	We divide the target WLC by each comparison star to minimize common systematics (e.g., air mass, local refractive atmospheric effects), and to make the transit shape more apparent. This allows us to select good comparison stars for that particular night and which timeseries points to include in the rest of the analysis.
 """
+
+# ╔═╡ 3dc704cc-abee-42b8-8220-62fdda278944
+xs = [0.5, 0.4, 0.8, 0.6, 0.55, 0.7, 0.45]
+
+# ╔═╡ 3d4dd810-e317-40da-8521-365c7b760fe4
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1])
+
+	scatter!(ax, 1:7, xs)
+	errorbars!(ax, 1:7, xs, std(xs))
+	hlines!(ax, median(xs), color=:red)
+	
+	fig
+end
+
+# ╔═╡ 8d91fe42-cd8d-4ad1-bed4-4cee3b778cfd
+xs
+
+# ╔═╡ ae33702b-700c-4a4b-83b0-c9f36bf1404f
+mapwindow(median, xs, 5)
 
 # ╔═╡ 89256633-3c12-4b94-b245-4fdda44d686c
 function filt(f_div_wlc, window_width; func=median, border="reflect")
@@ -401,6 +407,26 @@ end;
 # ╔═╡ 01e27cf6-0a1b-4741-828a-ef8bf7037ae9
 LC = load_npz(FPATH, allow_pickle=true)
 
+# ╔═╡ d8236985-9a36-4357-ac78-7eb39dd0f080
+obj_names = OrderedDict(
+	LC["target"] => "WASP50",
+	"aperture_153_1117" => "c06",
+	"aperture_830_689" => "c15",
+	"aperture_28_1189" => "c21",
+	"aperture_157_1116" => "c06",
+	"aperture_830_693" => "c15",
+	"aperture_35_1188" => "c21",
+)
+
+# ╔═╡ 83263daf-a902-4414-850b-aa6949752fbb
+comp_names = obj_names.vals[2:4]
+
+# ╔═╡ cd10cbf3-22f4-46cd-8345-cec3d141e3ca
+use_comps = comp_names 
+
+# ╔═╡ 4f71ba8d-bfa0-4adc-8d82-cd3bca8b6c14
+use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
+
 # ╔═╡ 9341c427-642a-4782-925a-6e07b91277a0
 fluxes = Dict(obj_names[k] => v for (k, v) ∈ LC["cubes"]["raw_counts"])
 
@@ -511,11 +537,29 @@ times, airmass = let
 	vals["bjd"], vals["airmass"]
 end
 
+# ╔═╡ 2f8bbd81-2f4b-4ca3-bf01-a27bca3a0f19
+t = times
+
+# ╔═╡ 32fb9623-a711-4582-aac9-38f46513d742
+round.(julian2datetime.((t[begin], t[end])), Dates.Minute)
+
+# ╔═╡ 2bc4f498-9732-459f-9d8e-c1c549562c63
+extrema(airmass)
+
+# ╔═╡ 9cdee207-8911-4d37-a5bd-b920e5a8846b
+airmass[[begin, end]]
+
+# ╔═╡ 523aed12-afad-408a-a13f-85ba1b86315d
+lines(airmass)
+
 # ╔═╡ 354580e4-0aa9-496f-b024-665025a2eeda
 lc = let
 	med_mag = f_to_med_mag(f_target_wlc |> vec)
 	hcat(times, med_mag, zeros(length(times)))[use_idxs, :]
 end
+
+# ╔═╡ 1c3e3620-e4de-401d-afee-66303d35a9e2
+LC["temporal"].columns["exptime"] |> unique
 
 # ╔═╡ c65c2298-e3a3-4666-be9d-73ee43d94847
 fwhm, trace_center, sky_flux = median_eparam.(
@@ -780,6 +824,8 @@ body.disable_ui main {
 # ╟─48713a10-6ba7-4de5-a147-85a9cb136dd8
 # ╟─99a310b2-b802-4b29-9354-796b2dec2820
 # ╠═01e27cf6-0a1b-4741-828a-ef8bf7037ae9
+# ╠═4b8d9fc4-3d00-4311-89c4-56478122b2b4
+# ╠═32fb9623-a711-4582-aac9-38f46513d742
 # ╟─698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 # ╠═d8236985-9a36-4357-ac78-7eb39dd0f080
 # ╟─b4f4e65b-bd50-4ee2-945f-7c130db21fdf
@@ -817,6 +863,10 @@ body.disable_ui main {
 # ╠═4b2ed9db-0a17-4e52-a04d-3a6a5bf2c054
 # ╠═9372c69a-0aad-4e6e-9ea3-e934fa09b758
 # ╟─d5c6d058-17c6-4cf0-97b8-d863b1529161
+# ╠═3dc704cc-abee-42b8-8220-62fdda278944
+# ╠═3d4dd810-e317-40da-8521-365c7b760fe4
+# ╠═8d91fe42-cd8d-4ad1-bed4-4cee3b778cfd
+# ╠═ae33702b-700c-4a4b-83b0-c9f36bf1404f
 # ╠═20d12d7b-c666-46c3-8f48-5501641e8df3
 # ╠═470514e7-0f08-44a3-8519-5d704ea6b8d4
 # ╠═f80347e8-dc5a-4b0c-a6c0-db5c12eadcbb
@@ -836,6 +886,12 @@ body.disable_ui main {
 # ╟─88cc640d-b58d-4cde-b793-6c66e74f6b3a
 # ╠═301ff07c-8dd5-403a-bae8-a4c38deeb331
 # ╠═c03cb527-d16d-47aa-ab63-6970f4ff0b1f
+# ╠═2f8bbd81-2f4b-4ca3-bf01-a27bca3a0f19
+# ╠═bda7227d-a952-4380-ade4-7cf784a1e5cd
+# ╠═2bc4f498-9732-459f-9d8e-c1c549562c63
+# ╠═9cdee207-8911-4d37-a5bd-b920e5a8846b
+# ╠═523aed12-afad-408a-a13f-85ba1b86315d
+# ╠═1c3e3620-e4de-401d-afee-66303d35a9e2
 # ╠═c65c2298-e3a3-4666-be9d-73ee43d94847
 # ╠═d14ab9de-23b4-4647-a823-9b318bb734e9
 # ╠═079c3915-33af-40db-a544-28453732c372
