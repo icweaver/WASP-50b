@@ -468,7 +468,7 @@ let
 		color = :ΔD_ppm => "ΔD (ppm)",
 		markersize = :TSMR => (x -> markersize_factor*x),
 	)
-	plt = m*data(df_HGHJs_all)
+	plt = m*data(df_HGHJs_all) * visual(colormap=:viridis)
 	fg = draw!(ax, plt)
 	colorbar!(fig[1, 2], fg)
 	
@@ -531,7 +531,7 @@ end
 # ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
 let
 	fig = Figure(resolution=FIG_WIDE)
-	ax = Axis(fig[1, 1], limits=((0, nothing), (-1, 55)))
+	ax = Axis(fig[1, 1], limits=((0, 3100), (-1, 60)))
 	
 	p = data(df) *
 			mapping(
@@ -540,12 +540,12 @@ let
 			) *
 			visual(color=(:darkgrey, 0.25)) +
 		data(df_wakeford) *
-			mapping(
+				mapping(
 				:pl_eqt => "Equilibrium temperature (K)",
 				:g_SI => "Surface gravity (m/s²)",
 				color = :H2OJ => "H₂O - J",
 			) *
-			visual(marker=:rect, markersize=20, colormap=:PuBu_9) +
+			visual(marker=:rect, markersize=20, strokewidth=1) +
 		data(df_tspecs) *
 			mapping(
 				:pl_eqt => "Equilibrium temperature (K)",
