@@ -76,12 +76,12 @@ end
 # ╔═╡ 093156c7-9da7-4814-9260-5173f27fa497
 model_names = OrderedDict(
 	"clear" => "NoHet_FitP0_NoClouds_NoHaze_$(fit_R0)",
-	"clear+spot" => "Het_FitP0_NoClouds_NoHaze_$(fit_R0)",
-	"clear+cloud" => "NoHet_FitP0_Clouds_NoHaze_$(fit_R0)",
-	"clear+cloud+spot" => "Het_FitP0_Clouds_NoHaze_$(fit_R0)",
-	"clear+haze" => "NoHet_FitP0_NoClouds_Haze_$(fit_R0)",
+	"spot" => "Het_FitP0_NoClouds_NoHaze_$(fit_R0)",
+	"cloud" => "NoHet_FitP0_Clouds_NoHaze_$(fit_R0)",
+	"cloud+spot" => "Het_FitP0_Clouds_NoHaze_$(fit_R0)",
+	"haze" => "NoHet_FitP0_NoClouds_Haze_$(fit_R0)",
 	#"clear+cloud+haze" => "NoHet_FitP0_Clouds_Haze_$(fit_R0)",
-	"clear+haze+spot" => "Het_FitP0_NoClouds_Haze_$(fit_R0)",
+	"haze+spot" => "Het_FitP0_NoClouds_Haze_$(fit_R0)",
 	#"clear+spot+cloud+haze" => "Het_FitP0_Clouds_Haze_$(fit_R0)",
 )
 
@@ -373,7 +373,7 @@ let
 	)
 
 	plot_retrieval!(ax, cube, "Na_TiO", "clear", color=COLORS[1])
-	plot_retrieval!(ax, cube, "TiO", "clear+haze+spot", color=COLORS[6])
+	plot_retrieval!(ax, cube, "TiO", "haze+spot", color=COLORS[6])
 	
 	fpath_suff = basename(base_dir)
 	if occursin("offs", fpath_suff)

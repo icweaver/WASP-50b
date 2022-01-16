@@ -308,9 +308,6 @@ begin
 	)
 end
 
-# ╔═╡ 9c729d01-9a68-46dd-993c-20ed4975bee2
-(6420 + 6185) / 2
-
 # ╔═╡ b555e372-2292-4f0e-b511-88b92588ad14
 begin
 	df_LDSS3 = @chain df_tspecs begin
@@ -625,7 +622,6 @@ body.disable_ui main {
 # ╠═09887c41-022a-4109-8c5d-0ba033c50bcb
 # ╟─f92ecf4d-aab8-413e-a32d-5f77a969d1ca
 # ╠═1a6067ca-645a-448b-815f-6a2966548ca6
-# ╠═9c729d01-9a68-46dd-993c-20ed4975bee2
 # ╠═b555e372-2292-4f0e-b511-88b92588ad14
 # ╠═940ad41b-910c-40a8-8752-e68e13ff4a1f
 # ╠═094bd22d-8e42-440f-a78c-3a2787f380ea

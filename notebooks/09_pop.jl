@@ -315,54 +315,74 @@ df.pl_name[1]
 
 # ╔═╡ b4c7316d-d198-4449-ad45-66397fd1a9a5
 tspec_targs = [
-	"GJ 436 b",
-	"GJ 1214 b",
-	"GJ 3470 b",
-	"HAT-P-1 b",
-	"HAT-P-11 b",
-	"HAT-P-12 b",
+	# "GJ 436 b",
+	# "GJ 1214 b",
+	# "GJ 3470 b",
+	# "HAT-P-1 b",
+	# "HAT-P-11 b",
+	# "HAT-P-12 b",
 	"HAT-P-23 b",
-	"HAT-P-26 b",
-	"HAT-P-32 b",
-	"HAT-P-38 b",
-	"HAT-P-41 b",
-	"HD 97658 b",
-	"HD 189733 b",
-	"HD 209458 b",
-	"K2-18 b",
-	"KELT-11 b",
-	"Kepler-51 b",
-	"Kepler-51 d",
-	"TRAPPIST-1 b",
-	"TRAPPIST-1 c",
-	"TRAPPIST-1 d",
-	"TRAPPIST-1 e",
-	"TRAPPIST-1 f",
-	"TRAPPIST-1 g",
-	"WASP-6 b",
-	"WASP-12 b",
-	"WASP-17 b",
-	"WASP-19 b",
-	"WASP-21 b",
-	"WASP-31 b",
-	"WASP-39 b",
-	"WASP-43 b",
+	# "HAT-P-26 b",
+	# "HAT-P-32 b",
+	# "HAT-P-38 b",
+	# "HAT-P-41 b",
+	# "HD 97658 b",
+	# "HD 189733 b",
+	# "HD 209458 b",
+	# "K2-18 b",
+	# "KELT-11 b",
+	# "Kepler-51 b",
+	# "Kepler-51 d",
+	# "TRAPPIST-1 b",
+	# "TRAPPIST-1 c",
+	# "TRAPPIST-1 d",
+	# "TRAPPIST-1 e",
+	# "TRAPPIST-1 f",
+	# "TRAPPIST-1 g",
+	# "WASP-6 b",
+	# "WASP-12 b",
+	# "WASP-17 b",
+	# "WASP-19 b",
+	# "WASP-21 b",
+	# "WASP-31 b",
+	# "WASP-39 b",
+	#"WASP-43 b",
 	"WASP-50 b",
-	"WASP-52 b",
-	"WASP-62 b",
-	"WASP-63 b",
-	"WASP-67 b",
-	"WASP-76 b",
-	"WASP-79 b",
-	"WASP-101 b",
-	"WASP-107 b",
-	"WASP-121 b",
-	"WASP-127 b",
-	"XO-1 b",
+	# "WASP-52 b",
+	# "WASP-62 b",
+	# "WASP-63 b",
+	# "WASP-67 b",
+	# "WASP-76 b",
+	# "WASP-79 b",
+	# "WASP-101 b",
+	# "WASP-107 b",
+	# "WASP-121 b",
+	# "WASP-127 b",
+	# "XO-1 b",
 ]
 
 # ╔═╡ 0f118d0e-0eb6-4517-8378-9623337f73ca
 df_tspecs = @subset df :pl_name ∈ tspec_targs
+
+# ╔═╡ b20216ab-edf0-4f70-a9ab-3b9148e4392c
+sort(df_tspecs, :pl_name, lt=natural)
+
+# ╔═╡ ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
+df_wakeford = let
+	df = CSV.read("data/pop/H2O_J_data.txt", DataFrame;
+		delim = " ",
+		ignorerepeated = true,
+	)
+	
+	df.g_SI = @. 10^df.logg / 100
+
+	rename!(df, :T => :pl_eqt)
+
+	df
+end
+
+# ╔═╡ 15980829-67b5-4ccc-b914-dc188df67563
+sort(df_wakeford, :Name, lt=natural)
 
 # ╔═╡ 8d519cad-8da6-409e-b486-2bc9a6008e0f
 function yee!(ax, targ; al_x=:center, al_y=:bottom, df=df_HGHJs, offset=nothing)
@@ -448,14 +468,6 @@ let
 		color = :ΔD_ppm => "ΔD (ppm)",
 		markersize = :TSMR => (x -> markersize_factor*x),
 	)
-	m2 = mapping(
-		:pl_eqt => "Equilibrium temperature (K)",
-		:g_SI => "Surface gravity (m/s²)",
-		#color = :ΔD_ppm => "ΔD (ppm)",
-		#markersize = :TSMR => (x -> markersize_factor*x),
-	)
-	marker_open = visual(marker='○') # ○ ●
-	marker_closed = visual(markersize=15, marker='+', color=:white)
 	plt = m*data(df_HGHJs_all)
 	fg = draw!(ax, plt)
 	colorbar!(fig[1, 2], fg)
@@ -519,23 +531,35 @@ end
 # ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
 let
 	fig = Figure(resolution=FIG_WIDE)
-	ax = Axis(fig[1, 1], limits=((0, nothing), (10, 55)))
+	ax = Axis(fig[1, 1], limits=((0, nothing), (-1, 55)))
 	
-	p = (
-		data(df) * visual(color=(:darkgrey, 0.25)) +
-		data(df_tspecs) * visual(markersize=15, color=:grey)
-		) *
-		mapping(
-			:pl_eqt => "Equilibrium temperature (K)",
-			:g_SI => "Surface gravity (m/s²)",
-		)
+	p = data(df) *
+			mapping(
+				:pl_eqt => "Equilibrium temperature (K)",
+				:g_SI => "Surface gravity (m/s²)",
+			) *
+			visual(color=(:darkgrey, 0.25)) +
+		data(df_wakeford) *
+			mapping(
+				:pl_eqt => "Equilibrium temperature (K)",
+				:g_SI => "Surface gravity (m/s²)",
+				color = :H2OJ => "H₂O - J",
+			) *
+			visual(marker=:rect, markersize=20, colormap=:PuBu_9) +
+		data(df_tspecs) *
+			mapping(
+				:pl_eqt => "Equilibrium temperature (K)",
+				:g_SI => "Surface gravity (m/s²)",
+			) *
+			visual(marker='□', markersize=20)
 
-	draw!(ax, p)
+	fg = draw!(ax, p)
+	colorbar!(fig[1, 2], fg)
 
-	yee!(ax, "WASP-43 b (Weaver+ 2020)", offset=(0, 5))
-	yee!(ax, "HAT-P-23 b (Weaver+ 2021)", al_x=:left, offset=(0, 5))
-	yee!(ax, "WASP-50 b (this work)", al_x=:right, offset=(0, 5))
-	yee!(ax, "HD 189733 b (Sing+ 2016.)", al_x=:left, offset=(0, 5))
+	yee!(ax, "WASP-43 b (Weaver+ 2020)", al_x=:left, offset=(10, 0))
+	yee!(ax, "HAT-P-23 b (Weaver+ 2021)", al_x=:left, offset=(0, 8))
+	yee!(ax, "WASP-50 b (this work)", al_x=:right, offset=(0, 8))
+	yee!(ax, "HD 189733 b (Sing+ 2016.)", al_x=:left, offset=(0, 8))
 
 	hlines!(ax, 20, color=:darkgrey, linestyle=:dash)
 
@@ -580,6 +604,9 @@ end
 # ╠═24cd6863-9b93-473b-a66b-993e3f7d50a5
 # ╠═b4c7316d-d198-4449-ad45-66397fd1a9a5
 # ╠═0f118d0e-0eb6-4517-8378-9623337f73ca
+# ╠═b20216ab-edf0-4f70-a9ab-3b9148e4392c
+# ╠═15980829-67b5-4ccc-b914-dc188df67563
+# ╠═ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
 # ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
 # ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
 # ╟─683a8d85-b9a8-4eab-8a4b-e2b57d0783c0

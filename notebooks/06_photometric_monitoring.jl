@@ -552,7 +552,7 @@ x[3]
 ]
 
 # ╔═╡ 377c1376-b81f-40e5-8ab3-22cc7d77d7a5
-extrema(f_sp.(Ts, ΔLs2[end], T₀))
+extrema(f_sp.(Ts, ΔLs2[end], T₀)) .* 100
 
 # ╔═╡ 18223d42-66d8-40d1-9d89-be8af46853e2
 md"""
