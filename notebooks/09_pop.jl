@@ -194,9 +194,8 @@ end
 # ╔═╡ c98c5618-4bac-4322-b4c3-c76181f47889
 df_HGHJs_all = @chain df begin
 	@subset (1.0 ≤ :TSMR) &
-	(15.0 ≤ :g_SI ≤ 53) &
-	(:pl_eqt ≤ 4900.0)
-	sort(:TSMR, rev=true)
+	(15.0 ≤ :g_SI ≤ 100.0)
+	sort(:TSMR, rev=true) # To stack smaller circles on top in Figure
 end
 
 # ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
@@ -207,7 +206,8 @@ df_HGHJs = @subset(
 # ╔═╡ 53c4fd02-7a48-47a1-9341-ede3e8d497f7
 y = @chain df_HGHJs_all begin
 	@select :pl_name :pl_eqt :g_SI :ΔD_ppm :TSMR
-	first(20)
+	@sort :ΔD_ppm
+	#first(20)
 end
 
 # ╔═╡ 94a5f868-d043-4c1f-831c-17ebabd3df6c
@@ -366,7 +366,7 @@ df_tspecs = @subset df :pl_name ∈ tspec_targs
 @subset df :pl_name ∈ ["HAT-P-23 b", "WASP-43 b", "WASP-50 b"]
 
 # ╔═╡ 5721eb48-a63a-4686-b0fa-b0b76e78ad85
-1357.98 - 1343.32
+ 1357.98 - 1343.32
 
 # ╔═╡ b20216ab-edf0-4f70-a9ab-3b9148e4392c
 sort(df_tspecs, :pl_name, lt=natural)
