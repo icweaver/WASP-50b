@@ -372,8 +372,10 @@ let
 		limits = (4_600, 9_800, 17_500, 21_500)
 	)
 
+	plot_retrieval!(ax, cube, "Na_TiO", "spot", color=COLORS[2])
+	plot_retrieval!(ax, cube, "Na", "cloud", color=COLORS[3])
+	plot_retrieval!(ax, cube, "TiO", "haze", color=COLORS[5])
 	plot_retrieval!(ax, cube, "Na_TiO", "clear", color=COLORS[1])
-	plot_retrieval!(ax, cube, "TiO", "haze+spot", color=COLORS[6])
 	
 	fpath_suff = basename(base_dir)
 	if occursin("offs", fpath_suff)

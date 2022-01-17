@@ -181,12 +181,13 @@ begin
 		ustrip.(u"km", H)
 	end
 	df.TSM = compute_TSM.(df.pl_rade, df.pl_eqt, df.pl_bmasse, df.st_rad, df.sy_jmag)
-	df.TSMR = df.TSM ./ df.TSM[df.pl_name .== "HAT-P-23 b"][1]
+	targ = "HAT-P-23 b"
+	df.TSMR = df.TSM ./ df.TSM[df.pl_name .== targ][1]
 	df.ΔD_ppm = let
 		ΔD = compute_ΔD.(df.H_km*u"km", df.pl_rade*u"Rearth", df.st_rad*u"Rsun")
 		uconvert.(NoUnits, ΔD) * 5.0 * 1e6
 	end
-	df.ΔDR_ppm = df.ΔD_ppm ./ df.ΔD_ppm[df.pl_name .== "HAT-P-23 b"][1]
+	df.ΔDR_ppm = df.ΔD_ppm ./ df.ΔD_ppm[df.pl_name .== targ][1]
 	df
 end
 
@@ -198,6 +199,11 @@ df_HGHJs_all = @chain df begin
 	sort(:TSMR, rev=true)
 end
 
+# ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
+df_HGHJs = @subset(
+	df_HGHJs_all, :pl_name .∈ Ref(["HAT-P-23 b", "WASP-43 b", "WASP-50 b", "HD 189733 b"])
+)
+
 # ╔═╡ 53c4fd02-7a48-47a1-9341-ede3e8d497f7
 y = @chain df_HGHJs_all begin
 	@select :pl_name :pl_eqt :g_SI :ΔD_ppm :TSMR
@@ -208,14 +214,6 @@ end
 @with_terminal begin
 	println(latextabular(y, latex=false, fmt="%.2f"))
 end
-
-# ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
-df_HGHJs = @subset(
-	df_HGHJs_all, :pl_name .∈ Ref(["HAT-P-23 b", "WASP-43 b", "WASP-50 b", "HD 189733 b"])
-)
-
-# ╔═╡ d2d6452b-426c-4c61-8dc4-d210c0cd9d41
-@which println(1000000.)
 
 # ╔═╡ 2476f26e-f7cc-4f8e-ac66-60b85a46cb2c
 md"""
@@ -455,7 +453,7 @@ end
 # TODO: Place latitude constraints
 let
 	fig = Figure(resolution=FIG_WIDE)
-	ax = Axis(fig[1, 1], limits=((0, nothing), (10, 55)))
+	ax = Axis(fig[1, 1], limits=((0, 4100), (-1, 60)))
 
 	# HGHJ g boundary
 	hlines!(ax, 20.0, color=:darkgrey, linestyle=:dash)
@@ -480,7 +478,7 @@ let
 	HP23x, HP23y = val.(Ref(df_HGHJs), Ref("HAT-P-23 b"), [:pl_eqt, :g_SI])
 	annotate_text!(
 		ax,
-		"HAT-P-23 b",
+		"HAT-P-23b",
 		Point2f((HP23x[1], HP23y[1])) .- (-600, -3),
 		Point2f((HP23x[1], HP23y[1])),
 		0.5,
@@ -490,7 +488,7 @@ let
 	W43x, W43y = val.(Ref(df_HGHJs), Ref("WASP-43 b"), [:pl_eqt, :g_SI])
 	annotate_text!(
 		ax,
-		"WASP-43 b",
+		"WASP-43b",
 		Point2f((W43x[1], W43y[1])) .- (800, 5),
 		Point2f((W43x[1], W43y[1])),
 		0.3,
@@ -500,9 +498,19 @@ let
 	W50x, W50y = val.(Ref(df_HGHJs), Ref("WASP-50 b"), [:pl_eqt, :g_SI])
 	annotate_text!(
 		ax,
-		"WASP-50 b",
+		"WASP-50b",
 		Point2f((W50x[1], W50y[1])) .- (-300, -8),
 		Point2f((W50x[1], W50y[1])),
+		0.5,
+		0.1;
+		align = (:center, :baseline),
+	)
+	hdx, hdy = val.(Ref(df_HGHJs), Ref("HD 189733 b"), [:pl_eqt, :g_SI])
+	annotate_text!(
+		ax,
+		"HD 189733 b",
+		Point2f((hdx[1], hdy[1])) .- (700, -6),
+		Point2f((hdx[1], hdy[1])),
 		0.5,
 		0.1;
 		align = (:center, :baseline),
@@ -516,7 +524,7 @@ let
 		["$tsmr" for tsmr ∈ tsmrs],
 		"TSMR",
 		position = :rt,
-		patchsize = (120, 100),
+		patchsize = (120, 80),
 		framevisible = true,
 		padding = (5, 5, -24, 10),
 		margin = (0, 0, 0, 0),
@@ -531,7 +539,7 @@ end
 # ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
 let
 	fig = Figure(resolution=FIG_WIDE)
-	ax = Axis(fig[1, 1], limits=((0, 3100), (-1, 60)))
+	ax = Axis(fig[1, 1], limits=((0, 4100), (-1, 60)))
 	
 	p = data(df) *
 			mapping(
@@ -545,7 +553,7 @@ let
 				:g_SI => "Surface gravity (m/s²)",
 				color = :H2OJ => "H₂O - J",
 			) *
-			visual(marker=:rect, markersize=20, strokewidth=1) +
+			visual(marker=:rect, markersize=20, strokewidth=1, colormap=:cividis) +
 		data(df_tspecs) *
 			mapping(
 				:pl_eqt => "Equilibrium temperature (K)",
@@ -575,25 +583,24 @@ end
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
 # ╠═2702ba80-993c-4cca-bd14-0d4d6b67362b
+# ╠═c98c5618-4bac-4322-b4c3-c76181f47889
+# ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
 # ╠═e0365154-d6c8-4db2-bb85-bf2536a3aa74
 # ╠═9aed232f-ec74-4ec6-9ae7-06b90539833b
 # ╟─4cbbb1e8-e5fb-4ab0-a7e6-7881c2dde032
 # ╟─7f956b36-ce65-4e4e-afa5-9b97b9e06954
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d
-# ╠═c98c5618-4bac-4322-b4c3-c76181f47889
 # ╠═94a5f868-d043-4c1f-831c-17ebabd3df6c
 # ╠═53c4fd02-7a48-47a1-9341-ede3e8d497f7
 # ╟─18094afc-b77f-4cae-a30c-2691d34125d8
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╠═958453c3-7993-4620-ab7f-e7ad79781dd5
-# ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
 # ╠═f07ad06b-81d2-454f-988f-a7ae1713eac4
 # ╠═2776646e-47e7-4b9e-ab91-4035bc6df99f
 # ╠═c7960066-cc33-480c-807b-c56ead4262bf
 # ╠═abaee9cc-9841-4b6b-ad33-2093c27422c8
 # ╠═1e587a84-ed43-4fac-81cf-134a4f3d65d5
 # ╠═c1e63cf3-7f30-4858-bdd6-125d2a99529f
-# ╠═d2d6452b-426c-4c61-8dc4-d210c0cd9d41
 # ╟─2476f26e-f7cc-4f8e-ac66-60b85a46cb2c
 # ╟─8e4b1149-abf1-4ded-b20f-4765d2ee49a9
 # ╠═8cece13d-34cb-40df-8986-ac0dad210e58
