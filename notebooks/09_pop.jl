@@ -362,6 +362,12 @@ tspec_targs = [
 # ╔═╡ 0f118d0e-0eb6-4517-8378-9623337f73ca
 df_tspecs = @subset df :pl_name ∈ tspec_targs
 
+# ╔═╡ 72fc2033-74cf-4e62-9c26-71016caacbea
+@subset df :pl_name ∈ ["HAT-P-23 b", "WASP-43 b", "WASP-50 b"]
+
+# ╔═╡ 5721eb48-a63a-4686-b0fa-b0b76e78ad85
+1357.98 - 1343.32
+
 # ╔═╡ b20216ab-edf0-4f70-a9ab-3b9148e4392c
 sort(df_tspecs, :pl_name, lt=natural)
 
@@ -611,6 +617,8 @@ end
 # ╠═24cd6863-9b93-473b-a66b-993e3f7d50a5
 # ╠═b4c7316d-d198-4449-ad45-66397fd1a9a5
 # ╠═0f118d0e-0eb6-4517-8378-9623337f73ca
+# ╠═72fc2033-74cf-4e62-9c26-71016caacbea
+# ╠═5721eb48-a63a-4686-b0fa-b0b76e78ad85
 # ╠═b20216ab-edf0-4f70-a9ab-3b9148e4392c
 # ╠═15980829-67b5-4ccc-b914-dc188df67563
 # ╠═ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a

@@ -174,11 +174,11 @@ function get_retr_model(cube, sp, model)
 end
 
 # ╔═╡ cc011a66-37bd-4543-9a58-b11e1f785e52
-function retrieval!(ax, model0, model_sampled; color=:blue, label="")
+function retrieval!(ax, model0, model_sampled; color=:blue, lw=3, label="")
 	model = @rsubset model0 :wav < 1.0
 	wav = model.wav .* 10_000
 	wav_sampled = model_sampled.wav .* 10_000
-	lines!(ax, wav, model.flux, color=color, label=label)
+	lines!(ax, wav, model.flux, color=color, linewidth=lw, label=label)
 	scatter!(ax, wav_sampled, model_sampled.flux;
 		marker = :rect,
 		markersize = 15,
@@ -192,10 +192,10 @@ function retrieval!(ax, model0, model_sampled; color=:blue, label="")
 end
 
 # ╔═╡ 00a0f9c4-cd4d-4ae2-80b7-0c044239a571
-function plot_retrieval!(ax, cube, sp, model; color=:blue)
+function plot_retrieval!(ax, cube, sp, model; color=:blue, lw=3)
 	retr_model, retr_model_sampled = get_retr_model(cube, sp, model)
 	label = dashplus(sp) * " ($(model))"
-	retrieval!(ax, retr_model, retr_model_sampled, color=color, label=label)
+	retrieval!(ax, retr_model, retr_model_sampled, color=color, lw=lw, label=label)
 end
 
 # ╔═╡ 41a233c7-5357-453c-b7ad-36fdf9f709cb
@@ -375,7 +375,7 @@ let
 	plot_retrieval!(ax, cube, "Na_TiO", "spot", color=COLORS[2])
 	plot_retrieval!(ax, cube, "Na", "cloud", color=COLORS[3])
 	plot_retrieval!(ax, cube, "TiO", "haze", color=COLORS[5])
-	plot_retrieval!(ax, cube, "Na_TiO", "clear", color=COLORS[1])
+	plot_retrieval!(ax, cube, "Na_TiO", "clear", color=COLORS[1], lw=6)
 	
 	fpath_suff = basename(base_dir)
 	if occursin("offs", fpath_suff)
