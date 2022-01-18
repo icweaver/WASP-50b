@@ -98,6 +98,79 @@ md"""
 With this list of $(nrow(df_all)) transiting exoplanets with observed stellar and planetary parameters, we now turn to visualizing the subset of each population from the list above.
 """
 
+# ╔═╡ b5c0dbc8-d700-473e-9f00-d89a319f6432
+md"""
+## Targets with tspecs
+"""
+
+# ╔═╡ b4c7316d-d198-4449-ad45-66397fd1a9a5
+tspec_targs = [
+	# "GJ 436 b",
+	# "GJ 1214 b",
+	# "GJ 3470 b",
+	# "HAT-P-1 b",
+	# "HAT-P-11 b",
+	# "HAT-P-12 b",
+	"HAT-P-23 b",
+	# "HAT-P-26 b",
+	# "HAT-P-32 b",
+	# "HAT-P-38 b",
+	# "HAT-P-41 b",
+	# "HD 97658 b",
+	# "HD 189733 b",
+	# "HD 209458 b",
+	# "K2-18 b",
+	# "KELT-11 b",
+	# "Kepler-51 b",
+	# "Kepler-51 d",
+	# "TRAPPIST-1 b",
+	# "TRAPPIST-1 c",
+	# "TRAPPIST-1 d",
+	# "TRAPPIST-1 e",
+	# "TRAPPIST-1 f",
+	# "TRAPPIST-1 g",
+	# "WASP-6 b",
+	# "WASP-12 b",
+	# "WASP-17 b",
+	# "WASP-19 b",
+	# "WASP-21 b",
+	# "WASP-31 b",
+	# "WASP-39 b",
+	#"WASP-43 b",
+	"WASP-50 b",
+	# "WASP-52 b",
+	# "WASP-62 b",
+	# "WASP-63 b",
+	# "WASP-67 b",
+	# "WASP-76 b",
+	# "WASP-79 b",
+	# "WASP-101 b",
+	# "WASP-107 b",
+	# "WASP-121 b",
+	# "WASP-127 b",
+	# "XO-1 b",
+]
+
+# ╔═╡ 5721eb48-a63a-4686-b0fa-b0b76e78ad85
+ 1357.98 - 1343.32
+
+# ╔═╡ ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
+df_wakeford = let
+	df = CSV.read("data/pop/H2O_J_data.txt", DataFrame;
+		delim = " ",
+		ignorerepeated = true,
+	)
+	
+	df.g_SI = @. 10^df.logg / 100
+
+	rename!(df, :T => :pl_eqt)
+
+	df
+end
+
+# ╔═╡ 15980829-67b5-4ccc-b914-dc188df67563
+sort(df_wakeford, :Name, lt=natural)
+
 # ╔═╡ 7f956b36-ce65-4e4e-afa5-9b97b9e06954
 md"""
 ## HGHJ population
@@ -203,9 +276,16 @@ df_HGHJs = @subset(
 	df_HGHJs_all, :pl_name .∈ Ref(["HAT-P-23 b", "WASP-43 b", "WASP-50 b", "HD 189733 b"])
 )
 
+# ╔═╡ 8d519cad-8da6-409e-b486-2bc9a6008e0f
+function yee!(ax, targ; al_x=:center, al_y=:bottom, df=df_HGHJs, offset=nothing)
+	targg = split(targ, " (")[1]
+	x, y = val.(Ref(df), Ref(targg), [:pl_eqt, :g_SI])
+	text!(ax, targ, position=(x, y), align=(al_x, al_y), textsize=16, offset=offset)
+end
+
 # ╔═╡ 53c4fd02-7a48-47a1-9341-ede3e8d497f7
 y = @chain df_HGHJs_all begin
-	@select :pl_name :pl_eqt :g_SI :ΔD_ppm :TSMR
+	@select :pl_name :disc_facility :pl_eqt :g_SI :ΔD_ppm :TSMR
 	@sort :ΔD_ppm
 	#first(20)
 end
@@ -215,185 +295,14 @@ end
 	println(latextabular(y, latex=false, fmt="%.2f"))
 end
 
-# ╔═╡ 2476f26e-f7cc-4f8e-ac66-60b85a46cb2c
-md"""
-## CO – CH₄ transition
-"""
-
-# ╔═╡ 8e4b1149-abf1-4ded-b20f-4765d2ee49a9
-md"""
-For this population, we will make a similar plot and compare to the current list of ACCESS targets that straddle this boundary.
-"""
-
-# ╔═╡ 8cece13d-34cb-40df-8986-ac0dad210e58
-# df_ACCESS = innerjoin(CSV.read("data/ /ACCESS.csv", DataFrame), df, on=:pl_name)
-
-# ╔═╡ df499885-3f7d-4293-bcf5-9c761ac3ccd2
-# sort(df_ACCESS, :pl_name, lt=natural)
-
-# ╔═╡ 60016c3f-6968-4d3c-ac73-d324b2a071e0
-# begin
-# 	fig = Figure()
-# 	ax = Axis(fig[1, 1], limits=(0, 3_600, 0, nothing))
-	
-# 	# Condensation temps
-# 	for (i, (name, (T, align))) in enumerate(species)
-# 		vlines!(ax, T, color=:darkgrey, linewidth=1.0, linestyle=:dash)
-# 		text!(ax, name, position=(T, 16.0 + i), align=align, textsize=16)
-# 	end
-# 	vspan!(ax, 1625.0, 1875.0, color=(:darkgrey, 0.25))
-# 	text!(ax, "Silicates/Metal-oxides";
-# 		position = (0.5*(1875.0+1625.0), 22.0),
-# 		textsize = 16,
-# 	)
-	
-# 	# Phase plot
-# 	m = mapping(
-# 		:pl_eqt => "Equilibrium temperature (K)",
-# 		:pl_rade => "Radius (Earth radii)",
-# 	)
-# 	m_ACCESS = mapping(
-# 		color = :status => 
-# 		sorter("Observing", "Data complete", "Published") => "Status",
-# 	)
-# 	marker_all = visual(color=(:darkgrey, 0.25))
-# 	marker_ACCESS = visual(markersize=18)
-# 	plt = m*(
-# 		data(df)*marker_all +
-# 		data(df_ACCESS) * m_ACCESS * marker_ACCESS
-# 	)
-# 	# colors = [
-# 	# 	"Observing"=>COLORS[2], "Data complete"=>COLORS[1], "Published"=>COLORS[3]
-# 	# ]
-# 	fg = draw!(ax, plt)#, palettes=(color=colors,))
-# 	lg = legend!(fig[1, 1], fg;
-# 		tellwidth = false,
-# 		halign = :right,
-# 		valign = :center,
-# 		framevisible = true,
-# 		padding = (15, 15, 15, 15),
-# 		#margin = (10, 10, 0, 0),
-# 		#titlegap = 24,
-# 	)
-	
-# 	# Annotate target names
-# 	for (name, T, R) in zip(df_ACCESS.name_abbrv, df_ACCESS.pl_eqt, df_ACCESS.pl_rade) 
-# 		if name == "W50b"
-# 			align = (:left, :top)
-# 		elseif name == "W96b"
-# 			align = (:right, :baseline)
-# 		elseif name == "W107b"
-# 			align = (:right, :top)
-# 		else
-# 			align = (:left, :baseline)
-# 		end
-# 		text!(ax, name, position=(T, R), align=align, textsize=12)
-# 	end
-	
-# 	fig
-# end
-
-# ╔═╡ d6791747-7503-49a9-903c-c479fc0c3d49
-species = (
-	"H₂O" => (273.15, (:center, :center)),
-	"NH₃" => (583.0, (:right, :center)),
-	"N₂" => (583.0, (:left, :baseline)),
-	"CH₄" => (1000.0, (:right, :center)),
-	"CO" => (1000.0, (:left, :baseline)),
-	"MnS" => (1350.0, (:center, :center)),
-)
-
-# ╔═╡ b5c0dbc8-d700-473e-9f00-d89a319f6432
-md"""
-## Targets with tspecs
-"""
-
-# ╔═╡ 24cd6863-9b93-473b-a66b-993e3f7d50a5
-df.pl_name[1]
-
-# ╔═╡ b4c7316d-d198-4449-ad45-66397fd1a9a5
-tspec_targs = [
-	# "GJ 436 b",
-	# "GJ 1214 b",
-	# "GJ 3470 b",
-	# "HAT-P-1 b",
-	# "HAT-P-11 b",
-	# "HAT-P-12 b",
-	"HAT-P-23 b",
-	# "HAT-P-26 b",
-	# "HAT-P-32 b",
-	# "HAT-P-38 b",
-	# "HAT-P-41 b",
-	# "HD 97658 b",
-	# "HD 189733 b",
-	# "HD 209458 b",
-	# "K2-18 b",
-	# "KELT-11 b",
-	# "Kepler-51 b",
-	# "Kepler-51 d",
-	# "TRAPPIST-1 b",
-	# "TRAPPIST-1 c",
-	# "TRAPPIST-1 d",
-	# "TRAPPIST-1 e",
-	# "TRAPPIST-1 f",
-	# "TRAPPIST-1 g",
-	# "WASP-6 b",
-	# "WASP-12 b",
-	# "WASP-17 b",
-	# "WASP-19 b",
-	# "WASP-21 b",
-	# "WASP-31 b",
-	# "WASP-39 b",
-	#"WASP-43 b",
-	"WASP-50 b",
-	# "WASP-52 b",
-	# "WASP-62 b",
-	# "WASP-63 b",
-	# "WASP-67 b",
-	# "WASP-76 b",
-	# "WASP-79 b",
-	# "WASP-101 b",
-	# "WASP-107 b",
-	# "WASP-121 b",
-	# "WASP-127 b",
-	# "XO-1 b",
-]
-
 # ╔═╡ 0f118d0e-0eb6-4517-8378-9623337f73ca
 df_tspecs = @subset df :pl_name ∈ tspec_targs
-
-# ╔═╡ 72fc2033-74cf-4e62-9c26-71016caacbea
-@subset df :pl_name ∈ ["HAT-P-23 b", "WASP-43 b", "WASP-50 b"]
-
-# ╔═╡ 5721eb48-a63a-4686-b0fa-b0b76e78ad85
- 1357.98 - 1343.32
 
 # ╔═╡ b20216ab-edf0-4f70-a9ab-3b9148e4392c
 sort(df_tspecs, :pl_name, lt=natural)
 
-# ╔═╡ ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
-df_wakeford = let
-	df = CSV.read("data/pop/H2O_J_data.txt", DataFrame;
-		delim = " ",
-		ignorerepeated = true,
-	)
-	
-	df.g_SI = @. 10^df.logg / 100
-
-	rename!(df, :T => :pl_eqt)
-
-	df
-end
-
-# ╔═╡ 15980829-67b5-4ccc-b914-dc188df67563
-sort(df_wakeford, :Name, lt=natural)
-
-# ╔═╡ 8d519cad-8da6-409e-b486-2bc9a6008e0f
-function yee!(ax, targ; al_x=:center, al_y=:bottom, df=df_HGHJs, offset=nothing)
-	targg = split(targ, " (")[1]
-	x, y = val.(Ref(df), Ref(targg), [:pl_eqt, :g_SI])
-	text!(ax, targ, position=(x, y), align=(al_x, al_y), textsize=16, offset=offset)
-end
+# ╔═╡ 72fc2033-74cf-4e62-9c26-71016caacbea
+@subset df :pl_name ∈ ["HAT-P-23 b", "WASP-43 b", "WASP-50 b"]
 
 # ╔═╡ 683a8d85-b9a8-4eab-8a4b-e2b57d0783c0
 md"""
@@ -455,6 +364,46 @@ begin
 
 end
 
+# ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
+let
+	fig = Figure(resolution=FIG_WIDE)
+	ax = Axis(fig[1, 1], limits=((0, 4100), (-1, 60)))
+	
+	p = data(df) *
+			mapping(
+				:pl_eqt => "Equilibrium temperature (K)",
+				:g_SI => "Surface gravity (m/s²)",
+			) *
+			visual(color=(:darkgrey, 0.25)) +
+		data(df_wakeford) *
+				mapping(
+				:pl_eqt => "Equilibrium temperature (K)",
+				:g_SI => "Surface gravity (m/s²)",
+				color = :H2OJ => "H₂O - J",
+			) *
+			visual(marker=:rect, markersize=20, strokewidth=1, colormap=:cividis) +
+		data(df_tspecs) *
+			mapping(
+				:pl_eqt => "Equilibrium temperature (K)",
+				:g_SI => "Surface gravity (m/s²)",
+			) *
+			visual(marker='□', markersize=20)
+
+	fg = draw!(ax, p)
+	colorbar!(fig[1, 2], fg)
+
+	yee!(ax, "WASP-43 b (Weaver+ 2020)", al_x=:left, offset=(10, 0))
+	yee!(ax, "HAT-P-23 b (Weaver+ 2021)", al_x=:left, offset=(0, 8))
+	yee!(ax, "WASP-50 b (this work)", al_x=:right, offset=(0, 8))
+	yee!(ax, "HD 189733 b (Sing+ 2016.)", al_x=:left, offset=(0, 8))
+
+	hlines!(ax, 20, color=:darkgrey, linestyle=:dash)
+
+    savefig(fig, "$(FIG_PATH)/t_vs_g.png")
+
+	fig
+end
+
 # ╔═╡ c1cd9292-28b9-4206-b128-608aaf30ff9c
 # TODO: Place latitude constraints
 let
@@ -465,7 +414,7 @@ let
 	hlines!(ax, 20.0, color=:darkgrey, linestyle=:dash)
 	
 	# Phase plot
-	markersize_factor = 10.0
+	markersize_factor = 8.0
 	m = mapping(
 		:pl_eqt => "Equilibrium temperature (K)",
 		:g_SI => "Surface gravity (m/s²)",
@@ -515,10 +464,10 @@ let
 	annotate_text!(
 		ax,
 		"HD 189733 b",
-		Point2f((hdx[1], hdy[1])) .- (700, -6),
+		Point2f((hdx[1], hdy[1])) .- (600, -4),
 		Point2f((hdx[1], hdy[1])),
-		0.5,
-		0.1;
+		0.0,
+		0.0;
 		align = (:center, :baseline),
 	)
 	
@@ -542,46 +491,6 @@ let
 	fig
 end
 
-# ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
-let
-	fig = Figure(resolution=FIG_WIDE)
-	ax = Axis(fig[1, 1], limits=((0, 4100), (-1, 60)))
-	
-	p = data(df) *
-			mapping(
-				:pl_eqt => "Equilibrium temperature (K)",
-				:g_SI => "Surface gravity (m/s²)",
-			) *
-			visual(color=(:darkgrey, 0.25)) +
-		data(df_wakeford) *
-				mapping(
-				:pl_eqt => "Equilibrium temperature (K)",
-				:g_SI => "Surface gravity (m/s²)",
-				color = :H2OJ => "H₂O - J",
-			) *
-			visual(marker=:rect, markersize=20, strokewidth=1, colormap=:cividis) +
-		data(df_tspecs) *
-			mapping(
-				:pl_eqt => "Equilibrium temperature (K)",
-				:g_SI => "Surface gravity (m/s²)",
-			) *
-			visual(marker='□', markersize=20)
-
-	fg = draw!(ax, p)
-	colorbar!(fig[1, 2], fg)
-
-	yee!(ax, "WASP-43 b (Weaver+ 2020)", al_x=:left, offset=(10, 0))
-	yee!(ax, "HAT-P-23 b (Weaver+ 2021)", al_x=:left, offset=(0, 8))
-	yee!(ax, "WASP-50 b (this work)", al_x=:right, offset=(0, 8))
-	yee!(ax, "HD 189733 b (Sing+ 2016.)", al_x=:left, offset=(0, 8))
-
-	hlines!(ax, 20, color=:darkgrey, linestyle=:dash)
-
-    savefig(fig, "$(FIG_PATH)/t_vs_g.png")
-
-	fig
-end
-
 # ╔═╡ Cell order:
 # ╟─cd13d7f3-0ea3-4631-afd9-5f3e359000e6
 # ╟─7493bb13-ee41-4798-99f6-dc1df97bd624
@@ -594,6 +503,16 @@ end
 # ╠═e0365154-d6c8-4db2-bb85-bf2536a3aa74
 # ╠═9aed232f-ec74-4ec6-9ae7-06b90539833b
 # ╟─4cbbb1e8-e5fb-4ab0-a7e6-7881c2dde032
+# ╟─b5c0dbc8-d700-473e-9f00-d89a319f6432
+# ╠═b4c7316d-d198-4449-ad45-66397fd1a9a5
+# ╠═0f118d0e-0eb6-4517-8378-9623337f73ca
+# ╠═72fc2033-74cf-4e62-9c26-71016caacbea
+# ╠═5721eb48-a63a-4686-b0fa-b0b76e78ad85
+# ╠═b20216ab-edf0-4f70-a9ab-3b9148e4392c
+# ╠═15980829-67b5-4ccc-b914-dc188df67563
+# ╠═ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
+# ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
+# ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
 # ╟─7f956b36-ce65-4e4e-afa5-9b97b9e06954
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d
 # ╠═94a5f868-d043-4c1f-831c-17ebabd3df6c
@@ -607,23 +526,6 @@ end
 # ╠═abaee9cc-9841-4b6b-ad33-2093c27422c8
 # ╠═1e587a84-ed43-4fac-81cf-134a4f3d65d5
 # ╠═c1e63cf3-7f30-4858-bdd6-125d2a99529f
-# ╟─2476f26e-f7cc-4f8e-ac66-60b85a46cb2c
-# ╟─8e4b1149-abf1-4ded-b20f-4765d2ee49a9
-# ╠═8cece13d-34cb-40df-8986-ac0dad210e58
-# ╠═df499885-3f7d-4293-bcf5-9c761ac3ccd2
-# ╠═60016c3f-6968-4d3c-ac73-d324b2a071e0
-# ╠═d6791747-7503-49a9-903c-c479fc0c3d49
-# ╟─b5c0dbc8-d700-473e-9f00-d89a319f6432
-# ╠═24cd6863-9b93-473b-a66b-993e3f7d50a5
-# ╠═b4c7316d-d198-4449-ad45-66397fd1a9a5
-# ╠═0f118d0e-0eb6-4517-8378-9623337f73ca
-# ╠═72fc2033-74cf-4e62-9c26-71016caacbea
-# ╠═5721eb48-a63a-4686-b0fa-b0b76e78ad85
-# ╠═b20216ab-edf0-4f70-a9ab-3b9148e4392c
-# ╠═15980829-67b5-4ccc-b914-dc188df67563
-# ╠═ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
-# ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
-# ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
 # ╟─683a8d85-b9a8-4eab-8a4b-e2b57d0783c0
 # ╟─95bb5b9e-0c50-48fa-bf4c-d0819c327bcc
 # ╠═81e14e30-2880-40f8-b4fa-a48a2dc34db7

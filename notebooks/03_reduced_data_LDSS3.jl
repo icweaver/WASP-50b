@@ -152,18 +152,6 @@ fname_suff = let
 	occursin("species", FPATH_WBINS) ? (suff *= "_species") : suff
 end
 
-# ╔═╡ 979895ea-9b13-494c-be08-2496562ccf07
-Na_bins = range(5800.0, stop=5986.0, length=6)
-
-# ╔═╡ ce86c8d1-1900-413f-90be-c9f4eb386a5a
-K_bins = range(7655.0, stop=7709.0, length=6)
-
-# ╔═╡ bf61788d-ca13-457e-8026-62bc2460d4d7
-make_bins(x) = hcat(x[begin:end-1], x[begin+1:end])
-
-# ╔═╡ 48f31cef-ee18-47f9-a71d-4a5b2c6efe71
-#species = (Na=5892.9, K=7682.0, Na_8200=8189.0)
-
 # ╔═╡ a6088ea2-904f-4909-b1be-9470e7ec2010
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
 
@@ -317,18 +305,16 @@ median_eparam(param, cube, obj_name, wav_idxs) = cube[param][obj_name][:, wav_id
 # ╔═╡ e6ed8da6-189a-4931-aac5-a4e8d0291723
 fmt_float(x) = @sprintf "%.10f" x
 
-# ╔═╡ 2aba612a-7599-4a2d-9ff0-2fd398c2a0db
-let
-    #savepath = template_dir(FPATH)
-	#rm(savepath, force=true, recursive=true)
-	#mkpath(savepath)
-end
-
 # ╔═╡ 0be35b52-caea-4000-8cf8-ab99205bdb97
 function template_dir(fpath)
 	base_dir = "$(dirname(dirname(fpath)))/LDSS3_template/WASP50"
 	date, flat_status = split(basename(dirname(fpath)), '_')
-	return "$(base_dir)/w50_$(date[3:end])_LDSS3_$(flat_status)"
+	if occursin("species", fname_suff)
+		f = "$(base_dir)/w50_$(date[3:end])_sp_LDSS3_$(flat_status)"
+	else 
+		f = "$(base_dir)/w50_$(date[3:end])_LDSS3_$(flat_status)"
+	end
+	return f
 end
 
 # ╔═╡ 4af35a95-99b3-4186-a47d-169b9cbf927b
@@ -339,34 +325,16 @@ md"""
 #### WLCs (magnitude space)
 """
 
-# ╔═╡ 898a390b-49f7-45f4-b1a1-b22922d69a29
-let
-    #savepath = "$(tdir)/white-light"
-	#rm(savepath, force=true, recursive=true)
-	#mkpath(savepath)
-	#writedlm("$(savepath)/lc.dat", lc, ",    ")
-	#writedlm("$(savepath)/comps.dat", comps, ",    ")
-end
+# ╔═╡ fd33081a-6718-496d-8488-a4f1afcbc52d
+@bind save_LDSS3_template CheckBox()
+
+# ╔═╡ da8271e0-854b-481c-ba52-c7c910cf79dc
+save_LDSS3_template
 
 # ╔═╡ b5ef9d95-1a2a-4828-8e27-89727f2e288b
 md"""
 #### Binned LCs (magnitude space)
 """
-
-# ╔═╡ 631c4d02-58cc-4c70-947f-22c8e8b11015
-let
-    #savepath = "$(tdir)/wavelength"
-	#rm(savepath, force=true, recursive=true)
-	#for i in 1:nbins
-	#	save_path_w = "$(savepath)/wbin$(i-1)"
-	#	mkpath("$(save_path_w)")
-	#	lc_w = hcat(
-	#		times[use_idxs], target_binned_mags[:, i], zeros(length(times[use_idxs]))
-	#	)
-	#	writedlm("$(save_path_w)/lc.dat", lc_w, ",    ")
-	#	writedlm("$(save_path_w)/comps.dat", comp_binned_mags[:, :, i], ",    ")
-	#end
-end
 
 # ╔═╡ 123d0c63-f05a-4a7d-be16-6a3b9abac044
 function f_to_med_mag(f)
@@ -558,6 +526,32 @@ lc = let
 	hcat(times, med_mag, zeros(length(times)))[use_idxs, :]
 end
 
+# ╔═╡ 898a390b-49f7-45f4-b1a1-b22922d69a29
+if save_LDSS3_template let
+    savepath = "$(tdir)/white-light"
+	rm(savepath, force=true, recursive=true)
+	mkpath(savepath)
+	writedlm("$(savepath)/lc.dat", lc, ",    ")
+	writedlm("$(savepath)/comps.dat", comps, ",    ")
+end
+end
+
+# ╔═╡ 631c4d02-58cc-4c70-947f-22c8e8b11015
+if save_LDSS3_template let
+    savepath = "$(tdir)/wavelength"
+	rm(savepath, force=true, recursive=true)
+	for i in 1:nbins
+		save_path_w = "$(savepath)/wbin$(i-1)"
+		mkpath("$(save_path_w)")
+		lc_w = hcat(
+			times[use_idxs], target_binned_mags[:, i], zeros(length(times[use_idxs]))
+		)
+		writedlm("$(save_path_w)/lc.dat", lc_w, ",    ")
+		writedlm("$(save_path_w)/comps.dat", comp_binned_mags[:, :, i], ",    ")
+	end
+end
+end
+
 # ╔═╡ 1c3e3620-e4de-401d-afee-66303d35a9e2
 LC["temporal"].columns["exptime"] |> unique
 
@@ -584,8 +578,13 @@ df_eparams = DataFrame(
 	 FWHM=fwhm, Sky_Flux=sky_flux, Trace_Center=trace_center)
 ) |> df -> mapcols(col -> fmt_float.(col), df)[use_idxs, :]
 
-# ╔═╡ af7beb47-ecfa-4d08-b239-c27f7e8bdc4c
-CSV.write("$(tdir)/eparams.dat", df_eparams, delim=",    ")
+# ╔═╡ 2aba612a-7599-4a2d-9ff0-2fd398c2a0db
+if save_LDSS3_template
+    savepath = template_dir(FPATH)
+	rm(savepath, force=true, recursive=true)
+	mkpath(savepath)
+	CSV.write("$(tdir)/eparams.dat", df_eparams, delim=",    ")
+end
 
 # ╔═╡ c911cecd-0747-4cd1-826f-941f2f58091c
 begin
@@ -862,10 +861,6 @@ body.disable_ui main {
 # ╟─db933939-b8df-48b2-b53e-1dbd7ec1b07c
 # ╟─25903146-2f23-4e54-bd7d-aed1025f2fa5
 # ╠═45418bd3-74a3-4758-9fce-adddbeeec076
-# ╠═979895ea-9b13-494c-be08-2496562ccf07
-# ╠═ce86c8d1-1900-413f-90be-c9f4eb386a5a
-# ╠═bf61788d-ca13-457e-8026-62bc2460d4d7
-# ╠═48f31cef-ee18-47f9-a71d-4a5b2c6efe71
 # ╠═7d68ad39-3e39-48fa-939a-e56c6659d2b3
 # ╠═a6088ea2-904f-4909-b1be-9470e7ec2010
 # ╟─bd937d51-17e9-4de3-a5d0-4c436d413940
@@ -918,11 +913,12 @@ body.disable_ui main {
 # ╠═e6ed8da6-189a-4931-aac5-a4e8d0291723
 # ╠═2aba612a-7599-4a2d-9ff0-2fd398c2a0db
 # ╠═4af35a95-99b3-4186-a47d-169b9cbf927b
-# ╠═af7beb47-ecfa-4d08-b239-c27f7e8bdc4c
 # ╠═0be35b52-caea-4000-8cf8-ab99205bdb97
 # ╟─2341920d-6db8-4f08-b8ed-4907ceab7357
 # ╠═354580e4-0aa9-496f-b024-665025a2eeda
 # ╠═bc54942e-38ef-4919-a3d4-28d5f4db8487
+# ╠═fd33081a-6718-496d-8488-a4f1afcbc52d
+# ╠═da8271e0-854b-481c-ba52-c7c910cf79dc
 # ╠═898a390b-49f7-45f4-b1a1-b22922d69a29
 # ╟─b5ef9d95-1a2a-4828-8e27-89727f2e288b
 # ╠═5110de9a-3721-4043-b8b7-493daacb4137

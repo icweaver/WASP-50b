@@ -108,6 +108,43 @@ md"""
 With the flux extracted for each object, we now turn to analyzing the resulting stellar spectra:
 """
 
+# ╔═╡ 9ce136ad-8f8d-4861-8b23-6096efb600f4
+wbins_species = [
+	5780.0  5826.0
+	5825.0  5871.0
+	5870.0  5916.0
+	5915.0  5961.0
+	5960.0  6006.0
+	7657.0  7667.0
+	7667.0  7677.0
+	7677.0  7687.0
+	7687.0  7697.0
+	7697.0  7707.0
+	8089.0  8129.0
+	8129.0  8169.0
+	8169.0  8209.0
+	8209.0  8249.0
+	8249.0  8289.0
+]
+
+# ╔═╡ 69637ff5-4faa-4456-9e25-8f873c2bfa5e
+5893 - 46/2, 5893 + 46/2
+
+# ╔═╡ 224bbe2c-5fd0-48dc-9f95-f38b9061e2ce
+species = (Na=5893.0, K=7682.0, Na_8200=8189.0)
+
+# ╔═╡ 41b33845-2bfa-4e68-9e92-f15aaec2a251
+([mean(wbins_species, dims=2) diff(wbins_species, dims=2)])
+
+# ╔═╡ 8759b3c2-948c-461e-a925-b68edd532d1d
+PlutoUI.Text
+
+# ╔═╡ 28befad8-cbef-4a41-8e3b-d176a5bffe91
+import Plots
+
+# ╔═╡ fffaafad-e1db-459b-b5f4-3af6a9fcb427
+Plots.plotly()
+
 # ╔═╡ 6fd88483-d005-4186-8dd2-82cea767ce90
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
 
@@ -335,6 +372,15 @@ with_terminal() do
 		L"$\Delta$ wav." => Δw,
 	)
 	latextabular(df, latex=false) |> println
+end
+
+# ╔═╡ 5fbaead0-f8fb-4ea8-8f62-4fca957eb4f0
+let
+	w = LC["spectra"]["wavelengths"]
+	f = median(LC["spectra"]["WASP50"], dims=1) |> vec
+
+	Plots.plot(w, f)
+	Plots.vspan!(eachrow(wbins_species) |> collect, alpha=0.5)
 end
 
 # ╔═╡ bcda2043-f8c7-46bc-a5d4-b6f1f0883e9e
@@ -667,6 +713,14 @@ body.disable_ui main {
 # ╟─1c3e8cb3-2eff-47c2-8c17-01d0599556b8
 # ╟─e774a20f-2d58-486a-ab71-6bde678b26f8
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
+# ╠═5fbaead0-f8fb-4ea8-8f62-4fca957eb4f0
+# ╠═9ce136ad-8f8d-4861-8b23-6096efb600f4
+# ╠═69637ff5-4faa-4456-9e25-8f873c2bfa5e
+# ╠═224bbe2c-5fd0-48dc-9f95-f38b9061e2ce
+# ╠═41b33845-2bfa-4e68-9e92-f15aaec2a251
+# ╠═8759b3c2-948c-461e-a925-b68edd532d1d
+# ╠═fffaafad-e1db-459b-b5f4-3af6a9fcb427
+# ╠═28befad8-cbef-4a41-8e3b-d176a5bffe91
 # ╠═1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
 # ╠═6fd88483-d005-4186-8dd2-82cea767ce90
 # ╟─e3468c61-782b-4f55-a4a1-9d1883655d11

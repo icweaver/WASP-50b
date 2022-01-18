@@ -51,6 +51,15 @@ In this notebook we will visualize the detrended white-light curves from IMACS a
 $(TableOfContents(title="📖 Table of Contents"))
 """
 
+# ╔═╡ f7f718a2-642d-4914-b66e-7c12233455f2
+md"""
+!!! note "Data download"
+
+	```bash
+	rsync -azRP $H:/pool/sao_access/iweaver/GPTransmissionSpectra/./"out_*" detrended/ --exclude={"*george*","*mnest*"}
+	```
+"""
+
 # ╔═╡ 782806a6-efd2-45a9-b898-788a276c282b
 md"""
 ## Load data
@@ -63,9 +72,6 @@ const DATA_DIR = "data/detrended/out_l/WASP50"
 
 # ╔═╡ 2dd2ad78-b9a1-4cdf-97c9-b659599add63
 const FIG_PATH = "figures/detrended"
-
-# ╔═╡ dc773d5e-76b8-4850-a838-964b0c355e3a
-
 
 # ╔═╡ 105762e1-15a2-4e7f-bff3-7740a5f53492
 glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")
@@ -116,6 +122,12 @@ md"""
 md"""
 Plotting the data from the `models` cube returns the following detrended white-light curves:
 """
+
+# ╔═╡ 52a6bd8d-447d-4158-8d41-3dccbd3d5b22
+DATA_DIR
+
+# ╔═╡ c7a08aba-20c1-4c6b-aa73-7f963e06de4f
+cube
 
 # ╔═╡ 0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # Returns value `v` from `Variables` columns in results.dat file 
@@ -575,11 +587,11 @@ body.disable_ui main {
 
 # ╔═╡ Cell order:
 # ╟─506eeeb2-e56d-436b-91b8-605e52201563
+# ╟─f7f718a2-642d-4914-b66e-7c12233455f2
 # ╟─782806a6-efd2-45a9-b898-788a276c282b
 # ╟─a8d91138-73e7-4382-a032-37daec54a9c0
 # ╟─2dd2ad78-b9a1-4cdf-97c9-b659599add63
 # ╠═d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
-# ╠═dc773d5e-76b8-4850-a838-964b0c355e3a
 # ╠═2191791b-df62-4f1b-88bf-060cc47896b2
 # ╠═105762e1-15a2-4e7f-bff3-7740a5f53492
 # ╠═f539e06d-a1b5-413a-b90e-91cb0bbd5a4c
@@ -589,6 +601,8 @@ body.disable_ui main {
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
+# ╠═52a6bd8d-447d-4158-8d41-3dccbd3d5b22
+# ╠═c7a08aba-20c1-4c6b-aa73-7f963e06de4f
 # ╠═89c48710-651e-45ff-8fcb-e4173559defd
 # ╠═0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # ╠═d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c

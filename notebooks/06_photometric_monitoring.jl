@@ -485,6 +485,9 @@ begin
 	end
 end
 
+# ╔═╡ 6b889bd3-7fb5-4f71-803c-9ac57f8264c2
+[(lc.__len__(), lc.time_bin_size) for lc ∈ lcs_folded_binned]
+
 # ╔═╡ 056281a2-4786-45eb-a9fa-57515153f66c
 md"""
 ### Spot parameter estimation
@@ -793,6 +796,7 @@ end
 # ╠═d1f7ed4b-4599-48bd-aac5-93920dae9151
 # ╟─a50ef756-ade6-48a3-8d3a-17b56ce03c26
 # ╠═49bcddbe-d413-48ae-91d8-92bcebf40518
+# ╠═6b889bd3-7fb5-4f71-803c-9ac57f8264c2
 # ╠═97ced6ba-ff74-46b4-90d5-18e7b2f1b903
 # ╠═3128e57f-df4f-4811-b867-8a293d7d536d
 # ╟─056281a2-4786-45eb-a9fa-57515153f66c

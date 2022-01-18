@@ -223,18 +223,22 @@ begin
 		cube[sp] = OrderedDict()
 		for (model_name, model_id) ∈ model_names
 		cube[sp][model_name] = Dict()
+		
 		dirpath = "$(base_dir)/WASP50_E1_$(model_id)_$(sp)"
-			cube[sp][model_name]["retr"] = load_pickle("$(dirpath)/retrieval.pkl")
-			cube[sp][model_name]["retr_model"] = CSV.read(
-				"$(dirpath)/retr_model.txt", DataFrame;
-				header = [:wav, :flux, :flux_d, :flux_u],
-				comment = "#",
-			)
-			cube[sp][model_name]["retr_model_sampled"] = CSV.read(
-				"$(dirpath)/retr_model_sampled_Magellan_IMACS.txt", DataFrame;
-				header = [:wav, :flux],
-				comment = "#",
-			)
+		
+		cube[sp][model_name]["retr"] = load_pickle("$(dirpath)/retrieval.pkl")
+		
+		cube[sp][model_name]["retr_model"] = CSV.read(
+			"$(dirpath)/retr_model.txt", DataFrame;
+			header = [:wav, :flux, :flux_d, :flux_u],
+			comment = "#",
+		)
+		
+		cube[sp][model_name]["retr_model_sampled"] = CSV.read(
+			"$(dirpath)/retr_model_sampled_Magellan_IMACS.txt", DataFrame;
+			header = [:wav, :flux],
+			comment = "#",
+		)
 		end
 	end
 	cube
@@ -257,14 +261,32 @@ begin
 	end
 
 	@transform! df_evidences begin
-		:lnZ = :lnZ .- minimum(:lnZ)
+		:ΔlnZ = :lnZ .- minimum(:lnZ)
 		:Species = dashplus.(:Species)
 		:ΔlnZ_m = (:lnZ .± :lnZ_err) .- minimum(:lnZ .± :lnZ_err)
 	end
 end
 
 # ╔═╡ 42e909b4-92eb-4ed7-a19c-6e54b21ae07c
-unstack(df_evidences, :Model, :Species, :lnZ)
+df_table = unstack(df_evidences, :Model, :Species, :ΔlnZ)
+
+# ╔═╡ 83087c2e-852c-49c0-9195-c20e787b60e7
+df_table_not_model = df_table[:, Not(:Model)];
+
+# ╔═╡ 2d375a76-f06a-43bb-ba45-a944915288ff
+idx_max_model = argmax(Matrix(df_table_not_model))
+
+# ╔═╡ dd81cd2c-4a2e-47a0-9251-7e59d7bc3d45
+df_table.Model[idx_max_model[1]], names(df_table_not_model)[idx_max_model[2]]
+
+# ╔═╡ f834b9fc-e410-442c-b085-8cccb8e30b71
+@with_terminal latextabular(df_table, latex=false) |> print
+
+# ╔═╡ 930ec094-7b11-48b8-818e-15c63ed6f8a5
+dists = cube["Na_TiO"]["clear"]["retr"]["samples"];
+
+# ╔═╡ 54b5c81a-835a-461c-9dfd-2d938fac3bc4
+Dict(k => median(v) ± std(v) for (k, v) ∈ dists)
 
 # ╔═╡ 1eff1230-2423-4ac3-8e9b-f4e7bcd0121b
 md"""
@@ -327,7 +349,7 @@ let
 	sort_order = sorter(model_names.keys)
 	
 	plt = data(df_evidences) *
-		mapping(:Species => sorter(dashplus.(species)), :lnZ => "ΔlnZ";
+		mapping(:Species => sorter(dashplus.(species)), :ΔlnZ => "ΔlnZ";
 			dodge = :Model => sort_order,
 			color = :Model => sort_order,
 		) *
@@ -441,6 +463,12 @@ body.disable_ui main {
 # ╠═a0094689-a9d5-4810-baba-bd7a96c27839
 # ╠═df43608e-7026-45ae-b87b-d7e0b6cea89c
 # ╠═42e909b4-92eb-4ed7-a19c-6e54b21ae07c
+# ╠═83087c2e-852c-49c0-9195-c20e787b60e7
+# ╠═2d375a76-f06a-43bb-ba45-a944915288ff
+# ╠═dd81cd2c-4a2e-47a0-9251-7e59d7bc3d45
+# ╠═f834b9fc-e410-442c-b085-8cccb8e30b71
+# ╠═930ec094-7b11-48b8-818e-15c63ed6f8a5
+# ╠═54b5c81a-835a-461c-9dfd-2d938fac3bc4
 # ╟─1c4fe72d-9872-4969-a62a-5163b5009bbb
 # ╠═e801501c-a882-4f2d-bbc1-40028c1c91d8
 # ╠═00a0f9c4-cd4d-4ae2-80b7-0c044239a571
