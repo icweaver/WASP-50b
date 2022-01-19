@@ -56,7 +56,7 @@ md"""
 !!! note "Data download"
 
 	```bash
-	rsync -azRP $H:/pool/sao_access/iweaver/GPTransmissionSpectra/./"out_*" detrended/ --exclude={"*george*","*mnest*"}
+	rsync -azRP $H:/pool/sao_access/iweaver/GPTransmissionSpectra/./"out_*" data/detrended/ --exclude={"*george*","*mnest*"}
 	```
 """
 
@@ -68,7 +68,7 @@ First, let's load the relevant data needed for this notebook:
 """
 
 # ╔═╡ a8d91138-73e7-4382-a032-37daec54a9c0
-const DATA_DIR = "data/detrended/out_l/WASP50"
+@bind DATA_DIR Select(glob("data/detrended/out_*/WASP50"))
 
 # ╔═╡ 2dd2ad78-b9a1-4cdf-97c9-b659599add63
 const FIG_PATH = "figures/detrended"
@@ -79,16 +79,19 @@ glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")
 # ╔═╡ e873f9c6-fd1a-4227-9df1-70c626e4a0a1
 function name(fpath, dates_to_names)
 	date_instr = splitpath(split(glob(fpath)[1], "w50_")[2])[1]
-	@show date_instr
 	return dates_to_names[date_instr]
 end
 
 # ╔═╡ e72dba55-6a33-462f-aeac-5f62b25cb46a
 dates_to_names = Dict(
 	"131219_IMACS" => "Transit 1 (IMACS)",
+	"131219_sp_IMACS" => "Transit 1 (IMACS)",
 	"150927_IMACS" => "Transit 2 (IMACS)",
+	"150927_sp_IMACS" => "Transit 2 (IMACS)",
 	"150927_LDSS3_flat" => "Transit 2 (LDSS3)",
+	"150927_sp_LDSS3_flat" => "Transit 2 (LDSS3)",
 	"150927_LDSS3_noflat" => "Transit 2 (LDSS3 noflat)",
+	"150927_sp_LDSS3_noflat" => "Transit 2 (LDSS3 noflat)",
 	"161211_IMACS" => "Transit 3 (IMACS)",
 	"161211_sp_IMACS" => "Transit 3 (IMACS)",
  )
@@ -124,9 +127,6 @@ md"""
 md"""
 Plotting the data from the `models` cube returns the following detrended white-light curves:
 """
-
-# ╔═╡ 52a6bd8d-447d-4158-8d41-3dccbd3d5b22
-DATA_DIR
 
 # ╔═╡ 0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # Returns value `v` from `Variables` columns in results.dat file 
@@ -422,7 +422,11 @@ let
 	hidexdecorations!.(axs[2, :])
 	hideydecorations!.(axs[:, 2])
 
-	savefig(fig, "$(FIG_PATH)/detrended_wlcs.png")
+	if occursin("sp", DATA_DIR)
+		savefig(fig, "$(FIG_PATH)/detrended_wlcs_sp.png")
+	else
+		savefig(fig, "$(FIG_PATH)/detrended_wlcs.png")
+	end
 	
 	fig
 end
@@ -556,7 +560,11 @@ if plot_corner let
 		orientation = :horizontal,
 	)
 
-	savefig(fig, "$(FIG_PATH)/detrended_wlcs_corner.png")
+	if occursin("sp", DATA_DIR)
+		savefig(fig, "$(FIG_PATH)/detrended_wlcs_corner_sp.png")
+	else
+		savefig(fig, "$(FIG_PATH)/detrended_wlcs_corner.png")
+	end
 	
 	fig
 	end
@@ -619,7 +627,6 @@ body.disable_ui main {
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
-# ╠═52a6bd8d-447d-4158-8d41-3dccbd3d5b22
 # ╠═c7a08aba-20c1-4c6b-aa73-7f963e06de4f
 # ╠═c6061bd8-6e49-483c-8c38-a62cf67efbe7
 # ╠═89c48710-651e-45ff-8fcb-e4173559defd
