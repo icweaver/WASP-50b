@@ -449,6 +449,9 @@ _, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm, window_width);
 	println(bad_idxs .- 1) # For Python
 end
 
+# ╔═╡ fb03f876-4157-4e1f-9a36-6050c9944f8a
+316 - length(bad_idxs)
+
 # ╔═╡ 3e7b0a0b-1ee9-4436-935e-c4ced50620ba
 size(f_div_WLC_norm, 1) - length(bad_idxs)
 
@@ -869,6 +872,7 @@ body.disable_ui main {
 # ╠═13385b21-fbd7-484d-a1ac-0687834f92c7
 # ╠═cb805821-5d2e-484c-93a5-10a897d2cfe7
 # ╠═ded63b4b-61b6-41b6-98d4-d13166bce76a
+# ╠═fb03f876-4157-4e1f-9a36-6050c9944f8a
 # ╠═cd10cbf3-22f4-46cd-8345-cec3d141e3ca
 # ╠═83263daf-a902-4414-850b-aa6949752fbb
 # ╠═4f71ba8d-bfa0-4adc-8d82-cd3bca8b6c14

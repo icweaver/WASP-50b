@@ -108,6 +108,15 @@ md"""
 With the flux extracted for each object, we now turn to analyzing the resulting stellar spectra:
 """
 
+# ╔═╡ 5fbaead0-f8fb-4ea8-8f62-4fca957eb4f0
+# let
+# 	w = LC["spectra"]["wavelengths"]
+# 	f = median(LC["spectra"]["WASP50"], dims=1) |> vec
+
+# 	Plots.plot(w, f)
+# 	Plots.vspan!(eachrow(wbins_species) |> collect, alpha=0.5)
+# end
+
 # ╔═╡ 9ce136ad-8f8d-4861-8b23-6096efb600f4
 wbins_species = [
 	5780.0  5826.0
@@ -139,11 +148,11 @@ species = (Na=5893.0, K=7682.0, Na_8200=8189.0)
 # ╔═╡ 8759b3c2-948c-461e-a925-b68edd532d1d
 PlutoUI.Text
 
-# ╔═╡ 28befad8-cbef-4a41-8e3b-d176a5bffe91
-import Plots
-
 # ╔═╡ fffaafad-e1db-459b-b5f4-3af6a9fcb427
-Plots.plotly()
+#Plots.plotly()
+
+# ╔═╡ 28befad8-cbef-4a41-8e3b-d176a5bffe91
+#import Plots
 
 # ╔═╡ 6fd88483-d005-4186-8dd2-82cea767ce90
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
@@ -331,7 +340,7 @@ LC = load_pickle(FPATH_LC);
 AM = LC["Z"];
 
 # ╔═╡ 0c9e1227-9087-4a87-86a9-cb7c2e4aeaf7
-lines(AM)
+scatter(AM)
 
 # ╔═╡ 20f79ab6-b69e-4528-9856-ffa316442b75
 round.(extrema(AM), digits=1)
@@ -372,15 +381,6 @@ with_terminal() do
 		L"$\Delta$ wav." => Δw,
 	)
 	latextabular(df, latex=false) |> println
-end
-
-# ╔═╡ 5fbaead0-f8fb-4ea8-8f62-4fca957eb4f0
-let
-	w = LC["spectra"]["wavelengths"]
-	f = median(LC["spectra"]["WASP50"], dims=1) |> vec
-
-	Plots.plot(w, f)
-	Plots.vspan!(eachrow(wbins_species) |> collect, alpha=0.5)
 end
 
 # ╔═╡ bcda2043-f8c7-46bc-a5d4-b6f1f0883e9e
@@ -689,8 +689,8 @@ body.disable_ui main {
 # ╔═╡ Cell order:
 # ╟─ee24f7df-c4db-4065-afe9-10be80cbcd6b
 # ╟─9d180c21-e634-4a1e-8430-bdd089262f66
-# ╟─28d18f7f-2e41-4771-9f27-342bbda847dd
-# ╟─bd2cdf33-0c41-4948-82ab-9a28929f72b3
+# ╠═28d18f7f-2e41-4771-9f27-342bbda847dd
+# ╠═bd2cdf33-0c41-4948-82ab-9a28929f72b3
 # ╟─5ec299ff-bba9-4d66-a9f4-17f2b61d2a20
 # ╠═3959e46c-87c9-4566-8ab1-f437323f0a9f
 # ╠═32b9a326-ddc8-4557-bcf5-9dcc54ed83e5

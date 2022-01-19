@@ -79,6 +79,7 @@ glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")
 # ╔═╡ e873f9c6-fd1a-4227-9df1-70c626e4a0a1
 function name(fpath, dates_to_names)
 	date_instr = splitpath(split(glob(fpath)[1], "w50_")[2])[1]
+	@show date_instr
 	return dates_to_names[date_instr]
 end
 
@@ -89,6 +90,7 @@ dates_to_names = Dict(
 	"150927_LDSS3_flat" => "Transit 2 (LDSS3)",
 	"150927_LDSS3_noflat" => "Transit 2 (LDSS3 noflat)",
 	"161211_IMACS" => "Transit 3 (IMACS)",
+	"161211_sp_IMACS" => "Transit 3 (IMACS)",
  )
 
 # ╔═╡ 579e62da-7ffb-4639-bd73-3826ade1cfa2
@@ -125,9 +127,6 @@ Plotting the data from the `models` cube returns the following detrended white-l
 
 # ╔═╡ 52a6bd8d-447d-4158-8d41-3dccbd3d5b22
 DATA_DIR
-
-# ╔═╡ c7a08aba-20c1-4c6b-aa73-7f963e06de4f
-cube
 
 # ╔═╡ 0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # Returns value `v` from `Variables` columns in results.dat file 
@@ -563,6 +562,25 @@ if plot_corner let
 	end
 end
 
+# ╔═╡ c7a08aba-20c1-4c6b-aa73-7f963e06de4f
+cube = let
+	DATA_DIR = "data/detrended/out_sp/WASP50"
+Dict(
+		name(fpath_sample, dates_to_names) => load_data(
+			fpath_sample, fpath_model, fpath_result
+		)
+
+		for (fpath_sample, fpath_model, fpath_result) ∈ zip(
+			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")),
+			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_WLC.npy")),
+			sort(glob("$(DATA_DIR)/w50*/white-light/results.dat")),
+		)
+	)
+end
+
+# ╔═╡ c6061bd8-6e49-483c-8c38-a62cf67efbe7
+y = cube["Transit 3 (IMACS)"]["models"]
+
 # ╔═╡ 89c8fcd6-6a2f-4e4e-882d-569901487966
 @with_terminal Conda.list(:WASP50b)
 
@@ -603,6 +621,7 @@ body.disable_ui main {
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
 # ╠═52a6bd8d-447d-4158-8d41-3dccbd3d5b22
 # ╠═c7a08aba-20c1-4c6b-aa73-7f963e06de4f
+# ╠═c6061bd8-6e49-483c-8c38-a62cf67efbe7
 # ╠═89c48710-651e-45ff-8fcb-e4173559defd
 # ╠═0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # ╠═d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c
