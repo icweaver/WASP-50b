@@ -43,4 +43,9 @@ jobs:
 
             - name: Run notebooks
               run: |
-                julia --project=@. -e 'import Pkg; Pkg.instantiate(); include(joinpath(\"notebooks\", \"comp_stars.jl\"))'
+                if [ "$RUNNER_OS" == "Windows" ]; then
+                  julia --project=@. -e 'import Pkg; Pkg.instantiate(); include(joinpath(\"notebooks\", \"comp_stars.jl\"))'
+                else
+                  julia --project=@. -e 'import Pkg; Pkg.instantiate(); include("notebooks/comp_stars.jl")'
+                fi
+              shell: bash
