@@ -44,4 +44,3 @@ jobs:
             - name: Run notebooks
               run: |
                 julia --project=@. -e 'import Pkg; Pkg.instantiate(); include(joinpath("notebooks", "comp_stars.jl"))'
-              shell: bash
