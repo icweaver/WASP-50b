@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.5
+# v0.17.7
 
 using Markdown
 using InteractiveUtils
@@ -21,8 +21,8 @@ begin
 
 	using PlutoUI
 	using AlgebraOfGraphics
-	using WGLMakie
-	import WGLMakie.Makie.KernelDensity: kde
+	using CairoMakie
+	import CairoMakie.Makie.KernelDensity: kde
 	using CSV, DataFrames, DataFramesMeta
 	using DelimitedFiles
 	using Glob
@@ -34,12 +34,6 @@ begin
 	using OrderedCollections
 	using Printf
 	using NaturalSort
-end
-
-# ╔═╡ 2ddf3093-93c6-4957-adf3-e1c885b80d93
-begin
-    using JSServe
-    Page()
 end
 
 # ╔═╡ 086555bd-a886-4025-a354-0388df77a591
@@ -56,9 +50,6 @@ $(TableOfContents(title="📖 Table of Contents"))
 
 # ╔═╡ bd80f202-b4bb-4682-aa62-e8245867208c
 const FIG_PATH = "figures/detrended"
-
-# ╔═╡ 7f385957-d69f-40d2-ad1d-9496fa6896a5
-@info "sadsadasdsadbsajdbajkdnkasd"
 
 # ╔═╡ 0c752bd5-5232-4e82-b519-5ca23fff8a52
 md"""
@@ -90,21 +81,17 @@ maxmeasure(x, x_u, x_d) = x ± max(x_u, x_d)
 dates_to_names = OrderedDict(
 	"131219_IMACS" => "Transit 1 (IMACS)",
 	"150927_IMACS" => "Transit 2 (IMACS)",
-	"150927_LDSS3_flat" => "Transit 2 (LDSS3)",
-	"150927_LDSS3_noflat" => "Transit 2 (LDSS3 noflat)",
+	"150927_LDSS3" => "Transit 2 (LDSS3)",
 	"161211_IMACS" => "Transit 3 (IMACS)",
 	
 	"131219_sp_IMACS" => "Transit 1 (IMACS)",
 	"150927_sp_IMACS" => "Transit 2 (IMACS)",
-	"150927_sp_LDSS3_flat" => "Transit 2 (LDSS3)",
-	"150927_sp_LDSS3_flat_out_l" => "Transit 2 (LDSS3)",
-	"150927_sp_LDSS3_noflat" => "Transit 2 (LDSS3 noflat)",
+	"150927_sp_LDSS3" => "Transit 2 (LDSS3)",
 	"161211_sp_IMACS" => "Transit 3 (IMACS)",
  )
 
 # ╔═╡ 1e8524c4-a732-4e2f-80a9-b5e7548ef2b2
 function name(fpath, data_to_names)
-	@show fpath
 	date_target = splitpath(split(fpath, "w50_")[2])[1]
 	return dates_to_names[date_target]
 end
@@ -533,12 +520,12 @@ let
 	kwargs_scatter = Dict(:markersize=>12.0)
 	for (i, transit) in enumerate(keys(cubes))
 		if occursin("LDSS3", transit)
-			# plot_tspec!(ax, df_tspecs, transit;
-			# 	kwargs_errorbars = kwargs_errorbars,
-			# 	kwargs_scatter = kwargs_scatter,
-			# 	color = COLORS[i],
-			# 	label = transit,
-			# )
+			plot_tspec!(ax, df_tspecs, transit;
+				kwargs_errorbars = kwargs_errorbars,
+				kwargs_scatter = kwargs_scatter,
+				color = COLORS[i],
+				label = transit,
+			)
 		else
 			plot_tspec!(ax, df_IMACS, transit;
 				kwargs_errorbars = kwargs_errorbars,
@@ -556,23 +543,23 @@ let
 	plot_tspec!(ax, df_IMACS, "Combined";
 			nudge = nudge,
 			kwargs_errorbars = kwargs_errorbars,
-			kwargs_scatter = Dict(:color=>:black),
+			kwargs_scatter = kwargs_scatter,
 			label = "Combined",
 	)
 
-	# text!(ax, "Average precision (IMACS): $(avg_prec_IMACS) ppm";
-	# 	position = (4700, 16500),
-	# 	align = (:left, :center),
-	# )
-	# text!(ax, "Average precision (LDSS3): $(avg_prec_LDSS3)  ppm";
-	# 	position = (4700, 16000),
-	# 	align = (:left, :center),
-	# )
+	text!(ax, "Average precision (IMACS): $(avg_prec_IMACS) ppm";
+		position = (4700, 16500),
+		align = (:left, :center),
+	)
+	text!(ax, "Average precision (LDSS3): $(avg_prec_LDSS3)  ppm";
+		position = (4700, 16000),
+		align = (:left, :center),
+	)
 	
 	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
 
 	suf = basename(dirname(DATA_DIR))
-	#savefig(fig, "$(FIG_PATH)/tspec_$(suf)_uncombined.png")
+	savefig(fig, "$(FIG_PATH)/tspec_$(suf)_uncombined.png")
 	
 	fig
 end
@@ -606,9 +593,8 @@ body.disable_ui main {
 # ╠═086555bd-a886-4025-a354-0388df77a591
 # ╟─e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 # ╟─bd80f202-b4bb-4682-aa62-e8245867208c
-# ╠═7f385957-d69f-40d2-ad1d-9496fa6896a5
 # ╟─0c752bd5-5232-4e82-b519-5ca23fff8a52
-# ╠═c53be9cf-7722-4b43-928a-33e7b0463330
+# ╟─c53be9cf-7722-4b43-928a-33e7b0463330
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
 # ╠═1decb49e-a875-412c-938f-74b4fa0e2e85
 # ╠═1e8524c4-a732-4e2f-80a9-b5e7548ef2b2
@@ -658,6 +644,5 @@ body.disable_ui main {
 # ╟─e9b22d93-1994-4c31-a951-1ab00dc4c102
 # ╠═ef970c0c-d08a-4856-b10b-531bb5e7e53e
 # ╠═6cb26c91-8a7c-4bd3-8978-d0c23105863c
-# ╠═2ddf3093-93c6-4957-adf3-e1c885b80d93
 # ╠═e917bd8d-7f4a-44e4-9eb9-84199dd061f5
 # ╟─3510ead9-6e66-4fec-84ca-15c8a3ce4c3e
