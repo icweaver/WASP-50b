@@ -43,4 +43,4 @@ jobs:
 
             - name: Run notebooks
               run: |
-                julia --project=@. -e "import Pkg; Pkg.instantiate(); include(joinpath(\"test_notebook\", \"comp_stars.jl\"))"
+                julia --project=@. -e 'import Pkg; Pkg.instantiate(); include(joinpath(\"test_notebook\", \"comp_stars.jl\"))'
