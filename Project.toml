@@ -1,5 +1,6 @@
 [deps]
 AlgebraOfGraphics = "cbdf2221-f076-402e-a563-3d30da359d67"
+AstroAngles = "5c4adb95-c1fc-4c53-b4ea-2a94080c53d2"
 CCDReduction = "b790e538-3052-4cb9-9f1f-e05859a455f5"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"

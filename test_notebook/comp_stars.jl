@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.5
+# v0.17.7
 
 using Markdown
 using InteractiveUtils
@@ -290,7 +290,7 @@ df_paper = @chain _df_paper begin
 end
 
 # ╔═╡ 8fbc74d9-c993-4757-865f-b7ec3d84495c
-latexify(df_paper, latex=false, fmt="%.2f")
+t = latexify(df_paper, latex=false, fmt="%.2f")
 
 # ╔═╡ c9b37015-057e-4838-b510-5762819b2462
 md"""
@@ -333,6 +333,7 @@ md"""
 md"""
 We now have a table that we can copy-and-paste into a paper that is definitely not being ignored right now.
 """
+@show t
 
 # ╔═╡ 4188732d-1d88-4e98-8510-f74224641919
 html"""

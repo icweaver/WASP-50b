@@ -1,2 +1,5 @@
 [deps]
+pandas = ""
 lightkurve = ""
+astroquery = ""
+astropy = ""
