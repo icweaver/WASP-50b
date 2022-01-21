@@ -36,13 +36,7 @@ end
 using Dates
 
 # ╔═╡ 26f18ff6-7baa-4905-b9d1-52cfa9396dfc
-begin
-	ENV["PYTHON"] = ""
-	Pkg.build("PyCall")
-	using PyCall
-	const Conda = PyCall.Conda
-	Conda.add("lightkurve", :WASP50b)
-end
+using PythonCall, CondaPkg
 
 # ╔═╡ 34ef4580-bb95-11eb-34c1-25893217f422
 md"""
@@ -96,6 +90,17 @@ md"""
 We next define the mapping between the standard aperture names defined in `stellar` and the target/comparison star names used:
 """
 
+# ╔═╡ d8236985-9a36-4357-ac78-7eb39dd0f080
+obj_names = OrderedDict(
+	"aperture_324_803" => "WASP50",
+	"aperture_153_1117" => "c06",
+	"aperture_830_689" => "c15",
+	"aperture_28_1189" => "c21",
+	"aperture_157_1116" => "c06",
+	"aperture_830_693" => "c15",
+	"aperture_35_1188" => "c21",
+)
+
 # ╔═╡ b4f4e65b-bd50-4ee2-945f-7c130db21fdf
 md"""
 !!! note
@@ -103,6 +108,9 @@ md"""
 
 	**Add to paper:** "This research has made use of the VizieR catalogue access tool, CDS, Strasbourg, France (DOI: 10.26093/cds/vizier). The original description of the VizieR service was published in A&AS 143, 23"
 """
+
+# ╔═╡ 742fc721-523e-46a3-8b2b-2e3905488c4e
+obj_names["aperture_324_803"]
 
 # ╔═╡ a687fa5d-1d98-4cb4-ae5d-978594d205dd
 md"""
@@ -176,8 +184,17 @@ Next, we will extract the integrated white-light curves from these spectra. We i
 # ╔═╡ cb805821-5d2e-484c-93a5-10a897d2cfe7
 @bind window_width PlutoUI.Slider(3:2:21, default=15, show_value=true)
 
+# ╔═╡ 83263daf-a902-4414-850b-aa6949752fbb
+comp_names = obj_names.vals[2:4]
+
+# ╔═╡ cd10cbf3-22f4-46cd-8345-cec3d141e3ca
+use_comps = comp_names 
+
 # ╔═╡ 9372c69a-0aad-4e6e-9ea3-e934fa09b758
 get_idx(needle, haystack) = findfirst(==(needle), haystack)
+
+# ╔═╡ 4f71ba8d-bfa0-4adc-8d82-cd3bca8b6c14
+use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
 
 # ╔═╡ d5c6d058-17c6-4cf0-97b8-d863b1529161
 md"""
@@ -187,24 +204,6 @@ md"""
 
 # ╔═╡ 3dc704cc-abee-42b8-8220-62fdda278944
 xs = [0.5, 0.4, 0.8, 0.6, 0.55, 0.7, 0.45]
-
-# ╔═╡ 3d4dd810-e317-40da-8521-365c7b760fe4
-let
-	fig = Figure()
-	ax = Axis(fig[1, 1])
-
-	scatter!(ax, 1:7, xs)
-	errorbars!(ax, 1:7, xs, std(xs))
-	hlines!(ax, median(xs), color=:red)
-	
-	fig
-end
-
-# ╔═╡ 8d91fe42-cd8d-4ad1-bed4-4cee3b778cfd
-xs
-
-# ╔═╡ ae33702b-700c-4a4b-83b0-c9f36bf1404f
-mapwindow(median, xs, 5)
 
 # ╔═╡ 89256633-3c12-4b94-b245-4fdda44d686c
 function filt(f_div_wlc, window_width; func=median, border="reflect")
@@ -356,7 +355,8 @@ end
 
 # ╔═╡ 2d34e125-548e-41bb-a530-ba212c0ca17c
 begin
-	py"""
+	@pyexec """
+	global np, pickle, load_npz, load_pickle
 	import numpy as np
 	import pickle
 	
@@ -368,35 +368,18 @@ begin
 			data = pickle.load(f)
 		return data
 	"""
-	load_npz(s; allow_pickle=false) = py"load_npz"(s, allow_pickle=allow_pickle)
-	load_pickle(s) = py"load_pickle"(s)
+	load_npz(s; allow_pickle=false) = @pyeval("load_npz")(s, allow_pickle=allow_pickle)
+	load_pickle(s) = @pyeval("load_pickle")(s)
 end;
 
 # ╔═╡ 01e27cf6-0a1b-4741-828a-ef8bf7037ae9
 LC = load_npz(FPATH, allow_pickle=true)
 
-# ╔═╡ d8236985-9a36-4357-ac78-7eb39dd0f080
-obj_names = OrderedDict(
-	LC["target"] => "WASP50",
-	"aperture_153_1117" => "c06",
-	"aperture_830_689" => "c15",
-	"aperture_28_1189" => "c21",
-	"aperture_157_1116" => "c06",
-	"aperture_830_693" => "c15",
-	"aperture_35_1188" => "c21",
-)
-
-# ╔═╡ 83263daf-a902-4414-850b-aa6949752fbb
-comp_names = obj_names.vals[2:4]
-
-# ╔═╡ cd10cbf3-22f4-46cd-8345-cec3d141e3ca
-use_comps = comp_names 
-
-# ╔═╡ 4f71ba8d-bfa0-4adc-8d82-cd3bca8b6c14
-use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
+# ╔═╡ 2d59bec3-9e2f-4f5f-b3f3-0963d546f3a0
+LC_cubes = PyDict{String, PyDict{String, Matrix}}(LC["cubes"])
 
 # ╔═╡ 9341c427-642a-4782-925a-6e07b91277a0
-fluxes = Dict(obj_names[k] => v for (k, v) ∈ LC["cubes"]["raw_counts"])
+fluxes = Dict(obj_names[k] => v for (k, v) ∈ LC_cubes["raw_counts"])
 
 # ╔═╡ 651b5782-c1ae-45f0-8de1-079e13387ca9
 # Non-zero wavelength ranges for each star
@@ -418,8 +401,14 @@ f_comps = cat(
 	dims=3
 )
 
+# ╔═╡ 51563b2d-6d0b-4f20-a82e-36b58c3bca8f
+LC_cubes["raw_counts"] |> typeof
+
+# ╔═╡ 2f375e07-1e3e-473a-9488-ec482a42ec3c
+LC_spectral = PyDict{String, Vector}(LC["spectral"])
+
 # ╔═╡ dc62887d-746b-4503-8547-7a6814de66a8
-wav = LC["spectral"]["wavelength"][common_wav_idxs]
+wav = LC_spectral["wavelength"][common_wav_idxs]
 
 # ╔═╡ 8c82a78d-7382-40d4-a76b-02e7cd061d67
 # Corresponding wav indxs
@@ -462,6 +451,14 @@ comps = let
 	mag[use_idxs, :]
 end
 
+# ╔═╡ c65c2298-e3a3-4666-be9d-73ee43d94847
+fwhm, trace_center, sky_flux = median_eparam.(
+	["width", "peak", "sky"],
+	Ref(LC_cubes),
+	Ref(target_name),
+	Ref(common_wav_idxs[binned_wav_idxs_range])
+)
+
 # ╔═╡ 861cb600-5a97-496c-9a4d-8f848654f214
 begin
 	nbins = length(binned_wav_idxs)
@@ -502,9 +499,12 @@ target_binned_mags = mapslices(f_to_med_mag, oLCw, dims=1)[use_idxs, :]
 # ╔═╡ 53f5a645-93e0-499a-bb36-e4ff0153a63c
 comp_binned_mags = mapslices(f_to_med_mag, cLCw, dims=1)[use_idxs, :, :]
 
+# ╔═╡ 8bb36e39-ade4-4799-ab91-92caf38021b4
+PyDict{String, Vector}(LC["spectral"])
+
 # ╔═╡ c03cb527-d16d-47aa-ab63-6970f4ff0b1f
 times, airmass = let
-	vals = LC["temporal"].columns
+	vals = PyTable(LC["temporal"].to_pandas())
 	vals["bjd"], vals["airmass"]
 end
 
@@ -558,21 +558,13 @@ end
 # ╔═╡ 1c3e3620-e4de-401d-afee-66303d35a9e2
 LC["temporal"].columns["exptime"] |> unique
 
-# ╔═╡ c65c2298-e3a3-4666-be9d-73ee43d94847
-fwhm, trace_center, sky_flux = median_eparam.(
-	["width", "peak", "sky"],
-	Ref(LC["cubes"]),
-	Ref(target_name),
-	Ref(common_wav_idxs[binned_wav_idxs_range])
-)
-
 # ╔═╡ 079c3915-33af-40db-a544-28453732c372
 specshifts = load_npz(
 	"$(dirname(FPATH))/specshifts.npy", allow_pickle=true
 );
 
 # ╔═╡ e4960d1a-8e33-478a-8100-d1838782938d
-delta_wav = specshifts["shift"][target_name] |> 
+delta_wav = pyconvert(Dict{String, Float64}, specshifts["shift"][target_name]) |> 
 		sort |> values |> collect |> x -> convert(Vector{Float64}, x)
 
 # ╔═╡ e4388fba-64ef-4588-a1ed-283da2f52196
@@ -816,9 +808,6 @@ plot_blcs && for comp_idx ∈ use_comps_idxs
 	)
 end
 
-# ╔═╡ 0cd62849-c726-47d3-94dd-625e6c058cb1
-@with_terminal Conda.list(:WASP50b)
-
 # ╔═╡ b2c61d08-6fcf-4b0c-a21a-c0c5e3205210
 html"""
 <style>
@@ -849,13 +838,18 @@ body.disable_ui main {
 # ╟─698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 # ╠═d8236985-9a36-4357-ac78-7eb39dd0f080
 # ╟─b4f4e65b-bd50-4ee2-945f-7c130db21fdf
+# ╠═742fc721-523e-46a3-8b2b-2e3905488c4e
 # ╟─a687fa5d-1d98-4cb4-ae5d-978594d205dd
 # ╠═9341c427-642a-4782-925a-6e07b91277a0
+# ╠═51563b2d-6d0b-4f20-a82e-36b58c3bca8f
+# ╠═2d59bec3-9e2f-4f5f-b3f3-0963d546f3a0
 # ╟─ae81cf2b-e2cf-42af-9bba-955155c63647
 # ╟─839b83b2-97cd-4643-a4ce-9a03f3594b3a
 # ╠═651b5782-c1ae-45f0-8de1-079e13387ca9
 # ╠═22377e04-5a76-4d70-acf4-25d60f3b64a7
+# ╠═2f375e07-1e3e-473a-9488-ec482a42ec3c
 # ╠═dc62887d-746b-4503-8547-7a6814de66a8
+# ╠═8bb36e39-ade4-4799-ab91-92caf38021b4
 # ╠═68610805-92fa-45a0-b5f6-7f04cb209c04
 # ╠═9cdc7e8b-be59-44f9-9bee-4591e2ad788d
 # ╠═0d5749ac-4c94-4228-b721-83aaf84891c2
@@ -881,9 +875,6 @@ body.disable_ui main {
 # ╠═9372c69a-0aad-4e6e-9ea3-e934fa09b758
 # ╟─d5c6d058-17c6-4cf0-97b8-d863b1529161
 # ╠═3dc704cc-abee-42b8-8220-62fdda278944
-# ╠═3d4dd810-e317-40da-8521-365c7b760fe4
-# ╠═8d91fe42-cd8d-4ad1-bed4-4cee3b778cfd
-# ╠═ae33702b-700c-4a4b-83b0-c9f36bf1404f
 # ╠═20d12d7b-c666-46c3-8f48-5501641e8df3
 # ╠═470514e7-0f08-44a3-8519-5d704ea6b8d4
 # ╠═f80347e8-dc5a-4b0c-a6c0-db5c12eadcbb
@@ -933,7 +924,6 @@ body.disable_ui main {
 # ╟─36c1aa6d-cde9-4ff0-b55c-13f43e94256d
 # ╠═2d34e125-548e-41bb-a530-ba212c0ca17c
 # ╠═c911cecd-0747-4cd1-826f-941f2f58091c
-# ╠═0cd62849-c726-47d3-94dd-625e6c058cb1
 # ╠═26f18ff6-7baa-4905-b9d1-52cfa9396dfc
 # ╠═f883b759-65fc-466e-9c8f-e4f941def935
 # ╟─b2c61d08-6fcf-4b0c-a21a-c0c5e3205210

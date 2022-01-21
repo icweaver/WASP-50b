@@ -41,6 +41,14 @@ md"""
 $(TableOfContents(title="📖 Table of Contents"))
 """
 
+# ╔═╡ 6008853d-1a74-4004-8aa8-7a70d8297045
+md"""
+!!! note "Data download"
+	```shell
+	rsync -azRP $H:/pool/sao_access/iweaver/GPTransmissionSpectra/./"out_sp*" data/detrended/ --exclude={"*george*","*mnest*"}
+	```
+"""
+
 # ╔═╡ 0158a760-1229-4089-bf90-7c7b2f1f548a
 md"""
 ## Load data
@@ -49,7 +57,7 @@ First, let's load the relevant data needed for this notebook:
 """
 
 # ╔═╡ 4b09c729-3395-4cee-bb69-bab59390845c
-const DATA_DIR = "data/detrended/out_l/WASP50"
+@bind DATA_DIR Select(glob("data/detrended/out_*/WASP50"))
 
 # ╔═╡ b63189de-7f78-46d3-a119-3064e275dbe4
 const FIG_PATH = "figures/detrended"
@@ -63,9 +71,13 @@ end
 # ╔═╡ f3e9100a-ec8e-425f-9081-e457ad9b1515
 dates_to_names = Dict(
 	"131219_IMACS" => "Transit_1_IMACS",
+	"131219_sp_IMACS" => "Transit_1_IMACS_sp",
 	"150927_IMACS" => "Transit_2_IMACS",
+	"150927_sp_IMACS" => "Transit_2_IMACS_sp",
 	"150927_LDSS3_flat" => "Transit_2_LDSS3",
+	"150927_sp_LDSS3_flat" => "Transit_2_LDSS3_sp",
 	"161211_IMACS" => "Transit_3_IMACS",
+	"161211_sp_IMACS" => "Transit_3_IMACS_sp"
  )
 
 # ╔═╡ 100af59b-3a24-41d0-9cda-05592bd1778f
@@ -78,7 +90,7 @@ begin
 		dirpath_WLC = "$(dirname(dirpath))/white-light"
 
 		# TODO, track this down
-		deleteat!(fpaths, findfirst(s -> occursin("wbin3", s), fpaths))
+		#deleteat!(fpaths, findfirst(s -> occursin("wbin3", s), fpaths))
 		
 		# WLC BMA t₀
 		t₀ = let
@@ -252,7 +264,8 @@ let
 		round.(Int, errs),
 	)
 	
-	savefig(fig, "$(FIG_PATH)/detrended_blcs_$(transit).png")
+	f_suff = basename(dirname(DATA_DIR))
+	savefig(fig, "$(FIG_PATH)/detrended_blcs_$(transit)_$(f_suff).png")
 		
 	fig
 end
@@ -278,6 +291,7 @@ body.disable_ui main {
 
 # ╔═╡ Cell order:
 # ╟─ebef52bc-2acf-4cf8-aca7-90cd6684c061
+# ╟─6008853d-1a74-4004-8aa8-7a70d8297045
 # ╟─0158a760-1229-4089-bf90-7c7b2f1f548a
 # ╟─4b09c729-3395-4cee-bb69-bab59390845c
 # ╟─b63189de-7f78-46d3-a119-3064e275dbe4
