@@ -29,15 +29,7 @@ begin
 	using Latexify
 	using Measurements, Statistics
 	using OrderedCollections
-end
-
-# ╔═╡ f2b2db32-f7fb-4735-849d-5bee761a5e85
-begin
-	ENV["PYTHON"] = ""
-	Pkg.build("PyCall")
-	using PyCall
-	const Conda = PyCall.Conda
-	Conda.add("lightkurve", :WASP50b)
+    using PythonCall
 end
 
 # ╔═╡ 0132b4ab-0447-4546-b412-ec598b20d21d
@@ -138,6 +130,9 @@ with_terminal() do
 	println("\n$(i) incomplete directories")
 end
 
+# ╔═╡ e8772a53-c7cc-4e49-8745-e8a2eb03f6ad
+pyconvert(Float64, pyfloat(124))
+
 # ╔═╡ d4356ef7-abd7-47dd-83e3-38b6a782509e
 #df_wide = unstack(df_evidences, :Model, :Species, :lnZ, renamecols = dashplus)
 
@@ -205,7 +200,8 @@ md"""
 
 # ╔═╡ 44b3b8cd-4b83-4b27-a948-d1230489552f
 begin
-	py"""
+	@pyexec """
+	global pickle, load_pickle
 	import pickle
 	
 	def load_pickle(fpath):
@@ -213,7 +209,7 @@ begin
 			data = pickle.load(f)
 		return data
 	"""
-	load_pickle(s) = py"load_pickle"(s)
+	load_pickle(s) = @pyeval("load_pickle")(s)
 end;
 
 # ╔═╡ a7c68d25-a799-421b-9799-38837fa8a188
@@ -256,7 +252,9 @@ begin
 	for (sp, model_dicts) ∈ cube
 		for (model, model_dict) ∈ model_dicts
 			data = model_dict["retr"]
-			push!(df_evidences, (sp, model, data["lnZ"], data["lnZerr"]))
+			lnZ = pyconvert(Float64, data["lnZ"])
+			lnZerr = pyconvert(Float64, data["lnZerr"])
+			push!(df_evidences, (sp, model, lnZ, lnZerr))
 		end
 	end
 
@@ -283,7 +281,10 @@ df_table.Model[idx_max_model[1]], names(df_table_not_model)[idx_max_model[2]]
 @with_terminal latextabular(df_table, latex=false) |> print
 
 # ╔═╡ 930ec094-7b11-48b8-818e-15c63ed6f8a5
-dists = cube["Na_TiO"]["clear"]["retr"]["samples"];
+dists = let
+	data_py = cube["Na_TiO"]["clear"]["retr"]["samples"]
+	PyDict{String, Vector}(data_py)
+end
 
 # ╔═╡ 54b5c81a-835a-461c-9dfd-2d938fac3bc4
 Dict(k => median(v) ± std(v) for (k, v) ∈ dists)
@@ -425,9 +426,6 @@ let
 	fig
 end
 
-# ╔═╡ 01bbee9f-66bf-4e08-a91b-9870def4e62a
-@with_terminal Conda.list(:WASP50b)
-
 # ╔═╡ e3708d6f-d9a9-4e42-b25b-2d1c333fddff
 html"""
 <style>
@@ -456,6 +454,7 @@ body.disable_ui main {
 # ╠═a7c68d25-a799-421b-9799-38837fa8a188
 # ╠═7b714c1e-2e3d-453f-a342-81df8283de5c
 # ╠═65b51ff6-0991-491f-8945-dd889ffe71dd
+# ╠═e8772a53-c7cc-4e49-8745-e8a2eb03f6ad
 # ╠═d4356ef7-abd7-47dd-83e3-38b6a782509e
 # ╠═a0094689-a9d5-4810-baba-bd7a96c27839
 # ╠═df43608e-7026-45ae-b87b-d7e0b6cea89c
@@ -477,7 +476,5 @@ body.disable_ui main {
 # ╟─1eff1230-2423-4ac3-8e9b-f4e7bcd0121b
 # ╟─eab74923-a084-468c-9b0d-c2cc98a23913
 # ╠═e43f1834-73dd-4859-b847-f4c552561897
-# ╠═01bbee9f-66bf-4e08-a91b-9870def4e62a
-# ╠═f2b2db32-f7fb-4735-849d-5bee761a5e85
 # ╠═239a91a6-f68a-11eb-14fd-0ba8d08b08f9
 # ╟─e3708d6f-d9a9-4e42-b25b-2d1c333fddff
