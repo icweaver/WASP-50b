@@ -41,9 +41,9 @@ md"""
 	```
 	rclone sync -P drive_ACCESS:papers/WASP-50b/data/retrievals data/retrievals
 	
-	rsync -azRP $H:/pool/sao_access/iweaver/exoretrievals/./"WASP50_offs/*/{*.pkl,*.txt}" data/retrievals/ --exclude "*nest*"
+	rsync -azRP $H:/pool/sao_access/iweaver/exoretrievals/./"WASP50_offs/*/{*.pkl,*.txt}" data/retrievals/ --exclude {"*nest*", "*.npy"}
 
-	rsync -azRP $H:/pool/sao_access/iweaver/exoretrievals/WASP50_offs/"*/./WASP50_offs" data/retrievals/ --exclude "*nest*" 
+	rsync -azRP $H:/pool/sao_access/iweaver/exoretrievals/WASP50_offs/"*/./WASP50_offs" data/retrievals/ --exclude {"*nest*", "*.npy"} 
 	```
 
 $(TableOfContents(title="📖 Table of Contents"))
@@ -444,7 +444,7 @@ body.disable_ui main {
 
 # ╔═╡ Cell order:
 # ╟─0132b4ab-0447-4546-b412-ec598b20d21d
-# ╠═60dc161c-2aa2-4264-884d-6da3ead0e57b
+# ╟─60dc161c-2aa2-4264-884d-6da3ead0e57b
 # ╟─56971ef4-7512-4e85-ac41-ee446006457f
 # ╠═d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
 # ╠═8c6e3fd8-f6cb-4250-acb8-c17c00b1b2eb
