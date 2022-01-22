@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.5
+# v0.17.7
 
 using Markdown
 using InteractiveUtils
@@ -202,9 +202,6 @@ md"""
 	We divide the target WLC by each comparison star to minimize common systematics (e.g., air mass, local refractive atmospheric effects), and to make the transit shape more apparent. This allows us to select good comparison stars for that particular night and which timeseries points to include in the rest of the analysis.
 """
 
-# ╔═╡ 3dc704cc-abee-42b8-8220-62fdda278944
-xs = [0.5, 0.4, 0.8, 0.6, 0.55, 0.7, 0.45]
-
 # ╔═╡ 89256633-3c12-4b94-b245-4fdda44d686c
 function filt(f_div_wlc, window_width; func=median, border="reflect")
 	# Filtered light curves
@@ -284,7 +281,7 @@ With `oLCw` and `cLCw` now computed, we next compute `f_norm_w`, the binned targ
 
 # ╔═╡ af07dc54-eeb5-4fbe-8dd0-289dea97502a
 md"""
-## `GPTransmissionSpectra` inputs 🔩
+## $(@bind save_LDSS3_template CheckBox()) `GPTransmissionSpectra` inputs 🔩
 
 Finally, we export the external parameters and light curves (in magnitude space) to be used for detrending in `GPTransmissionSpectra`:
 """
@@ -323,12 +320,6 @@ tdir = "$(template_dir(FPATH))"
 md"""
 #### WLCs (magnitude space)
 """
-
-# ╔═╡ fd33081a-6718-496d-8488-a4f1afcbc52d
-@bind save_LDSS3_template CheckBox()
-
-# ╔═╡ da8271e0-854b-481c-ba52-c7c910cf79dc
-save_LDSS3_template
 
 # ╔═╡ b5ef9d95-1a2a-4828-8e27-89727f2e288b
 md"""
@@ -438,9 +429,6 @@ _, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm, window_width);
 	println(bad_idxs .- 1) # For Python
 end
 
-# ╔═╡ fb03f876-4157-4e1f-9a36-6050c9944f8a
-316 - length(bad_idxs)
-
 # ╔═╡ 3e7b0a0b-1ee9-4436-935e-c4ced50620ba
 size(f_div_WLC_norm, 1) - length(bad_idxs)
 
@@ -520,9 +508,6 @@ extrema(airmass)
 # ╔═╡ 9cdee207-8911-4d37-a5bd-b920e5a8846b
 airmass[[begin, end]]
 
-# ╔═╡ 523aed12-afad-408a-a13f-85ba1b86315d
-lines(airmass)
-
 # ╔═╡ 354580e4-0aa9-496f-b024-665025a2eeda
 lc = let
 	med_mag = f_to_med_mag(f_target_wlc |> vec)
@@ -554,9 +539,6 @@ if save_LDSS3_template let
 	end
 end
 end
-
-# ╔═╡ 1c3e3620-e4de-401d-afee-66303d35a9e2
-LC["temporal"].columns["exptime"] |> unique
 
 # ╔═╡ 079c3915-33af-40db-a544-28453732c372
 specshifts = load_npz(
@@ -811,9 +793,6 @@ end
 # ╔═╡ b2c61d08-6fcf-4b0c-a21a-c0c5e3205210
 html"""
 <style>
-#launch_binder {
-	display: none;
-}
 body.disable_ui main {
 		max-width : 95%;
 	}
@@ -866,7 +845,6 @@ body.disable_ui main {
 # ╠═13385b21-fbd7-484d-a1ac-0687834f92c7
 # ╠═cb805821-5d2e-484c-93a5-10a897d2cfe7
 # ╠═ded63b4b-61b6-41b6-98d4-d13166bce76a
-# ╠═fb03f876-4157-4e1f-9a36-6050c9944f8a
 # ╠═cd10cbf3-22f4-46cd-8345-cec3d141e3ca
 # ╠═83263daf-a902-4414-850b-aa6949752fbb
 # ╠═4f71ba8d-bfa0-4adc-8d82-cd3bca8b6c14
@@ -874,7 +852,6 @@ body.disable_ui main {
 # ╠═4b2ed9db-0a17-4e52-a04d-3a6a5bf2c054
 # ╠═9372c69a-0aad-4e6e-9ea3-e934fa09b758
 # ╟─d5c6d058-17c6-4cf0-97b8-d863b1529161
-# ╠═3dc704cc-abee-42b8-8220-62fdda278944
 # ╠═20d12d7b-c666-46c3-8f48-5501641e8df3
 # ╠═470514e7-0f08-44a3-8519-5d704ea6b8d4
 # ╠═f80347e8-dc5a-4b0c-a6c0-db5c12eadcbb
@@ -898,8 +875,6 @@ body.disable_ui main {
 # ╠═bda7227d-a952-4380-ade4-7cf784a1e5cd
 # ╠═2bc4f498-9732-459f-9d8e-c1c549562c63
 # ╠═9cdee207-8911-4d37-a5bd-b920e5a8846b
-# ╠═523aed12-afad-408a-a13f-85ba1b86315d
-# ╠═1c3e3620-e4de-401d-afee-66303d35a9e2
 # ╠═c65c2298-e3a3-4666-be9d-73ee43d94847
 # ╠═d14ab9de-23b4-4647-a823-9b318bb734e9
 # ╠═079c3915-33af-40db-a544-28453732c372
@@ -912,8 +887,6 @@ body.disable_ui main {
 # ╟─2341920d-6db8-4f08-b8ed-4907ceab7357
 # ╠═354580e4-0aa9-496f-b024-665025a2eeda
 # ╠═bc54942e-38ef-4919-a3d4-28d5f4db8487
-# ╠═fd33081a-6718-496d-8488-a4f1afcbc52d
-# ╠═da8271e0-854b-481c-ba52-c7c910cf79dc
 # ╠═898a390b-49f7-45f4-b1a1-b22922d69a29
 # ╟─b5ef9d95-1a2a-4828-8e27-89727f2e288b
 # ╠═5110de9a-3721-4043-b8b7-493daacb4137

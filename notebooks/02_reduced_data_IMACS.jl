@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.5
+# v0.17.7
 
 using Markdown
 using InteractiveUtils
@@ -22,24 +22,14 @@ begin
 	using PlutoUI
 	using AlgebraOfGraphics
 	using CairoMakie
+	using Dates
 	using DataFrames
 	using DelimitedFiles
 	using Glob
 	using ImageFiltering
 	using Latexify
 	using Statistics
-end
-
-# ╔═╡ 01cc9f96-bc14-443f-9231-9a423fdce342
-using Dates
-
-# ╔═╡ d07e895f-c43b-46c4-be47-5af44bfda47a
-begin
-	ENV["PYTHON"] = ""
-	Pkg.build("PyCall")
-	using PyCall
-	const Conda = PyCall.Conda
-	Conda.add("lightkurve", :WASP50b)
+	using PythonCall, CondaPkg
 end
 
 # ╔═╡ ee24f7df-c4db-4065-afe9-10be80cbcd6b
@@ -49,6 +39,11 @@ md"""
 In this notebook we will examine the stellar spectra, white-light, and wavelength binned light curves from the raw flux extracted from IMACS.
 
 $(TableOfContents(depth=4))
+
+!!! note "Data download"
+	```
+	rclone sync -P ACCESS_box:WASP-50b/data/reduced_data data/reduced_data
+	```
 """
 
 # ╔═╡ 9d180c21-e634-4a1e-8430-bdd089262f66
@@ -57,7 +52,7 @@ md"""
 
 The main data product from our custom pipeline for this instrument is a pickle file with the following naming scheme: `LCs_<target>_<wavelength bin scheme>.pkl`. 
 
-Each cube (`LC`) can be selected from the following drop-down menus, and will be used for the rest of this analysis:
+Each cube (`LC`) and wavelength binning scheme can be selected from the following drop-down menus, and will be used for the rest of this analysis:
 """
 
 # ╔═╡ 28d18f7f-2e41-4771-9f27-342bbda847dd
@@ -85,20 +80,10 @@ transits = merge(
 	),
 )
 
-# ╔═╡ 66052b03-35a0-4877-abef-f525766fd332
+# ╔═╡ 13e9b4e0-2e14-42b5-bddd-4ea37e662f80
 md"""
-!!! tip
-	A description of each field can be found on our repo page here (PUBLIC LINK?)
-"""
-
-# ╔═╡ 7bfc971c-8737-49ad-adec-ac57d176f10e
-md"""
-We can extract the comparison star flux in a similar way by stacking the ``N \times W`` matrix for each star:
-"""
-
-# ╔═╡ 1c3e8cb3-2eff-47c2-8c17-01d0599556b8
-md"""
-### Helper functions
+!!! tip "Language interopability 🐍"
+	We use [PythonCall.jl](https://github.com/cjdoris/PythonCall.jl) to interface with Python objects used in this analysis. More examples of its useage can be found [here](https://icweaver.github.io/sample_Pluto_notebooks/html/fun_with_python.jl.html).
 """
 
 # ╔═╡ e774a20f-2d58-486a-ab71-6bde678b26f8
@@ -141,9 +126,6 @@ wbins_species = [
 
 # ╔═╡ 224bbe2c-5fd0-48dc-9f95-f38b9061e2ce
 species = (Na=5893.0, K=7682.0, Na_8200=8189.0)
-
-# ╔═╡ 41b33845-2bfa-4e68-9e92-f15aaec2a251
-([mean(wbins_species, dims=2) diff(wbins_species, dims=2)])
 
 # ╔═╡ 8759b3c2-948c-461e-a925-b68edd532d1d
 PlutoUI.Text
@@ -317,7 +299,8 @@ end
 
 # ╔═╡ 3653ee36-35a6-4e0a-8d46-4f8389381d45
 begin
-	py"""
+	@pyexec """
+	global np, pickle, load_npz, load_pickle
 	import numpy as np
 	import pickle
 	
@@ -329,68 +312,26 @@ begin
 			data = pickle.load(f)
 		return data
 	"""
-	load_npz(s; allow_pickle=false) = py"load_npz"(s, allow_pickle=allow_pickle)
-	load_pickle(s) = py"load_pickle"(s)
+	load_npz(s; allow_pickle=false) = @pyeval("load_npz")(
+		s, allow_pickle=allow_pickle
+	)
+	load_pickle(s) = @pyeval("load_pickle")(s)
 end;
 
 # ╔═╡ dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
 LC = load_pickle(FPATH_LC);
 
-# ╔═╡ 418bb00c-070f-4b12-9877-b2936f999e5c
-AM = LC["Z"];
-
-# ╔═╡ 0c9e1227-9087-4a87-86a9-cb7c2e4aeaf7
-scatter(AM)
-
-# ╔═╡ 20f79ab6-b69e-4528-9856-ffa316442b75
-round.(extrema(AM), digits=1)
-
-# ╔═╡ f90cefa7-8304-4d4d-801d-8eb27d842d41
-round.(AM[[begin, end]], digits=1)
-
-# ╔═╡ cc25d4d4-0fb7-4bc4-9aaf-2e2d9ff4e27d
-LC |> keys
-
-# ╔═╡ f8afc0b6-a170-483f-b923-47fad6a8e89f
-LC["wbins"]
-
-# ╔═╡ d5f859c2-f7ae-41c0-92bd-3eaf7bd16a7e
-LC["etimes"] |> unique
-
-# ╔═╡ f85aefff-3178-4e59-adc5-5072adae02f8
-t = LC["t"]
-
-# ╔═╡ 15db6161-7a4c-4468-bab1-df26ff19561c
-round.(julian2datetime.((t[begin], t[end])), Dates.Minute)
-
-# ╔═╡ 2ed6befa-e08c-464b-9685-597f99a51c1e
-length(t)
-
-# ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
-wbins = LC["wbins"]
-
-# ╔═╡ 7f30d3c2-d8a4-4c0d-bbca-b1d5b1e4c20b
-with_terminal() do
-	wl, wu = wbins[:, 1], wbins[:, 2]
-	Δw = @. wu - wl
-	wc = @. (wl + wu) / 2
-	df = DataFrame(
-		"Central wavelength" => wc,
-		"Lower wav." => wl,
-		"Upper wav." => wu,
-		L"$\Delta$ wav." => Δw,
-	)
-	latextabular(df, latex=false) |> println
-end
+# ╔═╡ 65cc9f56-1e9e-446c-82db-10dcd6334ce3
+LC_spectra = pyconvert(Dict{String, Array}, LC["spectra"]);
 
 # ╔═╡ bcda2043-f8c7-46bc-a5d4-b6f1f0883e9e
-LC_cNames = LC["cNames"]
+LC_cNames = pyconvert(Vector, LC["cNames"])
 
 # ╔═╡ f519626c-a3e8-4390-b3af-40b7beb665ed
-LC_oLC = LC["oLC"]
+LC_oLC = pyconvert(Vector, LC["oLC"])
 
 # ╔═╡ 9a9b688c-94f0-4944-a9b2-21702073e0c7
-LC_cLC = LC["cLC"]
+LC_cLC = pyconvert(Matrix, LC["cLC"])
 
 # ╔═╡ 18d58341-0173-4eb1-9f01-cfa893088613
 begin
@@ -422,7 +363,7 @@ f_div_WLC_norm
 
 # ╔═╡ 3ca393d6-01c0-4f77-88ff-7c4f6388670e
 begin
-	oLCw, cLCw = LC["oLCw"], LC["cLCw"]
+	oLCw, cLCw = pyconvert(Matrix, LC["oLCw"]), pyconvert(Array, LC["cLCw"])
 	(ntimes, nbins), ncomps = size(oLCw), length(comp_names)
 	offs = reshape(range(0, 0.3, length=nbins), 1, :) # Arbitrary offsets for clarity
 	f_norm_w = Array{Float64}(undef, ntimes, ncomps, nbins)
@@ -482,39 +423,6 @@ begin
 	)
 	
 	COLORS
-end
-
-# ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
-if plot_stellar_spectra let
-	fig = Figure(resolution=FIG_WIDE)
-	ax = Axis(fig[1, 1];
-		xlabel = "Wavelength (Å)",
-		ylabel = "Relative flux",
-	)
-	
-	LC_spectra = LC["spectra"]
-	wav = LC_spectra["wavelengths"]
-	f_norm = median(LC_spectra["WASP50"])
-	
-	i = 1
-	for (name, f) in sort(LC_spectra)
-		if name != "wavelengths"
-			spec_plot!(ax, wav, f, color=COLORS_SERIES[i], norm=f_norm, label=name)
-			i += 1
-		end
-	end
-	
-	vlines!.(ax, wbins, linewidth=1.0, color=:lightgrey)
-	
-	axislegend(transits[fname_suff])
-	
-	xlims!(ax, 4_500, 11_000)
-	ylims!(ax, 0, 2.6)
-	
-	savefig(fig, "$(FIG_PATH)/extracted_spectra_$(fname_suff).png")
-	
-	fig
-	end
 end
 
 # ╔═╡ ccabf5d2-5739-4284-a972-23c02a263a5c
@@ -580,7 +488,6 @@ if plot_lcs let
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
 	fig[end+1, 2:end] = Label(fig, "Index")
 
-	@show fname_suff
 	Label(fig[0, end], transits[fname_suff];
 		tellwidth = false,
 		halign = :right,
@@ -651,6 +558,47 @@ function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 	fig
 end
 
+# ╔═╡ a6ec8699-475b-4a86-ab0b-d65b85de2c2d
+@py begin
+	import numpy as np
+	import pickle
+end
+
+# ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
+wbins = pyconvert(Matrix, np.array(LC["wbins"]));
+
+# ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
+if plot_stellar_spectra let
+	fig = Figure(resolution=FIG_WIDE)
+	ax = Axis(fig[1, 1];
+		xlabel = "Wavelength (Å)",
+		ylabel = "Relative flux",
+	)
+	
+	wav = LC_spectra["wavelengths"]
+	f_norm = median(LC_spectra["WASP50"])
+	
+	i = 1
+	for (name, f) in sort(LC_spectra)
+		if name != "wavelengths"
+			spec_plot!(ax, wav, f, color=COLORS_SERIES[i], norm=f_norm, label=name)
+			i += 1
+		end
+	end
+	
+	vlines!.(ax, wbins, linewidth=1.0, color=:lightgrey)
+	
+	axislegend(transits[fname_suff])
+	
+	xlims!(ax, 4_500, 11_000)
+	ylims!(ax, 0, 2.6)
+	
+	savefig(fig, "$(FIG_PATH)/extracted_spectra_$(fname_suff).png")
+	
+	fig
+	end
+end
+
 # ╔═╡ 7962e716-8b0e-4c58-9d14-f51bbf72d419
 plot_blcs && for comp_idx ∈ use_comps_idxs
 	datas = f_norm_w[:, comp_idx, :]
@@ -664,15 +612,12 @@ plot_blcs && for comp_idx ∈ use_comps_idxs
 	)
 end
 
-# ╔═╡ e8478e36-10fc-4e95-bf09-e217cad0cb15
-@with_terminal Conda.list(:WASP50b)
+# ╔═╡ 6303ef67-c03f-4d2b-9aba-c80f87140bc5
+CondaPkg.add("numpy"); CondaPkg.resolve()
 
 # ╔═╡ 03af71ac-673b-459b-a931-a600b13d7ee6
 html"""
 <style>
-#launch_binder {
-	display: none;
-}
 body.disable_ui main {
 		max-width : 95%;
 	}
@@ -689,35 +634,21 @@ body.disable_ui main {
 # ╔═╡ Cell order:
 # ╟─ee24f7df-c4db-4065-afe9-10be80cbcd6b
 # ╟─9d180c21-e634-4a1e-8430-bdd089262f66
-# ╠═28d18f7f-2e41-4771-9f27-342bbda847dd
-# ╠═bd2cdf33-0c41-4948-82ab-9a28929f72b3
+# ╟─28d18f7f-2e41-4771-9f27-342bbda847dd
+# ╟─bd2cdf33-0c41-4948-82ab-9a28929f72b3
 # ╟─5ec299ff-bba9-4d66-a9f4-17f2b61d2a20
 # ╠═3959e46c-87c9-4566-8ab1-f437323f0a9f
 # ╠═32b9a326-ddc8-4557-bcf5-9dcc54ed83e5
+# ╟─13e9b4e0-2e14-42b5-bddd-4ea37e662f80
 # ╠═dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
-# ╠═418bb00c-070f-4b12-9877-b2936f999e5c
-# ╠═0c9e1227-9087-4a87-86a9-cb7c2e4aeaf7
-# ╠═cc25d4d4-0fb7-4bc4-9aaf-2e2d9ff4e27d
-# ╠═f8afc0b6-a170-483f-b923-47fad6a8e89f
-# ╠═15db6161-7a4c-4468-bab1-df26ff19561c
-# ╠═d5f859c2-f7ae-41c0-92bd-3eaf7bd16a7e
-# ╠═2ed6befa-e08c-464b-9685-597f99a51c1e
-# ╠═f85aefff-3178-4e59-adc5-5072adae02f8
-# ╠═01cc9f96-bc14-443f-9231-9a423fdce342
-# ╠═20f79ab6-b69e-4528-9856-ffa316442b75
-# ╠═f90cefa7-8304-4d4d-801d-8eb27d842d41
-# ╠═6471fc66-47a5-455e-9611-c6fd9d56e9dc
-# ╟─7f30d3c2-d8a4-4c0d-bbca-b1d5b1e4c20b
-# ╟─66052b03-35a0-4877-abef-f525766fd332
-# ╟─7bfc971c-8737-49ad-adec-ac57d176f10e
-# ╟─1c3e8cb3-2eff-47c2-8c17-01d0599556b8
 # ╟─e774a20f-2d58-486a-ab71-6bde678b26f8
+# ╠═65cc9f56-1e9e-446c-82db-10dcd6334ce3
+# ╠═6471fc66-47a5-455e-9611-c6fd9d56e9dc
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
 # ╠═5fbaead0-f8fb-4ea8-8f62-4fca957eb4f0
 # ╠═9ce136ad-8f8d-4861-8b23-6096efb600f4
 # ╠═69637ff5-4faa-4456-9e25-8f873c2bfa5e
 # ╠═224bbe2c-5fd0-48dc-9f95-f38b9061e2ce
-# ╠═41b33845-2bfa-4e68-9e92-f15aaec2a251
 # ╠═8759b3c2-948c-461e-a925-b68edd532d1d
 # ╠═fffaafad-e1db-459b-b5f4-3af6a9fcb427
 # ╠═28befad8-cbef-4a41-8e3b-d176a5bffe91
@@ -756,7 +687,7 @@ body.disable_ui main {
 # ╟─06bbb3e4-9b30-43bd-941f-e357acaa80fc
 # ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
 # ╠═a8d1c3e6-c020-495f-a443-07203b7dcd50
-# ╠═e8478e36-10fc-4e95-bf09-e217cad0cb15
-# ╠═d07e895f-c43b-46c4-be47-5af44bfda47a
+# ╠═a6ec8699-475b-4a86-ab0b-d65b85de2c2d
+# ╠═6303ef67-c03f-4d2b-9aba-c80f87140bc5
 # ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23
 # ╟─03af71ac-673b-459b-a931-a600b13d7ee6

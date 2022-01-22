@@ -166,32 +166,12 @@ end
 md"""
 ## Wavelength bins
 
-We generate the wavelength bins used for each instrument here:
+We show the wavelength bins used for each instrument here:
 """
-
-# ╔═╡ 0ac1029b-9046-4396-91eb-9f10a83da488
-species = (Na=5893.0, K=7682.0, Na_8200=8189.0)
-
-# ╔═╡ 0868da4c-6843-4cbc-a872-a0f59bb9771d
-wbins = [
-	5800.0 5837.0
-	5837.0 5874.0
-	5874.0 5912.0
-	5912.0 5949.0
-	5949.0 5986.0
-	7655.0 7666.0
-	7666.0 7677.0
-	7677.0 7687.0
-	7687.0 7698.0
-	7698.0 7709.0
-]
-
-# ╔═╡ c9f92c20-05c7-4229-9c26-52a17e65cce5
-diff(wbins, dims=2)
 
 # ╔═╡ f58aba9d-bccb-4d8b-ab83-559d6ff1ea62
 df_wbins = let
-	dirpath = "data/reduced_data/wbins"
+	dirpath = "data/raw_data/wbins"
 	df = CSV.read.(
 		("$(dirpath)/w50_bins$(fname).dat" for fname ∈ ("_ut131219", "", "_LDSS3")),
 		DataFrame,
@@ -206,7 +186,7 @@ df_wbins = let
 end
 
 # ╔═╡ 0d2476b1-2864-4bfc-ac37-f771aab77368
-@with_terminal println(latextabular(df_wbins, latex=false))
+latextabular(df_wbins, latex=false) |> PlutoUI.Text
 
 # ╔═╡ 4480ae72-3bb2-4e17-99be-28afc756332a
 md"""
@@ -345,9 +325,6 @@ end
 # ╔═╡ 6000db3d-0798-4f76-be31-617d43406b54
 html"""
 <style>
-#launch_binder {
-	display: none;
-}
 body.disable_ui main {
 		max-width : 95%;
 	}
@@ -388,13 +365,10 @@ body.disable_ui main {
 # ╠═83a9357d-836b-4cee-a41f-eabc8f3f12e7
 # ╠═71ba9181-90e4-4d12-97c0-462b3f1df077
 # ╟─8fadd0b6-6ff8-42e5-9014-4e79593e3502
-# ╠═0ac1029b-9046-4396-91eb-9f10a83da488
-# ╠═0868da4c-6843-4cbc-a872-a0f59bb9771d
-# ╠═c9f92c20-05c7-4229-9c26-52a17e65cce5
 # ╠═f58aba9d-bccb-4d8b-ab83-559d6ff1ea62
-# ╟─0d2476b1-2864-4bfc-ac37-f771aab77368
+# ╠═0d2476b1-2864-4bfc-ac37-f771aab77368
 # ╟─4480ae72-3bb2-4e17-99be-28afc756332a
 # ╠═db4a4cd8-c5e8-4124-935f-0666f6e73fe2
-# ╠═b44b6591-d57b-40bd-810c-a41386412b6c
+# ╟─b44b6591-d57b-40bd-810c-a41386412b6c
 # ╠═3433ed02-c27c-4fe5-bfda-a5108a58407c
 # ╟─6000db3d-0798-4f76-be31-617d43406b54

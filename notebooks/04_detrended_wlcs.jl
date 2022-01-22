@@ -31,15 +31,16 @@ begin
 	using Measurements, Statistics
 	using OrderedCollections
 	using Printf
+    using PythonCall, CondaPkg
 end
 
 # ╔═╡ 91fa7df7-5e2f-4cf5-83af-48dcae539726
 begin
-	ENV["PYTHON"] = ""
-	Pkg.build("PyCall")
-	using PyCall
-	const Conda = PyCall.Conda
-	Conda.add("lightkurve", :WASP50b)
+    #ENV["PYTHON"] = ""
+	#Pkg.build("PyCall")
+	#using PyCall
+	#const Conda = PyCall.Conda
+	#Conda.add("lightkurve", :WASP50b)
 end
 
 # ╔═╡ 506eeeb2-e56d-436b-91b8-605e52201563
@@ -343,7 +344,8 @@ md"""
 
 # ╔═╡ db539901-f0b0-4692-a8d2-6c72dff41196
 begin
-	py"""
+	@pyexec """
+    global np, pickle, load_npz, load_pickle
 	import numpy as np
 	import pickle
 
@@ -355,8 +357,8 @@ begin
 			data = pickle.load(f)
 		return data
 	"""
-	load_npz(s; allow_pickle=false) = py"load_npz"(s, allow_pickle=allow_pickle)
-	load_pickle(s) = py"load_pickle"(s)
+	load_npz(s; allow_pickle=false) = @pyeval("load_npz")(s, allow_pickle=allow_pickle)
+	load_pickle(s) = @pyeval("load_pickle")(s)
 end;
 
 # ╔═╡ f539e06d-a1b5-413a-b90e-91cb0bbd5a4c
