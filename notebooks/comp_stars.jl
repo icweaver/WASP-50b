@@ -333,7 +333,6 @@ md"""
 md"""
 We now have a table that we can copy-and-paste into a paper that is definitely not being ignored right now.
 """
-@show t
 
 # ╔═╡ 4188732d-1d88-4e98-8510-f74224641919
 html"""

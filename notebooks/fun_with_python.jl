@@ -59,7 +59,7 @@ py_range[0] # Python's zero-based indexing is automatically understood
 # ╔═╡ 0b3322b5-cd15-49d9-a446-35224a4b7637
 md"""
 !!! tip
-	We recommend passing strings ("") instead of cmds (\`\`) to play nice with Pluto's `ExpressionExplorer`
+	It's recommended to pass strings ("") instead of cmds (\`\`) to play nice with Pluto's `ExpressionExplorer`
  
 	Related issue?: <https://github.com/fonsp/Pluto.jl/issues/961>
 """
@@ -197,6 +197,22 @@ Where is all this stuff being downloaded/run? Let's see!
 # ╔═╡ 9f68d823-64ac-48cc-b35e-b131a0bd5c50
 @with_terminal run(CondaPkg.MicroMamba.cmd(`list`))
 
+# ╔═╡ 782a5542-860b-4862-9bb9-dc4b1c2f48bb
+html"""
+<style>
+body.disable_ui main {
+		max-width : 95%;
+	}
+@media screen and (min-width: 1081px) {
+	body.disable_ui main {
+		margin-left : 10px;
+		max-width : 72%;
+		align-self: flex-start;
+	}
+}
+</style>
+"""
+
 # ╔═╡ Cell order:
 # ╟─f150770d-cbcd-4eda-a0a5-b759a21f5b9b
 # ╟─30181f53-97e2-4d21-83d2-9394ef64aba2
@@ -234,3 +250,4 @@ Where is all this stuff being downloaded/run? Let's see!
 # ╠═655674de-56c1-4386-8fda-aa5c95b6271f
 # ╠═9f68d823-64ac-48cc-b35e-b131a0bd5c50
 # ╠═22b67cb0-6687-11ec-1868-bb216a9703f4
+# ╟─782a5542-860b-4862-9bb9-dc4b1c2f48bb

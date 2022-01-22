@@ -28,16 +28,11 @@ begin
 	using ImageFiltering
 	using Latexify
 	using LombScargle, Measurements, Statistics
+    using PythonCall, CondaPkg
 end
 
-# ╔═╡ b85cbebb-3334-4672-bf36-1070fd5dff46
-begin
-    ENV["PYTHON"] = ""
-	Pkg.build("PyCall")
-	using PyCall
-	const Conda = PyCall.Conda
-	Conda.add("lightkurve", :WASP50b)
-end
+# ╔═╡ 68f870ba-3825-4f19-a237-7f04d06ee0eb
+using CommonMark
 
 # ╔═╡ 670b88e4-1e96-494d-bfcc-235092bb6e96
 md"""
@@ -123,9 +118,6 @@ let
 	fig
 end
 
-# ╔═╡ 50ee0fbb-30f8-4e29-9de8-0173efcee364
-1e6 * median(df_ASASSN.flux_err)
-
 # ╔═╡ 7e5ea835-8eb2-44d5-905d-433767b6b91a
 md"""
 Since these observations share the same filter, we will treat them as if they came from a single instrument. Next, we will convert the recorded HJD times to BTJD (BJD - 2457000), to place them on the same time axis as the TESS data.
@@ -140,7 +132,8 @@ We will make use of astropy's coordinates and time modules to first make the con
 
 # ╔═╡ 5bf1136b-2d13-4463-8d74-9ade1e2cee96
 begin
-	py"""
+	@pyexec """
+	global SkyCoord, EarthLocation, u, Time, helio_to_bary
 	from astropy.coordinates import SkyCoord, EarthLocation
 	from astropy import units as u
 	from astropy.time import Time
@@ -166,9 +159,9 @@ begin
 	    
 	    return guess.tdb + ltt
 	"""
-	helio_to_bary(coords, hjd, obs_name) = py"helio_to_bary"(
-		coords, hjd, obs_name
-	).value
+	helio_to_bary(coords, hjd, obs_name) = pyconvert(
+		Float64, @pyeval("helio_to_bary")(coords, hjd, obs_name).value
+	)
 end
 
 # ╔═╡ c86f5adc-6e17-44c4-b754-1b5c42557809
@@ -230,7 +223,10 @@ First we use [`lightkurve`](https://docs.lightkurve.org/whats-new-v2.html) to do
 """
 
 # ╔═╡ 0c790d2f-64d4-4e13-9629-a9725cd7086d
-lk = pyimport("lightkurve")
+@py begin 
+	import lightkurve as lk
+	import astropy.time as astrtime
+end
 
 # ╔═╡ 7370a1d9-4f8e-4788-adac-b8be2bcc9643
 function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=1.0)
@@ -252,12 +248,24 @@ function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=
 	lc = lk.LightCurve(
 		time=t, flux=f, flux_err=f_err
 	).normalize()
-	lc_binned = lc.bin(binsize).remove_nans()
-	t_binned, f_binned, f_err_binned = (
-		lc_binned.time.value,
-		lc_binned.flux,
-		lc_binned.flux_err
+	lc_binned_py = lc.bin(binsize).remove_nans()
+	time, flux, flux_err, time_bin_start, time_bin_size = (
+		pyconvert.(
+			Ref(Vector),
+			(
+				lc_binned_py.time.value,
+				lc_binned_py.flux.value,
+				lc_binned_py.flux_err.value,
+				lc_binned_py.time_bin_start.value,
+				lc_binned_py.time_bin_size.value
+			)
+		)
 	)
+	lc_binned = DataFrame((; time, flux, flux_err, time_bin_start, time_bin_size))
+	t_binned, f_binned, f_err_binned = eachcol(
+		lc_binned[:, [:time, :flux, :flux_err]]
+	)
+
 	#bin_lc(t_rel, Δf, Δf_err, binsize)
 	f_binned_err_med = median(filter(!isnan, f_err_binned))
 	
@@ -274,17 +282,24 @@ function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=
 end
 
 # ╔═╡ 2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
-Time = pyimport("astropy.time").Time
+const Time = astrtime.Time;
+
+# ╔═╡ 80425b57-485e-4f97-a015-a1323ee46e00
+Time(2455558.61237, format="jd")
+
+# ╔═╡ ca2d4e93-6118-42a8-bb82-677bcd7f5cf7
+julian2datetime(2455558.61237)
 
 # ╔═╡ ec12acb8-9124-4cc0-8c9f-6525c1565dfd
 begin
-	py"""
+	@pyexec """
+	global oot_flux
 	def oot_flux(lc, P, t_0, dur):
 		in_transit = lc.create_transit_mask(P, t_0, dur)
 		lc_oot = lc[~in_transit]
 		return lc_oot
 	"""
-	oot_flux(lc, P, t_0, dur) = py"oot_flux"(lc, P, t_0, dur)
+	oot_flux(lc, P, t_0, dur) = @pyeval("oot_flux")(lc, P, t_0, dur)
 end
 
 # ╔═╡ 708d54a5-95fd-4f15-9681-f6d8e7b9b05c
@@ -324,8 +339,16 @@ begin
 	push!(lcs_oot, lk.LightCurveCollection([lcs_oot...]).stitch())
 end;
 
+# ╔═╡ 0c0ecfab-f5d8-421b-9b1b-5367e6ce1e80
+lcs_cleaned
+
 # ╔═╡ 43de00bf-e616-43c5-92ce-1044cbd8cfe5
 1e6 .* [median(lc.flux_err) for lc ∈ lcs_oot]
+
+# ╔═╡ 2aebd994-1490-43d0-a9d1-e68652aebc32
+cm"""
+~~h~~
+"""
 
 # ╔═╡ 99fcf959-665b-44cf-9b5f-fd68a919f846
 md"""
@@ -335,7 +358,7 @@ md"""
 # ╔═╡ de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
 function compute_pgram(lc; min_period=0.5, max_period=30.0)
 	plan = LombScargle.plan(
-		lc.time.value, lc.flux .± lc.flux_err,
+		lc.time, lc.flux .± lc.flux_err,
 		minimum_frequency = 1.0 / max_period,
 		maximum_frequency = 1.0 / min_period,
 	)
@@ -343,7 +366,7 @@ function compute_pgram(lc; min_period=0.5, max_period=30.0)
 end
 
 # ╔═╡ f3425d9c-861e-4b26-b352-bd0669c7f1f9
-if plot_ASASSN let
+if plot_ASASSN begin
 	fig = Figure(resolution=(800, 800))
 	
 	### Photometry plot ####
@@ -476,6 +499,9 @@ begin
 		push!(lcs_fit_folded, lc_fit_folded)
 	end
 end
+
+# ╔═╡ 6b889bd3-7fb5-4f71-803c-9ac57f8264c2
+[(lc.__len__(), lc.time_bin_size) for lc ∈ lcs_folded_binned]
 
 # ╔═╡ 056281a2-4786-45eb-a9fa-57515153f66c
 md"""
@@ -732,25 +758,6 @@ if plot_folded let
 	end
 end
 
-# ╔═╡ 61c6dd34-5712-4077-abae-2ee2634dc709
-@with_terminal Conda.list(:WASP50b)
-
-# ╔═╡ 01bfe0ad-3cb9-42f0-9d72-3deef3969d05
-html"""
-<style>
-body.disable_ui main {
-		max-width : 95%;
-	}
-@media screen and (min-width: 1081px) {
-	body.disable_ui main {
-		margin-left : 10px;
-		max-width : 72%;
-		align-self: flex-start;
-	}
-}
-</style>
-"""
-
 # ╔═╡ Cell order:
 # ╟─670b88e4-1e96-494d-bfcc-235092bb6e96
 # ╟─8d42d1c7-c517-41c4-9a5d-2908d2ac2463
@@ -762,7 +769,6 @@ body.disable_ui main {
 # ╟─2b2dd83b-ce99-4551-b8aa-79ca6db5dd06
 # ╠═98704543-8cb7-4fca-b601-2a8d2dfa4833
 # ╠═8e6008ca-a762-4450-a09e-bd0c2bbac4f2
-# ╠═50ee0fbb-30f8-4e29-9de8-0173efcee364
 # ╟─7e5ea835-8eb2-44d5-905d-433767b6b91a
 # ╟─5bc41820-3782-4f82-80b6-6da62805ca8f
 # ╠═5bf1136b-2d13-4463-8d74-9ade1e2cee96
@@ -781,6 +787,8 @@ body.disable_ui main {
 # ╟─97e7feee-11b2-4a35-9327-b5c0d05b2a23
 # ╠═0c790d2f-64d4-4e13-9629-a9725cd7086d
 # ╠═2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
+# ╠═80425b57-485e-4f97-a015-a1323ee46e00
+# ╠═ca2d4e93-6118-42a8-bb82-677bcd7f5cf7
 # ╠═ec12acb8-9124-4cc0-8c9f-6525c1565dfd
 # ╠═708d54a5-95fd-4f15-9681-f6d8e7b9b05c
 # ╟─34fcd73d-a49c-4597-8e63-cfe2495eee48
@@ -788,9 +796,12 @@ body.disable_ui main {
 # ╠═6e62b3cc-96ce-43fd-811b-4b2b102cfd61
 # ╟─241c462c-3cd9-402d-b948-b9b1f608b727
 # ╠═31d5bc92-a1f2-4c82-82f2-67755f9aa235
+# ╠═0c0ecfab-f5d8-421b-9b1b-5367e6ce1e80
 # ╠═82222ee8-f759-499d-a072-c219cc33ccad
 # ╠═3551787f-0a83-408f-9d78-41309ae3dae3
 # ╠═43de00bf-e616-43c5-92ce-1044cbd8cfe5
+# ╠═68f870ba-3825-4f19-a237-7f04d06ee0eb
+# ╠═2aebd994-1490-43d0-a9d1-e68652aebc32
 # ╟─99fcf959-665b-44cf-9b5f-fd68a919f846
 # ╠═94d05a5b-b05e-4407-bcd3-7d625680a262
 # ╠═d7f034c5-5925-4b91-9bea-1068a7ce9252
@@ -799,6 +810,7 @@ body.disable_ui main {
 # ╠═d1f7ed4b-4599-48bd-aac5-93920dae9151
 # ╟─a50ef756-ade6-48a3-8d3a-17b56ce03c26
 # ╠═49bcddbe-d413-48ae-91d8-92bcebf40518
+# ╠═6b889bd3-7fb5-4f71-803c-9ac57f8264c2
 # ╠═97ced6ba-ff74-46b4-90d5-18e7b2f1b903
 # ╠═3128e57f-df4f-4811-b867-8a293d7d536d
 # ╟─056281a2-4786-45eb-a9fa-57515153f66c
@@ -820,7 +832,4 @@ body.disable_ui main {
 # ╟─ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd
 # ╟─79acbb60-803a-4047-b26d-1cf6262274a0
 # ╠═9e2ce576-c9bd-11eb-0699-47af13e79589
-# ╠═61c6dd34-5712-4077-abae-2ee2634dc709
-# ╠═b85cbebb-3334-4672-bf36-1070fd5dff46
 # ╠═55beac98-0929-4a55-91f7-cee7c781498c
-# ╟─01bfe0ad-3cb9-42f0-9d72-3deef3969d05

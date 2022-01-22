@@ -110,7 +110,7 @@ begin
 			normalizenames = true,
 		)
 		
-		# Add wav bins for external instruments
+		# Add wav bins for external instruments (not saved in pkl)
 		if occursin("LDSS3", dirpath)
 			wbins = readdlm("$(dirpath)/wbins.dat", comments=true)
 			cubes[transit]["tspec"][:, [:Wav_d, :Wav_u]] .= wbins
@@ -573,9 +573,6 @@ gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 # ╔═╡ 3510ead9-6e66-4fec-84ca-15c8a3ce4c3e
 html"""
 <style>
-#launch_binder {
-	display: none;
-}
 body.disable_ui main {
 		max-width : 95%;
 	}

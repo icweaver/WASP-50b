@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.5
+# v0.17.7
 
 using Markdown
 using InteractiveUtils
@@ -431,9 +431,6 @@ end
 # ╔═╡ e3708d6f-d9a9-4e42-b25b-2d1c333fddff
 html"""
 <style>
-#launch_binder {
-	display: none;
-}
 body.disable_ui main {
 		max-width : 95%;
 	}

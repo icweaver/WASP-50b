@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.5
+# v0.17.7
 
 using Markdown
 using InteractiveUtils
@@ -491,6 +491,22 @@ let
 	fig
 end
 
+# ╔═╡ 1c4e56b7-0b0e-4c32-89ac-38a880bf56b9
+html"""
+<style>
+body.disable_ui main {
+		max-width : 95%;
+	}
+@media screen and (min-width: 1081px) {
+	body.disable_ui main {
+		margin-left : 10px;
+		max-width : 72%;
+		align-self: flex-start;
+	}
+}
+</style>
+"""
+
 # ╔═╡ Cell order:
 # ╟─cd13d7f3-0ea3-4631-afd9-5f3e359000e6
 # ╟─7493bb13-ee41-4798-99f6-dc1df97bd624
@@ -530,3 +546,4 @@ end
 # ╟─95bb5b9e-0c50-48fa-bf4c-d0819c327bcc
 # ╠═81e14e30-2880-40f8-b4fa-a48a2dc34db7
 # ╠═24c6a2d0-0aea-11ec-2cd4-3de7ec08b83e
+# ╟─1c4e56b7-0b0e-4c32-89ac-38a880bf56b9
