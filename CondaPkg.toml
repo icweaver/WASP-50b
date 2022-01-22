@@ -1,5 +1,6 @@
 [deps]
 pandas = ""
+matplotlib = ""
 lightkurve = ""
 numpy = ""
 astroquery = ""

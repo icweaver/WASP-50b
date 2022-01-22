@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.5
+# v0.17.7
 
 using Markdown
 using InteractiveUtils
@@ -34,20 +34,11 @@ begin
     using PythonCall, CondaPkg
 end
 
-# ╔═╡ 91fa7df7-5e2f-4cf5-83af-48dcae539726
-begin
-    #ENV["PYTHON"] = ""
-	#Pkg.build("PyCall")
-	#using PyCall
-	#const Conda = PyCall.Conda
-	#Conda.add("lightkurve", :WASP50b)
-end
-
 # ╔═╡ 506eeeb2-e56d-436b-91b8-605e52201563
 md"""
 # Detrended white-light curves
 
-In this notebook we will visualize the detrended white-light curves from IMACS and LDSS3. We used the average orbital and system parameters obtained from these detrended fits to place uniform constraints on the binned wavelength analysis **<ADD LINK>.**
+In this notebook we will visualize the detrended white-light curves from IMACS and LDSS3. We used the average orbital and system parameters obtained from these detrended fits to place uniform constraints on our binned wavelength analysis.
 
 $(TableOfContents(title="📖 Table of Contents"))
 """
@@ -58,6 +49,10 @@ md"""
 
 	```bash
 	rsync -azRP $H:/pool/sao_access/iweaver/GPTransmissionSpectra/./"out_*" data/detrended/ --exclude={"*george*","*mnest*"}
+	```
+
+	```bash
+	rclone sync -P ACCESS_box:WASP-50b/data/detrended data/detrended
 	```
 """
 
@@ -295,9 +290,12 @@ function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 
 	t₀ = val(cube["results"], "t0")
 	P = val(cube["results"], "P")
-	t = ϕ.(cube["models"]["t"], t₀, P)
-	t_interp = ϕ.(cube["models"]["t_interp"], t₀, P)
-	resids = cube["models"]["LC_det"] - cube["models"]["LC_transit_model"]
+	t = ϕ.(pyconvert(Vector, cube["models"]["t"]), t₀, P)
+	t_interp = ϕ.(pyconvert(Vector, cube["models"]["t_interp"]), t₀, P)
+	LC_det = pyconvert(Vector, cube["models"]["LC_det"])
+	LC_transit_model = pyconvert(Vector, cube["models"]["LC_transit_model"])
+	LC_det_model_interp = pyconvert(Vector, cube["models"]["LC_det_model_interp"])
+	resids = LC_det - LC_transit_model
 	resids_σ = round(Int, std(resids) * 1e6)
 	resids .*= 1e6
 	
@@ -307,12 +305,12 @@ function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 	# Top panel
 	scatter!(ax_top,
 		t,
-		cube["models"]["LC_det"],
+		LC_det,
 		color = color,
 	)
 	lines!(ax_top,
 		t_interp,
-		cube["models"]["LC_det_model_interp"],
+		LC_det_model_interp,
 		color = color_dark,
 	)
 	t_x = 0.06
@@ -345,7 +343,7 @@ md"""
 # ╔═╡ db539901-f0b0-4692-a8d2-6c72dff41196
 begin
 	@pyexec """
-    global np, pickle, load_npz, load_pickle
+	global np, pickle, load_npz, load_pickle
 	import numpy as np
 	import pickle
 
@@ -416,7 +414,7 @@ let
 			ax_bottom_kwargs = ax_bottom_kwargs,
 		)
 	end
-
+	
 	axs = reshape(fig.content, 4, 2)
 	linkxaxes!(axs...)
 	linkyaxes!.(axs[1, 1], axs[3, 1], axs[1, 2], axs[3, 2])
@@ -432,6 +430,9 @@ let
 	
 	fig
 end
+
+# ╔═╡ 81070b31-6b9f-4078-b18f-0590686a6252
+cubes |> keys
 
 # ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
 begin
@@ -483,7 +484,11 @@ begin
 	
 	for (transit, cube) in cubes
 		samples_cube[transit] = Dict(
-			param => scale_samples(cube["samples"][param], PARAMS[param], BMA)
+			param => scale_samples(
+				pyconvert(Dict{String, Vector}, cube["samples"])[param],
+				PARAMS[param],
+				BMA
+			)
 			for param in keys(PARAMS)
 		)
 	end
@@ -572,34 +577,9 @@ if plot_corner let
 	end
 end
 
-# ╔═╡ c7a08aba-20c1-4c6b-aa73-7f963e06de4f
-cube = let
-	DATA_DIR = "data/detrended/out_sp/WASP50"
-Dict(
-		name(fpath_sample, dates_to_names) => load_data(
-			fpath_sample, fpath_model, fpath_result
-		)
-
-		for (fpath_sample, fpath_model, fpath_result) ∈ zip(
-			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")),
-			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_WLC.npy")),
-			sort(glob("$(DATA_DIR)/w50*/white-light/results.dat")),
-		)
-	)
-end
-
-# ╔═╡ c6061bd8-6e49-483c-8c38-a62cf67efbe7
-y = cube["Transit 3 (IMACS)"]["models"]
-
-# ╔═╡ 89c8fcd6-6a2f-4e4e-882d-569901487966
-@with_terminal Conda.list(:WASP50b)
-
 # ╔═╡ 2c3f26b9-410a-4cfa-befd-194daddefb4e
 html"""
 <style>
-#launch_binder {
-	display: none;
-}
 body.disable_ui main {
 		max-width : 95%;
 	}
@@ -629,8 +609,7 @@ body.disable_ui main {
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
-# ╠═c7a08aba-20c1-4c6b-aa73-7f963e06de4f
-# ╠═c6061bd8-6e49-483c-8c38-a62cf67efbe7
+# ╠═81070b31-6b9f-4078-b18f-0590686a6252
 # ╠═89c48710-651e-45ff-8fcb-e4173559defd
 # ╠═0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # ╠═d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c
@@ -657,7 +636,5 @@ body.disable_ui main {
 # ╠═1f7b883c-0192-45bd-a206-2a9fde1409ca
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
 # ╠═db539901-f0b0-4692-a8d2-6c72dff41196
-# ╠═89c8fcd6-6a2f-4e4e-882d-569901487966
-# ╠═91fa7df7-5e2f-4cf5-83af-48dcae539726
 # ╠═691eddff-f2eb-41a8-ab05-63afb46d15f2
 # ╟─2c3f26b9-410a-4cfa-befd-194daddefb4e

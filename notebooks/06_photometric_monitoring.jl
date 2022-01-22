@@ -28,6 +28,7 @@ begin
 	using ImageFiltering
 	using Latexify
 	using LombScargle, Measurements, Statistics
+    using PythonCall, CondaPkg
 end
 
 # ╔═╡ 68f870ba-3825-4f19-a237-7f04d06ee0eb
@@ -35,11 +36,11 @@ using CommonMark
 
 # ╔═╡ b85cbebb-3334-4672-bf36-1070fd5dff46
 begin
-	ENV["PYTHON"] = ""
-	Pkg.build("PyCall")
-	using PyCall
-	const Conda = PyCall.Conda
-	Conda.add("lightkurve", :WASP50b)
+    #ENV["PYTHON"] = ""
+	#Pkg.build("PyCall")
+	#using PyCall
+	#const Conda = PyCall.Conda
+	#Conda.add("lightkurve", :WASP50b)
 end
 
 # ╔═╡ 670b88e4-1e96-494d-bfcc-235092bb6e96
@@ -143,7 +144,8 @@ We will make use of astropy's coordinates and time modules to first make the con
 
 # ╔═╡ 5bf1136b-2d13-4463-8d74-9ade1e2cee96
 begin
-	py"""
+	@pyexec """
+    global SkyCoord, EarthLocation, u, Time, helio_to_bary
 	from astropy.coordinates import SkyCoord, EarthLocation
 	from astropy import units as u
 	from astropy.time import Time
@@ -169,7 +171,7 @@ begin
 	    
 	    return guess.tdb + ltt
 	"""
-	helio_to_bary(coords, hjd, obs_name) = py"helio_to_bary"(
+	helio_to_bary(coords, hjd, obs_name) = @pyeval("helio_to_bary")(
 		coords, hjd, obs_name
 	).value
 end
