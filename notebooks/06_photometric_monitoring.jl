@@ -172,47 +172,6 @@ First we use [`lightkurve`](https://docs.lightkurve.org/whats-new-v2.html) to do
 # ╔═╡ 0c790d2f-64d4-4e13-9629-a9725cd7086d
 @py import lightkurve as lk
 
-# ╔═╡ 7370a1d9-4f8e-4788-adac-b8be2bcc9643
-function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=1.0)
-	t_rel = t .- t_offset
-	if relative_flux
-		f_med = median(f)
-		Δf, Δf_err = @. 1.0 + (f - f_med) / f_med , @. f_err / f_med
-		
-	else
-		f_med = 1.0
-		Δf, Δf_err = f, f_err
-	end
-	
-	# Original data
-	errorbars!(ax, t_rel, Δf, Δf_err, color=(:darkgrey, 0.25))
-	scatter!(ax, t_rel, Δf, color=(:darkgrey, 0.25))
-	
-	# Binned data
-	lc = lk.LightCurve(
-		time=t, flux=f, flux_err=f_err
-	).normalize()
-	lc_binned = lc.bin(binsize).remove_nans()
-	t_binned, f_binned, f_err_binned = (
-		lc_binned.time.value,
-		lc_binned.flux,
-		lc_binned.flux_err
-	)
-	#bin_lc(t_rel, Δf, Δf_err, binsize)
-	f_binned_err_med = median(filter(!isnan, f_err_binned))
-	
-	errorbars!(ax, t_binned, f_binned, f_err_binned;
-		color=:grey
-	)
-	scatter!(ax, t_binned, f_binned;
-		color=:grey, label="avg err: $(f_binned_err_med)",
-	)
-	
-	axislegend(ax, position=:rb)
-	
-	return ax, t_binned, f_binned, f_err_binned, lc_binned, f_med
-end
-
 # ╔═╡ 2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
 Time = pyimport("astropy.time").Time;
 
@@ -267,6 +226,48 @@ end;
 # Table -> DataFrame (pandas) -> PyPandasDataFrame (why astropy, why?)
 to_PyPandas(df_py) = PyTable(df_py.to_pandas().reset_index())
 
+# ╔═╡ 7370a1d9-4f8e-4788-adac-b8be2bcc9643
+function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=1.0)
+	t_rel = t .- t_offset
+	if relative_flux
+		f_med = median(f)
+		Δf, Δf_err = @. 1.0 + (f - f_med) / f_med , @. f_err / f_med
+		
+	else
+		f_med = 1.0
+		Δf, Δf_err = f, f_err
+	end
+	
+	# Original data
+	errorbars!(ax, t_rel, Δf, Δf_err, color=(:darkgrey, 0.25))
+	scatter!(ax, t_rel, Δf, color=(:darkgrey, 0.25))
+	
+	# Binned data
+	lc = lk.LightCurve(
+		time=t, flux=f, flux_err=f_err
+	).normalize()
+	lc_binned_py = lc.bin(binsize).remove_nans()
+	lc_binned = to_PyPandas(lc_binned_py)
+	t_binned, f_binned, f_err_binned = (
+		lc_binned.time,
+		lc_binned.flux,
+		lc_binned.flux_err
+	)
+	#bin_lc(t_rel, Δf, Δf_err, binsize)
+	f_binned_err_med = median(filter(!isnan, f_err_binned))
+	
+	errorbars!(ax, t_binned, f_binned, f_err_binned;
+		color=:grey
+	)
+	scatter!(ax, t_binned, f_binned;
+		color=:grey, label="avg err: $(f_binned_err_med)",
+	)
+	
+	axislegend(ax, position=:rb)
+	
+	return ax, t_binned, f_binned, f_err_binned, lc_binned_py, f_med
+end
+
 # ╔═╡ 43de00bf-e616-43c5-92ce-1044cbd8cfe5
 1e6 .* [median(to_PyPandas(lc).flux_err) for lc ∈ lcs_oot]
 
@@ -317,7 +318,7 @@ if plot_ASASSN let
 	
 	#### Periodogram #######
 	ax_pg = Axis(fig[2, 1], xlabel="Periods (days)", ylabel="log10 Power")
-	pgram, plan = compute_pgram(lc_binned)
+	pgram, plan = compute_pgram(to_PyPandas(lc_binned))
 	b = LombScargle.bootstrap(100, plan)
 	P_max = findmaxperiod(pgram)[1]
 	lines!(ax_pg, periodpower(pgram)...;
@@ -430,7 +431,7 @@ lcs_oot_comb = lcs_oot[end]
 P_maxs
 
 # ╔═╡ 06abb8cb-9acb-49ba-81b6-37b9f52c89b1
-function yee(lc)
+function fold_and_bin(lc)
 	lcs_folded = []
 	lcs_folded_binned = []
 	lcs_fit_folded = []
@@ -449,7 +450,7 @@ function yee(lc)
 end
 
 # ╔═╡ 7a9dd8e0-3c2d-4c99-ae86-401554ad8558
-x = yee(lcs_oot_comb)
+x = fold_and_bin(lcs_oot_comb)
 
 # ╔═╡ 2429035b-5b8e-45d5-9957-99ad772324af
 ΔLs2 = map(x[3]) do lc
