@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.5
+# v0.17.7
 
 using Markdown
 using InteractiveUtils
@@ -45,7 +45,11 @@ $(TableOfContents(title="📖 Table of Contents"))
 md"""
 !!! note "Data download"
 	```shell
-	rsync -azRP $H:/pool/sao_access/iweaver/GPTransmissionSpectra/./"out_sp*" data/detrended/ --exclude={"*george*","*mnest*"}
+	rsync -azRP $H:/pool/sao_access/iweaver/GPTransmissionSpectra/./"out_*" data/detrended/ --exclude={"*george*","*mnest*"}
+	```
+
+	```shell
+	rclone sync -P ACCESS_box:WASP-50b/data/detrended data/detrended
 	```
 """
 
@@ -90,7 +94,7 @@ begin
 		dirpath_WLC = "$(dirname(dirpath))/white-light"
 
 		# TODO, track this down
-		#deleteat!(fpaths, findfirst(s -> occursin("wbin3", s), fpaths))
+		deleteat!(fpaths, findfirst(s -> occursin("wbin3", s), fpaths))
 		
 		# WLC BMA t₀
 		t₀ = let
@@ -117,7 +121,7 @@ begin
 				comment = "#",
 				select=[:DetFlux, :Model],
 			)
-			#@info fpath nrow(df)
+			#@show fpath nrow(df)
 			lc .= df.DetFlux
 			model .= df.Model
 		end
@@ -138,9 +142,6 @@ begin
 		
 	cubes = sort(cubes)
 end
-
-# ╔═╡ b6007d1d-fb9e-4f56-a38a-febb80ea7f09
-cubes |> keys
 
 # ╔═╡ ded314ba-1ebe-4f01-bd1b-652a0258f955
 @bind transit Select(cubes.keys)
@@ -273,9 +274,6 @@ end
 # ╔═╡ c50473cd-ac09-4196-a291-9e3f5472dc23
 html"""
 <style>
-#launch_binder {
-	display: none;
-}
 body.disable_ui main {
 		max-width : 95%;
 	}
@@ -295,7 +293,6 @@ body.disable_ui main {
 # ╟─0158a760-1229-4089-bf90-7c7b2f1f548a
 # ╟─4b09c729-3395-4cee-bb69-bab59390845c
 # ╟─b63189de-7f78-46d3-a119-3064e275dbe4
-# ╠═b6007d1d-fb9e-4f56-a38a-febb80ea7f09
 # ╠═100af59b-3a24-41d0-9cda-05592bd1778f
 # ╠═737c135a-7412-4b87-a718-642472d4bf4b
 # ╠═f3e9100a-ec8e-425f-9081-e457ad9b1515
