@@ -39,6 +39,12 @@ begin
 	Conda.add("lightkurve", :WASP50b)
 end
 
+# ╔═╡ 7407afb6-1ab2-4523-866f-25b0773a312a
+md"""
+!!! warning "TODO"
+Update once #toc-dark-mode is merged
+"""
+
 # ╔═╡ 670b88e4-1e96-494d-bfcc-235092bb6e96
 md"""
 # Photometric Monitoring
@@ -752,6 +758,7 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
+# ╠═7407afb6-1ab2-4523-866f-25b0773a312a
 # ╟─670b88e4-1e96-494d-bfcc-235092bb6e96
 # ╟─8d42d1c7-c517-41c4-9a5d-2908d2ac2463
 # ╟─0cbe4263-799f-4ee3-9a94-3ba879528b01
