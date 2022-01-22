@@ -47,7 +47,7 @@ const FIG_PATH = "figures/stellar_activity"
 md"""
 ## $(@bind plot_ASASSN CheckBox()) ASAS-SN 🌍
 
-We start by downloading [all photometric monitoring data](https://asas-sn.osu.edu/photometry/7df0eb29-0b68-57ef-8ce2-83dc7b5684da) gathered by the [ASAS-SN](https://asas-sn.osu.edu/) survey, which we include below.
+We downloaded [all photometric monitoring data](https://asas-sn.osu.edu/photometry/7df0eb29-0b68-57ef-8ce2-83dc7b5684da) gathered by the [ASAS-SN](https://asas-sn.osu.edu/) survey for this target, and include it below.
 """
 
 # ╔═╡ b00c28a2-26b1-442e-a347-39fb66b825a0
