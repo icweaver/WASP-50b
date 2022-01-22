@@ -31,12 +31,6 @@ begin
     using PythonCall, CondaPkg
 end
 
-# ╔═╡ 7407afb6-1ab2-4523-866f-25b0773a312a
-md"""
-!!! warning "TODO"
-	Update once #toc-dark-mode is merged
-"""
-
 # ╔═╡ 670b88e4-1e96-494d-bfcc-235092bb6e96
 md"""
 # Photometric Monitoring
@@ -127,75 +121,20 @@ end
 
 # ╔═╡ 7e5ea835-8eb2-44d5-905d-433767b6b91a
 md"""
-Since these observations share the same filter, we will treat them as if they came from a single instrument. Next, we will convert the recorded HJD times to BTJD (BJD - 2457000), to place them on the same time axis as the TESS data.
+Since these observations share the same filter, we will treat them as if they came from a single instrument.
 """
-
-# ╔═╡ 5bc41820-3782-4f82-80b6-6da62805ca8f
-md"""
-### Time conversion
-
-We will make use of astropy's coordinates and time modules to first make the conversion from HJD to BJD:
-"""
-
-# ╔═╡ 5bf1136b-2d13-4463-8d74-9ade1e2cee96
-begin
-	py"""
-	from astropy.coordinates import SkyCoord, EarthLocation
-	from astropy import units as u
-	from astropy.time import Time
-	
-	# https://gist.github.com/StuartLittlefair/4ab7bb8cf21862e250be8cb25f72bb7a
-	def helio_to_bary(coords, hjd, obs_name):
-	    helio = Time(hjd, scale="utc", format="jd")
-	    obs = EarthLocation.of_site(obs_name)
-	    star = SkyCoord(coords, unit=(u.hour, u.deg)) 
-	    ltt = helio.light_travel_time(star, "heliocentric", location=obs)
-	    guess = helio - ltt
-	    
-	    # If we assume guess is correct - how far is heliocentric time away
-	    # from true value?
-	    delta = (
-	    guess + guess.light_travel_time(star, "heliocentric", obs)
-	    ).jd - helio.jd
-	    
-	    # Apply this correction
-	    guess -= delta * u.d
-	    ltt = guess.light_travel_time(star, 'barycentric', obs)
-	    
-	    return guess.tdb + ltt
-	"""
-	helio_to_bary(coords, hjd, obs_name) = py"helio_to_bary"(
-		coords, hjd, obs_name
-	).value
-end
-
-# ╔═╡ c86f5adc-6e17-44c4-b754-1b5c42557809
-const coords_W50 = "1:12:43.2 +31:12:43" # RA, Dec of WASP-50
-
-# ╔═╡ 5f1ca89d-61e8-4ade-93e1-13716dc5fd46
-loc_to_BJD(t, coords, camera) = camera == "Haleakala" ?
-	helio_to_bary(coords, t, "Haleakala") :
-	helio_to_bary(coords, t, "CTIO")
-
-# ╔═╡ 42b72605-f89e-42c4-a159-d43e4620140f
-df_ASASSN.bjd = loc_to_BJD.(df_ASASSN.hjd, coords_W50, df_ASASSN.camera);
 
 # ╔═╡ 79d08932-66f3-4ed9-bc13-f1ac3229e95d
 df_ASASSN
 
 # ╔═╡ 92548af3-9a26-4202-88f2-ba3a31181686
 begin
-	df_sorted = sort(df_ASASSN, :bjd)
+	df_sorted = sort(df_ASASSN, :hjd)
 	t_ASASSN, f_ASASSN, f_err_ASASSN = eachcol(
-		df_sorted[!, [:bjd, :flux_mJy_, :flux_err]]
+		df_sorted[!, [:hjd, :flux_mJy_, :flux_err]]
 	)
 	#t_ASASSN .-= 2.457e6
 end;
-
-# ╔═╡ 3033c5f2-dd7a-4490-9d67-0ee26d8b57a0
-# lc_ASASSN = lk.LightCurve(
-# 	time=t_ASASSN, flux=f_ASASSN, flux_err=f_err_ASASSN
-# ).normalize()
 
 # ╔═╡ dbe317fe-540d-44e8-b8e7-6c465c79559f
 md"""
@@ -206,8 +145,11 @@ md"""
 md"""
 ### Plot
 
-With the BJD times computed, we can now plot the ASAS-SN photometry, binned to **$(binsize_ASASSN) days**:
+We now plot the ASAS-SN photometry binned to **$(binsize_ASASSN) days**:
 """
+
+# ╔═╡ d1038093-76f4-4eca-aeec-93ea82ac8802
+f_ASASSN
 
 # ╔═╡ 682499cb-af79-48f7-9e74-0185894f65fe
 md"""
@@ -274,18 +216,6 @@ end
 # ╔═╡ 2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
 Time = pyimport("astropy.time").Time;
 
-# ╔═╡ ec12acb8-9124-4cc0-8c9f-6525c1565dfd
-# begin
-# 	@pyexec """
-# 	global oot_flux
-# 	def oot_flux(lc, P, t_0, dur):
-# 		in_transit = lc.create_transit_mask(P, t_0, dur)
-# 		lc_oot = lc[~in_transit]
-# 		return lc_oot
-# 	"""
-# 	oot_flux(lc, P, t_0, dur) = @pyeval("oot_flux")(lc, P, t_0, dur)
-# end
-
 # ╔═╡ 7c11e5b2-6046-4eaf-a4a1-683b8e7d9323
 function oot_flux(lc, P, t_0, dur)
 	in_transit = lc.create_transit_mask(P, t_0, dur)
@@ -307,16 +237,10 @@ From the $(length(all_srs)) data products found, we see that $(length(srs)) are 
 # ╔═╡ 6e62b3cc-96ce-43fd-811b-4b2b102cfd61
 lcs = srs.download_all(flux_column="pdcsap_flux")
 
-# ╔═╡ a7d1db4f-0fde-413f-ab87-31100edf8bc0
-lc = lcs[1];
-
 # ╔═╡ 241c462c-3cd9-402d-b948-b9b1f608b727
 md"""
 We show the normalized PDCSAP flux below for each sector: 
 """
-
-# ╔═╡ 98823ec4-c425-4a1f-bf84-02a775dd0aa0
-to_PyPandas(df_py) = PyTable(df_py.to_pandas().reset_index())
 
 # ╔═╡ 31d5bc92-a1f2-4c82-82f2-67755f9aa235
 begin
@@ -324,30 +248,27 @@ begin
 	t_0 = Time(2455558.61237, format="jd")
 	dur = 1.83 * (1.0 / 24.0)
 	
-	lcs_cleaned_py = []
-	lcs_oot_py = []
+	lcs_cleaned = []
+	lcs_oot = []
 	for lc in lcs
 		lc_cleaned = lc.remove_nans().normalize()
 		lc_oot = oot_flux(lc_cleaned, P, t_0, dur).remove_outliers(sigma=3.0)
-		push!(lcs_cleaned_py, lc_cleaned)
-		push!(lcs_oot_py, lc_oot)
+		push!(lcs_cleaned, lc_cleaned)
+		push!(lcs_oot, lc_oot)
 	end
 	push!(
-		lcs_cleaned_py,
-		lk.LightCurveCollection(pylist([lcs_cleaned_py...])).stitch()
+		lcs_cleaned,
+		lk.LightCurveCollection(pylist([lcs_cleaned...])).stitch()
 	)
-	push!(lcs_oot_py, lk.LightCurveCollection(pylist([lcs_oot_py...])).stitch())
-
-	# Table -> DataFrame (pandas) -> PyPandasDataFrame (why astropy, why?)
-	lcs_cleaned = to_PyPandas.(lcs_cleaned_py)
-	lcs_oot = to_PyPandas.(lcs_oot_py)
+	push!(lcs_oot, lk.LightCurveCollection(pylist([lcs_oot...])).stitch())
 end;
 
-# ╔═╡ 8e3622be-2c2d-4942-9695-cfdb01f2b668
-in_transit = lc.create_transit_mask(P, t_0, dur)
+# ╔═╡ 98823ec4-c425-4a1f-bf84-02a775dd0aa0
+# Table -> DataFrame (pandas) -> PyPandasDataFrame (why astropy, why?)
+to_PyPandas(df_py) = PyTable(df_py.to_pandas().reset_index())
 
 # ╔═╡ 43de00bf-e616-43c5-92ce-1044cbd8cfe5
-1e6 .* [median(lc.flux_err) for lc ∈ lcs_oot]
+1e6 .* [median(to_PyPandas(lc).flux_err) for lc ∈ lcs_oot]
 
 # ╔═╡ 99fcf959-665b-44cf-9b5f-fd68a919f846
 md"""
@@ -369,7 +290,7 @@ if plot_ASASSN let
 	fig = Figure(resolution=(800, 800))
 	
 	### Photometry plot ####
-	ax = Axis(fig[1, 1], xlabel="Time (BTJD)", ylabel="Relative flux (ppm)")
+	ax = Axis(fig[1, 1], xlabel="Time (HJD)", ylabel="Relative flux (ppm)")
 	
 	# Mark transit epochs
 	Δjulian_transit_dates = julian_transit_dates #.- 2.457e6
@@ -423,6 +344,7 @@ end
 begin
 	pgrams, pgrams_window, plans, P_maxs = [], [], [], []
 	for lc in lcs_oot
+		lc = to_PyPandas(lc)
 		pgram, plan = compute_pgram(lc)
 		pgram_window, _ = compute_window_func(lc)
 		P_max = findmaxperiod(pgram)[1]
@@ -441,6 +363,7 @@ md"""
 
 # ╔═╡ 3128e57f-df4f-4811-b867-8a293d7d536d
 function compute_pgram_model(lc, P)
+	lc = to_PyPandas(lc)
 	t_fit = lc.time
 	s_fit = LombScargle.model(
 		lc.time,
@@ -450,7 +373,7 @@ function compute_pgram_model(lc, P)
 	)
 	lc_fit = lk.LightCurve(time=t_fit, flux=s_fit)
 	lc_fit_folded = lc_fit.fold(P)
-	return to_PyPandas(lc_fit_folded)
+	return lc_fit_folded
 end
 
 # ╔═╡ 97ced6ba-ff74-46b4-90d5-18e7b2f1b903
@@ -458,21 +381,18 @@ begin
 	lcs_folded = []
 	lcs_folded_binned = []
 	lcs_fit_folded = []
-	for (lc, P) in zip(lcs_oot_py, P_maxs)
+	for (lc, P) in zip(lcs_oot, P_maxs)
 		# Data
 		lc_folded = lc.fold(P)
 		#Δt = (lc_folded.time.value |> diff |> median) * 5
-		push!(lcs_folded, to_PyPandas(lc_folded))
-		push!(lcs_folded_binned, to_PyPandas(lc_folded.bin(bins=200)))
+		push!(lcs_folded, lc_folded)
+		push!(lcs_folded_binned, lc_folded.bin(bins=200))
 		
 		# Model
-		lc_fit_folded = compute_pgram_model(to_PyPandas(lc), P)	
+		lc_fit_folded = compute_pgram_model(lc, P)	
 		push!(lcs_fit_folded, lc_fit_folded)
 	end
 end
-
-# ╔═╡ 840935c1-7724-4f5c-a056-d88efab41b46
-lcs_fit_folded[1] |> typeof
 
 # ╔═╡ 056281a2-4786-45eb-a9fa-57515153f66c
 md"""
@@ -480,10 +400,10 @@ md"""
 """
 
 # ╔═╡ 3a612743-7071-4d85-a48d-0a4b12facffc
-ΔLs = [
+ΔLs = map(lcs_fit_folded) do lc
+	lc = to_PyPandas(lc)
 	minimum(lc.flux) / median(lc.flux)
-	for lc in lcs_fit_folded
-]
+end
 
 # ╔═╡ 278ea804-e2dd-4ca8-9a20-0e9a25746e02
 T₀ = 5_520
@@ -504,7 +424,7 @@ extrema(f_sp.(Ts, ΔLs[end], T₀))
 lcs_oot_comb = lcs_oot[end]
 
 # ╔═╡ 3551787f-0a83-408f-9d78-41309ae3dae3
-(lcs_oot_comb.flux_err |> median)
+(to_PyPandas(lcs_oot_comb).flux_err |> median)
 
 # ╔═╡ 8c7dcfab-a357-4024-94f3-42d1df80c3c2
 P_maxs
@@ -516,9 +436,9 @@ function yee(lc)
 	lcs_fit_folded = []
 	for P ∈ (16.3)
 		# Data
-		lc_folded = lc.fold(P)
-		push!(lcs_folded, lc_folded)
-		push!(lcs_folded_binned, lc_folded.bin(bins=200))
+		lc_folded = lk.LightCurve(lc).fold(P)
+		push!(lcs_folded, to_PyPandas(lc_folded))
+		push!(lcs_folded_binned, to_PyPandas(lc_folded.bin(bins=200)))
 		
 		# Model
 		lc_fit_folded = compute_pgram_model(lc, P)	
@@ -531,14 +451,11 @@ end
 # ╔═╡ 7a9dd8e0-3c2d-4c99-ae86-401554ad8558
 x = yee(lcs_oot_comb)
 
-# ╔═╡ 241d1675-007d-4b85-a818-d792681cb45a
-x[3]
-
 # ╔═╡ 2429035b-5b8e-45d5-9957-99ad772324af
-ΔLs2 = [
+ΔLs2 = map(x[3]) do lc
+	lc = to_PyPandas(lc)
 	minimum(lc.flux) / median(lc.flux)
-	for lc in x[3]
-]
+end
 
 # ╔═╡ 377c1376-b81f-40e5-8ab3-22cc7d77d7a5
 extrema(f_sp.(Ts, ΔLs2[end], T₀)) .* 100
@@ -624,6 +541,7 @@ if plot_TESS let
 	fig = Figure(resolution=FIG_WIDE)
 	
 	for (i, (lc, lc_oot)) ∈ enumerate(zip(lcs_cleaned[1:end-1], lcs_oot[1:end-1]))
+		lc, lc_oot = to_PyPandas(lc), to_PyPandas(lc_oot)
 		ax = Axis(fig[i, 1])
 		errorbars!(ax, lc.time, lc.flux, lc.flux_err;
 			color = (:darkgrey, 0.25),
@@ -708,11 +626,16 @@ if plot_folded let
 	for (i, (lc_folded, lc_folded_binned, lc_fit_folded)) in enumerate(zip(
 				lcs_folded, lcs_folded_binned, lcs_fit_folded
 		))
+		lc_folded = to_PyPandas(lc_folded)
+		lc_folded_binned = to_PyPandas(lc_folded_binned)
+		lc_fit_folded = to_PyPandas(lc_fit_folded)
 		ax = Axis(fig[i, 1])
 		push!(axs, ax)
 		scatter!(ax, lc_folded.time, lc_folded.flux, color=(:darkgrey, 0.5))
 		scatter!(ax, lc_folded_binned.time, lc_folded_binned.flux, color=COLORS[2])
-		lines!(ax, lc_fit_folded.time, lc_fit_folded.flux, color=0.5 .*(COLORS[2], 1.0))
+		lines!(
+			ax, lc_fit_folded.time, lc_fit_folded.flux, color=0.5 .*(COLORS[2], 1.0)
+		)
 		text!(ax, "$(sectors[i])";
 			position = (3.8, 1.006),
 		)
@@ -747,7 +670,6 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
-# ╟─7407afb6-1ab2-4523-866f-25b0773a312a
 # ╟─670b88e4-1e96-494d-bfcc-235092bb6e96
 # ╟─8d42d1c7-c517-41c4-9a5d-2908d2ac2463
 # ╟─0cbe4263-799f-4ee3-9a94-3ba879528b01
@@ -760,27 +682,19 @@ body.disable_ui main {
 # ╠═8e6008ca-a762-4450-a09e-bd0c2bbac4f2
 # ╠═50ee0fbb-30f8-4e29-9de8-0173efcee364
 # ╟─7e5ea835-8eb2-44d5-905d-433767b6b91a
-# ╟─5bc41820-3782-4f82-80b6-6da62805ca8f
-# ╠═5bf1136b-2d13-4463-8d74-9ade1e2cee96
-# ╠═c86f5adc-6e17-44c4-b754-1b5c42557809
-# ╠═5f1ca89d-61e8-4ade-93e1-13716dc5fd46
-# ╠═42b72605-f89e-42c4-a159-d43e4620140f
 # ╠═79d08932-66f3-4ed9-bc13-f1ac3229e95d
 # ╟─9a195365-e68f-43e2-8870-c09153e2ce91
 # ╠═92548af3-9a26-4202-88f2-ba3a31181686
-# ╠═3033c5f2-dd7a-4490-9d67-0ee26d8b57a0
-# ╠═dbe317fe-540d-44e8-b8e7-6c465c79559f
+# ╟─dbe317fe-540d-44e8-b8e7-6c465c79559f
 # ╠═f3425d9c-861e-4b26-b352-bd0669c7f1f9
+# ╠═d1038093-76f4-4eca-aeec-93ea82ac8802
 # ╠═7370a1d9-4f8e-4788-adac-b8be2bcc9643
 # ╟─682499cb-af79-48f7-9e74-0185894f65fe
 # ╟─78d85c7c-da06-41ab-915b-48d93a010967
 # ╟─97e7feee-11b2-4a35-9327-b5c0d05b2a23
 # ╠═0c790d2f-64d4-4e13-9629-a9725cd7086d
 # ╠═2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
-# ╠═ec12acb8-9124-4cc0-8c9f-6525c1565dfd
 # ╠═7c11e5b2-6046-4eaf-a4a1-683b8e7d9323
-# ╠═a7d1db4f-0fde-413f-ab87-31100edf8bc0
-# ╠═8e3622be-2c2d-4942-9695-cfdb01f2b668
 # ╠═708d54a5-95fd-4f15-9681-f6d8e7b9b05c
 # ╟─34fcd73d-a49c-4597-8e63-cfe2495eee48
 # ╠═dff46359-7aec-4fa1-bc7a-89785dfca0e8
@@ -798,7 +712,6 @@ body.disable_ui main {
 # ╠═2215ed86-fa78-4811-88ab-e3521e4a1dea
 # ╟─a50ef756-ade6-48a3-8d3a-17b56ce03c26
 # ╠═49bcddbe-d413-48ae-91d8-92bcebf40518
-# ╠═840935c1-7724-4f5c-a056-d88efab41b46
 # ╠═97ced6ba-ff74-46b4-90d5-18e7b2f1b903
 # ╠═3128e57f-df4f-4811-b867-8a293d7d536d
 # ╟─056281a2-4786-45eb-a9fa-57515153f66c
@@ -813,7 +726,6 @@ body.disable_ui main {
 # ╠═8c7dcfab-a357-4024-94f3-42d1df80c3c2
 # ╠═06abb8cb-9acb-49ba-81b6-37b9f52c89b1
 # ╠═7a9dd8e0-3c2d-4c99-ae86-401554ad8558
-# ╠═241d1675-007d-4b85-a818-d792681cb45a
 # ╠═2429035b-5b8e-45d5-9957-99ad772324af
 # ╟─18223d42-66d8-40d1-9d89-be8af46853e2
 # ╠═682c3732-e68f-4fdb-bd63-553223308364
