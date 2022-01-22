@@ -28,21 +28,13 @@ begin
 	using ImageFiltering
 	using Latexify
 	using LombScargle, Measurements, Statistics
-end
-
-# ╔═╡ b85cbebb-3334-4672-bf36-1070fd5dff46
-begin
-    ENV["PYTHON"] = ""
-	Pkg.build("PyCall")
-	using PyCall
-	const Conda = PyCall.Conda
-	Conda.add("lightkurve", :WASP50b)
+    using PythonCall, CondaPkg
 end
 
 # ╔═╡ 7407afb6-1ab2-4523-866f-25b0773a312a
 md"""
 !!! warning "TODO"
-Update once #toc-dark-mode is merged
+	Update once #toc-dark-mode is merged
 """
 
 # ╔═╡ 670b88e4-1e96-494d-bfcc-235092bb6e96
@@ -101,7 +93,7 @@ begin
 end;
 
 # ╔═╡ 8e6008ca-a762-4450-a09e-bd0c2bbac4f2
-let
+if plot_ASASSN let
 	phot_mon = data(df_ASASSN) * mapping(
 	    :hjd => "Time (HJD)",
 	    :mag => "Magnitude",
@@ -127,6 +119,7 @@ let
 	end
 		
 	fig
+	end
 end
 
 # ╔═╡ 50ee0fbb-30f8-4e29-9de8-0173efcee364
@@ -150,7 +143,6 @@ begin
 	from astropy.coordinates import SkyCoord, EarthLocation
 	from astropy import units as u
 	from astropy.time import Time
-	
 	
 	# https://gist.github.com/StuartLittlefair/4ab7bb8cf21862e250be8cb25f72bb7a
 	def helio_to_bary(coords, hjd, obs_name):
@@ -224,7 +216,7 @@ For comparison, the average cadence for this data is $(t_ASASSN |> diff |> mean)
 
 # ╔═╡ 78d85c7c-da06-41ab-915b-48d93a010967
 md"""
-## TESS 🌌
+## $(@bind plot_TESS CheckBox()) TESS 🌌
 We next turn to the TESS photometry.
 """
 
@@ -236,7 +228,7 @@ First we use [`lightkurve`](https://docs.lightkurve.org/whats-new-v2.html) to do
 """
 
 # ╔═╡ 0c790d2f-64d4-4e13-9629-a9725cd7086d
-lk = pyimport("lightkurve")
+@py import lightkurve as lk
 
 # ╔═╡ 7370a1d9-4f8e-4788-adac-b8be2bcc9643
 function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=1.0)
@@ -280,17 +272,25 @@ function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=
 end
 
 # ╔═╡ 2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
-Time = pyimport("astropy.time").Time
+Time = pyimport("astropy.time").Time;
 
 # ╔═╡ ec12acb8-9124-4cc0-8c9f-6525c1565dfd
-begin
-	py"""
-	def oot_flux(lc, P, t_0, dur):
-		in_transit = lc.create_transit_mask(P, t_0, dur)
-		lc_oot = lc[~in_transit]
-		return lc_oot
-	"""
-	oot_flux(lc, P, t_0, dur) = py"oot_flux"(lc, P, t_0, dur)
+# begin
+# 	@pyexec """
+# 	global oot_flux
+# 	def oot_flux(lc, P, t_0, dur):
+# 		in_transit = lc.create_transit_mask(P, t_0, dur)
+# 		lc_oot = lc[~in_transit]
+# 		return lc_oot
+# 	"""
+# 	oot_flux(lc, P, t_0, dur) = @pyeval("oot_flux")(lc, P, t_0, dur)
+# end
+
+# ╔═╡ 7c11e5b2-6046-4eaf-a4a1-683b8e7d9323
+function oot_flux(lc, P, t_0, dur)
+	in_transit = lc.create_transit_mask(P, t_0, dur)
+	lc_oot = lc[~in_transit]
+	return lc_oot
 end
 
 # ╔═╡ 708d54a5-95fd-4f15-9681-f6d8e7b9b05c
@@ -307,10 +307,16 @@ From the $(length(all_srs)) data products found, we see that $(length(srs)) are 
 # ╔═╡ 6e62b3cc-96ce-43fd-811b-4b2b102cfd61
 lcs = srs.download_all(flux_column="pdcsap_flux")
 
+# ╔═╡ a7d1db4f-0fde-413f-ab87-31100edf8bc0
+lc = lcs[1];
+
 # ╔═╡ 241c462c-3cd9-402d-b948-b9b1f608b727
 md"""
 We show the normalized PDCSAP flux below for each sector: 
 """
+
+# ╔═╡ 98823ec4-c425-4a1f-bf84-02a775dd0aa0
+to_PyPandas(df_py) = PyTable(df_py.to_pandas().reset_index())
 
 # ╔═╡ 31d5bc92-a1f2-4c82-82f2-67755f9aa235
 begin
@@ -318,17 +324,27 @@ begin
 	t_0 = Time(2455558.61237, format="jd")
 	dur = 1.83 * (1.0 / 24.0)
 	
-	lcs_cleaned = []
-	lcs_oot = []
+	lcs_cleaned_py = []
+	lcs_oot_py = []
 	for lc in lcs
 		lc_cleaned = lc.remove_nans().normalize()
 		lc_oot = oot_flux(lc_cleaned, P, t_0, dur).remove_outliers(sigma=3.0)
-		push!(lcs_cleaned, lc_cleaned)
-		push!(lcs_oot, lc_oot)
+		push!(lcs_cleaned_py, lc_cleaned)
+		push!(lcs_oot_py, lc_oot)
 	end
-	push!(lcs_cleaned, lk.LightCurveCollection([lcs_cleaned...]).stitch())
-	push!(lcs_oot, lk.LightCurveCollection([lcs_oot...]).stitch())
+	push!(
+		lcs_cleaned_py,
+		lk.LightCurveCollection(pylist([lcs_cleaned_py...])).stitch()
+	)
+	push!(lcs_oot_py, lk.LightCurveCollection(pylist([lcs_oot_py...])).stitch())
+
+	# Table -> DataFrame (pandas) -> PyPandasDataFrame (why astropy, why?)
+	lcs_cleaned = to_PyPandas.(lcs_cleaned_py)
+	lcs_oot = to_PyPandas.(lcs_oot_py)
 end;
+
+# ╔═╡ 8e3622be-2c2d-4942-9695-cfdb01f2b668
+in_transit = lc.create_transit_mask(P, t_0, dur)
 
 # ╔═╡ 43de00bf-e616-43c5-92ce-1044cbd8cfe5
 1e6 .* [median(lc.flux_err) for lc ∈ lcs_oot]
@@ -341,7 +357,7 @@ md"""
 # ╔═╡ de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
 function compute_pgram(lc; min_period=0.5, max_period=30.0)
 	plan = LombScargle.plan(
-		lc.time.value, lc.flux .± lc.flux_err,
+		lc.time, lc.flux .± lc.flux_err,
 		minimum_frequency = 1.0 / max_period,
 		maximum_frequency = 1.0 / min_period,
 	)
@@ -395,10 +411,11 @@ end
 
 # ╔═╡ 2215ed86-fa78-4811-88ab-e3521e4a1dea
 function compute_window_func(lc; min_period=0.5, max_period=30.0)
-	t = lc.time.value
+	t = lc.time
 	f = oneunit.(t)
 	f_err = median(lc.flux_err) .* f
-	lc_window_func = lk.LightCurve(time=t, flux=f, flux_err=f_err)
+	lc_window_func_py = lk.LightCurve(time=t, flux=f, flux_err=f_err)
+	lc_window_func = to_PyPandas(lc_window_func_py)
 	return compute_pgram(lc_window_func; min_period=min_period, max_period=max_period)
 end
 
@@ -411,40 +428,11 @@ begin
 		P_max = findmaxperiod(pgram)[1]
 		
 		push!(pgrams, pgram)
-		push!(pgrams_window, pgram_window )
+		push!(pgrams_window, pgram_window)
 		push!(plans, plan)
 		push!(P_maxs, P_max)
 	end
 end
-
-# ╔═╡ d1f7ed4b-4599-48bd-aac5-93920dae9151
-# SIP = pyimport("tess_sip").SIP
-# binsize = 1.2 #12 * 3600 * 1 / 86_400
-# lcs_combined = lcs #lk.LightCurveCollection([lc.bin(binsize) for lc ∈ lcs])
-# lcs_S04 = lk.LightCurveCollection([lcs_combined[1]])
-# lcs_S31 = lk.LightCurveCollection([lcs_combined[2]])
-# SIP_kwargs = (min_period=1.0, max_period=35.0, nperiods=100)
-# r_S04, r_S31, r_combined = SIP.((lcs_S04, lcs_S31, lcs_combined); SIP_kwargs...)
-
-# function plot_SIP_flux(r)
-# 	lc_raw = r["raw_lc"]
-# 	lc_corr = r["corr_lc"]
-	
-# 	fig = Figure()
-# 	ax = Axis(fig[1, 1])
-
-# 	lines!(ax, lc_raw.time.value, lc_raw.flux, color=:darkgrey)
-# 	scatter!(ax, lc_corr.time.value, lc_corr.flux)
-
-# 	#xlims!(ax, 1400, 1450)
-# 	ylims!(ax, 0.95, 1.05)
-	
-# 	fig
-# end
-
-# pgram_S04, plan_S04 = compute_pgram(r_S04["corr_lc"])
-# pgram_S31, plan_S31 = compute_pgram(r_S31["corr_lc"])
-# pgram_combined, plan_combined = compute_pgram(r_combined["corr_lc"])
 
 # ╔═╡ a50ef756-ade6-48a3-8d3a-17b56ce03c26
 md"""
@@ -453,16 +441,16 @@ md"""
 
 # ╔═╡ 3128e57f-df4f-4811-b867-8a293d7d536d
 function compute_pgram_model(lc, P)
-	t_fit = lc.time.value
+	t_fit = lc.time
 	s_fit = LombScargle.model(
-		lc.time.value,
+		lc.time,
 		lc.flux,
 		lc.flux_err,
 		inv(P),
 	)
 	lc_fit = lk.LightCurve(time=t_fit, flux=s_fit)
 	lc_fit_folded = lc_fit.fold(P)
-	return lc_fit_folded
+	return to_PyPandas(lc_fit_folded)
 end
 
 # ╔═╡ 97ced6ba-ff74-46b4-90d5-18e7b2f1b903
@@ -470,18 +458,21 @@ begin
 	lcs_folded = []
 	lcs_folded_binned = []
 	lcs_fit_folded = []
-	for (lc, P) in zip(lcs_oot, P_maxs)
+	for (lc, P) in zip(lcs_oot_py, P_maxs)
 		# Data
 		lc_folded = lc.fold(P)
 		#Δt = (lc_folded.time.value |> diff |> median) * 5
-		push!(lcs_folded, lc_folded)
-		push!(lcs_folded_binned, lc_folded.bin(bins=200))
+		push!(lcs_folded, to_PyPandas(lc_folded))
+		push!(lcs_folded_binned, to_PyPandas(lc_folded.bin(bins=200)))
 		
 		# Model
-		lc_fit_folded = compute_pgram_model(lc, P)	
+		lc_fit_folded = compute_pgram_model(to_PyPandas(lc), P)	
 		push!(lcs_fit_folded, lc_fit_folded)
 	end
 end
+
+# ╔═╡ 840935c1-7724-4f5c-a056-d88efab41b46
+lcs_fit_folded[1] |> typeof
 
 # ╔═╡ 056281a2-4786-45eb-a9fa-57515153f66c
 md"""
@@ -629,23 +620,23 @@ begin
 end
 
 # ╔═╡ 82222ee8-f759-499d-a072-c219cc33ccad
-let
+if plot_TESS let
 	fig = Figure(resolution=FIG_WIDE)
 	
 	for (i, (lc, lc_oot)) ∈ enumerate(zip(lcs_cleaned[1:end-1], lcs_oot[1:end-1]))
 		ax = Axis(fig[i, 1])
-		errorbars!(ax, lc.time.value, lc.flux, lc.flux_err;
+		errorbars!(ax, lc.time, lc.flux, lc.flux_err;
 			color = (:darkgrey, 0.25),
 			markersize = 15,
-			label = """
-			Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
-			"""
+			# label = """
+			# Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
+			# """
 		)
 		
 		ylims!(ax, 0.97, 1.02)
 		#scatter!(fig[i, 1], lc.time.value, lc.flux)
 		
-		scatter!(ax, lc_oot.time.value, lc_oot.flux;
+		scatter!(ax, lc_oot.time, lc_oot.flux;
 			color = :darkgrey, label="OOT baseline",
 			#markersize = 5,
 		)
@@ -661,6 +652,7 @@ let
 	savefig(fig, "$(FIG_PATH)/TESS_flux.png")
 	
 	fig
+	end
 end
 
 # ╔═╡ 94d05a5b-b05e-4407-bcd3-7d625680a262
@@ -718,9 +710,9 @@ if plot_folded let
 		))
 		ax = Axis(fig[i, 1])
 		push!(axs, ax)
-		scatter!(ax, lc_folded.time.value, lc_folded.flux, color=(:darkgrey, 0.5))
-		scatter!(ax, lc_folded_binned.time.value, lc_folded_binned.flux, color=COLORS[2])
-		lines!(ax, lc_fit_folded.time.value, lc_fit_folded.flux, color=0.5 .*(COLORS[2], 1.0))
+		scatter!(ax, lc_folded.time, lc_folded.flux, color=(:darkgrey, 0.5))
+		scatter!(ax, lc_folded_binned.time, lc_folded_binned.flux, color=COLORS[2])
+		lines!(ax, lc_fit_folded.time, lc_fit_folded.flux, color=0.5 .*(COLORS[2], 1.0))
 		text!(ax, "$(sectors[i])";
 			position = (3.8, 1.006),
 		)
@@ -737,9 +729,6 @@ if plot_folded let
 	fig
 	end
 end
-
-# ╔═╡ 61c6dd34-5712-4077-abae-2ee2634dc709
-@with_terminal Conda.list(:WASP50b)
 
 # ╔═╡ 01bfe0ad-3cb9-42f0-9d72-3deef3969d05
 html"""
@@ -758,7 +747,7 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
-# ╠═7407afb6-1ab2-4523-866f-25b0773a312a
+# ╟─7407afb6-1ab2-4523-866f-25b0773a312a
 # ╟─670b88e4-1e96-494d-bfcc-235092bb6e96
 # ╟─8d42d1c7-c517-41c4-9a5d-2908d2ac2463
 # ╟─0cbe4263-799f-4ee3-9a94-3ba879528b01
@@ -789,12 +778,16 @@ body.disable_ui main {
 # ╠═0c790d2f-64d4-4e13-9629-a9725cd7086d
 # ╠═2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
 # ╠═ec12acb8-9124-4cc0-8c9f-6525c1565dfd
+# ╠═7c11e5b2-6046-4eaf-a4a1-683b8e7d9323
+# ╠═a7d1db4f-0fde-413f-ab87-31100edf8bc0
+# ╠═8e3622be-2c2d-4942-9695-cfdb01f2b668
 # ╠═708d54a5-95fd-4f15-9681-f6d8e7b9b05c
 # ╟─34fcd73d-a49c-4597-8e63-cfe2495eee48
 # ╠═dff46359-7aec-4fa1-bc7a-89785dfca0e8
 # ╠═6e62b3cc-96ce-43fd-811b-4b2b102cfd61
 # ╟─241c462c-3cd9-402d-b948-b9b1f608b727
 # ╠═31d5bc92-a1f2-4c82-82f2-67755f9aa235
+# ╠═98823ec4-c425-4a1f-bf84-02a775dd0aa0
 # ╠═82222ee8-f759-499d-a072-c219cc33ccad
 # ╠═3551787f-0a83-408f-9d78-41309ae3dae3
 # ╠═43de00bf-e616-43c5-92ce-1044cbd8cfe5
@@ -803,9 +796,9 @@ body.disable_ui main {
 # ╠═d7f034c5-5925-4b91-9bea-1068a7ce9252
 # ╠═de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
 # ╠═2215ed86-fa78-4811-88ab-e3521e4a1dea
-# ╠═d1f7ed4b-4599-48bd-aac5-93920dae9151
 # ╟─a50ef756-ade6-48a3-8d3a-17b56ce03c26
 # ╠═49bcddbe-d413-48ae-91d8-92bcebf40518
+# ╠═840935c1-7724-4f5c-a056-d88efab41b46
 # ╠═97ced6ba-ff74-46b4-90d5-18e7b2f1b903
 # ╠═3128e57f-df4f-4811-b867-8a293d7d536d
 # ╟─056281a2-4786-45eb-a9fa-57515153f66c
@@ -827,7 +820,5 @@ body.disable_ui main {
 # ╟─ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd
 # ╟─79acbb60-803a-4047-b26d-1cf6262274a0
 # ╠═9e2ce576-c9bd-11eb-0699-47af13e79589
-# ╠═61c6dd34-5712-4077-abae-2ee2634dc709
-# ╠═b85cbebb-3334-4672-bf36-1070fd5dff46
 # ╠═55beac98-0929-4a55-91f7-cee7c781498c
 # ╟─01bfe0ad-3cb9-42f0-9d72-3deef3969d05
