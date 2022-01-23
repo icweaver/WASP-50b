@@ -2,7 +2,7 @@ name: Test Pluto notebooks
 on:
     push:
         branches:
-            - main
+            - disabled
     workflow_dispatch:
 
 jobs:
