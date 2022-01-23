@@ -47,9 +47,7 @@ md"""
 
 Las Campanas Observatory ([LCO](http://www.lco.cl/)) is home to several world-class telescopes that are used in a wide range of astronomy fields. In particular, The 6.5 meter twin [Magellan telescopes](https://obs.carnegiescience.edu/Magellan) provide essential facilities for observing exoplanet atmopsheres with their [IMACS and LDSS3C spectrographs](http://www.lco.cl/instruments/).
 
-**[More background intro for general public about multi-object slit spectroscopy and need for SMF files]**
-
-SMF files are essentially just text files with a list of target names and positions that are sent to the telescope to let the observatory know how to cut the mask for observations. They also include additonal information for the slits, but this will not be the focus for this notebook. Now this is all well and good, except for that these SMF files tend to look something like this:
+SMF files are essentially just text files with a list of target names and positions that are sent to the telescope to let the observatory know how to cut the mask for observations. They also include additonal information for the slits, but this will not be the focus for this notebook. Now this is all well and good, except for the fact that these SMF files tend to look something like this:
 """
 
 # ╔═╡ 4a079964-5ac0-47a0-9ff0-c294df62772e
@@ -131,7 +129,7 @@ We are first going to use [`CSV.jl`](https://github.com/JuliaData/CSV.jl) to rea
 """
 
 # ╔═╡ 89136b56-99f6-49bf-a823-6447fee208fc
-df_SMF = CSV.read(download("https://github.com/icweaver/Pluto_sample_notebooks/raw/main/data/wasp50s.SMF"), DataFrame;
+df_SMF = CSV.read(download("https://github.com/icweaver/WASP-50b/raw/main/notebooks/data/raw_data/wasp50s.SMF"), DataFrame;
 	header = false, # Wish there was one
 	skipto = 19, # This is the row where the good stuff starts
 	footerskip = 1, # Skip that random string at the bottom
@@ -218,7 +216,7 @@ md"""
 	ap.Table.from_pandas(pytable(df))
 	```
 
-	for the conversion, but pipes `|>` can make things look clearer sometimes.
+	for the conversion, but pipes `|>` can help make multi-step workflows more transparent.
 """
 
 # ╔═╡ 905127e7-16ae-4d8d-8445-7197cc5dee2a
@@ -238,7 +236,7 @@ results = results_astropy.to_pandas() |> PyTable
 
 # ╔═╡ ea756fff-853a-41b8-902b-a495cee1fd43
 md"""
-We generated a `PyPandasDataFrame` via `PythonCall.jl`'s `PyTable` function, which is basically a generic table type in Julia. We'd like to access all of the cool features from `DataFrames.jl`, so we will construct one directly from `results`:
+We generated a [`PyPandasDataFrame`](https://cjdoris.github.io/PythonCall.jl/stable/compat/#Tabular-data-and-Pandas) via `PythonCall.jl`'s `PyTable` function, which is basically a generic table type in Julia. We'd like to access the full feature set of `DataFrames.jl`, so we will construct one directly from `results`:
 """
 
 # ╔═╡ 37d2bc2e-ee75-42a9-ba4f-df15c99caf48
@@ -294,7 +292,7 @@ df_paper = @chain _df_paper begin
 end
 
 # ╔═╡ 8fbc74d9-c993-4757-865f-b7ec3d84495c
-t = latexify(df_paper, latex=false, fmt="%.2f")
+latexify(df_paper, latex=false, fmt="%.2f")
 
 # ╔═╡ c9b37015-057e-4838-b510-5762819b2462
 md"""
@@ -319,7 +317,10 @@ Ok, now we can display `df_paper` in a ``LaTeX`` context with [`Latexify.jl`](ht
 """
 
 # ╔═╡ 4f3afae4-7b3c-42ed-81a0-936e1348700a
-latexify(df_paper, env=:tabular, latex=false, fmt="%.2f") |> Text
+t = latexify(df_paper, env=:tabular, latex=false, fmt="%.2f") |> Text
+
+# ╔═╡ 875ca00d-0c0c-403e-bbf1-0d2b70a95107
+t
 
 # ╔═╡ 52100a8e-3adf-4337-9985-645a10d9e8cd
 md"""
@@ -361,6 +362,7 @@ body.disable_ui main {
 # ╟─3dcf92a9-21c2-4cfd-9089-e6fb501c7caf
 # ╟─3941e471-6378-4f6b-a117-81aa08eff0c7
 # ╟─8fbc74d9-c993-4757-865f-b7ec3d84495c
+# ╟─875ca00d-0c0c-403e-bbf1-0d2b70a95107
 # ╟─af553292-ae3e-4966-9746-79de4b86a7e1
 # ╟─769c4b03-4ac0-4a25-9e7d-21825261c3dd
 # ╠═e2d82196-7945-11ec-2d31-ad911cabbfba
