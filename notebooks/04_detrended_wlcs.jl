@@ -75,6 +75,7 @@ glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")
 # ╔═╡ e873f9c6-fd1a-4227-9df1-70c626e4a0a1
 function name(fpath, dates_to_names)
 	date_instr = splitpath(split(glob(fpath)[1], "w50_")[2])[1]
+	@show dates_to_names |> keys
 	return dates_to_names[date_instr]
 end
 
@@ -84,10 +85,8 @@ dates_to_names = Dict(
 	"131219_sp_IMACS" => "Transit 1 (IMACS)",
 	"150927_IMACS" => "Transit 2 (IMACS)",
 	"150927_sp_IMACS" => "Transit 2 (IMACS)",
-	"150927_LDSS3_flat" => "Transit 2 (LDSS3)",
-	"150927_sp_LDSS3_flat" => "Transit 2 (LDSS3)",
-	"150927_LDSS3_noflat" => "Transit 2 (LDSS3 noflat)",
-	"150927_sp_LDSS3_noflat" => "Transit 2 (LDSS3 noflat)",
+	"150927_LDSS3" => "Transit 2 (LDSS3)",
+	"150927_sp_LDSS3" => "Transit 2 (LDSS3)",
 	"161211_IMACS" => "Transit 3 (IMACS)",
 	"161211_sp_IMACS" => "Transit 3 (IMACS)",
  )
@@ -431,9 +430,6 @@ let
 	fig
 end
 
-# ╔═╡ 81070b31-6b9f-4078-b18f-0590686a6252
-cubes |> keys
-
 # ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
 begin
 	summary_tables = DataFrame[]
@@ -609,7 +605,6 @@ body.disable_ui main {
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
-# ╠═81070b31-6b9f-4078-b18f-0590686a6252
 # ╠═89c48710-651e-45ff-8fcb-e4173559defd
 # ╠═0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # ╠═d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c
