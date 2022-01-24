@@ -10,12 +10,11 @@ begin
 	Pkg.activate(Base.current_project())
 	
 	using AlgebraOfGraphics, CairoMakie, CSV, DataFrames, Unitful, UnitfulAstro
-	using DataFrameMacros
+	using DataFrameMacros, Chain
 	using HTTP
 	using Unitful
 	using PlutoUI
 	using Unitful: k, G
-	using Chain
 	using NaturalSort
 	using Latexify
 end
@@ -64,6 +63,9 @@ end
 md"""
 We next compute some relevant quantities from this table to help organize each population:
 """
+
+# ╔═╡ c7eabcc6-5139-448d-abdb-ec752788bd59
+strip_u(u) = x -> ustrip(u, x)
 
 # ╔═╡ e0365154-d6c8-4db2-bb85-bf2536a3aa74
 function compute_Teq(T, R, a; α)
@@ -233,35 +235,49 @@ compute_g(M, R) = G * M / R^2
 # ╔═╡ 1e587a84-ed43-4fac-81cf-134a4f3d65d5
 compute_H(μ, T, g) = k * T / (μ * g)
 
+# ╔═╡ 7336f748-5a5a-476e-80d0-cb6200aefeff
+_df = @chain df_all begin
+	dropmissing([:pl_rade, :pl_bmasse, :pl_orbsmax, :st_teff, :sy_jmag])
+	@transform begin
+		:pl_eqt = compute_Teq(
+			:st_teff*u"K", :st_rad*u"Rsun", :pl_orbsmax*u"AU"; α=0.1
+		) |> strip_u(u"K")
+		
+		:g_SI = compute_g(
+			:pl_bmasse*u"Mearth", :pl_rade*u"Rearth"
+		) |> strip_u(u"m/s^2")
+	end
+	@transform begin
+		:H_km = compute_H(
+			2.0*u"u", :pl_eqt*u"K", :g_SI*u"m/s^2"
+		) |> strip_u(u"km")
+
+		:TSM = compute_TSM(
+			:pl_rade, :pl_eqt, :pl_bmasse, :st_rad, :sy_jmag
+		)
+	end
+end;
+
 # ╔═╡ c1e63cf3-7f30-4858-bdd6-125d2a99529f
 compute_ΔD(H, Rₚ, Rₛ) = 2.0 * H * Rₚ/Rₛ^2
 
-# ╔═╡ 2702ba80-993c-4cca-bd14-0d4d6b67362b
-begin
-	df = dropmissing(
-		df_all, [:pl_rade, :pl_bmasse, :pl_orbsmax, :st_teff, :sy_jmag]
-	)
-	df.pl_eqt = let
-		Teq = compute_Teq.(df.st_teff*u"K", df.st_rad*u"Rsun", df.pl_orbsmax*u"AU"; α=0.1)
-		ustrip.(u"K", Teq)
+# ╔═╡ 56ad4c87-069b-4815-955b-7a8d7d012031
+df = @chain _df begin
+	@aside begin
+		targ_idx = _.pl_name .== "HAT-P-23 b"
+		TSM_target = _.TSM[targ_idx][1]
 	end
-	df.g_SI = let
-		g = compute_g.(df.pl_bmasse*u"Mearth", df.pl_rade*u"Rearth")
-		ustrip.(u"m/s^2", g)
+	@transform begin
+		:TSMR = :TSM / TSM_target
+		
+		:ΔD_ppm = compute_ΔD(
+			:H_km*u"km", :pl_rade*u"Rearth", :st_rad*u"Rsun"
+		) |> x -> uconvert(NoUnits, x) * 5.0 * 1e6
 	end
-	df.H_km = let
-		H = compute_H.(2.0*u"u", df.pl_eqt*u"K", df.g_SI*u"m/s^2")
-		ustrip.(u"km", H)
+	@aside ΔD_ppm_targ = _.ΔD_ppm[targ_idx][1]
+	@transform begin
+		:ΔDR_ppm = :ΔD_ppm / ΔD_ppm_targ
 	end
-	df.TSM = compute_TSM.(df.pl_rade, df.pl_eqt, df.pl_bmasse, df.st_rad, df.sy_jmag)
-	targ = "HAT-P-23 b"
-	df.TSMR = df.TSM ./ df.TSM[df.pl_name .== targ][1]
-	df.ΔD_ppm = let
-		ΔD = compute_ΔD.(df.H_km*u"km", df.pl_rade*u"Rearth", df.st_rad*u"Rsun")
-		uconvert.(NoUnits, ΔD) * 5.0 * 1e6
-	end
-	df.ΔDR_ppm = df.ΔD_ppm ./ df.ΔD_ppm[df.pl_name .== targ][1]
-	df
 end
 
 # ╔═╡ c98c5618-4bac-4322-b4c3-c76181f47889
@@ -273,7 +289,9 @@ end
 
 # ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
 df_HGHJs = @subset(
-	df_HGHJs_all, :pl_name .∈ Ref(["HAT-P-23 b", "WASP-43 b", "WASP-50 b", "HD 189733 b"])
+	df_HGHJs_all, :pl_name .∈ Ref(
+		["HAT-P-23 b", "WASP-43 b", "WASP-50 b", "HD 189733 b"]
+	)
 )
 
 # ╔═╡ 8d519cad-8da6-409e-b486-2bc9a6008e0f
@@ -513,7 +531,9 @@ body.disable_ui main {
 # ╟─6b06701b-05e2-4284-a308-e9edeb65a648
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
-# ╠═2702ba80-993c-4cca-bd14-0d4d6b67362b
+# ╠═7336f748-5a5a-476e-80d0-cb6200aefeff
+# ╠═56ad4c87-069b-4815-955b-7a8d7d012031
+# ╠═c7eabcc6-5139-448d-abdb-ec752788bd59
 # ╠═c98c5618-4bac-4322-b4c3-c76181f47889
 # ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
 # ╠═e0365154-d6c8-4db2-bb85-bf2536a3aa74
