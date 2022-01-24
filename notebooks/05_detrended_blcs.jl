@@ -38,6 +38,8 @@ end
 md"""
 # Detrended binned light curves
 
+In this notebook we will plot the detrended binned light curves for all nights.
+
 $(TableOfContents(title="📖 Table of Contents"))
 """
 
@@ -78,8 +80,8 @@ dates_to_names = Dict(
 	"131219_sp_IMACS" => "Transit_1_IMACS_sp",
 	"150927_IMACS" => "Transit_2_IMACS",
 	"150927_sp_IMACS" => "Transit_2_IMACS_sp",
-	"150927_LDSS3_flat" => "Transit_2_LDSS3",
-	"150927_sp_LDSS3_flat" => "Transit_2_LDSS3_sp",
+	"150927_LDSS3" => "Transit_2_LDSS3",
+	"150927_sp_LDSS3" => "Transit_2_LDSS3_sp",
 	"161211_IMACS" => "Transit_3_IMACS",
 	"161211_sp_IMACS" => "Transit_3_IMACS_sp"
  )
@@ -143,7 +145,7 @@ begin
 	cubes = sort(cubes)
 end
 
-# ╔═╡ ded314ba-1ebe-4f01-bd1b-652a0258f955
+# ╔═╡ a5acf744-dfe7-4088-885b-9142af8f0d8f
 @bind transit Select(cubes.keys)
 
 # ╔═╡ 1dd4968e-959a-4f6e-a0e2-9fe9b8ecdd74
@@ -201,7 +203,7 @@ begin
 end
 
 # ╔═╡ bec88974-b150-4f53-9497-ddec4883ae17
-function plot_BLCs(datas, models, wbins, errs; offset=0.3)
+function plot_BLCs(transit, datas, models, wbins, errs; offset=0.3)
 	fig = Figure(resolution=FIG_TALL)
 	median_prec = round(Int, median(errs))
 	ax_left = Axis(fig[1, 1], title = "Detrended BLCs")
@@ -249,27 +251,33 @@ function plot_BLCs(datas, models, wbins, errs; offset=0.3)
 	
 	Label(fig[1:2, 0], "Relative flux + offset", rotation=π/2)
 	Label(fig[end, 2:3], "Index")
+
+	f_suff = basename(dirname(DATA_DIR))
+	savefig(fig, "$(FIG_PATH)/detrended_blcs_$(transit)_$(f_suff).png")
 	
-	return fig
+	fig
 end
 
 # ╔═╡ df1a160c-22ff-4c5e-a71f-b903d8a23ef1
-let	
-	tspec = cubes[transit]["tspec"]
-	errs = maximum([tspec.Depthup_ppm_ tspec.DepthDown_ppm_], dims=2)
-	
-	fig = plot_BLCs(
-		cubes[transit]["fluxes"],
-		cubes[transit]["models"],
-		cubes[transit]["wbins"],
-		round.(Int, errs),
-	)
-	
-	f_suff = basename(dirname(DATA_DIR))
-	savefig(fig, "$(FIG_PATH)/detrended_blcs_$(transit)_$(f_suff).png")
+begin
+	blc_plots = Dict()
+	for transit in cubes.keys
+		tspec = cubes[transit]["tspec"]
+		errs = maximum([tspec.Depthup_ppm_ tspec.DepthDown_ppm_], dims=2)
 		
-	fig
+		p = plot_BLCs(
+			transit,
+			cubes[transit]["fluxes"],
+			cubes[transit]["models"],
+			cubes[transit]["wbins"],
+			round.(Int, errs),
+		)
+		blc_plots[transit] = p
+	end
 end
+
+# ╔═╡ cb2a3117-03be-42f4-adf6-c23a42252ddf
+blc_plots[transit]
 
 # ╔═╡ c50473cd-ac09-4196-a291-9e3f5472dc23
 html"""
@@ -296,8 +304,9 @@ body.disable_ui main {
 # ╠═100af59b-3a24-41d0-9cda-05592bd1778f
 # ╠═737c135a-7412-4b87-a718-642472d4bf4b
 # ╠═f3e9100a-ec8e-425f-9081-e457ad9b1515
-# ╟─ded314ba-1ebe-4f01-bd1b-652a0258f955
 # ╠═df1a160c-22ff-4c5e-a71f-b903d8a23ef1
+# ╟─a5acf744-dfe7-4088-885b-9142af8f0d8f
+# ╟─cb2a3117-03be-42f4-adf6-c23a42252ddf
 # ╠═bec88974-b150-4f53-9497-ddec4883ae17
 # ╟─1dd4968e-959a-4f6e-a0e2-9fe9b8ecdd74
 # ╟─c59e2697-d2a3-4bdb-ba64-059246697c1c

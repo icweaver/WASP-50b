@@ -663,7 +663,7 @@ function plot_div_WLCS!(
 			color = (c, 0.3),
 		)
 		text!(axs[i], "$(cName)";
-			position =(300, 0.975),
+			position =(300, 0.98),
 			align = (:right, :center),
 			color = c_text,
 		)
@@ -693,7 +693,7 @@ if plot_lcs let
 	# use_comps = comp_names # use all comps
 	# use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
 	
-	axs = [Axis(fig[1, i]) for i in 1:ncomps]
+	axs = [Axis(fig[1, i], limits=(-60, 380, 0.975, 1.02)) for i in 1:ncomps]
 	axs = reshape(copy(fig.content), ncomps, 1)
 	
 	plot_div_WLCS!(
@@ -701,8 +701,7 @@ if plot_lcs let
 	)
 	
 	hideydecorations!.(axs[begin+1:end], grid=false)
-	linkaxes!(axs...)
-	ylims!(axs[end], 0.97, 1.02)
+	#linkaxes!(axs...)
 	
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2, tellheight=false)
 	axs[2].xlabel = "Index"
@@ -724,7 +723,7 @@ function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 	fig = Figure(resolution=FIG_TALL)
 	median_prec = round(Int, median(errs))
 	
-	ax_left = Axis(fig[1, 1], title = "Detrended BLCs")
+	ax_left = Axis(fig[1, 1], title = "Divided BLCs")
 	ax_right = Axis(fig[1, 2], title = "Residuals")
 	ax_label = Axis(fig[1, 3], title = "Median precision: $(median_prec) ppm")
 	axs = reshape(copy(fig.content), 1, 3)
@@ -778,17 +777,33 @@ function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 end
 
 # ╔═╡ 65c91d63-10e7-41ab-9c21-f136f4c5cb96
-plot_blcs && for comp_idx ∈ use_comps_idxs
-	datas = f_norm_w[:, comp_idx, :]
-	f_med, _, f_diff = filt(datas, window_width)
-	plot_BLCs(
-		datas[use_idxs, :],
-		f_med[use_idxs, :],
-		wbins,
-		round.(Int, reshape(std(f_diff[use_idxs, : ], dims=1), :, 1) * 1e6),
-		comp_names[comp_idx],
-	)
+begin
+	blc_plots = OrderedDict()
+	plot_blcs && for comp_idx ∈ use_comps_idxs
+		datas = f_norm_w[:, comp_idx, :]
+		cName = comp_names[comp_idx]
+		f_med, _, f_diff = filt(datas, window_width)
+		p = plot_BLCs(
+			datas[use_idxs, :],
+			f_med[use_idxs, :],
+			wbins,
+			round.(Int, reshape(std(f_diff[use_idxs, : ], dims=1), :, 1) * 1e6),
+			cName,
+		)
+		blc_plots[cName] = p
+	end
 end
+
+# ╔═╡ 6dece5df-0e78-42f1-a557-0a5445350b28
+@bind cName Select(blc_plots.keys)
+
+# ╔═╡ ee489959-654a-4666-854d-79896832dbc7
+md"""
+target / $(cName)
+"""
+
+# ╔═╡ 7fa35566-d327-4319-9ae9-17c4c9825e05
+blc_plots[cName]
 
 # ╔═╡ b2c61d08-6fcf-4b0c-a21a-c0c5e3205210
 html"""
@@ -866,6 +881,9 @@ body.disable_ui main {
 # ╟─5837dc0e-3537-4a90-bd2c-494e7b3e6bb7
 # ╠═49d04cf9-2bec-4350-973e-880e376ab428
 # ╠═65c91d63-10e7-41ab-9c21-f136f4c5cb96
+# ╠═6dece5df-0e78-42f1-a557-0a5445350b28
+# ╟─ee489959-654a-4666-854d-79896832dbc7
+# ╟─7fa35566-d327-4319-9ae9-17c4c9825e05
 # ╠═2419e060-f5ab-441b-9ec2-51ce4e57e319
 # ╟─af07dc54-eeb5-4fbe-8dd0-289dea97502a
 # ╟─88cc640d-b58d-4cde-b793-6c66e74f6b3a

@@ -243,8 +243,8 @@ We generated a [`PyPandasDataFrame`](https://cjdoris.github.io/PythonCall.jl/sta
 _df_paper = DataFrame(
 	Star = df.name,
 	UCAC4_ID = results.UCAC4,
-	RAJ2000 = results.RAJ2000,
-	DecJ200 = results.DEJ2000,
+	# RAJ2000 = results.RAJ2000,
+	# DecJ200 = results.DEJ2000,
 	B = results.Bmag,
 	V = results.Vmag,
 	J = results.Jmag,

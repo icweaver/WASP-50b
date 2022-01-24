@@ -29,6 +29,7 @@ begin
 	using ImageFiltering
 	using Latexify
 	using Statistics
+	using OrderedCollections
 	using PythonCall, CondaPkg
 end
 
@@ -92,49 +93,6 @@ md"""
 
 With the flux extracted for each object, we now turn to analyzing the resulting stellar spectra:
 """
-
-# ╔═╡ 5fbaead0-f8fb-4ea8-8f62-4fca957eb4f0
-# let
-# 	w = LC["spectra"]["wavelengths"]
-# 	f = median(LC["spectra"]["WASP50"], dims=1) |> vec
-
-# 	Plots.plot(w, f)
-# 	Plots.vspan!(eachrow(wbins_species) |> collect, alpha=0.5)
-# end
-
-# ╔═╡ 9ce136ad-8f8d-4861-8b23-6096efb600f4
-wbins_species = [
-	5780.0  5826.0
-	5825.0  5871.0
-	5870.0  5916.0
-	5915.0  5961.0
-	5960.0  6006.0
-	7657.0  7667.0
-	7667.0  7677.0
-	7677.0  7687.0
-	7687.0  7697.0
-	7697.0  7707.0
-	8089.0  8129.0
-	8129.0  8169.0
-	8169.0  8209.0
-	8209.0  8249.0
-	8249.0  8289.0
-]
-
-# ╔═╡ 69637ff5-4faa-4456-9e25-8f873c2bfa5e
-5893 - 46/2, 5893 + 46/2
-
-# ╔═╡ 224bbe2c-5fd0-48dc-9f95-f38b9061e2ce
-species = (Na=5893.0, K=7682.0, Na_8200=8189.0)
-
-# ╔═╡ 8759b3c2-948c-461e-a925-b68edd532d1d
-PlutoUI.Text
-
-# ╔═╡ fffaafad-e1db-459b-b5f4-3af6a9fcb427
-#Plots.plotly()
-
-# ╔═╡ 28befad8-cbef-4a41-8e3b-d176a5bffe91
-#import Plots
 
 # ╔═╡ 6fd88483-d005-4186-8dd2-82cea767ce90
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
@@ -272,13 +230,10 @@ Just as a quick check:
 
 # ╔═╡ e98dee2e-a369-448e-bfe4-8fea0f318fa8
 md"""
-## $(@bind plot_blcs CheckBox()) Binned light curves 🌈
+## Binned light curves 🌈
 
 We first compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `ncomps` ``\times`` `nbins`, where for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
 """
-
-# ╔═╡ df8983d1-4abd-4fad-ace6-9dfe74df4949
-use_comps
 
 # ╔═╡ 793c4d08-e2ee-4c9d-b7a0-11eaaddba895
 md"""
@@ -449,7 +404,7 @@ function plot_div_WLCS!(
 			color = (c, 0.3),
 		)
 		text!(axs[i], "$(cName)";
-			position =(300, 0.975),
+			position =(300, 0.98),
 			align = (:right, :center),
 			color = c_text,
 		)
@@ -474,7 +429,7 @@ end
 if plot_lcs let
 	fig = Figure(resolution=FIG_WIDE)
 	
-	axs = [Axis(fig[i, j], limits=(-60, 380, 0.97, 1.03)) for i ∈ 1:2, j ∈ 1:4]
+	axs = [Axis(fig[i, j], limits=(-60, 380, 0.975, 1.02)) for i ∈ 1:2, j ∈ 1:4]
 	axs = reshape(copy(fig.content), 2, 4)
 	
 	plot_div_WLCS!(
@@ -505,7 +460,7 @@ function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 	fig = Figure(resolution=FIG_TALL)
 	median_prec = round(Int, median(errs))
 	
-	ax_left = Axis(fig[1, 1], title = "Detrended BLCs")
+	ax_left = Axis(fig[1, 1], title = "Divded BLCs")
 	ax_right = Axis(fig[1, 2], title = "Residuals")
 	ax_label = Axis(fig[1, 3], title = "Median precision: $(median_prec) ppm")
 	axs = reshape(copy(fig.content), 1, 3)
@@ -600,17 +555,33 @@ if plot_stellar_spectra let
 end
 
 # ╔═╡ 7962e716-8b0e-4c58-9d14-f51bbf72d419
-plot_blcs && for comp_idx ∈ use_comps_idxs
-	datas = f_norm_w[:, comp_idx, :]
-	f_med, _, f_diff = filt(datas, window_width)
-	plot_BLCs(
-		datas[use_idxs, :],
-		f_med[use_idxs, :],
-		wbins,
-		round.(Int, reshape(std(f_diff[use_idxs, : ], dims=1), :, 1) * 1e6),
-		comp_names[comp_idx],
-	)
+begin
+	blc_plots = OrderedDict()
+	for comp_idx ∈ use_comps_idxs
+		datas = f_norm_w[:, comp_idx, :]
+		cName = comp_names[comp_idx]
+		f_med, _, f_diff = filt(datas, window_width)
+		p = plot_BLCs(
+			datas[use_idxs, :],
+			f_med[use_idxs, :],
+			wbins,
+			round.(Int, reshape(std(f_diff[use_idxs, : ], dims=1), :, 1) * 1e6),
+			cName,
+		)
+		blc_plots[cName] = p
+	end
 end
+
+# ╔═╡ deb9e739-84c3-4c89-831e-1426b1ac3fbc
+@bind cName Select(blc_plots.keys)
+
+# ╔═╡ 6c8bc6be-7879-4a2e-9b8d-c11de8cc7884
+md"""
+target / $(cName)
+"""
+
+# ╔═╡ f2a2d747-0f9d-46ea-94a4-3db5b45d29c7
+blc_plots[cName]
 
 # ╔═╡ 6303ef67-c03f-4d2b-9aba-c80f87140bc5
 CondaPkg.add("numpy"); CondaPkg.resolve()
@@ -645,13 +616,6 @@ body.disable_ui main {
 # ╠═65cc9f56-1e9e-446c-82db-10dcd6334ce3
 # ╠═6471fc66-47a5-455e-9611-c6fd9d56e9dc
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
-# ╠═5fbaead0-f8fb-4ea8-8f62-4fca957eb4f0
-# ╠═9ce136ad-8f8d-4861-8b23-6096efb600f4
-# ╠═69637ff5-4faa-4456-9e25-8f873c2bfa5e
-# ╠═224bbe2c-5fd0-48dc-9f95-f38b9061e2ce
-# ╠═8759b3c2-948c-461e-a925-b68edd532d1d
-# ╠═fffaafad-e1db-459b-b5f4-3af6a9fcb427
-# ╠═28befad8-cbef-4a41-8e3b-d176a5bffe91
 # ╠═1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
 # ╠═6fd88483-d005-4186-8dd2-82cea767ce90
 # ╟─e3468c61-782b-4f55-a4a1-9d1883655d11
@@ -678,10 +642,12 @@ body.disable_ui main {
 # ╟─0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
 # ╠═e6e1ea18-216a-41ae-8a1a-590793fcb669
 # ╟─e98dee2e-a369-448e-bfe4-8fea0f318fa8
-# ╠═df8983d1-4abd-4fad-ace6-9dfe74df4949
 # ╠═3ca393d6-01c0-4f77-88ff-7c4f6388670e
 # ╟─793c4d08-e2ee-4c9d-b7a0-11eaaddba895
 # ╠═7962e716-8b0e-4c58-9d14-f51bbf72d419
+# ╟─deb9e739-84c3-4c89-831e-1426b1ac3fbc
+# ╟─6c8bc6be-7879-4a2e-9b8d-c11de8cc7884
+# ╟─f2a2d747-0f9d-46ea-94a4-3db5b45d29c7
 # ╠═c2c326df-1474-4b06-b183-668f0d6502aa
 # ╟─eeb3da97-72d5-4317-acb9-d28637a06d67
 # ╟─06bbb3e4-9b30-43bd-941f-e357acaa80fc
