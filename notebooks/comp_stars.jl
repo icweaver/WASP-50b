@@ -288,7 +288,7 @@ and add it to our table:
 # ╔═╡ f3326ab8-21da-403b-b290-7694cefb63fe
 df_paper = @chain _df_paper begin
 	@aside ΔBVₜ, ΔJKₜ = _.B[1] - _.V[1], _.J[1] - _.K[1]
-	@transform :D = compute_D.(:B, :V, :J, :K; ΔBVₜ=ΔBVₜ, ΔJKₜ=ΔJKₜ)
+	@transform :D = compute_D.(:B, :V, :J, :K; ΔBVₜ, ΔJKₜ)
 end
 
 # ╔═╡ 8fbc74d9-c993-4757-865f-b7ec3d84495c
@@ -304,7 +304,7 @@ md"""
 	```julia
 	@chain df_paper begin
 		@aside ΔBVₜ, ΔJKₜ = _.B[1] - _.V[1], _.J[1] - _.K[1]
-		@transform! :D = compute_D.(:B, :V, :J, :K; ΔBVₜ=ΔBVₜ, ΔJKₜ=ΔJKₜ)
+		@transform! :D = compute_D.(:B, :V, :J, :K; ΔBVₜ, ΔJKₜ)
 	end
 	```
 
