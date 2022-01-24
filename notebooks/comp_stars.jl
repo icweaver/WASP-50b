@@ -339,22 +339,6 @@ md"""
 We now have a copy-and-pasteable table ✔
 """
 
-# ╔═╡ 4188732d-1d88-4e98-8510-f74224641919
-html"""
-<style>
-body.disable_ui main {
-		max-width : 95%;
-	}
-@media screen and (min-width: 1081px) {
-	body.disable_ui main {
-		margin-left : 10px;
-		max-width : 72%;
-		align-self: flex-start;
-	}
-}
-</style>
-"""
-
 # ╔═╡ Cell order:
 # ╟─80664df1-a135-44f9-b83f-41029a503c77
 # ╟─46bee12a-81ca-43ea-932f-8cfa22ad1e9a
@@ -400,4 +384,3 @@ body.disable_ui main {
 # ╟─52100a8e-3adf-4337-9985-645a10d9e8cd
 # ╟─34d1417b-2d56-4de0-800e-e65d5f9817fb
 # ╠═27c0f880-b775-458f-9092-a0d4d743d9ab
-# ╟─4188732d-1d88-4e98-8510-f74224641919
