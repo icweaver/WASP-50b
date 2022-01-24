@@ -264,7 +264,7 @@ Just as a quick check:
 
 # ╔═╡ a5e742e5-fcca-40d7-b342-c6112e6899e5
 md"""
-## $(@bind plot_blcs CheckBox()) Binned light curves 🌈
+## Binned light curves 🌈
 
 We next integrate the target and comparison star flux within each bin defined above to build the binned light curves. We store these in `oLCw` and `cLCw`, where `oLCw` is an `ntimes` ``\times`` `nbins` matrix that holds the binned target flux, where `ntimes` is the number of timeseries points ``N``. Similarly `cLCw` is an `ntimes` ``\times`` `ncomps` ``\times`` `nbins` matrix that holds the comparison star flux, where `ncomps` is the number of comparison stars:
 """
@@ -779,7 +779,7 @@ end
 # ╔═╡ 65c91d63-10e7-41ab-9c21-f136f4c5cb96
 begin
 	blc_plots = OrderedDict()
-	plot_blcs && for comp_idx ∈ use_comps_idxs
+	for comp_idx ∈ use_comps_idxs
 		datas = f_norm_w[:, comp_idx, :]
 		cName = comp_names[comp_idx]
 		f_med, _, f_diff = filt(datas, window_width)
@@ -804,22 +804,6 @@ target / $(cName)
 
 # ╔═╡ 7fa35566-d327-4319-9ae9-17c4c9825e05
 blc_plots[cName]
-
-# ╔═╡ b2c61d08-6fcf-4b0c-a21a-c0c5e3205210
-html"""
-<style>
-body.disable_ui main {
-		max-width : 95%;
-	}
-@media screen and (min-width: 1081px) {
-	body.disable_ui main {
-		margin-left : 10px;
-		max-width : 72%;
-		align-self: flex-start;
-	}
-}
-</style>
-"""
 
 # ╔═╡ Cell order:
 # ╟─34ef4580-bb95-11eb-34c1-25893217f422
@@ -917,4 +901,3 @@ body.disable_ui main {
 # ╠═c911cecd-0747-4cd1-826f-941f2f58091c
 # ╠═26f18ff6-7baa-4905-b9d1-52cfa9396dfc
 # ╠═f883b759-65fc-466e-9c8f-e4f941def935
-# ╟─b2c61d08-6fcf-4b0c-a21a-c0c5e3205210

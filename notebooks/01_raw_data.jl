@@ -323,22 +323,6 @@ if plot_LDSS3 let
 	end
 end
 
-# ╔═╡ 6000db3d-0798-4f76-be31-617d43406b54
-html"""
-<style>
-body.disable_ui main {
-		max-width : 95%;
-	}
-@media screen and (min-width: 1081px) {
-	body.disable_ui main {
-		margin-left : 10px;
-		max-width : 72%;
-		align-self: flex-start;
-	}
-}
-</style>
-"""
-
 # ╔═╡ Cell order:
 # ╟─fb39c593-86bd-4d4c-b9ec-e5e212a4de98
 # ╟─d8019fa7-380d-4f40-9e08-420a32c34483
@@ -371,4 +355,3 @@ body.disable_ui main {
 # ╠═db4a4cd8-c5e8-4124-935f-0666f6e73fe2
 # ╟─b44b6591-d57b-40bd-810c-a41386412b6c
 # ╠═3433ed02-c27c-4fe5-bfda-a5108a58407c
-# ╟─6000db3d-0798-4f76-be31-617d43406b54

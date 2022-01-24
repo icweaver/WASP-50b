@@ -586,22 +586,6 @@ blc_plots[cName]
 # ╔═╡ 6303ef67-c03f-4d2b-9aba-c80f87140bc5
 CondaPkg.add("numpy"); CondaPkg.resolve()
 
-# ╔═╡ 03af71ac-673b-459b-a931-a600b13d7ee6
-html"""
-<style>
-body.disable_ui main {
-		max-width : 95%;
-	}
-@media screen and (min-width: 1081px) {
-	body.disable_ui main {
-		margin-left : 10px;
-		max-width : 72%;
-		align-self: flex-start;
-	}
-}
-</style>
-"""
-
 # ╔═╡ Cell order:
 # ╟─ee24f7df-c4db-4065-afe9-10be80cbcd6b
 # ╟─9d180c21-e634-4a1e-8430-bdd089262f66
@@ -656,4 +640,3 @@ body.disable_ui main {
 # ╠═a6ec8699-475b-4a86-ab0b-d65b85de2c2d
 # ╠═6303ef67-c03f-4d2b-9aba-c80f87140bc5
 # ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23
-# ╟─03af71ac-673b-459b-a931-a600b13d7ee6
