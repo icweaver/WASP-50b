@@ -178,12 +178,6 @@ let
 	plt.gcf()
 end
 
-# ╔═╡ 74653590-ff90-4c83-97cd-68a07b61ecd5
-md"""
-!!! warning "TODO"
-	Update to `#main` branch to show inline plotting above
-"""
-
 # ╔═╡ 681ece7a-6800-4779-8118-28c3179cd43a
 md"""
 ## Environment details
@@ -245,7 +239,6 @@ body.disable_ui main {
 # ╟─f5d2228c-b45e-4dce-99fb-668f6c50df30
 # ╠═a159c36c-83c8-460e-a7e2-e85c7df8d9da
 # ╠═c83fdb79-b0d9-4830-b6cf-74d2a669ceed
-# ╟─74653590-ff90-4c83-97cd-68a07b61ecd5
 # ╟─681ece7a-6800-4779-8118-28c3179cd43a
 # ╠═655674de-56c1-4386-8fda-aa5c95b6271f
 # ╠═9f68d823-64ac-48cc-b35e-b131a0bd5c50
