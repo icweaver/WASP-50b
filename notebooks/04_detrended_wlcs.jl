@@ -407,11 +407,7 @@ let
 	for (i, (transit, cube)) in enumerate(cubes)
 		g_idxs = grid[i]
 		gl = fig[g_idxs.I...] = GridLayout()
-		
-		plot_lc!(gl, i, transit, cube;
-			ax_top_kwargs = ax_top_kwargs,
-			ax_bottom_kwargs = ax_bottom_kwargs,
-		)
+		plot_lc!(gl, i, transit, cube; ax_top_kwargs, ax_bottom_kwargs)
 	end
 	
 	axs = reshape(fig.content, 4, 2)
