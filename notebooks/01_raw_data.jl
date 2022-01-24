@@ -97,9 +97,6 @@ transits = merge(
 	),
 )
 
-# ╔═╡ 44217f22-1378-4368-9fbd-489bcaabbef8
-frame_imacs = frames_IMACS[1]
-
 # ╔═╡ 0e66d467-1098-46dc-8d06-36d488b14637
 @bind DATA_DIR_LDSS3 Select(glob("data/raw_data/LDSS3/ut*"))
 
@@ -137,9 +134,8 @@ coords_LDSS3 = DataFrame((
 ));
 
 # ╔═╡ bf8ef5a9-0806-44b4-907d-c95d6926dabb
-function plot_frame!(ax, img=frames_LDSS3[1], i=1, coords=coords_LDSS3;
-	stepsize = 32,
-	hm_kwargs = (),
+function plot_frame!(ax;
+	img=frames_LDSS3[1], ch=1, coords=coords_LDSS3, stepsize=32, hm_kwargs=(),
 )
 	hm = plot!(ax, img;
 		colormap = :magma,
@@ -147,7 +143,7 @@ function plot_frame!(ax, img=frames_LDSS3[1], i=1, coords=coords_LDSS3;
 	)
 	
 	# Add labels
-	chip = "c$i"
+	chip = "c$ch"
 	for obj in eachrow(@subset coords :chip .== chip)
 		coord = (obj.x, obj.y) ./ stepsize
 		text!(ax, obj.target;
@@ -264,10 +260,12 @@ if plot_IMACS let
 		img = @view(
 			frames_IMACS[ch][xflip(begin:stepsize:end), yflip(begin:stepsize:end)]
 		)'
-
-		hm = plot_frame!(ax, img, ch, coords_IMACS;
-			stepsize = stepsize,
-			hm_kwargs = (highclip=:yellow, colorrange=(0, 200),),
+		hm = plot_frame!(ax;
+			img,
+			ch,
+			coords = coords_IMACS,
+			stepsize,
+			hm_kwargs = (highclip=:yellow, colorrange=(0, 200)),
 		)
 	end
 
@@ -295,9 +293,12 @@ if plot_LDSS3 let
 	for j ∈ 1:2
 		ax = Axis(fig[2, j])
 		img = @view(frames_LDSS3[j][begin:stepsize:end, begin:stepsize:end])'
-		hm = plot_frame!(ax, img, j, coords_LDSS3;
-			stepsize = stepsize,
-			hm_kwargs = (highclip=:yellow, colorrange=(0, 200),),
+		hm = plot_frame!(ax;
+			img,
+			ch = j,
+			coords = coords_LDSS3,
+			stepsize,
+			hm_kwargs = (highclip=:yellow, colorrange=(0, 200)),
 		)
 		Label(fig[1, j], "c$(j)", tellwidth=false)
 		Label(fig[3, j], "c$(j)", tellwidth=false)
@@ -352,7 +353,6 @@ body.disable_ui main {
 # ╠═26feb668-4e7e-4a9d-a2b6-a5dac81e3ab7
 # ╠═3a6ab0c0-ba08-4151-9646-c19d45749b9f
 # ╠═8c5a4e21-897f-4fbc-bd4f-18adf71fa926
-# ╠═44217f22-1378-4368-9fbd-489bcaabbef8
 # ╠═bf8ef5a9-0806-44b4-907d-c95d6926dabb
 # ╟─06a834f0-8c90-4013-af34-725166970969
 # ╟─0e66d467-1098-46dc-8d06-36d488b14637
