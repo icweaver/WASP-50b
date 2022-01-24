@@ -75,7 +75,6 @@ glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")
 # ╔═╡ e873f9c6-fd1a-4227-9df1-70c626e4a0a1
 function name(fpath, dates_to_names)
 	date_instr = splitpath(split(glob(fpath)[1], "w50_")[2])[1]
-	@show dates_to_names |> keys
 	return dates_to_names[date_instr]
 end
 
@@ -457,18 +456,14 @@ BMA = DataFrame(
 );
 
 # ╔═╡ c7a179a3-9966-452d-b430-a28b2f004bc5
-@with_terminal begin
-	latextabular(BMA, latex=false) |> println
-end
+latextabular(BMA, latex=false) |> PlutoUI.Text
 
 # ╔═╡ d714cb8c-801c-4afc-9f80-5e8ccac7081e
 [@sprintf "%.10f" v for v in BMA[!, "Combined"]]
 
 # ╔═╡ d279e93e-8665-41b2-bd5c-723458fabe86
 # Will probably just copy-paste directly into paper
-with_terminal() do
-	BMA |> x -> latexify(x, env=:table) |> print
-end
+BMA |> x -> latexify(x, env=:table) |> PlutoUI.Text
 
 # ╔═╡ 56d0de38-5639-4196-aafe-79a9ab933980
 begin
