@@ -36,9 +36,6 @@ begin
 	using NaturalSort
 end
 
-# ╔═╡ 086555bd-a886-4025-a354-0388df77a591
-
-
 # ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 md"""
 # Transmission Spectra
@@ -242,9 +239,7 @@ df_tspecs = sort(vcat(df_common, df_extra), :Wcen)
 #df_tspecs = df_common
 
 # ╔═╡ 64f608b9-76df-402e-801c-006dc3096f94
-@with_terminal begin
-	latextabular(df_tspecs, latex=false) |> print
-end
+latextabular(df_tspecs, latex=false) |> PlutoUI.Text
 
 # ╔═╡ 4ce88d88-ff08-4ea8-b397-fc61c22adc4e
 df_tspecs[3, 5].err
@@ -468,8 +463,8 @@ let
 	kwargs_scatter = Dict(:markersize=>12.0)
 	for (i, transit) in enumerate(keys(cubes))
 		plot_tspec!(ax, df_tspecs, transit;
-			kwargs_errorbars = kwargs_errorbars,
-			kwargs_scatter = kwargs_scatter,
+			kwargs_errorbars,
+			kwargs_scatter,
 			color = COLORS[i],
 			label = transit,
 		)
@@ -480,9 +475,9 @@ let
 	kwargs_errorbars = Dict(:whiskerwidth=>10.0, :linewidth=>3.0)
 	kwargs_scatter = Dict(:color=>:white, :strokewidth=>3.0, :markersize=>16.0)
 	plot_tspec!(ax, df_tspecs, "Combined";
-			nudge = nudge,
-			kwargs_errorbars = kwargs_errorbars,
-			kwargs_scatter = kwargs_scatter,
+			nudge,
+			kwargs_errorbars,
+			kwargs_scatter,
 			label = "Combined",
 	)
 
@@ -521,15 +516,15 @@ let
 	for (i, transit) in enumerate(keys(cubes))
 		if occursin("LDSS3", transit)
 			plot_tspec!(ax, df_tspecs, transit;
-				kwargs_errorbars = kwargs_errorbars,
-				kwargs_scatter = kwargs_scatter,
+				kwargs_errorbars,
+				kwargs_scatter,
 				color = COLORS[i],
 				label = transit,
 			)
 		else
 			plot_tspec!(ax, df_IMACS, transit;
-				kwargs_errorbars = kwargs_errorbars,
-				kwargs_scatter = kwargs_scatter,
+				kwargs_errorbars,
+				kwargs_scatter,
 				color = COLORS[i],
 				label = transit,
 			)
@@ -541,9 +536,9 @@ let
 	kwargs_errorbars = Dict(:whiskerwidth=>10.0, :linewidth=>3.0)
 	kwargs_scatter = Dict(:color=>:white, :strokewidth=>3.0, :markersize=>16.0)
 	plot_tspec!(ax, df_IMACS, "Combined";
-			nudge = nudge,
-			kwargs_errorbars = kwargs_errorbars,
-			kwargs_scatter = kwargs_scatter,
+			nudge,
+			kwargs_errorbars,
+			kwargs_scatter,
 			label = "Combined",
 	)
 
@@ -587,7 +582,6 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
-# ╠═086555bd-a886-4025-a354-0388df77a591
 # ╟─e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 # ╟─bd80f202-b4bb-4682-aa62-e8245867208c
 # ╟─0c752bd5-5232-4e82-b519-5ca23fff8a52
