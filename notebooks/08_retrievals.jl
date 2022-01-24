@@ -116,7 +116,7 @@ cube
 
 # ╔═╡ 7b714c1e-2e3d-453f-a342-81df8283de5c
 # Check if missing files
-with_terminal() do
+@with_terminal begin
 	i = 0
 	for sp ∈ species
 		for (model_name, model_id) ∈ model_names
@@ -155,9 +155,9 @@ function plot_instr!(ax, fpath; color=:blue, label="add label")
 	errorbars!(ax, wav, retr_instr.flux, retr_instr.flux_err)
 	scatter!(ax, wav, retr_instr.flux;
 		markersize = 15,
-		color = color,
-		strokewidth=1.5,
-		label = label
+		color,
+		strokewidth = 1.5,
+		label,
 	)
 end
 
@@ -169,15 +169,15 @@ function get_retr_model(cube, sp, model)
 end
 
 # ╔═╡ cc011a66-37bd-4543-9a58-b11e1f785e52
-function retrieval!(ax, model0, model_sampled; color=:blue, lw=3, label="")
+function retrieval!(ax, model0, model_sampled; color=:blue, linewidth=3, label="")
 	model = @rsubset model0 :wav < 1.0
 	wav = model.wav .* 10_000
 	wav_sampled = model_sampled.wav .* 10_000
-	lines!(ax, wav, model.flux, color=color, linewidth=lw, label=label)
+	lines!(ax, wav, model.flux; color, linewidth, label)
 	scatter!(ax, wav_sampled, model_sampled.flux;
 		marker = :rect,
 		markersize = 15,
-		color = color,
+		color,
 		strokewidth = 1.5,
 		strokecolor = color,
 	)
@@ -187,10 +187,10 @@ function retrieval!(ax, model0, model_sampled; color=:blue, lw=3, label="")
 end
 
 # ╔═╡ 00a0f9c4-cd4d-4ae2-80b7-0c044239a571
-function plot_retrieval!(ax, cube, sp, model; color=:blue, lw=3)
+function plot_retrieval!(ax, cube, sp, model; color=:blue, linewidth=3)
 	retr_model, retr_model_sampled = get_retr_model(cube, sp, model)
 	label = dashplus(sp) * " ($(model))"
-	retrieval!(ax, retr_model, retr_model_sampled, color=color, lw=lw, label=label)
+	retrieval!(ax, retr_model, retr_model_sampled; color, linewidth, label)
 end
 
 # ╔═╡ 41a233c7-5357-453c-b7ad-36fdf9f709cb
@@ -278,7 +278,7 @@ idx_max_model = argmax(Matrix(df_table_not_model))
 df_table.Model[idx_max_model[1]], names(df_table_not_model)[idx_max_model[2]]
 
 # ╔═╡ f834b9fc-e410-442c-b085-8cccb8e30b71
-@with_terminal latextabular(df_table, latex=false) |> print
+latextabular(df_table, latex=false) |> PlutoUI.Text
 
 # ╔═╡ 930ec094-7b11-48b8-818e-15c63ed6f8a5
 dists = let
@@ -398,7 +398,7 @@ let
 	plot_retrieval!(ax, cube, "Na_TiO", "spot", color=COLORS[2])
 	plot_retrieval!(ax, cube, "Na", "cloud", color=COLORS[3])
 	plot_retrieval!(ax, cube, "TiO", "haze", color=COLORS[5])
-	plot_retrieval!(ax, cube, "Na_TiO", "clear", color=COLORS[1], lw=6)
+	plot_retrieval!(ax, cube, "Na_TiO", "clear", color=COLORS[1], linewidth=6)
 	
 	fpath_suff = basename(base_dir)
 	if occursin("offs", fpath_suff)
