@@ -20,20 +20,13 @@ begin
 	Pkg.activate(Base.current_project())
 
 	using PlutoUI
-	using AlgebraOfGraphics
-	using CairoMakie
-	import CairoMakie.Makie.KernelDensity: kde
-	using CSV, DataFrames, DataFramesMeta
-	using DelimitedFiles
-	using Glob
-	using ImageFiltering
-	using Latexify
-	using Measurements, StatsBase, Unitful, UnitfulAstro
+	using AlgebraOfGraphics, CairoMakie
+	using CSV, DataFrames, DataFramesMeta, DelimitedFiles, Glob, OrderedCollections
+	using ImageFiltering, Measurements, StatsBase, Unitful, UnitfulAstro
 	import Measurements: value, uncertainty
-	
-	using OrderedCollections
-	using Printf
-	using NaturalSort
+	using Latexify, Printf
+	using Dates, NaturalSort
+	using PythonCall, CondaPkg
 end
 
 # ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
@@ -42,7 +35,7 @@ md"""
 
 In this notebook we will load in the individual transmission spectra from each night, and combine them on a common wavelength basis.
 
-$(TableOfContents(title="📖 Table of Contents"))
+$(TableOfContents())
 """
 
 # ╔═╡ bd80f202-b4bb-4682-aa62-e8245867208c
@@ -50,7 +43,7 @@ const FIG_PATH = "figures/detrended"
 
 # ╔═╡ 0c752bd5-5232-4e82-b519-5ca23fff8a52
 md"""
-## Load data
+## Load data ⬇
 
 First let's load up all of the data, including the white-light transit depths from each night.
 

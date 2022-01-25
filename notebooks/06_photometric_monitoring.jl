@@ -20,15 +20,12 @@ begin
 	Pkg.activate(Base.current_project())
 
 	using PlutoUI
-	using AlgebraOfGraphics
-	using CairoMakie
-	using CSV, DataFrames
-	using Dates, DelimitedFiles
-	using Glob
-	using ImageFiltering
-	using Latexify
-	using LombScargle, Measurements, Statistics
-    using PythonCall, CondaPkg
+	using AlgebraOfGraphics, CairoMakie
+	using CSV, DataFrames, DataFramesMeta, DelimitedFiles, Glob, OrderedCollections
+	using ImageFiltering, LombScargle, Measurements, Statistics
+	using Latexify, Printf
+	using Dates, NaturalSort
+	using PythonCall, CondaPkg
 end
 
 # ╔═╡ 670b88e4-1e96-494d-bfcc-235092bb6e96
@@ -37,7 +34,7 @@ md"""
 
 In this notebook we gather and analyze the available photometric data for this target.
 
-$(TableOfContents(title="📖 Table of Contents"))
+$(TableOfContents())
 """
 
 # ╔═╡ 8d42d1c7-c517-41c4-9a5d-2908d2ac2463
@@ -362,6 +359,9 @@ md"""
 ### $(@bind plot_folded CheckBox()) Folded lightcurves
 """
 
+# ╔═╡ 1955e266-eb55-46da-890b-08cc6fc7dfc4
+@py import matplotlib.pyplot as plt
+
 # ╔═╡ 3128e57f-df4f-4811-b867-8a293d7d536d
 function compute_pgram_model(lc, P)
 	lc = to_PyPandas(lc)
@@ -600,10 +600,10 @@ if plot_pg let
 		hlines!(ax, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))), color=:darkgrey)
 	end
 	
-	axislegend("P_max (days)", position=(0.05, 0.8))
+	axislegend("P_max (days)")
 	
 	hidexdecorations!(ax_window)
-	linkaxes!(ax_window, ax)
+	linkxaxes!(ax_window, ax)
 	
 	#xlims!(ax, 0, 10)
 	#ylims!(ax, 0, 0.3)
@@ -712,6 +712,7 @@ body.disable_ui main {
 # ╠═de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
 # ╠═2215ed86-fa78-4811-88ab-e3521e4a1dea
 # ╟─a50ef756-ade6-48a3-8d3a-17b56ce03c26
+# ╠═1955e266-eb55-46da-890b-08cc6fc7dfc4
 # ╠═49bcddbe-d413-48ae-91d8-92bcebf40518
 # ╠═97ced6ba-ff74-46b4-90d5-18e7b2f1b903
 # ╠═3128e57f-df4f-4811-b867-8a293d7d536d
