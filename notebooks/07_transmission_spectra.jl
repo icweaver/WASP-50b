@@ -20,6 +20,7 @@ begin
 	Pkg.activate(Base.current_project())
 
 	using PlutoUI
+	import MarkdownLiteral: @mdx
 	using AlgebraOfGraphics, CairoMakie
 	using CSV, DataFrames, DataFramesMeta, DelimitedFiles, Glob, OrderedCollections
 	using ImageFiltering, Measurements, StatsBase, Unitful, UnitfulAstro
@@ -30,7 +31,7 @@ begin
 end
 
 # ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
-md"""
+@mdx """
 # Transmission Spectra
 
 In this notebook we will load in the individual transmission spectra from each night, and combine them on a common wavelength basis.
@@ -42,7 +43,7 @@ $(TableOfContents())
 const FIG_PATH = "figures/detrended"
 
 # ╔═╡ 0c752bd5-5232-4e82-b519-5ca23fff8a52
-md"""
+@mdx """
 ## Load data ⬇
 
 First let's load up all of the data, including the white-light transit depths from each night.
@@ -73,7 +74,7 @@ dates_to_names = OrderedDict(
 	"150927_IMACS" => "Transit 2 (IMACS)",
 	"150927_LDSS3" => "Transit 2 (LDSS3)",
 	"161211_IMACS" => "Transit 3 (IMACS)",
-	
+
 	"131219_sp_IMACS" => "Transit 1 (IMACS)",
 	"150927_sp_IMACS" => "Transit 2 (IMACS)",
 	"150927_sp_LDSS3" => "Transit 2 (LDSS3)",
@@ -89,27 +90,27 @@ end
 # ╔═╡ 5c4fcb25-9a26-43f1-838b-338b33fb9ee6
 begin
 	cubes = OrderedDict{String, OrderedDict}()
-	
+
 	for dirpath in sort(glob("$(DATA_DIR)/w50_*"))
 		# Read tspec file
 		fpath = "$(dirpath)/transpec.csv"
 		transit = name(fpath, dates_to_names)
 		cubes[transit] = OrderedDict()
-		
+
 		df = cubes[transit]["tspec"] = CSV.read(fpath, DataFrame;
 			normalizenames = true,
 		)
-		
+
 		# Add wav bins for external instruments (not saved in pkl)
 		if occursin("LDSS3", dirpath)
 			wbins = readdlm("$(dirpath)/wbins.dat", comments=true)
 			cubes[transit]["tspec"][:, [:Wav_d, :Wav_u]] .= wbins
 		end
-		
+
 		# Compute transmission spectra specific values
 		df.wav = mean([df.Wav_u, df.Wav_d])
 		df.δ = maxmeasure.(df.Depth_ppm_, df.Depthup_ppm_, df.DepthDown_ppm_)
-		
+
 		# Extract WLC information
 		df_WLC = CSV.read(
 			"$(dirpath)/white-light/results.dat",
@@ -122,17 +123,17 @@ begin
 		)
 	 	cubes[transit]["δ_WLC"] = maxmeasure(p[1], p_u[1], p_d[1])^2 * 1e6
 	end
-	
+
 	cubes = sort(cubes)
 end
 
 # ╔═╡ e58ec082-d654-44e3-bcd4-906fc34171c8
-md"""
+@mdx """
 ## Combine spectra 🌈
 """
 
 # ╔═╡ 11066667-9da2-4b36-b784-c3515c04a659
-md"""
+@mdx """
 We start the combining process by saving the subset of the data sharing the same range of wavelength bins:
 """
 
@@ -147,7 +148,7 @@ df_common_0 = innerjoin(
 df_common_0
 
 # ╔═╡ acde40fd-8ed4-4175-9a52-13ed91dc5495
-md"""
+@mdx """
 Conversely, we also store which points in the spectrum are not common between all nights. `Transit 2 (LDSS3)` encompasses the spectra from all other nights, so we `antijoin` relative to this dataset:
 """
 
@@ -158,19 +159,19 @@ dfs_unique = (
 		cubes["Transit 2 (LDSS3)"]["tspec"],
 		on = :wav,
 	),
-	
+
 	"Transit 2 (IMACS)" => antijoin(
 		cubes["Transit 2 (IMACS)"]["tspec"],
 		cubes["Transit 2 (LDSS3)"]["tspec"],
 		on = :wav,
 	),
-	
+
 	"Transit 2 (LDSS3)" => antijoin(
 		cubes["Transit 2 (LDSS3)"]["tspec"],
 		cubes["Transit 1 (IMACS)"]["tspec"],
 		on = :wav,
 	),
-	
+
 	"Transit 3 (IMACS)" => antijoin(
 		cubes["Transit 3 (IMACS)"]["tspec"],
 		cubes["Transit 2 (LDSS3)"]["tspec"],
@@ -202,11 +203,11 @@ begin
 		@rtransform :Combined = weightedmean2([:δ, :δ_1, :δ_2, :δ_3])
 		rename(_, names(_, r"δ") .=> cubes.keys)
 	end
-	
+
 	insertcols!(df_common, 4,
 		:ΔW => df_common.Wup .- df_common.Wlow
 	)
-	
+
 	df_common
 end
 
@@ -241,7 +242,7 @@ df_tspecs[3, 5].err
 avg_prec = round(Int, getproperty.(df_tspecs[!, :Combined], :err) |> median)
 
 # ╔═╡ 5d25caa3-916a-40b1-ba7c-ea1295afb775
-md"""
+@mdx """
 Average precision per bin: $(avg_prec) ppm
 """
 
@@ -269,12 +270,12 @@ function plot_tspec!(ax, df, col;
 	f, ferr = value.(m), uncertainty.(m)
 
 	errorbars!(ax, wav .+ nudge, f, ferr; color=color, kwargs_errorbars...)
-	
+
 	scatter!(ax, wav .+ nudge, f; color=color, kwargs_scatter..., label=label)
 end
 
 # ╔═╡ f92ecf4d-aab8-413e-a32d-5f77a969d1ca
-md"""
+@mdx """
 ## Offset test
 
 Here we combine only the IMACS data and plot it along with the LDSS3 data set.
@@ -338,7 +339,7 @@ avg_prec_LDSS3 = round(Int, getproperty.(df_LDSS3[!, :Combined], :err) |> median
 #)
 
 # ╔═╡ 146a2be7-1c08-4d7c-802f-41f65aeae0d5
-md"""
+@mdx """
 ## Retrieval params
 
 Finally, we save the final combined transmission spectrum to file for our retrieval analysis, along with planet/star parameters computed from the WLC fits:
@@ -376,7 +377,7 @@ function create_df(df; instrument="add instrument")
 end
 
 # ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
-md"""
+@mdx """
 ## Notebook setup
 """
 

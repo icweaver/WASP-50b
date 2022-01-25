@@ -20,6 +20,7 @@ begin
 	Pkg.activate(Base.current_project())
 
 	using PlutoUI
+	import MarkdownLiteral: @mdx
 	using AlgebraOfGraphics, CairoMakie
 	using CSV, DataFrames, DataFramesMeta, DelimitedFiles, Glob, OrderedCollections
 	using ImageFiltering, LombScargle, Measurements, Statistics
@@ -29,7 +30,7 @@ begin
 end
 
 # ╔═╡ 670b88e4-1e96-494d-bfcc-235092bb6e96
-md"""
+@mdx """
 # Photometric Monitoring
 
 In this notebook we gather and analyze the available photometric data for this target.
@@ -41,14 +42,14 @@ $(TableOfContents())
 const FIG_PATH = "figures/stellar_activity"
 
 # ╔═╡ 0cbe4263-799f-4ee3-9a94-3ba879528b01
-md"""
+@mdx """
 ## $(@bind plot_ASASSN CheckBox()) ASAS-SN 🌍
 
 We downloaded [all photometric monitoring data](https://asas-sn.osu.edu/photometry/7df0eb29-0b68-57ef-8ce2-83dc7b5684da) gathered by the [ASAS-SN](https://asas-sn.osu.edu/) survey for this target, and include it below.
 """
 
 # ╔═╡ b00c28a2-26b1-442e-a347-39fb66b825a0
-md"""
+@mdx """
 ### Data inspection
 
 Let's start by checking the data for any corrupted or missing data points:
@@ -70,7 +71,7 @@ function name(dt_julian)
 end
 
 # ╔═╡ 6eaf882c-0cb5-415f-b8fe-c071ee25a895
-md"""
+@mdx """
 Looks good. According to the table above, the data spans
 **from $(join(name.(extrema(df_ASASSN.hjd)), " to "))** from two cameras (**bd**, commissioned 2013 December at Haleakala; **bh**, commissioned 2015 July at CTIO), both in the V band:
 """
@@ -90,15 +91,15 @@ if plot_ASASSN let
 	    :mag => "Magnitude",
 		color = :camera,
 	)
-	
+
 	fig = draw(phot_mon)
 	ax = current_axis()
-	
+
 	vlines!(ax, julian_transit_dates;
 		linestyle = :dash,
 		color = :darkgrey,
 	)
-	
+
 	for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, julian_transit_dates))
 		text!(ax, "Transit $i\n$utc";
 			position = Point2f0(jd, 11.83),
@@ -108,7 +109,7 @@ if plot_ASASSN let
 			color = :grey,
 		)
 	end
-		
+
 	fig
 	end
 end
@@ -117,7 +118,7 @@ end
 1e6 * median(df_ASASSN.flux_err)
 
 # ╔═╡ 7e5ea835-8eb2-44d5-905d-433767b6b91a
-md"""
+@mdx """
 Since these observations share the same filter, we will treat them as if they came from a single instrument.
 """
 
@@ -134,12 +135,12 @@ begin
 end;
 
 # ╔═╡ dbe317fe-540d-44e8-b8e7-6c465c79559f
-md"""
+@mdx """
 ``Δt_\text{ASAS-SN}`` = $(@bind binsize_ASASSN PlutoUI.Slider(1:30, default=7, show_value=true)) days
 """
 
 # ╔═╡ 9a195365-e68f-43e2-8870-c09153e2ce91
-md"""
+@mdx """
 ### Plot
 
 We now plot the ASAS-SN photometry binned to **$(binsize_ASASSN) days**:
@@ -149,18 +150,18 @@ We now plot the ASAS-SN photometry binned to **$(binsize_ASASSN) days**:
 f_ASASSN
 
 # ╔═╡ 682499cb-af79-48f7-9e74-0185894f65fe
-md"""
+@mdx """
 For comparison, the average cadence for this data is $(t_ASASSN |> diff |> mean) days.
 """
 
 # ╔═╡ 78d85c7c-da06-41ab-915b-48d93a010967
-md"""
+@mdx """
 ## $(@bind plot_TESS CheckBox()) TESS 🌌
 We next turn to the TESS photometry.
 """
 
 # ╔═╡ 97e7feee-11b2-4a35-9327-b5c0d05b2a23
-md"""
+@mdx """
 ### Light curve collection
 
 First we use [`lightkurve`](https://docs.lightkurve.org/whats-new-v2.html) to download the available data products from TESS:
@@ -186,7 +187,7 @@ all_srs = lk.search_lightcurve("WASP-50")
 srs = lk.search_lightcurve("WASP-50", author=["SPOC"], exptime=120)
 
 # ╔═╡ 34fcd73d-a49c-4597-8e63-cfe2495eee48
-md"""
+@mdx """
 From the $(length(all_srs)) data products found, we see that $(length(srs)) are available from the [Science Processing Operations Center (SPOC)](https://heasarc.gsfc.nasa.gov/docs/tess/pipeline.html):
 """
 
@@ -194,8 +195,8 @@ From the $(length(all_srs)) data products found, we see that $(length(srs)) are 
 lcs = srs.download_all(flux_column="pdcsap_flux")
 
 # ╔═╡ 241c462c-3cd9-402d-b948-b9b1f608b727
-md"""
-We show the normalized PDCSAP flux below for each sector: 
+@mdx """
+We show the normalized PDCSAP flux below for each sector:
 """
 
 # ╔═╡ 31d5bc92-a1f2-4c82-82f2-67755f9aa235
@@ -203,7 +204,7 @@ begin
 	P = 1.9550931258
 	t_0 = Time(2455558.61237, format="jd")
 	dur = 1.83 * (1.0 / 24.0)
-	
+
 	lcs_cleaned = []
 	lcs_oot = []
 	for lc in lcs
@@ -229,16 +230,16 @@ function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=
 	if relative_flux
 		f_med = median(f)
 		Δf, Δf_err = @. 1.0 + (f - f_med) / f_med , @. f_err / f_med
-		
+
 	else
 		f_med = 1.0
 		Δf, Δf_err = f, f_err
 	end
-	
+
 	# Original data
 	errorbars!(ax, t_rel, Δf, Δf_err, color=(:darkgrey, 0.25))
 	scatter!(ax, t_rel, Δf, color=(:darkgrey, 0.25))
-	
+
 	# Binned data
 	lc = lk.LightCurve(
 		time=t, flux=f, flux_err=f_err
@@ -252,16 +253,16 @@ function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=
 	)
 	#bin_lc(t_rel, Δf, Δf_err, binsize)
 	f_binned_err_med = median(filter(!isnan, f_err_binned))
-	
+
 	errorbars!(ax, t_binned, f_binned, f_err_binned;
 		color=:grey
 	)
 	scatter!(ax, t_binned, f_binned;
 		color=:grey, label="avg err: $(f_binned_err_med)",
 	)
-	
+
 	axislegend(ax, position=:rb)
-	
+
 	return ax, t_binned, f_binned, f_err_binned, lc_binned_py, f_med
 end
 
@@ -269,7 +270,7 @@ end
 1e6 .* [median(to_PyPandas(lc).flux_err) for lc ∈ lcs_oot]
 
 # ╔═╡ 99fcf959-665b-44cf-9b5f-fd68a919f846
-md"""
+@mdx """
 ### $(@bind plot_pg CheckBox()) Periodogram
 """
 
@@ -286,17 +287,17 @@ end
 # ╔═╡ f3425d9c-861e-4b26-b352-bd0669c7f1f9
 if plot_ASASSN let
 	fig = Figure(resolution=(800, 800))
-	
+
 	### Photometry plot ####
 	ax = Axis(fig[1, 1], xlabel="Time (HJD)", ylabel="Relative flux (ppm)")
-	
+
 	# Mark transit epochs
 	Δjulian_transit_dates = julian_transit_dates #.- 2.457e6
 	vlines!(ax, Δjulian_transit_dates;
 		linestyle = :dash,
 		color = :darkgrey,
 	)
-	
+
 	# Label transit epochs
 	# for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, Δjulian_transit_dates))
 	# 	text!(ax, "Transit $i\n$utc";
@@ -307,12 +308,12 @@ if plot_ASASSN let
 	# 		color = :grey,
 	# 	)
 	# end
-	
+
 	ax_phot, t_binned, f_binned, f_err_binned, lc_binned, f_med = plot_phot!(
 		ax, t_ASASSN, f_ASASSN, f_err_ASASSN;
 		t_offset=0, relative_flux=true, binsize=binsize_ASASSN
 	)
-	
+
 	#### Periodogram #######
 	ax_pg = Axis(fig[2, 1], xlabel="Periods (days)", ylabel="log10 Power")
 	pgram, plan = compute_pgram(to_PyPandas(lc_binned))
@@ -323,7 +324,7 @@ if plot_ASASSN let
 		)
 	hlines!(ax_pg, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))), linestyle=:dash)
 	axislegend(ax_pg, position=:lc)
-			
+
 	fig
 	end
 end
@@ -346,7 +347,7 @@ begin
 		pgram, plan = compute_pgram(lc)
 		pgram_window, _ = compute_window_func(lc)
 		P_max = findmaxperiod(pgram)[1]
-		
+
 		push!(pgrams, pgram)
 		push!(pgrams_window, pgram_window)
 		push!(plans, plan)
@@ -355,7 +356,7 @@ begin
 end
 
 # ╔═╡ a50ef756-ade6-48a3-8d3a-17b56ce03c26
-md"""
+@mdx """
 ### $(@bind plot_folded CheckBox()) Folded lightcurves
 """
 
@@ -388,15 +389,15 @@ begin
 		#Δt = (lc_folded.time.value |> diff |> median) * 5
 		push!(lcs_folded, lc_folded)
 		push!(lcs_folded_binned, lc_folded.bin(bins=200))
-		
+
 		# Model
-		lc_fit_folded = compute_pgram_model(lc, P)	
+		lc_fit_folded = compute_pgram_model(lc, P)
 		push!(lcs_fit_folded, lc_fit_folded)
 	end
 end
 
 # ╔═╡ 056281a2-4786-45eb-a9fa-57515153f66c
-md"""
+@mdx """
 ### Spot parameter estimation
 """
 
@@ -440,12 +441,12 @@ function fold_and_bin(lc)
 		lc_folded = lk.LightCurve(lc).fold(P)
 		push!(lcs_folded, to_PyPandas(lc_folded))
 		push!(lcs_folded_binned, to_PyPandas(lc_folded.bin(bins=200)))
-		
+
 		# Model
-		lc_fit_folded = compute_pgram_model(lc, P)	
+		lc_fit_folded = compute_pgram_model(lc, P)
 		push!(lcs_fit_folded, lc_fit_folded)
 	end
-	
+
 	return lcs_folded, lcs_folded_binned, lcs_fit_folded
 end
 
@@ -462,7 +463,7 @@ end
 extrema(f_sp.(Ts, ΔLs2[end], T₀)) .* 100
 
 # ╔═╡ 18223d42-66d8-40d1-9d89-be8af46853e2
-md"""
+@mdx """
 ## Helper Functions
 """
 
@@ -471,14 +472,14 @@ begin
 	Makie.convert_arguments(
 		P::PointBased, v::Vector, m::AbstractVector{<:Measurement}
 	) = convert_arguments(P, v, value.(m))
-	
+
 	Makie.convert_arguments(
 		P::Type{<:Errorbars}, v::Vector, m::AbstractVector{<:Measurement}
-	) = convert_arguments(P, v, value.(m), uncertainty.(m))	
+	) = convert_arguments(P, v, value.(m), uncertainty.(m))
 end
 
 # ╔═╡ ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd
-md"""
+@mdx """
 ## Notebook setup
 """
 
@@ -671,7 +672,7 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
-# ╟─670b88e4-1e96-494d-bfcc-235092bb6e96
+# ╠═670b88e4-1e96-494d-bfcc-235092bb6e96
 # ╟─8d42d1c7-c517-41c4-9a5d-2908d2ac2463
 # ╟─0cbe4263-799f-4ee3-9a94-3ba879528b01
 # ╟─b00c28a2-26b1-442e-a347-39fb66b825a0

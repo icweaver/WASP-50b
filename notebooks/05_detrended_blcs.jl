@@ -20,6 +20,7 @@ begin
 	Pkg.activate(Base.current_project())
 
 	using PlutoUI
+	import MarkdownLiteral: @mdx
 	using AlgebraOfGraphics, CairoMakie
 	import CairoMakie.Makie.KernelDensity: kde
 	using CSV, DataFrames, DataFramesMeta, DelimitedFiles, Glob, OrderedCollections
@@ -30,38 +31,38 @@ begin
 end
 
 # ╔═╡ ebef52bc-2acf-4cf8-aca7-90cd6684c061
-md"""
+@mdx """
 # Detrended binned light curves
 
 In this notebook we will plot the detrended binned light curves for all nights.
-
-$(TableOfContents())
 """
 
+# ╔═╡ 6c6741b8-eeb1-4c1e-8d22-40d08df00ced
+begin
+	const BASE_DIR = "data/detrended"
+	const FIG_DIR = "figures/detrended"
+	TableOfContents()
+end
+
 # ╔═╡ 6008853d-1a74-4004-8aa8-7a70d8297045
-md"""
-!!! note "Data download"
-	```shell
-	rsync -azRP $H:/pool/sao_access/iweaver/GPTransmissionSpectra/./"out_*" data/detrended/ --exclude={"*george*","*mnest*"}
+@mdx """
+!!! tip "Data download"
+	```
+	rclone sync -P ACCESS_box:WASP-50b/$(BASE_DIR) $(BASE_DIR)
 	```
 
-	```shell
-	rclone sync -P ACCESS_box:WASP-50b/data/detrended data/detrended
-	```
+	* [Direct link](https://app.box.com/s/wr8tpof238cq8oj71ulaf69z9q0k7f9w)
 """
 
 # ╔═╡ 0158a760-1229-4089-bf90-7c7b2f1f548a
-md"""
+@mdx """
 ## Load data ⬇
 
 First, let's load the relevant data needed for this notebook:
 """
 
 # ╔═╡ 4b09c729-3395-4cee-bb69-bab59390845c
-@bind DATA_DIR Select(glob("data/detrended/out_*/WASP50"))
-
-# ╔═╡ b63189de-7f78-46d3-a119-3064e275dbe4
-const FIG_PATH = "figures/detrended"
+@bind DATA_DIR Select(glob("$(BASE_DIR)/out_*/WASP50"))
 
 # ╔═╡ 737c135a-7412-4b87-a718-642472d4bf4b
 function name(dirpath, dates_to_names)
@@ -85,14 +86,14 @@ dates_to_names = Dict(
 begin
 	# Load IMACS
 	cubes = Dict{String, Any}()
-	
+
 	for dirpath ∈ sort(glob("$(DATA_DIR)/w50*/wavelength"))
 		fpaths = sort!(glob("$(dirpath)/wbin*/PCA_1/detrended_lc.dat"), lt=natural)
 		dirpath_WLC = "$(dirname(dirpath))/white-light"
 
 		# TODO, track this down
 		deleteat!(fpaths, findfirst(s -> occursin("wbin3", s), fpaths))
-		
+
 		# WLC BMA t₀
 		t₀ = let
 			df_BMA_WLC = CSV.File(
@@ -102,13 +103,13 @@ begin
 			) |> DataFrame
 			df_BMA_WLC[findfirst(==("t0"), df_BMA_WLC.Variable), :].Value
 		end
-		
+
 		# Pre-allocate matrices to hold detrended data and models in each bin
 		N_time = size(readdlm("$(dirpath_WLC)/comps.dat", ','), 1)
 		N_bins = length(fpaths)
 		det_BLC_fluxes = Matrix{Float64}(undef, N_time, N_bins)
 		det_BLC_models = copy(det_BLC_fluxes)
-	
+
 		# Populate each matrix
 		for (fpath, lc, model) in zip(
 			fpaths, eachcol(det_BLC_fluxes), eachcol(det_BLC_models)
@@ -122,7 +123,7 @@ begin
 			lc .= df.DetFlux
 			model .= df.Model
 		end
-		
+
 		# Save
 		transit = name(dirpath, dates_to_names)
 		cubes[transit] = Dict(
@@ -136,12 +137,12 @@ begin
 			)
 		)
 	end
-		
+
 	cubes = sort(cubes)
 end
 
 # ╔═╡ efb8ed46-1607-4c13-b1ba-e4ca37e59b98
-md"""
+@mdx """
 ## Plot 📊
 """
 
@@ -149,7 +150,7 @@ md"""
 @bind transit Select(cubes.keys)
 
 # ╔═╡ 1dd4968e-959a-4f6e-a0e2-9fe9b8ecdd74
-md"""
+@mdx """
 ## Notebook setup
 """
 
@@ -253,7 +254,7 @@ function plot_BLCs(transit, datas, models, wbins, errs; offset=0.3)
 	Label(fig[end, 2:3], "Index")
 
 	f_suff = basename(dirname(DATA_DIR))
-	savefig(fig, "$(FIG_PATH)/detrended_blcs_$(transit)_$(f_suff).png")
+	savefig(fig, "$(FIG_DIR)/detrended_blcs_$(transit)_$(f_suff).png")
 	
 	fig
 end
@@ -282,9 +283,9 @@ blc_plots[transit]
 # ╔═╡ Cell order:
 # ╟─ebef52bc-2acf-4cf8-aca7-90cd6684c061
 # ╟─6008853d-1a74-4004-8aa8-7a70d8297045
+# ╠═6c6741b8-eeb1-4c1e-8d22-40d08df00ced
 # ╟─0158a760-1229-4089-bf90-7c7b2f1f548a
 # ╟─4b09c729-3395-4cee-bb69-bab59390845c
-# ╟─b63189de-7f78-46d3-a119-3064e275dbe4
 # ╠═100af59b-3a24-41d0-9cda-05592bd1778f
 # ╠═737c135a-7412-4b87-a718-642472d4bf4b
 # ╠═f3e9100a-ec8e-425f-9081-e457ad9b1515

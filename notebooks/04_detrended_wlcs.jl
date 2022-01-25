@@ -20,6 +20,7 @@ begin
 	Pkg.activate(Base.current_project())
 
 	using PlutoUI
+	import MarkdownLiteral: @mdx
 	using AlgebraOfGraphics, CairoMakie
 	import CairoMakie.Makie.KernelDensity: kde
 	using CSV, DataFrames, DataFramesMeta, DelimitedFiles, Glob, OrderedCollections
@@ -29,43 +30,35 @@ begin
 	using PythonCall, CondaPkg
 end
 
+# ╔═╡ 25d1284c-7260-4f3a-916a-b2814d2606af
+begin
+	const BASE_DIR = "data/detrended"
+	const FIG_DIR = "figures/detrended"
+	TableOfContents()
+end
+
 # ╔═╡ 506eeeb2-e56d-436b-91b8-605e52201563
-md"""
+@mdx """
 # Detrended white-light curves
 
 In this notebook we will visualize the detrended white-light curves from IMACS and LDSS3. We used the average orbital and system parameters obtained from these detrended fits to place uniform constraints on our binned wavelength analysis.
 
-$(TableOfContents())
-"""
-
-# ╔═╡ f7f718a2-642d-4914-b66e-7c12233455f2
-md"""
-!!! note "Data download"
-
-	```bash
-	rsync -azRP $H:/pool/sao_access/iweaver/GPTransmissionSpectra/./"out_*" data/detrended/ --exclude={"*george*","*mnest*"}
+!!! tip "Data download"
 	```
-
-	```bash
-	rclone sync -P ACCESS_box:WASP-50b/data/detrended data/detrended
+	rclone sync -P ACCESS_box:WASP-50b/$(BASE_DIR) $(BASE_DIR)
 	```
+	* [Direct link](https://app.box.com/s/wr8tpof238cq8oj71ulaf69z9q0k7f9w)
 """
 
 # ╔═╡ 782806a6-efd2-45a9-b898-788a276c282b
-md"""
+@mdx """
 ## Load data ⬇
 
 First, let's load the relevant data needed for this notebook:
 """
 
 # ╔═╡ a8d91138-73e7-4382-a032-37daec54a9c0
-@bind DATA_DIR Select(glob("data/detrended/out_*/WASP50"))
-
-# ╔═╡ 2dd2ad78-b9a1-4cdf-97c9-b659599add63
-const FIG_PATH = "figures/detrended"
-
-# ╔═╡ 105762e1-15a2-4e7f-bff3-7740a5f53492
-glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")
+@bind DATA_DIR Select(glob("$(BASE_DIR)/out_*/WASP50"))
 
 # ╔═╡ e873f9c6-fd1a-4227-9df1-70c626e4a0a1
 function name(fpath, dates_to_names)
@@ -86,7 +79,7 @@ dates_to_names = Dict(
  )
 
 # ╔═╡ 579e62da-7ffb-4639-bd73-3826ade1cfa2
-md"""
+@mdx """
 The data cube is organized by night as follows:
 
 ```julia
@@ -108,17 +101,17 @@ where `samples` is a dictionary of the Bayesian model averaged posterior samples
 """
 
 # ╔═╡ a8cf11e2-796e-45ff-bdc9-e273b927700e
-md"""
+@mdx """
 ## Transit curves 🌅
 """
 
 # ╔═╡ ae82d3c1-3912-4a5e-85f5-6383af42291e
-md"""
+@mdx """
 Plotting the data from the `models` cube returns the following detrended white-light curves:
 """
 
 # ╔═╡ 0dd63eaf-1afd-4caf-a74b-7cd217b3c515
-# Returns value `v` from `Variables` columns in results.dat file 
+# Returns value `v` from `Variables` columns in results.dat file
 val(df, v) = @subset(df, :Variable .== v)[1, "Value"]
 
 # ╔═╡ d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c
@@ -130,34 +123,34 @@ function ϕ(t, t₀, P)
 end
 
 # ╔═╡ b28bb1b6-c148-41c4-9f94-0833e365cad4
-md"""
+@mdx """
 ## Summary table 📋
 """
 
 # ╔═╡ 30b84501-fdcd-4d83-b929-ff354de69a17
-md"""
+@mdx """
 We summarize the Bayesian Model Averag (BMA) results for selected parameters for each night below, and average together each parameter from each night, weighted by its maximum uncertainty per night:
 """
 
 # ╔═╡ c936b76a-636b-4f10-b556-fa19808c1562
-md"""
-### Save to file
+@mdx """
+### Print table
 """
 
 # ╔═╡ 68ec4343-5f6c-4dfd-90b5-6393b4c819b9
-md"""
+@mdx """
 ## $(@bind plot_corner CheckBox()) Corner plots 📐
 """
 
 # ╔═╡ e452d2b1-1010-4ce3-8d32-9e9f1d0dfa0b
-md"""
+@mdx """
 To visualize the spread of each parameter, we define the dimensionless metric:
 
 ```math
-Δx \equiv \frac{x - \overline{\text{BMA}}_μ}{\overline{\text{BMA}}_σ}\quad,
+Δx \\equiv \\frac{x - \\overline{\\text{BMA}}_\\mu}{\\overline{\\text{BMA}}_\\sigma}\\quad,
 ```
 
-where $x$ is a sample from the posterior distribution for the given parameter, ``\overline{\text{BMA}}_μ`` is the BMA averaged across nights, and ``\overline{\text{BMA}}_σ`` is the maximum uncertainty, also averaged across nights. These values correspond to the `Combined` column in the table above. ``\Delta x`` is then a measure of the displacement of each sample in its posterior distribution from its corresponding average BMA value, scaled by the uncertainty in the average BMA.
+where ``x`` is a sample from the posterior distribution for the given parameter, ``\\overline{\\text{BMA}}_\\mu`` is the BMA averaged across nights, and ``\\overline{\\text{BMA}}_\\sigma`` is the maximum uncertainty, also averaged across nights. These values correspond to the `Combined` column in the table above. ``\\Delta x`` is then a measure of the displacement of each sample in its posterior distribution from its corresponding average BMA value, scaled by the uncertainty in the average BMA.
 """
 
 # ╔═╡ 706f1fb6-2895-48f6-a315-842fbf35da18
@@ -217,13 +210,13 @@ function plot_corner!(fig, samples, params; n_levels=4, color=:blue)
 end
 
 # ╔═╡ 82a23101-9e1f-4eae-b529-e750a44c98b1
-md"""
+@mdx """
 !!! note
 	The sampled values have been scaled so that the distance of each sample from its literature "truth" value is in units of that truth value's reported uncertainty. We show this operation below.
 """
 
 # ╔═╡ 30ae3744-0e7e-4c16-b91a-91eb518fba5b
-md"""
+@mdx """
 ## Notebook setup
 """
 
@@ -251,7 +244,7 @@ begin
 			"#1f78b4",  # Blue
 		]
 	)
-	
+
 	set_aog_theme!()
 	update_theme!(
 		Theme(
@@ -272,7 +265,7 @@ begin
 			colgap = 5,
 		)
 	)
-	
+
 	COLORS
 end
 
@@ -291,10 +284,10 @@ function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 	resids = LC_det - LC_transit_model
 	resids_σ = round(Int, std(resids) * 1e6)
 	resids .*= 1e6
-	
+
 	color = COLORS[i]
 	color_dark = 0.75 * COLORS[i]
-	
+
 	# Top panel
 	scatter!(ax_top,
 		t,
@@ -312,7 +305,7 @@ function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 		align = (:right, :bottom),
 		color = color_dark,
 	)
-	
+
 	# Bottom panel
 	scatter!(ax_bottom, t, resids, color=color)
 	lines!(ax_bottom, t_interp, zero(t_interp), color=color_dark)
@@ -327,11 +320,6 @@ function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 
 	rowsize!(gl, 2, Relative(1/3))
 end
-
-# ╔═╡ baeadfce-535a-46c3-8cb9-79cf6bde8555
-md"""
-## Packages
-"""
 
 # ╔═╡ db539901-f0b0-4692-a8d2-6c72dff41196
 begin
@@ -380,9 +368,6 @@ begin
 	cubes = sort(cubes)
 end
 
-# ╔═╡ d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
-cubes |> keys
-
 # ╔═╡ 4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
 let
 	fig = Figure(resolution=FIG_LARGE)
@@ -412,9 +397,9 @@ let
 	hideydecorations!.(axs[:, 2])
 
 	if occursin("sp", DATA_DIR)
-		savefig(fig, "$(FIG_PATH)/detrended_wlcs_sp.png")
+		savefig(fig, "$(FIG_DIR)/detrended_wlcs_sp.png")
 	else
-		savefig(fig, "$(FIG_PATH)/detrended_wlcs.png")
+		savefig(fig, "$(FIG_DIR)/detrended_wlcs.png")
 	end
 	
 	fig
@@ -457,7 +442,6 @@ latextabular(BMA, latex=false) |> PlutoUI.Text
 [@sprintf "%.10f" v for v in BMA[!, "Combined"]]
 
 # ╔═╡ d279e93e-8665-41b2-bd5c-723458fabe86
-# Will probably just copy-paste directly into paper
 BMA |> x -> latexify(x, env=:table) |> PlutoUI.Text
 
 # ╔═╡ 56d0de38-5639-4196-aafe-79a9ab933980
@@ -550,9 +534,9 @@ if plot_corner let
 	)
 
 	if occursin("sp", DATA_DIR)
-		savefig(fig, "$(FIG_PATH)/detrended_wlcs_corner_sp.png")
+		savefig(fig, "$(FIG_DIR)/detrended_wlcs_corner_sp.png")
 	else
-		savefig(fig, "$(FIG_PATH)/detrended_wlcs_corner.png")
+		savefig(fig, "$(FIG_DIR)/detrended_wlcs_corner.png")
 	end
 	
 	fig
@@ -561,13 +545,10 @@ end
 
 # ╔═╡ Cell order:
 # ╟─506eeeb2-e56d-436b-91b8-605e52201563
-# ╟─f7f718a2-642d-4914-b66e-7c12233455f2
+# ╠═25d1284c-7260-4f3a-916a-b2814d2606af
 # ╟─782806a6-efd2-45a9-b898-788a276c282b
 # ╟─a8d91138-73e7-4382-a032-37daec54a9c0
-# ╟─2dd2ad78-b9a1-4cdf-97c9-b659599add63
-# ╠═d79dbe8c-effc-4537-b0a1-6a3bcb5db2e5
 # ╠═2191791b-df62-4f1b-88bf-060cc47896b2
-# ╠═105762e1-15a2-4e7f-bff3-7740a5f53492
 # ╠═f539e06d-a1b5-413a-b90e-91cb0bbd5a4c
 # ╠═e873f9c6-fd1a-4227-9df1-70c626e4a0a1
 # ╠═e72dba55-6a33-462f-aeac-5f62b25cb46a
@@ -598,7 +579,6 @@ end
 # ╟─82a23101-9e1f-4eae-b529-e750a44c98b1
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
 # ╟─bf9c0b95-fe17-425d-8904-8298f7e5451c
-# ╠═1f7b883c-0192-45bd-a206-2a9fde1409ca
-# ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
 # ╠═db539901-f0b0-4692-a8d2-6c72dff41196
+# ╠═1f7b883c-0192-45bd-a206-2a9fde1409ca
 # ╠═5939e2a3-8407-4579-8274-e3891acbabb1

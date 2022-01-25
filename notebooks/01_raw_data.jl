@@ -27,6 +27,13 @@ begin
 	using Latexify, Printf
 end
 
+# ╔═╡ d8019fa7-380d-4f40-9e08-420a32c34483
+begin
+	const DATA_DIR = "data/raw_data"
+	const FIG_DIR = "figures/raw_data"
+	TableOfContents()
+end
+
 # ╔═╡ fb39c593-86bd-4d4c-b9ec-e5e212a4de98
 @mdx """
 # Raw data
@@ -37,17 +44,10 @@ For each fits files (1 per chip), we extract the region of each chip dedicated t
 
 !!! tip "Data download"
 	```
-	rclone sync -P ACCESS_box:WASP-50b/data/raw_data data/raw_data
+	rclone sync -P ACCESS_box:WASP-50b/$(DATA_DIR) $(DATA_DIR)
 	```
 	* [Direct link](https://app.box.com/s/yfa96kreb67mjmvqretpsdr5s5u5xskr)
 """
-
-# ╔═╡ d8019fa7-380d-4f40-9e08-420a32c34483
-begin
-	const DATA_DIR = "data/raw_data"
-	const FIG_DIR = "figures/raw_data"
-	TableOfContents()
-end
 
 # ╔═╡ 90845d70-35d9-402d-8936-74936b069577
 @mdx """
