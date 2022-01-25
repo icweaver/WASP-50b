@@ -29,17 +29,26 @@ begin
 	using PythonCall, CondaPkg
 end
 
+# ╔═╡ 1797234e-6194-4fe5-945d-e7d91761ad7b
+begin
+	const DATA_DIR = "data/photometric"
+	const FIG_DIR = "figures/photometric"
+	TableOfContents()
+end
+
 # ╔═╡ 670b88e4-1e96-494d-bfcc-235092bb6e96
 @mdx """
 # Photometric Monitoring
 
 In this notebook we gather and analyze the available photometric data for this target.
 
-$(TableOfContents())
-"""
+!!! tip "Data download"
+	```
+	rclone sync -P ACCESS_box:WASP-50b/$(DATA_DIR) $(DATA_DIR)
+	```
+	* [Direct link](https://app.box.com/s/si3gziso3lwy9m3vv4ftwkj4h4allmk3)
 
-# ╔═╡ 8d42d1c7-c517-41c4-9a5d-2908d2ac2463
-const FIG_PATH = "figures/stellar_activity"
+"""
 
 # ╔═╡ 0cbe4263-799f-4ee3-9a94-3ba879528b01
 @mdx """
@@ -57,7 +66,7 @@ Let's start by checking the data for any corrupted or missing data points:
 
 # ╔═╡ fa233a2c-7e89-4e71-85b8-824c5c341650
 df_ASASSN = CSV.File(
-	"data/photometric/ASAS-SN/AP37847073.csv",
+	"$(DATA_DIR)/ASAS-SN/AP37847073.csv",
 	normalizenames = true,
 ) |> DataFrame
 
@@ -136,7 +145,7 @@ end;
 
 # ╔═╡ dbe317fe-540d-44e8-b8e7-6c465c79559f
 @mdx """
-``Δt_\text{ASAS-SN}`` = $(@bind binsize_ASASSN PlutoUI.Slider(1:30, default=7, show_value=true)) days
+``\\Delta t_\\text{ASAS-SN}`` = $(@bind binsize_ASASSN PlutoUI.Slider(1:30, default=7, show_value=true)) days
 """
 
 # ╔═╡ 9a195365-e68f-43e2-8870-c09153e2ce91
@@ -569,7 +578,7 @@ if plot_TESS let
 	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
 	Label(fig[1:end-1, 0], "Relative flux", rotation=π/2)
 
-	savefig(fig, "$(FIG_PATH)/TESS_flux.png")
+	savefig(fig, "$(FIG_DIR)/TESS_flux.png")
 	
 	fig
 	end
@@ -613,7 +622,7 @@ if plot_pg let
 	
 	#axislegend()
 	
-	savefig(fig, "$(FIG_PATH)/stellar_activity_pg.png")
+	savefig(fig, "$(FIG_DIR)/stellar_activity_pg.png")
 	
 	fig
 	end
@@ -649,7 +658,7 @@ if plot_folded let
 	axs[end].xlabel = "Phase"
 	axs[2].ylabel = "Normalized flux"
 	
-	savefig(fig, "$(FIG_PATH)/stellar_activity_phase.png")
+	savefig(fig, "$(FIG_DIR)/stellar_activity_phase.png")
 	
 	fig
 	end
@@ -672,8 +681,8 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
-# ╠═670b88e4-1e96-494d-bfcc-235092bb6e96
-# ╟─8d42d1c7-c517-41c4-9a5d-2908d2ac2463
+# ╟─670b88e4-1e96-494d-bfcc-235092bb6e96
+# ╠═1797234e-6194-4fe5-945d-e7d91761ad7b
 # ╟─0cbe4263-799f-4ee3-9a94-3ba879528b01
 # ╟─b00c28a2-26b1-442e-a347-39fb66b825a0
 # ╠═fa233a2c-7e89-4e71-85b8-824c5c341650
@@ -687,7 +696,7 @@ body.disable_ui main {
 # ╠═79d08932-66f3-4ed9-bc13-f1ac3229e95d
 # ╟─9a195365-e68f-43e2-8870-c09153e2ce91
 # ╠═92548af3-9a26-4202-88f2-ba3a31181686
-# ╟─dbe317fe-540d-44e8-b8e7-6c465c79559f
+# ╠═dbe317fe-540d-44e8-b8e7-6c465c79559f
 # ╠═f3425d9c-861e-4b26-b352-bd0669c7f1f9
 # ╠═d1038093-76f4-4eca-aeec-93ea82ac8802
 # ╠═7370a1d9-4f8e-4788-adac-b8be2bcc9643

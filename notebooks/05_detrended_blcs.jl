@@ -30,13 +30,6 @@ begin
 	using PythonCall, CondaPkg
 end
 
-# ╔═╡ ebef52bc-2acf-4cf8-aca7-90cd6684c061
-@mdx """
-# Detrended binned light curves
-
-In this notebook we will plot the detrended binned light curves for all nights.
-"""
-
 # ╔═╡ 6c6741b8-eeb1-4c1e-8d22-40d08df00ced
 begin
 	const BASE_DIR = "data/detrended"
@@ -44,8 +37,12 @@ begin
 	TableOfContents()
 end
 
-# ╔═╡ 6008853d-1a74-4004-8aa8-7a70d8297045
+# ╔═╡ ebef52bc-2acf-4cf8-aca7-90cd6684c061
 @mdx """
+# Detrended binned light curves
+
+In this notebook we will plot the detrended binned light curves for all nights.
+
 !!! tip "Data download"
 	```
 	rclone sync -P ACCESS_box:WASP-50b/$(BASE_DIR) $(BASE_DIR)
@@ -282,7 +279,6 @@ blc_plots[transit]
 
 # ╔═╡ Cell order:
 # ╟─ebef52bc-2acf-4cf8-aca7-90cd6684c061
-# ╟─6008853d-1a74-4004-8aa8-7a70d8297045
 # ╠═6c6741b8-eeb1-4c1e-8d22-40d08df00ced
 # ╟─0158a760-1229-4089-bf90-7c7b2f1f548a
 # ╟─4b09c729-3395-4cee-bb69-bab59390845c

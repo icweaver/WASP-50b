@@ -30,34 +30,35 @@ begin
 	using PythonCall, CondaPkg
 end
 
-# ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
-@mdx """
-# Transmission Spectra
-
-In this notebook we will load in the individual transmission spectra from each night, and combine them on a common wavelength basis.
-
-$(TableOfContents())
-"""
-
-# ╔═╡ bd80f202-b4bb-4682-aa62-e8245867208c
-const FIG_PATH = "figures/detrended"
+# ╔═╡ 209dae9c-4c14-4a02-bec9-36407bf1426f
+begin
+	const BASE_DIR = "data/detrended"
+	const FIG_DIR = "figures/detrended"
+	TableOfContents()
+end
 
 # ╔═╡ 0c752bd5-5232-4e82-b519-5ca23fff8a52
 @mdx """
 ## Load data ⬇
 
 First let's load up all of the data, including the white-light transit depths from each night.
-
-!!! note "Data download"
-	```
-	rsync -azRP $H:/pool/sao_access/iweaver/GPTransmissionSpectra/./"out_*" detrended/ --exclude={"*george*","*mnest*"}
-
-	rclone sync -P drive_ACCESS:papers/WASP-50b/data/detrended data/detrended
-	```
 """
 
 # ╔═╡ c53be9cf-7722-4b43-928a-33e7b0463330
-@bind DATA_DIR Select(glob("data/detrended/out_*/WASP50"))
+@bind DATA_DIR Select(glob("$(BASE_DIR)/out_*/WASP50"))
+
+# ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
+@mdx """
+# Transmission Spectra
+
+In this notebook we will load in the individual transmission spectra from each night, and combine them on a common wavelength basis.
+
+!!! tip "Data download"
+	```
+	rclone sync -P ACCESS_box:WASP-50b/$(DATA_DIR) $(DATA_DIR)
+	```
+	* [Direct link](https://app.box.com/s/wr8tpof238cq8oj71ulaf69z9q0k7f9w)
+"""
 
 # ╔═╡ 1decb49e-a875-412c-938f-74b4fa0e2e85
 maxmeasure(x, x_u, x_d) = x ± max(x_u, x_d)
@@ -255,9 +256,6 @@ mean_wlc_depth = weightedmean2(wlc_depths)
 # ╔═╡ a915f236-8dae-4c91-8f96-fb9a805a0a7f
 wlc_offsets = reshape(wlc_depths .- mean_wlc_depth, 1, :)
 
-# ╔═╡ 618aa031-1b09-4122-975b-562506beaae4
-basename(dirname(DATA_DIR))
-
 # ╔═╡ 09887c41-022a-4109-8c5d-0ba033c50bcb
 function plot_tspec!(ax, df, col;
 	nudge = 0.0,
@@ -315,9 +313,7 @@ begin
 end
 
 # ╔═╡ 940ad41b-910c-40a8-8752-e68e13ff4a1f
-@with_terminal begin
-	latextabular(df_IMACS, latex=false) |> print
-end
+latextabular(df_IMACS, latex=false) |> PlutoUI.Text
 
 # ╔═╡ 094bd22d-8e42-440f-a78c-3a2787f380ea
 df_LDSS3
@@ -328,28 +324,12 @@ avg_prec_IMACS = round(Int, getproperty.(df_IMACS[!, :Combined], :err) |> median
 # ╔═╡ b6fa6c00-14cf-47af-9593-c70514373db5
 avg_prec_LDSS3 = round(Int, getproperty.(df_LDSS3[!, :Combined], :err) |> median)
 
-# ╔═╡ 3af0d3b0-c698-4845-a74e-c7186b03a721
-#CSV.write("$(DATA_DIR)/tspec_w50_IMACS.csv",
-#	create_df(df_IMACS, instrument="Magellan/IMACS")
-#)
-
-# ╔═╡ 0fced6dc-fe96-4216-93b1-f8493f2402e9
-#CSV.write("$(DATA_DIR)/tspec_w50_LDSS3.csv",
-#	create_df(df_LDSS3, instrument="Clay/LDSS3")
-#)
-
 # ╔═╡ 146a2be7-1c08-4d7c-802f-41f65aeae0d5
 @mdx """
 ## Retrieval params
 
 Finally, we save the final combined transmission spectrum to file for our retrieval analysis, along with planet/star parameters computed from the WLC fits:
 """
-
-# ╔═╡ 5718672b-1bc6-4676-8703-5fc06b83f0f9
-# CSV.write("$(DATA_DIR)/tspec_w50_all.csv", create_df(df_tspecs))
-
-# ╔═╡ b27f5a0a-812d-44c8-9c84-c74b0c58c794
-# CSV.write("$(DATA_DIR)/tspec_w50.csv", create_df(df_common))
 
 # ╔═╡ 9141dba4-4c11-404d-b18a-b22f3466caba
 Rₛ = 0.873u"Rsun"
@@ -374,6 +354,30 @@ function create_df(df; instrument="add instrument")
 		:Instrument = instrument
 		:Offset = "NO"
 	end
+end
+
+# ╔═╡ 3af0d3b0-c698-4845-a74e-c7186b03a721
+let
+	f = "$(DATA_DIR)/tspec_w50_IMACS.csv"
+	CSV.write(f,
+		create_df(df_IMACS, instrument="Magellan/IMACS")
+	)
+	@info "Saved to $(f)"
+	f = "$(DATA_DIR)/tspec_w50_LDSS3.csv"
+	CSV.write(f,
+		create_df(df_LDSS3, instrument="Clay/LDSS3")
+	)
+	@info "Saved to $(f)"
+end
+
+# ╔═╡ 5718672b-1bc6-4676-8703-5fc06b83f0f9
+let
+	f = "$(DATA_DIR)/tspec_w50_all.csv"
+	CSV.write(f, create_df(df_tspecs))
+	@info "Saved to $(f)"
+	f = "$(DATA_DIR)/tspec_w50.csv"
+	CSV.write(f, create_df(df_common))
+	@info "Saved to $(f)"
 end
 
 # ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
@@ -483,27 +487,27 @@ let
 	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
 	
 	suf = basename(dirname(DATA_DIR))
-	savefig(fig, "$(FIG_PATH)/tspec_$(suf).png")
-	
+	savefig(fig, "$(FIG_DIR)/tspec_$(suf).png")
+
 	fig
 end
 
 # ╔═╡ 72affb58-6f0c-4b76-9956-a027b57a0c8e
 let
 	fig = Figure(resolution=(1_200, 400))
-		
+
 	ax = Axis(
 		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
 		limits = (4_600, 9_800, 15_500, 22_500),
 		grid = (linewidth=(0, 0),),
 	)
-	
+
 	# Overplot lines
 	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
 	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
 	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
 	mean_wlc_depth.val - mean_wlc_depth.err), linestyle=:dash, color=:grey)
-	
+
 	# Individual nights
 	kwargs_errorbars = Dict(:whiskerwidth=>10.0, :linewidth=>1.0)
 	kwargs_scatter = Dict(:markersize=>12.0)
@@ -524,7 +528,7 @@ let
 			)
 		end
 	end
-	
+
 	# Combined
 	nudge = 25.0
 	kwargs_errorbars = Dict(:whiskerwidth=>10.0, :linewidth=>3.0)
@@ -544,11 +548,11 @@ let
 		position = (4700, 16000),
 		align = (:left, :center),
 	)
-	
+
 	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
 
 	suf = basename(dirname(DATA_DIR))
-	savefig(fig, "$(FIG_PATH)/tspec_$(suf)_uncombined.png")
+	savefig(fig, "$(FIG_DIR)/tspec_$(suf)_uncombined.png")
 	
 	fig
 end
@@ -577,7 +581,7 @@ body.disable_ui main {
 
 # ╔═╡ Cell order:
 # ╟─e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
-# ╟─bd80f202-b4bb-4682-aa62-e8245867208c
+# ╠═209dae9c-4c14-4a02-bec9-36407bf1426f
 # ╟─0c752bd5-5232-4e82-b519-5ca23fff8a52
 # ╟─c53be9cf-7722-4b43-928a-33e7b0463330
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
@@ -604,7 +608,6 @@ body.disable_ui main {
 # ╠═c405941d-bdcc-458f-b0bf-01abf02982e0
 # ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
-# ╠═618aa031-1b09-4122-975b-562506beaae4
 # ╠═09887c41-022a-4109-8c5d-0ba033c50bcb
 # ╟─f92ecf4d-aab8-413e-a32d-5f77a969d1ca
 # ╠═1a6067ca-645a-448b-815f-6a2966548ca6
@@ -615,10 +618,8 @@ body.disable_ui main {
 # ╠═b6fa6c00-14cf-47af-9593-c70514373db5
 # ╠═72affb58-6f0c-4b76-9956-a027b57a0c8e
 # ╠═3af0d3b0-c698-4845-a74e-c7186b03a721
-# ╠═0fced6dc-fe96-4216-93b1-f8493f2402e9
 # ╟─146a2be7-1c08-4d7c-802f-41f65aeae0d5
 # ╠═5718672b-1bc6-4676-8703-5fc06b83f0f9
-# ╠═b27f5a0a-812d-44c8-9c84-c74b0c58c794
 # ╠═9141dba4-4c11-404d-b18a-b22f3466caba
 # ╠═54c341d9-2065-48cf-89bd-11acf72bdf9d
 # ╠═cc3aec2c-6ca3-4817-9100-3e1c01df4651

@@ -20,6 +20,7 @@ begin
 	Pkg.activate(Base.current_project())
 
 	using PlutoUI
+	import MarkdownLiteral: @mdx
 	using AlgebraOfGraphics
 	using CairoMakie
 	using CSV, DataFrames, DataFramesMeta
@@ -33,17 +34,17 @@ begin
 end
 
 # ╔═╡ 0132b4ab-0447-4546-b412-ec598b20d21d
-md"""
+@mdx """
 # Retrievals
 
 !!! note "Data download"
 
 	```
 	rclone sync -P drive_ACCESS:papers/WASP-50b/data/retrievals data/retrievals
-	
+
 	rsync -azRP $H:/pool/sao_access/iweaver/exoretrievals/./"WASP50_offs/*/{*.pkl,*.txt}" data/retrievals/ --exclude {"*nest*", "*.npy"}
 
-	rsync -azRP $H:/pool/sao_access/iweaver/exoretrievals/WASP50_offs/"*/./WASP50_offs" data/retrievals/ --exclude {"*nest*", "*.npy"} 
+	rsync -azRP $H:/pool/sao_access/iweaver/exoretrievals/WASP50_offs/"*/./WASP50_offs" data/retrievals/ --exclude {"*nest*", "*.npy"}
 	```
 
 $(TableOfContents(title="📖 Table of Contents"))
@@ -96,7 +97,7 @@ species = [
 ]
 
 # ╔═╡ 704fa634-eee0-4eef-aacf-f75f2b53f4d2
-md"""
+@mdx """
 ```
 cube
 ├── Na
@@ -140,7 +141,7 @@ pyconvert(Float64, pyfloat(124))
 dashplus(x) = replace(x, '_' => '+')
 
 # ╔═╡ 1c4fe72d-9872-4969-a62a-5163b5009bbb
-md"""
+@mdx """
 ## Retreived transmission spectra
 """
 
@@ -194,7 +195,7 @@ function plot_retrieval!(ax, cube, sp, model; color=:blue, linewidth=3)
 end
 
 # ╔═╡ 41a233c7-5357-453c-b7ad-36fdf9f709cb
-md"""
+@mdx """
 ## Helper functions
 """
 
@@ -203,7 +204,7 @@ begin
 	@pyexec """
 	global pickle, load_pickle
 	import pickle
-	
+
 	def load_pickle(fpath):
 		with open(fpath, "rb") as f:
 			data = pickle.load(f)
@@ -219,17 +220,17 @@ begin
 		cube[sp] = OrderedDict()
 		for (model_name, model_id) ∈ model_names
 		cube[sp][model_name] = Dict()
-		
+
 		dirpath = "$(base_dir)/WASP50_E1_$(model_id)_$(sp)"
-		
+
 		cube[sp][model_name]["retr"] = load_pickle("$(dirpath)/retrieval.pkl")
-		
+
 		cube[sp][model_name]["retr_model"] = CSV.read(
 			"$(dirpath)/retr_model.txt", DataFrame;
 			header = [:wav, :flux, :flux_d, :flux_u],
 			comment = "#",
 		)
-		
+
 		cube[sp][model_name]["retr_model_sampled"] = CSV.read(
 			"$(dirpath)/retr_model_sampled_Magellan_IMACS.txt", DataFrame;
 			header = [:wav, :flux],
@@ -245,7 +246,7 @@ begin
 	n_species, n_models = length(species), length(model_names)
 	row_labels = model_names.keys
 	col_labels = species
-	
+
 	df_evidences = DataFrame(
 		Species=String[], Model=String[], lnZ=Float64[], lnZ_err=Float64[]
 	)
@@ -290,7 +291,7 @@ end
 Dict(k => median(v) ± std(v) for (k, v) ∈ dists)
 
 # ╔═╡ 1eff1230-2423-4ac3-8e9b-f4e7bcd0121b
-md"""
+@mdx """
 ## Notebook setup
 """
 
