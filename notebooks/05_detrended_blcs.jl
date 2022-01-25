@@ -14,24 +14,19 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ 818783f8-7164-466e-b5a7-b75eaefe6bb4
+# ╔═╡ d5ffca19-ab35-41f8-81f0-a2972de7f758
 begin
 	import Pkg
 	Pkg.activate(Base.current_project())
 
 	using PlutoUI
-	using AlgebraOfGraphics
-	using CairoMakie
+	using AlgebraOfGraphics, CairoMakie
 	import CairoMakie.Makie.KernelDensity: kde
-	using CSV, DataFrames
-	using DelimitedFiles
-	using Glob
-	using ImageFiltering
-	using Latexify
-	using Measurements, Statistics
-	using OrderedCollections
-	using Printf
-	using NaturalSort
+	using CSV, DataFrames, DataFramesMeta, DelimitedFiles, Glob, OrderedCollections
+	using ImageFiltering, Measurements, Statistics
+	using Latexify, Printf
+	using Dates, NaturalSort
+	using PythonCall, CondaPkg
 end
 
 # ╔═╡ ebef52bc-2acf-4cf8-aca7-90cd6684c061
@@ -40,7 +35,7 @@ md"""
 
 In this notebook we will plot the detrended binned light curves for all nights.
 
-$(TableOfContents(title="📖 Table of Contents"))
+$(TableOfContents())
 """
 
 # ╔═╡ 6008853d-1a74-4004-8aa8-7a70d8297045
@@ -57,7 +52,7 @@ md"""
 
 # ╔═╡ 0158a760-1229-4089-bf90-7c7b2f1f548a
 md"""
-## Load data
+## Load data ⬇
 
 First, let's load the relevant data needed for this notebook:
 """
@@ -144,6 +139,11 @@ begin
 		
 	cubes = sort(cubes)
 end
+
+# ╔═╡ efb8ed46-1607-4c13-b1ba-e4ca37e59b98
+md"""
+## Plot 📊
+"""
 
 # ╔═╡ a5acf744-dfe7-4088-885b-9142af8f0d8f
 @bind transit Select(cubes.keys)
@@ -288,6 +288,7 @@ blc_plots[transit]
 # ╠═100af59b-3a24-41d0-9cda-05592bd1778f
 # ╠═737c135a-7412-4b87-a718-642472d4bf4b
 # ╠═f3e9100a-ec8e-425f-9081-e457ad9b1515
+# ╟─efb8ed46-1607-4c13-b1ba-e4ca37e59b98
 # ╠═df1a160c-22ff-4c5e-a71f-b903d8a23ef1
 # ╟─a5acf744-dfe7-4088-885b-9142af8f0d8f
 # ╟─cb2a3117-03be-42f4-adf6-c23a42252ddf
@@ -295,4 +296,4 @@ blc_plots[transit]
 # ╟─1dd4968e-959a-4f6e-a0e2-9fe9b8ecdd74
 # ╟─c59e2697-d2a3-4bdb-ba64-059246697c1c
 # ╠═0af97a94-cb08-40e2-8011-11c8696684fa
-# ╠═818783f8-7164-466e-b5a7-b75eaefe6bb4
+# ╠═d5ffca19-ab35-41f8-81f0-a2972de7f758

@@ -14,24 +14,19 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ 691eddff-f2eb-41a8-ab05-63afb46d15f2
+# ╔═╡ 5939e2a3-8407-4579-8274-e3891acbabb1
 begin
 	import Pkg
 	Pkg.activate(Base.current_project())
 
 	using PlutoUI
-	using AlgebraOfGraphics
-	using CairoMakie
+	using AlgebraOfGraphics, CairoMakie
 	import CairoMakie.Makie.KernelDensity: kde
-	using CSV, DataFrames, DataFramesMeta
-	using DelimitedFiles
-	using Glob
-	using ImageFiltering
-	using Latexify
-	using Measurements, Statistics
-	using OrderedCollections
-	using Printf
-    using PythonCall, CondaPkg
+	using CSV, DataFrames, DataFramesMeta, DelimitedFiles, Glob, OrderedCollections
+	using ImageFiltering, Measurements, Statistics
+	using Latexify, Printf
+	using Dates
+	using PythonCall, CondaPkg
 end
 
 # ╔═╡ 506eeeb2-e56d-436b-91b8-605e52201563
@@ -40,7 +35,7 @@ md"""
 
 In this notebook we will visualize the detrended white-light curves from IMACS and LDSS3. We used the average orbital and system parameters obtained from these detrended fits to place uniform constraints on our binned wavelength analysis.
 
-$(TableOfContents(title="📖 Table of Contents"))
+$(TableOfContents())
 """
 
 # ╔═╡ f7f718a2-642d-4914-b66e-7c12233455f2
@@ -58,7 +53,7 @@ md"""
 
 # ╔═╡ 782806a6-efd2-45a9-b898-788a276c282b
 md"""
-## Load data
+## Load data ⬇
 
 First, let's load the relevant data needed for this notebook:
 """
@@ -606,4 +601,4 @@ end
 # ╠═1f7b883c-0192-45bd-a206-2a9fde1409ca
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
 # ╠═db539901-f0b0-4692-a8d2-6c72dff41196
-# ╠═691eddff-f2eb-41a8-ab05-63afb46d15f2
+# ╠═5939e2a3-8407-4579-8274-e3891acbabb1
