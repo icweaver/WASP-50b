@@ -20,15 +20,25 @@ begin
 	using Latexify
 end
 
+# ╔═╡ 7493bb13-ee41-4798-99f6-dc1df97bd624
+begin
+	const DATA_DIR = "data/pop"
+	const FIG_DIR = "figures/pop"
+	TableOfContents()
+end
+
 # ╔═╡ cd13d7f3-0ea3-4631-afd9-5f3e359000e6
 @mdx """
 # HGJH population
 
 In this notebook we will explore the possible targets amenable to atmopsheric characterization near the high-gravity hot-Jupiter (HGHJ) parameter space (Tₚ ∼ 1000 K, g ∼ 30 m/s²).
-"""
 
-# ╔═╡ 7493bb13-ee41-4798-99f6-dc1df97bd624
-const FIG_PATH = "figures/pop"; TableOfContents()
+!!! note "Data download"
+	```
+	rclone sync -P drive_ACCESS:papers/WASP-50b/$(DATA_DIR) $(DATA_DIR)
+	```
+	* [Direct link](https://app.box.com/s/p8crolyu1avcbpfv49n0iehcnp8ym72p)
+"""
 
 # ╔═╡ 6b06701b-05e2-4284-a308-e9edeb65a648
 @mdx """
@@ -416,7 +426,7 @@ let
 
 	hlines!(ax, 20, color=:darkgrey, linestyle=:dash)
 
-    savefig(fig, "$(FIG_PATH)/t_vs_g.png")
+    savefig(fig, "$(FIG_DIR)/t_vs_g.png")
 
 	fig
 end
@@ -503,7 +513,7 @@ let
 		titlegap = 24,
 	)
 
-	savefig(fig, "$(FIG_PATH)/hg_pop.png")
+	savefig(fig, "$(FIG_DIR)/hg_pop.png")
 	
 	fig
 end

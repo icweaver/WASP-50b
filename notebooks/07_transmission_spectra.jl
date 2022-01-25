@@ -37,6 +37,19 @@ begin
 	TableOfContents()
 end
 
+# ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
+@mdx """
+# Transmission Spectra
+
+In this notebook we will load in the individual transmission spectra from each night, and combine them on a common wavelength basis.
+
+!!! tip "Data download"
+	```
+	rclone sync -P ACCESS_box:WASP-50b/$(BASE_DIR) $(BASE_DIR)
+	```
+	* [Direct link](https://app.box.com/s/wr8tpof238cq8oj71ulaf69z9q0k7f9w)
+"""
+
 # ╔═╡ 0c752bd5-5232-4e82-b519-5ca23fff8a52
 @mdx """
 ## Load data ⬇
@@ -46,19 +59,6 @@ First let's load up all of the data, including the white-light transit depths fr
 
 # ╔═╡ c53be9cf-7722-4b43-928a-33e7b0463330
 @bind DATA_DIR Select(glob("$(BASE_DIR)/out_*/WASP50"))
-
-# ╔═╡ e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
-@mdx """
-# Transmission Spectra
-
-In this notebook we will load in the individual transmission spectra from each night, and combine them on a common wavelength basis.
-
-!!! tip "Data download"
-	```
-	rclone sync -P ACCESS_box:WASP-50b/$(DATA_DIR) $(DATA_DIR)
-	```
-	* [Direct link](https://app.box.com/s/wr8tpof238cq8oj71ulaf69z9q0k7f9w)
-"""
 
 # ╔═╡ 1decb49e-a875-412c-938f-74b4fa0e2e85
 maxmeasure(x, x_u, x_d) = x ± max(x_u, x_d)

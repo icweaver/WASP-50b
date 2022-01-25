@@ -33,28 +33,26 @@ begin
     using PythonCall
 end
 
+# ╔═╡ a21aad0b-5998-420e-b437-d7ad262d0fe4
+begin
+	const DATA_DIR = "data/retrievals"
+	const FIG_DIR = "figures/retrievals"
+	TableOfContents()
+end
+
 # ╔═╡ 0132b4ab-0447-4546-b412-ec598b20d21d
 @mdx """
 # Retrievals
 
 !!! note "Data download"
-
 	```
-	rclone sync -P drive_ACCESS:papers/WASP-50b/data/retrievals data/retrievals
-
-	rsync -azRP $H:/pool/sao_access/iweaver/exoretrievals/./"WASP50_offs/*/{*.pkl,*.txt}" data/retrievals/ --exclude {"*nest*", "*.npy"}
-
-	rsync -azRP $H:/pool/sao_access/iweaver/exoretrievals/WASP50_offs/"*/./WASP50_offs" data/retrievals/ --exclude {"*nest*", "*.npy"}
+	rclone sync -P drive_ACCESS:papers/WASP-50b/$(DATA_DIR) $(DATA_DIR)
 	```
-
-$(TableOfContents(title="📖 Table of Contents"))
+	* [Direct link](https://app.box.com/s/hmqutmcs98rkip3aa4qyt68g3k1vk2du)
 """
 
 # ╔═╡ 60dc161c-2aa2-4264-884d-6da3ead0e57b
 @bind base_dir Select(glob("./data/retrievals/WASP50*"))
-
-# ╔═╡ 56971ef4-7512-4e85-ac41-ee446006457f
-const FIG_PATH = "figures/retrievals"
 
 # ╔═╡ d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
 fit_R0 = "fitR0"
@@ -131,18 +129,12 @@ cube
 	println("\n$(i) incomplete directories")
 end
 
-# ╔═╡ e8772a53-c7cc-4e49-8745-e8a2eb03f6ad
-pyconvert(Float64, pyfloat(124))
-
-# ╔═╡ d4356ef7-abd7-47dd-83e3-38b6a782509e
-#df_wide = unstack(df_evidences, :Model, :Species, :lnZ, renamecols = dashplus)
-
 # ╔═╡ a0094689-a9d5-4810-baba-bd7a96c27839
 dashplus(x) = replace(x, '_' => '+')
 
 # ╔═╡ 1c4fe72d-9872-4969-a62a-5163b5009bbb
 @mdx """
-## Retreived transmission spectra
+## Retrieved transmission spectra 🐕
 """
 
 # ╔═╡ 5569b57c-0585-4300-927b-5d089dde0f43
@@ -194,10 +186,17 @@ function plot_retrieval!(ax, cube, sp, model; color=:blue, linewidth=3)
 	retrieval!(ax, retr_model, retr_model_sampled; color, linewidth, label)
 end
 
-# ╔═╡ 41a233c7-5357-453c-b7ad-36fdf9f709cb
+# ╔═╡ 1eff1230-2423-4ac3-8e9b-f4e7bcd0121b
 @mdx """
-## Helper functions
+## Notebook setup
 """
+
+# ╔═╡ eab74923-a084-468c-9b0d-c2cc98a23913
+function savefig(fig, fpath)
+	mkpath(dirname(fpath))
+    save(fpath, fig)
+	@info "Saved to: $(fpath)"
+end
 
 # ╔═╡ 44b3b8cd-4b83-4b27-a948-d1230489552f
 begin
@@ -290,18 +289,6 @@ end
 # ╔═╡ 54b5c81a-835a-461c-9dfd-2d938fac3bc4
 Dict(k => median(v) ± std(v) for (k, v) ∈ dists)
 
-# ╔═╡ 1eff1230-2423-4ac3-8e9b-f4e7bcd0121b
-@mdx """
-## Notebook setup
-"""
-
-# ╔═╡ eab74923-a084-468c-9b0d-c2cc98a23913
-function savefig(fig, fpath)
-	mkpath(dirname(fpath))
-    save(fpath, fig)
-	@info "Saved to: $(fpath)"
-end
-
 # ╔═╡ e43f1834-73dd-4859-b847-f4c552561897
 begin
 	##############
@@ -379,7 +366,7 @@ let
 		#textsize = 26,
 	)
 	
-	savefig(fg.figure, "$(FIG_PATH)/evidences_$(fname_suff).png")
+	savefig(fg.figure, "$(FIG_DIR)/evidences_$(fname_suff).png")
 
 	fg
 end
@@ -422,7 +409,7 @@ let
 
 	axislegend(orientation=:horizontal)
 
-	savefig(fig, "$(FIG_PATH)/retr_$(fname_suff).png")
+	savefig(fig, "$(FIG_DIR)/retr_$(fname_suff).png")
 	
 	fig
 end
@@ -444,19 +431,17 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
-# ╠═0132b4ab-0447-4546-b412-ec598b20d21d
+# ╟─0132b4ab-0447-4546-b412-ec598b20d21d
+# ╠═a21aad0b-5998-420e-b437-d7ad262d0fe4
 # ╟─60dc161c-2aa2-4264-884d-6da3ead0e57b
-# ╟─56971ef4-7512-4e85-ac41-ee446006457f
 # ╠═d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
 # ╠═8c6e3fd8-f6cb-4250-acb8-c17c00b1b2eb
-# ╠═093156c7-9da7-4814-9260-5173f27fa497
+# ╟─093156c7-9da7-4814-9260-5173f27fa497
 # ╠═0f65d095-09af-44d2-907b-c30e2c16b609
 # ╟─704fa634-eee0-4eef-aacf-f75f2b53f4d2
 # ╠═a7c68d25-a799-421b-9799-38837fa8a188
-# ╠═7b714c1e-2e3d-453f-a342-81df8283de5c
+# ╟─7b714c1e-2e3d-453f-a342-81df8283de5c
 # ╠═65b51ff6-0991-491f-8945-dd889ffe71dd
-# ╠═e8772a53-c7cc-4e49-8745-e8a2eb03f6ad
-# ╠═d4356ef7-abd7-47dd-83e3-38b6a782509e
 # ╠═a0094689-a9d5-4810-baba-bd7a96c27839
 # ╠═df43608e-7026-45ae-b87b-d7e0b6cea89c
 # ╠═42e909b4-92eb-4ed7-a19c-6e54b21ae07c
@@ -472,10 +457,9 @@ body.disable_ui main {
 # ╠═5569b57c-0585-4300-927b-5d089dde0f43
 # ╠═db524678-9ee2-4934-b1bb-6a2f13bf0fa6
 # ╠═cc011a66-37bd-4543-9a58-b11e1f785e52
-# ╟─41a233c7-5357-453c-b7ad-36fdf9f709cb
-# ╠═44b3b8cd-4b83-4b27-a948-d1230489552f
 # ╟─1eff1230-2423-4ac3-8e9b-f4e7bcd0121b
 # ╟─eab74923-a084-468c-9b0d-c2cc98a23913
+# ╠═44b3b8cd-4b83-4b27-a948-d1230489552f
 # ╠═e43f1834-73dd-4859-b847-f4c552561897
 # ╠═239a91a6-f68a-11eb-14fd-0ba8d08b08f9
 # ╟─e3708d6f-d9a9-4e42-b25b-2d1c333fddff
