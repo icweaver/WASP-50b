@@ -20,23 +20,13 @@ begin
 	Pkg.activate(Base.current_project())
 
 	using PlutoUI
-	using AlgebraOfGraphics
-	using CairoMakie
-	using CSV, DataFrames
-	using DelimitedFiles
-	using Glob
-	using ImageFiltering
-	using Latexify
-	using Statistics
-	using OrderedCollections
-	using Printf
+	using AlgebraOfGraphics, CairoMakie
+	using CSV, DataFrames, DelimitedFiles, Glob, OrderedCollections
+	using ImageFiltering, Statistics
+	using Latexify, Printf
+	using Dates
+	using PythonCall, CondaPkg
 end
-
-# ╔═╡ bda7227d-a952-4380-ade4-7cf784a1e5cd
-using Dates
-
-# ╔═╡ 26f18ff6-7baa-4905-b9d1-52cfa9396dfc
-using PythonCall, CondaPkg
 
 # ╔═╡ 34ef4580-bb95-11eb-34c1-25893217f422
 md"""
@@ -81,9 +71,6 @@ Each cube (`LC`) can be selected from the following drop-down menu, and will be 
 
 # ╔═╡ 99a310b2-b802-4b29-9354-796b2dec2820
 const FIG_PATH = "figures/reduced_data"
-
-# ╔═╡ 4b8d9fc4-3d00-4311-89c4-56478122b2b4
-julian2datetime.((2457292.705208333,2457292.7103152038))
 
 # ╔═╡ 698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 md"""
@@ -496,18 +483,6 @@ times, airmass = let
 	vals["bjd"], vals["airmass"]
 end
 
-# ╔═╡ 2f8bbd81-2f4b-4ca3-bf01-a27bca3a0f19
-t = times
-
-# ╔═╡ 32fb9623-a711-4582-aac9-38f46513d742
-round.(julian2datetime.((t[begin], t[end])), Dates.Minute)
-
-# ╔═╡ 2bc4f498-9732-459f-9d8e-c1c549562c63
-extrema(airmass)
-
-# ╔═╡ 9cdee207-8911-4d37-a5bd-b920e5a8846b
-airmass[[begin, end]]
-
 # ╔═╡ 354580e4-0aa9-496f-b024-665025a2eeda
 lc = let
 	med_mag = f_to_med_mag(f_target_wlc |> vec)
@@ -519,8 +494,12 @@ if save_LDSS3_template let
     savepath = "$(tdir)/white-light"
 	rm(savepath, force=true, recursive=true)
 	mkpath(savepath)
-	writedlm("$(savepath)/lc.dat", lc, ",    ")
-	writedlm("$(savepath)/comps.dat", comps, ",    ")
+	f = "$(savepath)/lc.dat"
+	writedlm(f, lc, ",    ")
+	@info "Saved to $(f)"
+	f = "$(savepath)/comps.dat"
+	writedlm(f, comps, ",    ")
+	@info "Saved to $(f)"
 end
 end
 
@@ -534,8 +513,12 @@ if save_LDSS3_template let
 		lc_w = hcat(
 			times[use_idxs], target_binned_mags[:, i], zeros(length(times[use_idxs]))
 		)
-		writedlm("$(save_path_w)/lc.dat", lc_w, ",    ")
-		writedlm("$(save_path_w)/comps.dat", comp_binned_mags[:, :, i], ",    ")
+		f = "$(save_path_w)/lc.dat"
+		writedlm(f, lc_w, ",    ")
+		@info "Saved to $(f)"
+		f = "$(save_path_w)/comps.dat"
+		writedlm(f, comp_binned_mags[:, :, i], ",    ")
+		@info "Saved to $(f)"
 	end
 end
 end
@@ -551,16 +534,18 @@ delta_wav = pyconvert(Dict{String, Float64}, specshifts["shift"][target_name]) |
 
 # ╔═╡ e4388fba-64ef-4588-a1ed-283da2f52196
 df_eparams = DataFrame(
-	(Times=times, Airmass=airmass, Delta_Wav=delta_wav,
-	 FWHM=fwhm, Sky_Flux=sky_flux, Trace_Center=trace_center)
+	(;times, airmass, delta_wav, fwhm, sky_flux, trace_center)
 ) |> df -> mapcols(col -> fmt_float.(col), df)[use_idxs, :]
 
 # ╔═╡ 2aba612a-7599-4a2d-9ff0-2fd398c2a0db
-if save_LDSS3_template
+if save_LDSS3_template let
     savepath = template_dir(FPATH)
 	rm(savepath, force=true, recursive=true)
 	mkpath(savepath)
-	CSV.write("$(tdir)/eparams.dat", df_eparams, delim=",    ")
+	f = "$(tdir)/eparams.dat"
+	CSV.write(f, df_eparams, delim=",    ")
+	@info "Saved to $(f)"
+	end
 end
 
 # ╔═╡ c911cecd-0747-4cd1-826f-941f2f58091c
@@ -805,14 +790,15 @@ target / $(cName)
 # ╔═╡ 7fa35566-d327-4319-9ae9-17c4c9825e05
 blc_plots[cName]
 
+# ╔═╡ 7f7ed0cc-be9b-449c-b933-f892707e9941
+CondaPkg.add("numpy"); CondaPkg.resolve()
+
 # ╔═╡ Cell order:
 # ╟─34ef4580-bb95-11eb-34c1-25893217f422
 # ╟─a8e3b170-3fc2-4d12-b117-07bd37d27710
 # ╟─48713a10-6ba7-4de5-a147-85a9cb136dd8
 # ╟─99a310b2-b802-4b29-9354-796b2dec2820
 # ╠═01e27cf6-0a1b-4741-828a-ef8bf7037ae9
-# ╠═4b8d9fc4-3d00-4311-89c4-56478122b2b4
-# ╠═32fb9623-a711-4582-aac9-38f46513d742
 # ╟─698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 # ╠═d8236985-9a36-4357-ac78-7eb39dd0f080
 # ╟─b4f4e65b-bd50-4ee2-945f-7c130db21fdf
@@ -873,10 +859,6 @@ blc_plots[cName]
 # ╟─88cc640d-b58d-4cde-b793-6c66e74f6b3a
 # ╠═301ff07c-8dd5-403a-bae8-a4c38deeb331
 # ╠═c03cb527-d16d-47aa-ab63-6970f4ff0b1f
-# ╠═2f8bbd81-2f4b-4ca3-bf01-a27bca3a0f19
-# ╠═bda7227d-a952-4380-ade4-7cf784a1e5cd
-# ╠═2bc4f498-9732-459f-9d8e-c1c549562c63
-# ╠═9cdee207-8911-4d37-a5bd-b920e5a8846b
 # ╠═c65c2298-e3a3-4666-be9d-73ee43d94847
 # ╠═d14ab9de-23b4-4647-a823-9b318bb734e9
 # ╠═079c3915-33af-40db-a544-28453732c372
@@ -899,5 +881,5 @@ blc_plots[cName]
 # ╟─36c1aa6d-cde9-4ff0-b55c-13f43e94256d
 # ╠═2d34e125-548e-41bb-a530-ba212c0ca17c
 # ╠═c911cecd-0747-4cd1-826f-941f2f58091c
-# ╠═26f18ff6-7baa-4905-b9d1-52cfa9396dfc
+# ╠═7f7ed0cc-be9b-449c-b933-f892707e9941
 # ╠═f883b759-65fc-466e-9c8f-e4f941def935

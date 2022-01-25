@@ -564,22 +564,6 @@ if plot_corner let
 	end
 end
 
-# ╔═╡ 2c3f26b9-410a-4cfa-befd-194daddefb4e
-html"""
-<style>
-body.disable_ui main {
-		max-width : 95%;
-	}
-@media screen and (min-width: 1081px) {
-	body.disable_ui main {
-		margin-left : 10px;
-		max-width : 72%;
-		align-self: flex-start;
-	}
-}
-</style>
-"""
-
 # ╔═╡ Cell order:
 # ╟─506eeeb2-e56d-436b-91b8-605e52201563
 # ╟─f7f718a2-642d-4914-b66e-7c12233455f2
@@ -623,4 +607,3 @@ body.disable_ui main {
 # ╟─baeadfce-535a-46c3-8cb9-79cf6bde8555
 # ╠═db539901-f0b0-4692-a8d2-6c72dff41196
 # ╠═691eddff-f2eb-41a8-ab05-63afb46d15f2
-# ╟─2c3f26b9-410a-4cfa-befd-194daddefb4e

@@ -20,16 +20,11 @@ begin
 	Pkg.activate(Base.current_project())
 
 	using PlutoUI
-	using AlgebraOfGraphics
-	using CairoMakie
+	using AlgebraOfGraphics, CairoMakie
+	using CSV, DataFrames, DelimitedFiles, Glob, OrderedCollections
+	using ImageFiltering, Statistics
+	using Latexify, Printf
 	using Dates
-	using DataFrames
-	using DelimitedFiles
-	using Glob
-	using ImageFiltering
-	using Latexify
-	using Statistics
-	using OrderedCollections
 	using PythonCall, CondaPkg
 end
 

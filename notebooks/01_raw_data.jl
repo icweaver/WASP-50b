@@ -18,15 +18,12 @@ end
 begin
 	import Pkg
 	Pkg.activate(Base.current_project())
-	
-	using AlgebraOfGraphics, CairoMakie
-	using CSV, DataFrames, DataFramesMeta
-	using CCDReduction
-	using CCDReduction: fits_indices
+
 	using PlutoUI
-	using Glob
-	using Statistics
-	using Latexify
+	using AlgebraOfGraphics, CairoMakie
+	using CSV, DataFrames, DataFramesMeta, DelimitedFiles, Glob, OrderedCollections
+	using CCDReduction, ImageFiltering, Statistics
+	using Latexify, Printf
 end
 
 # ╔═╡ fb39c593-86bd-4d4c-b9ec-e5e212a4de98
@@ -70,8 +67,8 @@ We next compute the bias-subtracted science frame for each of these $(nrow(df_sc
 
 # ╔═╡ c83c2161-95e2-4d08-9934-6d9c12c42a44
 process_frames(df) = @views map(ccds(df)) do img
-	img_data = img[fits_indices(img.hdr["DATASEC"])...]
-	img_bias = img[fits_indices(img.hdr["BIASSEC"])...]
+	img_data = img[CCDReduction.fits_indices(img.hdr["DATASEC"])...]
+	img_bias = img[CCDReduction.fits_indices(img.hdr["BIASSEC"])...]
 	corr = img_data .- median(img_bias)
 end
 

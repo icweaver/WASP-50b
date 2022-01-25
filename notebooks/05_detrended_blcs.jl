@@ -279,22 +279,6 @@ end
 # ╔═╡ cb2a3117-03be-42f4-adf6-c23a42252ddf
 blc_plots[transit]
 
-# ╔═╡ c50473cd-ac09-4196-a291-9e3f5472dc23
-html"""
-<style>
-body.disable_ui main {
-		max-width : 95%;
-	}
-@media screen and (min-width: 1081px) {
-	body.disable_ui main {
-		margin-left : 10px;
-		max-width : 72%;
-		align-self: flex-start;
-	}
-}
-</style>
-"""
-
 # ╔═╡ Cell order:
 # ╟─ebef52bc-2acf-4cf8-aca7-90cd6684c061
 # ╟─6008853d-1a74-4004-8aa8-7a70d8297045
@@ -312,4 +296,3 @@ body.disable_ui main {
 # ╟─c59e2697-d2a3-4bdb-ba64-059246697c1c
 # ╠═0af97a94-cb08-40e2-8011-11c8696684fa
 # ╠═818783f8-7164-466e-b5a7-b75eaefe6bb4
-# ╟─c50473cd-ac09-4196-a291-9e3f5472dc23
