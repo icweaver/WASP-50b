@@ -14,25 +14,24 @@ begin
 	using HTTP
 	using Unitful
 	using PlutoUI
+	import MarkdownLiteral: @mdx
 	using Unitful: k, G
 	using NaturalSort
 	using Latexify
 end
 
 # ╔═╡ cd13d7f3-0ea3-4631-afd9-5f3e359000e6
-md"""
+@mdx """
 # HGJH population
 
 In this notebook we will explore the possible targets amenable to atmopsheric characterization near the high-gravity hot-Jupiter (HGHJ) parameter space (Tₚ ∼ 1000 K, g ∼ 30 m/s²).
-
-$(TableOfContents(title="📖 Table of Contents"))
 """
 
 # ╔═╡ 7493bb13-ee41-4798-99f6-dc1df97bd624
-const FIG_PATH = "figures/pop"
+const FIG_PATH = "figures/pop"; TableOfContents()
 
 # ╔═╡ 6b06701b-05e2-4284-a308-e9edeb65a648
-md"""
+@mdx """
 ## Data sample
 
 We will draw our sample of each sample above from the archive of transiting exoplanet data from ground and space-based observations, which we query from the NASA Exoplanet Archive [TAP API](https://exoplanetarchive.ipac.caltech.edu/docs/TAP/usingTAP.html):
@@ -60,7 +59,7 @@ df_all = let
 end
 
 # ╔═╡ 4d1a7740-24c7-4cec-b788-a386bc25f836
-md"""
+@mdx """
 We next compute some relevant quantities from this table to help organize each population:
 """
 
@@ -96,12 +95,12 @@ end
 # end
 
 # ╔═╡ 4cbbb1e8-e5fb-4ab0-a7e6-7881c2dde032
-md"""
+@mdx """
 With this list of $(nrow(df_all)) transiting exoplanets with observed stellar and planetary parameters, we now turn to visualizing the subset of each population from the list above.
 """
 
 # ╔═╡ b5c0dbc8-d700-473e-9f00-d89a319f6432
-md"""
+@mdx """
 ## Targets with tspecs
 """
 
@@ -162,7 +161,7 @@ df_wakeford = let
 		delim = " ",
 		ignorerepeated = true,
 	)
-	
+
 	df.g_SI = @. 10^df.logg / 100
 
 	rename!(df, :T => :pl_eqt)
@@ -174,20 +173,20 @@ end
 sort(df_wakeford, :Name, lt=natural)
 
 # ╔═╡ 7f956b36-ce65-4e4e-afa5-9b97b9e06954
-md"""
+@mdx """
 ## HGHJ population
 
 We define this population to be the sample of transiting exoplanets with ... We defined our relative TSM (TSMR) to be based on the TSM of HAT-P-23b for comparison.
 """
 
 # ╔═╡ 0f9262ef-b774-45bc-bdab-46860779683d
-md"""
+@mdx """
 !!! note
 	Inspired from [warm-worlds](https://github.com/nespinoza/warm-worlds)
 """
 
 # ╔═╡ 18094afc-b77f-4cae-a30c-2691d34125d8
-md"""
+@mdx """
 !!! warning "TODO"
 	* WASP-33: active star, difficult analysis
 	* TOI 1581: double check
@@ -242,7 +241,7 @@ _df = @chain df_all begin
 		:pl_eqt = compute_Teq(
 			:st_teff*u"K", :st_rad*u"Rsun", :pl_orbsmax*u"AU"; α=0.1
 		) |> strip_u(u"K")
-		
+
 		:g_SI = compute_g(
 			:pl_bmasse*u"Mearth", :pl_rade*u"Rearth"
 		) |> strip_u(u"m/s^2")
@@ -269,7 +268,7 @@ df = @chain _df begin
 	end
 	@transform begin
 		:TSMR = :TSM / TSM_target
-		
+
 		:ΔD_ppm = compute_ΔD(
 			:H_km*u"km", :pl_rade*u"Rearth", :st_rad*u"Rsun"
 		) |> x -> uconvert(NoUnits, x) * 5.0 * 1e6
@@ -323,7 +322,7 @@ sort(df_tspecs, :pl_name, lt=natural)
 @subset df :pl_name ∈ ["HAT-P-23 b", "WASP-43 b", "WASP-50 b"]
 
 # ╔═╡ 683a8d85-b9a8-4eab-8a4b-e2b57d0783c0
-md"""
+@mdx """
 ## Notebook setup
 """
 
@@ -527,7 +526,7 @@ body.disable_ui main {
 
 # ╔═╡ Cell order:
 # ╟─cd13d7f3-0ea3-4631-afd9-5f3e359000e6
-# ╟─7493bb13-ee41-4798-99f6-dc1df97bd624
+# ╠═7493bb13-ee41-4798-99f6-dc1df97bd624
 # ╟─6b06701b-05e2-4284-a308-e9edeb65a648
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
@@ -549,7 +548,7 @@ body.disable_ui main {
 # ╠═ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
 # ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
 # ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
-# ╟─7f956b36-ce65-4e4e-afa5-9b97b9e06954
+# ╠═7f956b36-ce65-4e4e-afa5-9b97b9e06954
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d
 # ╠═94a5f868-d043-4c1f-831c-17ebabd3df6c
 # ╠═53c4fd02-7a48-47a1-9341-ede3e8d497f7

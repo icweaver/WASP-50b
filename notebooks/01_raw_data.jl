@@ -20,6 +20,7 @@ begin
 	Pkg.activate(Base.current_project())
 
 	using PlutoUI
+	import MarkdownLiteral: @mdx
 	using AlgebraOfGraphics, CairoMakie
 	using CSV, DataFrames, DataFramesMeta, DelimitedFiles, Glob, OrderedCollections
 	using CCDReduction, ImageFiltering, Statistics
@@ -27,32 +28,35 @@ begin
 end
 
 # ╔═╡ fb39c593-86bd-4d4c-b9ec-e5e212a4de98
-md"""
+@mdx """
 # Raw data
 
 In this notebook we will view bias-subtracted sample frames from each instrument to verify the mask slit placement, as well as the positions of WASP-50 and its comparison stars on each CCD chip.
 
 For each fits files (1 per chip), we extract the region of each chip dedicated to main data collection (`DATASEC`), and then subtract out the median bias level measured in the overscan region (`BIASSEC`). We then store the subtracted data in a data cube for each instrument.
 
-$(TableOfContents())
-
-!!! note "Data download"
+!!! tip "Data download"
 	```
-	 rclone sync -P ACCESS_box:WASP-50b/data/raw_data data/raw_data
+	rclone sync -P ACCESS_box:WASP-50b/data/raw_data data/raw_data
 	```
+	* [Direct link](https://app.box.com/s/yfa96kreb67mjmvqretpsdr5s5u5xskr)
 """
 
 # ╔═╡ d8019fa7-380d-4f40-9e08-420a32c34483
-const FIG_PATH = "figures/raw_data"
+begin
+	const DATA_DIR = "data/raw_data"
+	const FIG_DIR = "figures/raw_data"
+	TableOfContents()
+end
 
 # ╔═╡ 90845d70-35d9-402d-8936-74936b069577
-md"""
+@mdx """
 ## $(@bind plot_IMACS CheckBox()) IMACS 🎱
 Starting with IMACS, let's first select the night we would like to visualize from the dropdown menu below:
 """
 
 # ╔═╡ 8b9581db-71c6-42b6-915b-bde307755bcd
-@bind DATA_DIR_IMACS Select(glob("data/raw_data/IMACS/ut*"))
+@bind DATA_DIR_IMACS Select(glob("$(DATA_DIR)/IMACS/ut*"))
 
 # ╔═╡ fb6e6221-8136-44e2-979b-ecbbd71f740d
 df_sci_IMACS = fitscollection(DATA_DIR_IMACS, abspath=false)
@@ -61,7 +65,7 @@ df_sci_IMACS = fitscollection(DATA_DIR_IMACS, abspath=false)
 df_sci_IMACS.FILTER
 
 # ╔═╡ 0d42f6f9-d789-46a3-9e9a-381dbed2d5a5
-md"""
+@mdx """
 We next compute the bias-subtracted science frame for each of these $(nrow(df_sci_IMACS)) chips:
 """
 
@@ -76,7 +80,7 @@ end
 frames_IMACS = process_frames(df_sci_IMACS)
 
 # ╔═╡ 27b793f3-7a7c-48ad-8302-deffa2dd017b
-md"""
+@mdx """
 And finally, we overlay the coordinates of the science mask onto the CCD array:
 """
 
@@ -89,19 +93,19 @@ coords_IMACS = CSV.read("$(DATA_DIR_IMACS)/WASP50.coords", DataFrame;
 
 # ╔═╡ 8c5a4e21-897f-4fbc-bd4f-18adf71fa926
 transits = merge(
-	Dict("data/raw_data/IMACS/ut$(d)" => "Transit $(i) (IMACS)"
+	Dict("$(dirname(DATA_DIR_IMACS))/ut$(d)" => "Transit $(i) (IMACS)"
 		for (i, d) ∈ enumerate(("131219", "150927", "161211"))
 	),
 )
 
 # ╔═╡ 0e66d467-1098-46dc-8d06-36d488b14637
-@bind DATA_DIR_LDSS3 Select(glob("data/raw_data/LDSS3/ut*"))
+@bind DATA_DIR_LDSS3 Select(glob("$(DATA_DIR)/LDSS3/ut*"))
 
 # ╔═╡ 5c6e6f7b-70e0-49a8-b064-60dcf1440223
 df_sci_LDSS3 = fitscollection(DATA_DIR_LDSS3, abspath=false)
 
 # ╔═╡ 06a834f0-8c90-4013-af34-725166970969
-md"""
+@mdx """
 ## $(@bind plot_LDSS3 CheckBox()) LDSS3 2️⃣
 
 We follow the same operations to visualize the $(nrow(df_sci_LDSS3)) chips for LDSS3 below.
@@ -138,7 +142,7 @@ function plot_frame!(ax;
 		colormap = :magma,
 		hm_kwargs...,
 	)
-	
+
 	# Add labels
 	chip = "c$ch"
 	for obj in eachrow(@subset coords :chip .== chip)
@@ -156,15 +160,15 @@ function plot_frame!(ax;
 end
 
 # ╔═╡ 8fadd0b6-6ff8-42e5-9014-4e79593e3502
-md"""
-## Wavelength bins
+@mdx """
+## Wavelength bins 🌈
 
 We show the wavelength bins used for each instrument here:
 """
 
 # ╔═╡ f58aba9d-bccb-4d8b-ab83-559d6ff1ea62
 df_wbins = let
-	dirpath = "data/raw_data/wbins"
+	dirpath = "$(DATA_DIR)/wbins"
 	df = CSV.read.(
 		("$(dirpath)/w50_bins$(fname).dat" for fname ∈ ("_ut131219", "", "_LDSS3")),
 		DataFrame,
@@ -182,7 +186,7 @@ end
 latextabular(df_wbins, latex=false) |> PlutoUI.Text
 
 # ╔═╡ 4480ae72-3bb2-4e17-99be-28afc756332a
-md"""
+@mdx """
 ## Notebook setup
 """
 
@@ -276,7 +280,7 @@ if plot_IMACS let
 
 	Label(fig[0, end], transits[DATA_DIR_IMACS], tellwidth=false, halign=:right)
 	
-	savefig(fig, "$(FIG_PATH)/sci_IMACS_$(basename(DATA_DIR_IMACS)).png")
+	savefig(fig, "$(FIG_DIR)/sci_IMACS_$(basename(DATA_DIR_IMACS)).png")
 
 	fig
 	end
@@ -312,7 +316,7 @@ if plot_LDSS3 let
 
 	Label(fig[0, end], "Transit 2 (LDSS3)", tellwidth=false, halign=:right)
 	
-    savefig(fig, "$(FIG_PATH)/sci_LDSS3_$(basename(DATA_DIR_LDSS3)).png";
+    savefig(fig, "$(FIG_DIR)/sci_LDSS3_$(basename(DATA_DIR_LDSS3)).png";
 		#save_kwargs = (px_per_unit=0.5,),
 	)
 	
@@ -322,7 +326,7 @@ end
 
 # ╔═╡ Cell order:
 # ╟─fb39c593-86bd-4d4c-b9ec-e5e212a4de98
-# ╟─d8019fa7-380d-4f40-9e08-420a32c34483
+# ╠═d8019fa7-380d-4f40-9e08-420a32c34483
 # ╟─90845d70-35d9-402d-8936-74936b069577
 # ╟─8b9581db-71c6-42b6-915b-bde307755bcd
 # ╠═fb6e6221-8136-44e2-979b-ecbbd71f740d
@@ -333,7 +337,7 @@ end
 # ╟─27b793f3-7a7c-48ad-8302-deffa2dd017b
 # ╠═26feb668-4e7e-4a9d-a2b6-a5dac81e3ab7
 # ╠═3a6ab0c0-ba08-4151-9646-c19d45749b9f
-# ╠═8c5a4e21-897f-4fbc-bd4f-18adf71fa926
+# ╟─8c5a4e21-897f-4fbc-bd4f-18adf71fa926
 # ╠═bf8ef5a9-0806-44b4-907d-c95d6926dabb
 # ╟─06a834f0-8c90-4013-af34-725166970969
 # ╟─0e66d467-1098-46dc-8d06-36d488b14637

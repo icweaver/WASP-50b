@@ -20,6 +20,7 @@ begin
 	Pkg.activate(Base.current_project())
 
 	using PlutoUI
+	import MarkdownLiteral: @mdx
 	using AlgebraOfGraphics, CairoMakie
 	using CSV, DataFrames, DelimitedFiles, Glob, OrderedCollections
 	using ImageFiltering, Statistics
@@ -29,16 +30,27 @@ begin
 end
 
 # ╔═╡ 34ef4580-bb95-11eb-34c1-25893217f422
-md"""
-# Reduced Data -- LDSS3
+@mdx """
+# Reduced data -- LDSS3
 
 In this notebook we will examine the stellar spectra, white-light, and wavelength binned light curves from the raw flux extracted from LDSS3.
 
-$(TableOfContents(depth=4))
+!!! tip "Data download"
+	```
+	rclone sync -P ACCESS_box:WASP-50b/data/reduced_data data/reduced_data
+	```
+	* [Direct link](https://app.box.com/s/esq7gbpd7id98vzum1qub7twd4lba6zq)
 """
 
+# ╔═╡ e1294e56-8103-443b-80e9-118cac36750f
+begin
+	const DATA_DIR = "data/reduced_data/LDSS3"
+	const FIG_DIR = "figures/reduced_data"
+	TableOfContents()
+end
+
 # ╔═╡ a8e3b170-3fc2-4d12-b117-07bd37d27710
-md"""
+@mdx """
 ## Data extraction 🔳
 
 The data from this instrument is stored in an `npy` file that contains the following fields:
@@ -67,13 +79,10 @@ Each cube (`LC`) can be selected from the following drop-down menu, and will be 
 """
 
 # ╔═╡ 48713a10-6ba7-4de5-a147-85a9cb136dd8
-@bind FPATH Select(glob("data/reduced_data/LDSS3/ut150927_*/LCs_*.npy"))
-
-# ╔═╡ 99a310b2-b802-4b29-9354-796b2dec2820
-const FIG_PATH = "figures/reduced_data"
+@bind FPATH Select(glob("$(DATA_DIR)/ut150927_*/LCs_*.npy"))
 
 # ╔═╡ 698ae5b0-7cd3-4055-a13e-e9aa3704ca12
-md"""
+@mdx """
 We next define the mapping between the standard aperture names defined in `stellar` and the target/comparison star names used:
 """
 
@@ -89,7 +98,7 @@ obj_names = OrderedDict(
 )
 
 # ╔═╡ b4f4e65b-bd50-4ee2-945f-7c130db21fdf
-md"""
+@mdx """
 !!! note
 	These stars were cross-matched with VizieR to verify the aperture name assignments
 
@@ -100,18 +109,18 @@ md"""
 obj_names["aperture_324_803"]
 
 # ╔═╡ a687fa5d-1d98-4cb4-ae5d-978594d205dd
-md"""
+@mdx """
 With this mapping, we then extract the `raw_counts` for each target and store them in `fluxes`:
 """
 
 # ╔═╡ ae81cf2b-e2cf-42af-9bba-955155c63647
-md"""
+@mdx """
 !!! note
 	We convert from Float32 to Float64 to match the format of the IMACS data
 """
 
 # ╔═╡ 839b83b2-97cd-4643-a4ce-9a03f3594b3a
-md"""
+@mdx """
 Next we extract the common wavelength grid (`wav`), along with the associated target `f_target` and comparison star flux (`f_comps`):
 """
 
@@ -126,7 +135,7 @@ function get_range(A)
 end
 
 # ╔═╡ 299dda0e-a214-45ca-9a68-947f60fcf404
-md"""
+@mdx """
 ## $(@bind plot_stell_spec CheckBox()) Stellar spectra ⭐
 
 With the flux extracted for each object, we now turn to analyzing the resulting stellar spectra, selected from the wavelength bins scheme below:
@@ -134,7 +143,7 @@ With the flux extracted for each object, we now turn to analyzing the resulting 
 
 # ╔═╡ 9697e26b-b6d9-413b-869f-47bc2ab99919
 @bind FPATH_WBINS let
-	dirpath = "data/reduced_data/wbins"
+	dirpath = "$(dirname(DATA_DIR))/wbins"
 	Select(["$(dirpath)/w50_bins_LDSS3.dat", "$(dirpath)/w50_bins_species.dat"])
 end
 
@@ -162,7 +171,7 @@ function spec_plot!(ax, wav, A; color=:blue, norm=1.0, label="")
 end
 
 # ╔═╡ bd937d51-17e9-4de3-a5d0-4c436d413940
-md"""
+@mdx """
 ## $(@bind plot_lcs CheckBox()) White-light curves 🌅
 
 Next, we will extract the integrated white-light curves from these spectra. We integrate over the same wavelength bins used in the IMACS analysis:
@@ -175,7 +184,7 @@ Next, we will extract the integrated white-light curves from these spectra. We i
 comp_names = obj_names.vals[2:4]
 
 # ╔═╡ cd10cbf3-22f4-46cd-8345-cec3d141e3ca
-use_comps = comp_names 
+use_comps = comp_names
 
 # ╔═╡ 9372c69a-0aad-4e6e-9ea3-e934fa09b758
 get_idx(needle, haystack) = findfirst(==(needle), haystack)
@@ -184,7 +193,7 @@ get_idx(needle, haystack) = findfirst(==(needle), haystack)
 use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
 
 # ╔═╡ d5c6d058-17c6-4cf0-97b8-d863b1529161
-md"""
+@mdx """
 !!! note
 	We divide the target WLC by each comparison star to minimize common systematics (e.g., air mass, local refractive atmospheric effects), and to make the transit shape more apparent. This allows us to select good comparison stars for that particular night and which timeseries points to include in the rest of the analysis.
 """
@@ -197,10 +206,10 @@ function filt(f_div_wlc, window_width; func=median, border="reflect")
 		f_div_wlc,
 		dims = 1,
 	)
-	
+
 	# Residuals
 	Δf = f_div_wlc - f_filt
-	
+
 	return f_filt, abs.(Δf), Δf
 end
 
@@ -215,7 +224,7 @@ function filt_idxs(f_div_wlc, window_width; ferr=0.002)
 end
 
 # ╔═╡ 97191c55-f673-46b4-82fd-147e7d150623
-md"""
+@mdx """
 ### Raw flux
 
 Just as a quick check:
@@ -228,29 +237,29 @@ Just as a quick check:
 # 		xlabel="Index",
 # 		ylabel="Relative flux",
 # 	)
-	
+
 # 	comp_names = obj_names.vals[2:4]
 # 	f_wlc_targ = f_target_wlc[:]
 # 	f_wlc_comps = f_comps_wlc ./ mean(f_comps_wlc, dims=1)
-	
+
 # 	for (cName, col) in zip(sort(comp_names), eachcol(f_wlc_comps))
 # 		lines!(ax, col; label=cName)
 # 	end
-	
+
 # 	lines!(ax, f_wlc_targ ./ mean(f_wlc_targ, dims=1);
 # 		linewidth = 5,
 # 		color = :darkgrey,
 # 		label = "WASP-50",
 # 	)
-	
+
 # 	axislegend()
-	
+
 
 # 	fig
 # end
 
 # ╔═╡ a5e742e5-fcca-40d7-b342-c6112e6899e5
-md"""
+@mdx """
 ## Binned light curves 🌈
 
 We next integrate the target and comparison star flux within each bin defined above to build the binned light curves. We store these in `oLCw` and `cLCw`, where `oLCw` is an `ntimes` ``\times`` `nbins` matrix that holds the binned target flux, where `ntimes` is the number of timeseries points ``N``. Similarly `cLCw` is an `ntimes` ``\times`` `ncomps` ``\times`` `nbins` matrix that holds the comparison star flux, where `ncomps` is the number of comparison stars:
@@ -262,19 +271,19 @@ We next integrate the target and comparison star flux within each bin defined ab
 sum_flux(A, idx_range, dims=2) = sum(view(A, :, idx_range), dims=dims)[:, 1]
 
 # ╔═╡ 5837dc0e-3537-4a90-bd2c-494e7b3e6bb7
-md"""
+@mdx """
 With `oLCw` and `cLCw` now computed, we next compute `f_norm_w`, the binned target flux divided by each comparison star binned flux, normalized by the median of the original ratio. This has dimensions `ntimes` ``\times`` `ncomps` ``\times`` `nbins`, where for a given comparison star, each column from the resulting matrix corresponds to a final binned light curve:
 """
 
 # ╔═╡ af07dc54-eeb5-4fbe-8dd0-289dea97502a
-md"""
+@mdx """
 ## $(@bind save_LDSS3_template CheckBox()) `GPTransmissionSpectra` inputs 🔩
 
 Finally, we export the external parameters and light curves (in magnitude space) to be used for detrending in `GPTransmissionSpectra`:
 """
 
 # ╔═╡ 88cc640d-b58d-4cde-b793-6c66e74f6b3a
-md"""
+@mdx """
 #### External parameters
 """
 
@@ -294,7 +303,7 @@ function template_dir(fpath)
 	date, flat_status = split(basename(dirname(fpath)), '_')
 	if occursin("species", fname_suff)
 		f = "$(base_dir)/w50_$(date[3:end])_sp_LDSS3_$(flat_status)"
-	else 
+	else
 		f = "$(base_dir)/w50_$(date[3:end])_LDSS3_$(flat_status)"
 	end
 	return f
@@ -304,12 +313,12 @@ end
 tdir = "$(template_dir(FPATH))"
 
 # ╔═╡ 2341920d-6db8-4f08-b8ed-4907ceab7357
-md"""
+@mdx """
 #### WLCs (magnitude space)
 """
 
 # ╔═╡ b5ef9d95-1a2a-4828-8e27-89727f2e288b
-md"""
+@mdx """
 #### Binned LCs (magnitude space)
 """
 
@@ -320,7 +329,7 @@ function f_to_med_mag(f)
 end
 
 # ╔═╡ f788835c-8e81-4afe-805e-4caf2d5e5d5b
-md"""
+@mdx """
 ## Notebook setup
 """
 
@@ -337,10 +346,10 @@ begin
 	global np, pickle, load_npz, load_pickle
 	import numpy as np
 	import pickle
-	
+
 	def load_npz(fpath, allow_pickle=False):
 		return np.load(fpath, allow_pickle=allow_pickle)[()]
-	
+
 	def load_pickle(fpath):
 		with open(fpath, "rb") as f:
 			data = pickle.load(f)
@@ -351,7 +360,7 @@ begin
 end;
 
 # ╔═╡ 01e27cf6-0a1b-4741-828a-ef8bf7037ae9
-LC = load_npz(FPATH, allow_pickle=true)
+LC = load_npz(FPATH, allow_pickle=true);
 
 # ╔═╡ 2d59bec3-9e2f-4f5f-b3f3-0963d546f3a0
 LC_cubes = PyDict{String, PyDict{String, Matrix}}(LC["cubes"])
@@ -440,15 +449,15 @@ begin
 	ntimes, ncomps = size(f_div_wlc)
 	oLCw = Matrix{Float64}(undef, ntimes, nbins)
 	cLCw = Array{Float64, 3}(undef, ntimes, nbins, ncomps)
-	
+
 	for (j, wav_idxs) in enumerate(binned_wav_idxs)
 		oLCw[:, j] .= sum_flux(f_target, wav_idxs)
 		for k in 1:ncomps
 			cLCw[:, j, k] .= sum_flux(f_comps[:, :, k], wav_idxs)
 		end
 	end
-	
-	cLCw = permutedims(cLCw, [1, 3, 2]) # Match convention used in tepspec 
+
+	cLCw = permutedims(cLCw, [1, 3, 2]) # Match convention used in tepspec
 end;
 
 # ╔═╡ 823a4d10-698a-43fb-a4bb-1448670909eb
@@ -458,7 +467,7 @@ oLCw
 cLCw
 
 # ╔═╡ 49d04cf9-2bec-4350-973e-880e376ab428
-begin	
+begin
 	offs = reshape(range(0, 0.3, length=nbins), 1, :) # Arbitrary offsets for clarity
 	f_norm_w = Array{Float64}(undef, ntimes, ncomps, nbins)
 	for c_i in 1:ncomps
@@ -529,7 +538,7 @@ specshifts = load_npz(
 );
 
 # ╔═╡ e4960d1a-8e33-478a-8100-d1838782938d
-delta_wav = pyconvert(Dict{String, Float64}, specshifts["shift"][target_name]) |> 
+delta_wav = pyconvert(Dict{String, Float64}, specshifts["shift"][target_name]) |>
 		sort |> values |> collect |> x -> convert(Vector{Float64}, x)
 
 # ╔═╡ e4388fba-64ef-4588-a1ed-283da2f52196
@@ -565,7 +574,7 @@ begin
 			"#1f78b4",  # Blue
 		]
 	)
-	
+
 	set_aog_theme!()
 	update_theme!(
 		Theme(
@@ -586,7 +595,7 @@ begin
 			colgap = 5,
 		)
 	)
-	
+
 	COLORS
 end
 
@@ -597,11 +606,11 @@ if plot_stell_spec let
 		xlabel = "Wavelength Å",
 		ylabel = "Relative flux",
 	)
-	
+
 	fluxes = [f_target, [f_comps[:, :, i] for i in 1:3]...]
 	labels = obj_names.vals
 	#f_norm = 40362.188283796 # median IMACS WASP-50 flux for comparison
-	
+
 	for (i, (name, f)) in enumerate(zip(labels, fluxes))
 		spec_plot!(ax, wav, f;
 			color=COLORS_SERIES[i],
@@ -612,14 +621,14 @@ if plot_stell_spec let
 	end
 
 	vlines!.(ax, wbins, linewidth=1.0, color=:lightgrey)
-	
+
 	xlims!(ax, 4_500, 11_000)
 	ylims!(ax, 0, 2.6)
-	
+
 	axislegend("Transit 2 (LDSS3)")
-	
-	savefig(fig, "$(FIG_PATH)/extracted_spectra_$(fname_suff).png")
-	
+
+	savefig(fig, "$(FIG_DIR)/extracted_spectra_$(fname_suff).png")
+
 	fig
 	end
 end
@@ -629,7 +638,7 @@ function plot_div_WLCS!(
 	axs, f_div_wlc, window_width, cNames, use_comps_idxs; ferr=0.002
 )
 	use_comps = cNames[use_comps_idxs]
-	
+
 	# Only apply filter to specified comp star divided WLCs
 	f_filt, use_idxs, bad_idxs = filt_idxs(
 		f_div_wlc[:, use_comps_idxs], window_width; ferr=ferr
@@ -637,7 +646,7 @@ function plot_div_WLCS!(
 	idxs = 1:size(f_div_wlc, 1)
 	k = 1
 	c = :darkgrey
-	for (i, cName) ∈ enumerate(cNames)		
+	for (i, cName) ∈ enumerate(cNames)
 		# All points
 		if cName ∈ ("c06", "c15", "c21") # LDSS3 comps
 			c_text = COLORS[end]
@@ -652,7 +661,7 @@ function plot_div_WLCS!(
 			align = (:right, :center),
 			color = c_text,
 		)
-		
+
 		# Used points
 		if cName ∈ use_comps
 			scatter!(axs[i], idxs[use_idxs], f_div_wlc[use_idxs, i];
@@ -664,7 +673,7 @@ function plot_div_WLCS!(
 			)
 			k += 1
 		end
-		
+
 		#axislegend(axs[i])
 	end
 end
@@ -672,22 +681,22 @@ end
 # ╔═╡ 4b2ed9db-0a17-4e52-a04d-3a6a5bf2c054
 if plot_lcs let
 	fig = Figure(resolution=FIG_WIDE)
-	
+
 	# comp_names = obj_names.vals[2:4]
 	# ncomps = length(comp_names)
 	# use_comps = comp_names # use all comps
 	# use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
-	
+
 	axs = [Axis(fig[1, i], limits=(-60, 380, 0.975, 1.02)) for i in 1:ncomps]
 	axs = reshape(copy(fig.content), ncomps, 1)
-	
+
 	plot_div_WLCS!(
 		axs, f_div_WLC_norm, window_width, comp_names, use_comps_idxs
 	)
-	
+
 	hideydecorations!.(axs[begin+1:end], grid=false)
 	#linkaxes!(axs...)
-	
+
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2, tellheight=false)
 	axs[2].xlabel = "Index"
 
@@ -697,8 +706,8 @@ if plot_lcs let
 		font = AlgebraOfGraphics.firasans("Bold"),
 	)
 
-	savefig(fig, "$(FIG_PATH)/div_wlcs_$(fname_suff).png")
-	
+	savefig(fig, "$(FIG_DIR)/div_wlcs_$(fname_suff).png")
+
 	fig
 	end
 end
@@ -707,7 +716,7 @@ end
 function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 	fig = Figure(resolution=FIG_TALL)
 	median_prec = round(Int, median(errs))
-	
+
 	ax_left = Axis(fig[1, 1], title = "Divided BLCs")
 	ax_right = Axis(fig[1, 2], title = "Residuals")
 	ax_label = Axis(fig[1, 3], title = "Median precision: $(median_prec) ppm")
@@ -718,7 +727,7 @@ function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 	N_bins = size(datas, 2)
 	resids = datas - models
 	colors = to_colormap(:Spectral_4, N_bins) |> reverse
-	
+
 	# Arbitrary offsets for clarity
 	offs = reshape(range(0, offset, length=N_bins), 1, :)
 	baselines = ones(size(datas))
@@ -736,7 +745,7 @@ function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 
 		scatter!(ax_right, baseline + resid, markersize=5, color=color)
 		lines!(ax_right, baseline, linewidth=3, color=0.75*color)
-		
+
 		scatter!(ax_right, baseline + resid, markersize=5, color=color)
 		lines!(ax_right, baseline, linewidth=3, color=0.75*color)
 		text!(ax_label, "$(wbin[1]) - $(wbin[2]) Å, $(err) ppm";
@@ -747,16 +756,16 @@ function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 			color = 0.75*color,
 		)
 	end
-	
+
 	hideydecorations!.(axs[:, 2:3], grid=false)
 	hidespines!(axs[end])
 	hidedecorations!(axs[end])
 	ylims!(ax_left, 0.95, 1.34)
-	
+
 	fig[1:2, 0] = Label(fig, "Relative flux + offset", rotation=π/2)
 	fig[end, 2:3] = Label(fig, "Index")
 
-	savefig(fig, "$(FIG_PATH)/div_blcs_$(fname_suff)_$(comp_name).png")
+	savefig(fig, "$(FIG_DIR)/div_blcs_$(fname_suff)_$(comp_name).png")
 
 	fig
 end
@@ -783,7 +792,7 @@ end
 @bind cName Select(blc_plots.keys)
 
 # ╔═╡ ee489959-654a-4666-854d-79896832dbc7
-md"""
+@mdx """
 target / $(cName)
 """
 
@@ -795,9 +804,9 @@ CondaPkg.add("numpy"); CondaPkg.resolve()
 
 # ╔═╡ Cell order:
 # ╟─34ef4580-bb95-11eb-34c1-25893217f422
+# ╠═e1294e56-8103-443b-80e9-118cac36750f
 # ╟─a8e3b170-3fc2-4d12-b117-07bd37d27710
 # ╟─48713a10-6ba7-4de5-a147-85a9cb136dd8
-# ╟─99a310b2-b802-4b29-9354-796b2dec2820
 # ╠═01e27cf6-0a1b-4741-828a-ef8bf7037ae9
 # ╟─698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 # ╠═d8236985-9a36-4357-ac78-7eb39dd0f080
@@ -851,7 +860,7 @@ CondaPkg.add("numpy"); CondaPkg.resolve()
 # ╟─5837dc0e-3537-4a90-bd2c-494e7b3e6bb7
 # ╠═49d04cf9-2bec-4350-973e-880e376ab428
 # ╠═65c91d63-10e7-41ab-9c21-f136f4c5cb96
-# ╠═6dece5df-0e78-42f1-a557-0a5445350b28
+# ╟─6dece5df-0e78-42f1-a557-0a5445350b28
 # ╟─ee489959-654a-4666-854d-79896832dbc7
 # ╟─7fa35566-d327-4319-9ae9-17c4c9825e05
 # ╠═2419e060-f5ab-441b-9ec2-51ce4e57e319
