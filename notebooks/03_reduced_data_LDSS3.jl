@@ -26,7 +26,9 @@ begin
 	using ImageFiltering, Statistics
 	using Latexify, Printf
 	using Dates
-	using PythonCall, CondaPkg
+	using CondaPkg
+	CondaPkg.add("numpy"); CondaPkg.resolve()
+	using PythonCall
 end
 
 # ╔═╡ 34ef4580-bb95-11eb-34c1-25893217f422
@@ -136,7 +138,7 @@ end
 
 # ╔═╡ 299dda0e-a214-45ca-9a68-947f60fcf404
 @mdx """
-## $(@bind plot_stell_spec CheckBox()) Stellar spectra ⭐
+## Stellar spectra ⭐
 
 With the flux extracted for each object, we now turn to analyzing the resulting stellar spectra, selected from the wavelength bins scheme below:
 """
@@ -172,7 +174,7 @@ end
 
 # ╔═╡ bd937d51-17e9-4de3-a5d0-4c436d413940
 @mdx """
-## $(@bind plot_lcs CheckBox()) White-light curves 🌅
+## White-light curves 🌅
 
 Next, we will extract the integrated white-light curves from these spectra. We integrate over the same wavelength bins used in the IMACS analysis:
 """
@@ -277,7 +279,7 @@ With `oLCw` and `cLCw` now computed, we next compute `f_norm_w`, the binned targ
 
 # ╔═╡ af07dc54-eeb5-4fbe-8dd0-289dea97502a
 @mdx """
-## $(@bind save_LDSS3_template CheckBox()) `GPTransmissionSpectra` inputs 🔩
+## `GPTransmissionSpectra` inputs 🔩
 
 Finally, we export the external parameters and light curves (in magnitude space) to be used for detrending in `GPTransmissionSpectra`:
 """
@@ -499,7 +501,7 @@ lc = let
 end
 
 # ╔═╡ 898a390b-49f7-45f4-b1a1-b22922d69a29
-if save_LDSS3_template let
+let
     savepath = "$(tdir)/white-light"
 	rm(savepath, force=true, recursive=true)
 	mkpath(savepath)
@@ -510,10 +512,9 @@ if save_LDSS3_template let
 	writedlm(f, comps, ",    ")
 	@info "Saved to $(f)"
 end
-end
 
 # ╔═╡ 631c4d02-58cc-4c70-947f-22c8e8b11015
-if save_LDSS3_template let
+let
     savepath = "$(tdir)/wavelength"
 	rm(savepath, force=true, recursive=true)
 	for i in 1:nbins
@@ -529,7 +530,6 @@ if save_LDSS3_template let
 		writedlm(f, comp_binned_mags[:, :, i], ",    ")
 		@info "Saved to $(f)"
 	end
-end
 end
 
 # ╔═╡ 079c3915-33af-40db-a544-28453732c372
@@ -547,14 +547,13 @@ df_eparams = DataFrame(
 ) |> df -> mapcols(col -> fmt_float.(col), df)[use_idxs, :]
 
 # ╔═╡ 2aba612a-7599-4a2d-9ff0-2fd398c2a0db
-if save_LDSS3_template let
+let
     savepath = template_dir(FPATH)
 	rm(savepath, force=true, recursive=true)
 	mkpath(savepath)
 	f = "$(tdir)/eparams.dat"
 	CSV.write(f, df_eparams, delim=",    ")
 	@info "Saved to $(f)"
-	end
 end
 
 # ╔═╡ c911cecd-0747-4cd1-826f-941f2f58091c
@@ -600,7 +599,7 @@ begin
 end
 
 # ╔═╡ 45418bd3-74a3-4758-9fce-adddbeeec076
-if plot_stell_spec let
+let
 	fig = Figure(resolution=FIG_WIDE)
 	ax = Axis(fig[1, 1];
 		xlabel = "Wavelength Å",
@@ -630,7 +629,6 @@ if plot_stell_spec let
 	savefig(fig, "$(FIG_DIR)/extracted_spectra_$(fname_suff).png")
 
 	fig
-	end
 end
 
 # ╔═╡ 20d12d7b-c666-46c3-8f48-5501641e8df3
@@ -679,7 +677,7 @@ function plot_div_WLCS!(
 end
 
 # ╔═╡ 4b2ed9db-0a17-4e52-a04d-3a6a5bf2c054
-if plot_lcs let
+let
 	fig = Figure(resolution=FIG_WIDE)
 
 	# comp_names = obj_names.vals[2:4]
@@ -709,7 +707,6 @@ if plot_lcs let
 	savefig(fig, "$(FIG_DIR)/div_wlcs_$(fname_suff).png")
 
 	fig
-	end
 end
 
 # ╔═╡ 2419e060-f5ab-441b-9ec2-51ce4e57e319
@@ -752,7 +749,7 @@ function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 			position = (0, baseline[1]),
 			textsize = 16,
 			align = (:left, :center),
-			offset = Point2f0(-10, 2),
+			offset = (-10, 2),
 			color = 0.75*color,
 		)
 	end
@@ -800,7 +797,7 @@ target / $(cName)
 blc_plots[cName]
 
 # ╔═╡ 7f7ed0cc-be9b-449c-b933-f892707e9941
-CondaPkg.add("numpy"); CondaPkg.resolve()
+#CondaPkg.add("numpy"); CondaPkg.resolve()
 
 # ╔═╡ Cell order:
 # ╟─34ef4580-bb95-11eb-34c1-25893217f422

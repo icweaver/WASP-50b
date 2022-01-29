@@ -27,7 +27,6 @@ begin
 	using ImageFiltering, Measurements, Statistics
 	using Latexify, Printf
 	using Dates, NaturalSort
-	using PythonCall, CondaPkg
 end
 
 # ╔═╡ 6c6741b8-eeb1-4c1e-8d22-40d08df00ced
@@ -234,10 +233,10 @@ function plot_BLCs(transit, datas, models, wbins, errs; offset=0.3)
 		scatter!(ax_right, baseline + resid, markersize=5, color=color)
 		lines!(ax_right, baseline, linewidth=3, color=0.75*color)
 		text!(ax_label, "$(wbin[1]) - $(wbin[2]) Å, $(err) ppm";
-			position = Point2f0(0, baseline[1]),
+			position = (0, baseline[1]),
 			textsize = 16,
 			align = (:left, :center),
-			offset = Point2f0(-10, 2),
+			offset = (-10, 2),
 			color = 0.75*color,
 		)
 	end

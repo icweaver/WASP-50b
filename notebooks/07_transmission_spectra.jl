@@ -27,7 +27,6 @@ begin
 	import Measurements: value, uncertainty
 	using Latexify, Printf
 	using Dates, NaturalSort
-	using PythonCall, CondaPkg
 end
 
 # ╔═╡ 209dae9c-4c14-4a02-bec9-36407bf1426f

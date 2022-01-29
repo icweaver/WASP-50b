@@ -1,9 +1,10 @@
-.CondaPkg
 *.pdf
+.CondaPkg
 .ipynb_checkpoints/
 Manifest.toml
 __pycache__/
 _build
+_cache/
 data*/
 overleaf/
 retrievals/

@@ -26,7 +26,9 @@ begin
 	using ImageFiltering, LombScargle, Measurements, Statistics
 	using Latexify, Printf
 	using Dates, NaturalSort
-	using PythonCall, CondaPkg
+	using CondaPkg
+	CondaPkg.add("lightkurve"); CondaPkg.resolve()
+	using PythonCall
 end
 
 # ╔═╡ 1797234e-6194-4fe5-945d-e7d91761ad7b
@@ -371,6 +373,9 @@ end
 
 # ╔═╡ 1955e266-eb55-46da-890b-08cc6fc7dfc4
 @py import matplotlib.pyplot as plt
+
+# ╔═╡ 37c2e695-8458-41bb-b7e5-2b3763dc0e6f
+lcs_oot[1].fold(P_maxs[1]).bin(bins=200)
 
 # ╔═╡ 3128e57f-df4f-4811-b867-8a293d7d536d
 function compute_pgram_model(lc, P)
@@ -725,6 +730,7 @@ body.disable_ui main {
 # ╠═1955e266-eb55-46da-890b-08cc6fc7dfc4
 # ╠═49bcddbe-d413-48ae-91d8-92bcebf40518
 # ╠═97ced6ba-ff74-46b4-90d5-18e7b2f1b903
+# ╠═37c2e695-8458-41bb-b7e5-2b3763dc0e6f
 # ╠═3128e57f-df4f-4811-b867-8a293d7d536d
 # ╟─056281a2-4786-45eb-a9fa-57515153f66c
 # ╠═3a612743-7071-4d85-a48d-0a4b12facffc

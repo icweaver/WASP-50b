@@ -6,15 +6,17 @@ using InteractiveUtils
 
 # ╔═╡ 22b67cb0-6687-11ec-1868-bb216a9703f4
 begin
-	using PythonCall, CondaPkg, PlutoUI
-	import MarkdownLiteral: @mdx
+	using CondaPkg, PlutoUI
+	CondaPkg.add.(("matplotlib", "numpy")); CondaPkg.resolve()
+    using PythonCall
+    import MarkdownLiteral: @mdx
 end
 
 # ╔═╡ f150770d-cbcd-4eda-a0a5-b759a21f5b9b
 @mdx """
 # Fun with 🐍
 
-In this notebook we will be showing some useage examples for the new package `PythonCall.jl`. It behaves similarly to the older package `PyCall.jl`, but with a few key differences that make interacting with Python quite nice:
+In this notebook we will showing some useage examples for the new package `PythonCall.jl`. It behaves similarly to the older package `PyCall.jl`, but with a few key differences that make interacting with Python quite nice:
 
 * automatic, project-specific environments for easy reproducibility
 * package management via [micromamba](https://mamba.readthedocs.io/en/latest/user_guide/micromamba.html) for blazing fast Python package management 🔥
@@ -23,7 +25,7 @@ In this notebook we will be showing some useage examples for the new package `Py
 Let's try some things out!
 """
 
-# ╔═╡ acf2a1eb-e99f-442f-86de-5ebe5a2f601c
+# ╔═╡ 800e21bc-28e3-496d-8871-4c81de6713ca
 TableOfContents()
 
 # ╔═╡ 30181f53-97e2-4d21-83d2-9394ef64aba2
@@ -54,6 +56,14 @@ py_dict["three"]
 
 # ╔═╡ 5e0919d8-0a02-46fc-92fe-0a5e40d1708c
 py_range[0] # Python's zero-based indexing is automatically understood
+
+# ╔═╡ 0b3322b5-cd15-49d9-a446-35224a4b7637
+@mdx """
+!!! tip
+	We recommend passing strings ("") instead of cmds (\`\`) to play nice with Pluto's `ExpressionExplorer`
+
+	Related issue? [#961](https://github.com/fonsp/Pluto.jl/issues/961)
+"""
 
 # ╔═╡ 3359adff-8eb5-4911-a914-047ecf3663fe
 @mdx """
@@ -106,7 +116,7 @@ We saw how to run simple Python expressions with `pyeval`. Now we will turn to e
 """
 
 # ╔═╡ 193e65ae-c344-4dda-b92b-e0b136eb7581
-@pyexec (x=1, y=2) => "ans = x + y" => ans
+@pyexec (x=1, y=2) => "ans = x + y" => ans::Int
 
 # ╔═╡ 0c8e14ef-782d-420b-8906-3a139bacf331
 pyexec(@NamedTuple{ans}, "ans = 1 + 2", Main)
@@ -121,15 +131,21 @@ We can now compose these ideas to start interacting with full blocks of Python c
 # ╔═╡ 5b597d2a-2483-4b80-860b-839fa3ddeaec
 begin
 	@pyexec """
-	global greeting
-	def greeting(name):
+	global greetings
+	def greetings(name):
 		return f"Hi {name} 👋"
 	"""
-	greeting(name) = @pyeval("greeting")(name)
+	greetings(name) = @pyeval("greetings")(name)
 end
 
 # ╔═╡ 5aa1ba97-d55c-4794-a839-e90effb84bbe
-greeting("Pluto citizen")
+greetings("Pluto citizen")
+
+# ╔═╡ 53dd2eb5-ee4c-4f4c-a9ca-6f234a376a78
+@mdx """
+!!! note
+	By default, this is executed in local scope. To make it accessible to other parts of the notebook, it is required to explicitly state this with `global`.
+"""
 
 # ╔═╡ e9e6c4e0-6834-4b6b-ac20-ff722f9a5cd9
 @mdx """
@@ -138,10 +154,12 @@ greeting("Pluto citizen")
 """
 
 # ╔═╡ 0bf45621-7776-403e-b3da-5311a5c30e20
-begin
-	CondaPkg.add.(("matplotlib", "numpy"))
-	CondaPkg.resolve()
-end
+@mdx """
+```julia
+CondaPkg.add.(("matplotlib", "numpy"))
+CondaPkg.resolve()
+```
+"""
 
 # ╔═╡ f5d2228c-b45e-4dce-99fb-668f6c50df30
 @mdx """
@@ -157,15 +175,15 @@ end
 # ╔═╡ c83fdb79-b0d9-4830-b6cf-74d2a669ceed
 let
 	xs = np.random.rand(10, 4, 4)
-	
+
 	fig, axes = plt.subplots(2, 2, sharex=true, sharey=true)
-	
+
 	for (ax, x) ∈ zip(axes.flat, xs)
 		ax.plot(x)
 	end
 
 	fig.tight_layout()
-	
+
 	plt.gcf()
 end
 
@@ -177,26 +195,10 @@ Where is all this stuff being downloaded/run? Let's see!
 """
 
 # ╔═╡ 655674de-56c1-4386-8fda-aa5c95b6271f
-@with_terminal CondaPkg.status()
+@with_terminal CondaPkg.status() # Will show directly in notebook in next Pluto release
 
-# ╔═╡ 9f68d823-64ac-48cc-b35e-b131a0bd5c50
-@with_terminal run(CondaPkg.MicroMamba.cmd(`list`))
-
-# ╔═╡ 782a5542-860b-4862-9bb9-dc4b1c2f48bb
-html"""
-<style>
-body.disable_ui main {
-		max-width : 95%;
-	}
-@media screen and (min-width: 1081px) {
-	body.disable_ui main {
-		margin-left : 10px;
-		max-width : 72%;
-		align-self: flex-start;
-	}
-}
-</style>
-"""
+# ╔═╡ d407d19b-40ee-496b-b585-ff685232b48b
+@with_terminal run(CondaPkg.MicroMamba.cmd(`list`)) # Will ask for a better API for this
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -207,7 +209,7 @@ PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
 
 [compat]
-CondaPkg = "~0.2.4"
+CondaPkg = "~0.2.6"
 MarkdownLiteral = "~0.1.1"
 PlutoUI = "~0.7.32"
 PythonCall = "~0.5.1"
@@ -235,18 +237,6 @@ uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
-[[deps.Bzip2_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "19a35467a82e236ff51bc17a3a44b69ef35185a2"
-uuid = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
-version = "1.0.8+0"
-
-[[deps.CodecBzip2]]
-deps = ["Bzip2_jll", "Libdl", "TranscodingStreams"]
-git-tree-sha1 = "2e62a725210ce3c3c2e1a3080190e7ca491f18d7"
-uuid = "523fee87-0ab8-5b00-afb7-3ecf72e48cfd"
-version = "0.7.2"
-
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
 git-tree-sha1 = "024fe24d83e4a5bf5fc80501a314ce0d1aa35597"
@@ -264,10 +254,10 @@ deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
 
 [[deps.CondaPkg]]
-deps = ["MicroMamba", "Pkg", "TOML"]
-git-tree-sha1 = "b257b31acb6b41e95759bfd0bfd2729252209ea6"
+deps = ["JSON3", "Markdown", "MicroMamba", "Pkg", "TOML"]
+git-tree-sha1 = "49589b0a9284fd8ea84c64a42e96739d1fe06751"
 uuid = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
-version = "0.2.4"
+version = "0.2.6"
 
 [[deps.Crayons]]
 git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
@@ -324,17 +314,17 @@ git-tree-sha1 = "a3f24677c21f5bbe9d2a714f95dcd58337fb2856"
 uuid = "82899510-4779-5014-852e-03e436cf321d"
 version = "1.0.0"
 
-[[deps.JLLWrappers]]
-deps = ["Preferences"]
-git-tree-sha1 = "22df5b96feef82434b07327e2d3c770a9b21e023"
-uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
-version = "1.4.0"
-
 [[deps.JSON]]
 deps = ["Dates", "Mmap", "Parsers", "Unicode"]
 git-tree-sha1 = "8076680b162ada2a031f707ac7b4953e30667a37"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 version = "0.21.2"
+
+[[deps.JSON3]]
+deps = ["Dates", "Mmap", "Parsers", "StructTypes", "UUIDs"]
+git-tree-sha1 = "7d58534ffb62cd947950b3aa9b993e63307a6125"
+uuid = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+version = "1.9.2"
 
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
@@ -383,10 +373,10 @@ deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
 
 [[deps.MicroMamba]]
-deps = ["CodecBzip2", "Downloads", "Scratch", "Tar"]
-git-tree-sha1 = "5b0b23d102c53e83fb06d934b847ae242180e648"
+deps = ["Pkg", "Scratch"]
+git-tree-sha1 = "e61632c723f4d0fafa5419a506f08baafe973391"
 uuid = "0b3b1443-0f03-428d-bdfb-f27f9c1191ea"
-version = "0.1.3"
+version = "0.1.4"
 
 [[deps.Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
@@ -403,9 +393,9 @@ uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
 
 [[deps.Parsers]]
 deps = ["Dates"]
-git-tree-sha1 = "92f91ba9e5941fc781fecf5494ac1da87bdac775"
+git-tree-sha1 = "0b5cfbb704034b5b4c1869e36634438a047df065"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.2.0"
+version = "2.2.1"
 
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
@@ -416,12 +406,6 @@ deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Hyperscript"
 git-tree-sha1 = "ae6145ca68947569058866e443df69587acc1806"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 version = "0.7.32"
-
-[[deps.Preferences]]
-deps = ["TOML"]
-git-tree-sha1 = "2cf929d64681236a2e074ffafb8d568733d2e6af"
-uuid = "21216c6a-2e73-6563-6e65-726566657250"
-version = "1.2.3"
 
 [[deps.Printf]]
 deps = ["Unicode"]
@@ -475,6 +459,12 @@ uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
+[[deps.StructTypes]]
+deps = ["Dates", "UUIDs"]
+git-tree-sha1 = "d24a825a95a6d98c385001212dc9020d609f2d4f"
+uuid = "856f2bd8-1eba-4b0a-8007-ebc267875bd4"
+version = "1.8.1"
+
 [[deps.TOML]]
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
@@ -498,12 +488,6 @@ uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
 [[deps.Test]]
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-
-[[deps.TranscodingStreams]]
-deps = ["Random", "Test"]
-git-tree-sha1 = "216b95ea110b5972db65aa90f88d8d89dcb8851c"
-uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
-version = "0.9.6"
 
 [[deps.URIs]]
 git-tree-sha1 = "97bbe755a53fe859669cd907f2d96aee8d2c1355"
@@ -541,7 +525,7 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 
 # ╔═╡ Cell order:
 # ╟─f150770d-cbcd-4eda-a0a5-b759a21f5b9b
-# ╠═acf2a1eb-e99f-442f-86de-5ebe5a2f601c
+# ╠═800e21bc-28e3-496d-8871-4c81de6713ca
 # ╟─30181f53-97e2-4d21-83d2-9394ef64aba2
 # ╠═b1f1706d-da3b-48ae-bed1-4f5fb9e95726
 # ╠═fa184670-718c-4e68-8e23-fe6e72a651c5
@@ -550,6 +534,7 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═15b2d0ab-bc1a-435a-9557-99537d117d91
 # ╠═ffa07e57-7797-4000-8be4-a166895bcc54
 # ╠═5e0919d8-0a02-46fc-92fe-0a5e40d1708c
+# ╟─0b3322b5-cd15-49d9-a446-35224a4b7637
 # ╟─3359adff-8eb5-4911-a914-047ecf3663fe
 # ╠═6be1822a-d905-4de9-8345-4e160e53ea64
 # ╟─ed066bda-07b4-4c52-9302-15c66cb4e1d8
@@ -563,18 +548,18 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─71ba808a-ebde-43ad-b264-ccf8e676891a
 # ╠═193e65ae-c344-4dda-b92b-e0b136eb7581
 # ╠═0c8e14ef-782d-420b-8906-3a139bacf331
-# ╠═1eccfc11-4ea1-4b79-a688-2644d6d1d0fd
+# ╟─1eccfc11-4ea1-4b79-a688-2644d6d1d0fd
 # ╠═5b597d2a-2483-4b80-860b-839fa3ddeaec
 # ╠═5aa1ba97-d55c-4794-a839-e90effb84bbe
+# ╟─53dd2eb5-ee4c-4f4c-a9ca-6f234a376a78
 # ╟─e9e6c4e0-6834-4b6b-ac20-ff722f9a5cd9
-# ╠═0bf45621-7776-403e-b3da-5311a5c30e20
+# ╟─0bf45621-7776-403e-b3da-5311a5c30e20
 # ╟─f5d2228c-b45e-4dce-99fb-668f6c50df30
 # ╠═a159c36c-83c8-460e-a7e2-e85c7df8d9da
 # ╠═c83fdb79-b0d9-4830-b6cf-74d2a669ceed
 # ╟─681ece7a-6800-4779-8118-28c3179cd43a
 # ╠═655674de-56c1-4386-8fda-aa5c95b6271f
-# ╠═9f68d823-64ac-48cc-b35e-b131a0bd5c50
+# ╠═d407d19b-40ee-496b-b585-ff685232b48b
 # ╠═22b67cb0-6687-11ec-1868-bb216a9703f4
-# ╟─782a5542-860b-4862-9bb9-dc4b1c2f48bb
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

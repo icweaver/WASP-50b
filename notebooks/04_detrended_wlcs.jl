@@ -27,7 +27,9 @@ begin
 	using ImageFiltering, Measurements, Statistics
 	using Latexify, Printf
 	using Dates
-	using PythonCall, CondaPkg
+	using CondaPkg
+	CondaPkg.add("numpy"); CondaPkg.resolve()
+	using PythonCall
 end
 
 # ╔═╡ 25d1284c-7260-4f3a-916a-b2814d2606af
@@ -301,7 +303,7 @@ function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 	)
 	t_x = 0.06
 	text!(ax_top, "$transit";
-		position = Point2f0(t_x, 0.9765),
+		position = (t_x, 0.9765),
 		align = (:right, :bottom),
 		color = color_dark,
 	)
@@ -310,7 +312,7 @@ function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 	scatter!(ax_bottom, t, resids, color=color)
 	lines!(ax_bottom, t_interp, zero(t_interp), color=color_dark)
 	text!(ax_bottom, "$resids_σ ppm";
-		position = Point2f0(t_x, 2300),
+		position = (t_x, 2300),
 		align = (:right, :top),
 		color = color_dark,
 	)
@@ -499,7 +501,7 @@ if plot_corner let
 	end
 			
 	# Plot corners from each night
-	diamond = Point2f0[(0.5, 0), (1, 0.5), (0.5, 1), (0, 0.5), (0.5, 0.0)]
+	diamond = [(0.5, 0), (1, 0.5), (0.5, 1), (0, 0.5), (0.5, 0.0)]
 	elems = LineElement[]
 	elem_labels = String[]
 	for (i, (transit, cube)) in enumerate(cubes)

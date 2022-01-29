@@ -26,7 +26,9 @@ begin
 	using ImageFiltering, Statistics
 	using Latexify, Printf
 	using Dates
-	using PythonCall, CondaPkg
+	using CondaPkg
+	CondaPkg.add("numpy"); CondaPkg.resolve()
+	using PythonCall
 end
 
 # ╔═╡ ee24f7df-c4db-4065-afe9-10be80cbcd6b
@@ -59,10 +61,10 @@ Each cube (`LC`) and wavelength binning scheme can be selected from the followin
 """
 
 # ╔═╡ 28d18f7f-2e41-4771-9f27-342bbda847dd
-@bind DIRPATH Select(sort(glob("$(DATA_DIR)/ut*")))
+@bind DIRPATH Select(sort(glob("$(DATA_DIR)/ut*")), default="$(DATA_DIR)/ut161211")
 
 # ╔═╡ bd2cdf33-0c41-4948-82ab-9a28929f72b3
-@bind FPATH_LC Select(glob("$(DIRPATH)/*.pkl"))
+@bind FPATH_LC Select(glob("$(DIRPATH)/*.pkl"), default="$(DIRPATH)/LCs_w50_bins.pkl")
 
 # ╔═╡ 3959e46c-87c9-4566-8ab1-f437323f0a9f
 fname_suff = let
@@ -82,7 +84,7 @@ transits = merge(
 
 # ╔═╡ e774a20f-2d58-486a-ab71-6bde678b26f8
 @mdx """
-## $(@bind plot_stellar_spectra CheckBox()) Stellar spectra ⭐
+## Stellar spectra ⭐
 
 With the flux extracted for each object, we now turn to analyzing the resulting stellar spectra:
 """
@@ -103,7 +105,7 @@ end
 
 # ╔═╡ e3468c61-782b-4f55-a4a1-9d1883655d11
 @mdx """
-## $(@bind plot_lcs CheckBox()) White-light curves 🌅
+## White-light curves 🌅
 
 Next, we will extract the integrated white-light curves from these spectra, divided by each comparison star:
 """
@@ -419,7 +421,7 @@ function plot_div_WLCS!(
 end
 
 # ╔═╡ 13523326-a5f2-480d-9961-d23cd51192b8
-if plot_lcs let
+let
 	fig = Figure(resolution=FIG_WIDE)
 
 	axs = [Axis(fig[i, j], limits=(-60, 380, 0.975, 1.02)) for i ∈ 1:2, j ∈ 1:4]
@@ -445,7 +447,6 @@ if plot_lcs let
 	savefig(fig, "$(FIG_DIR)/div_wlcs_$(fname_suff).png")
 
 	fig
-	end
 end
 
 # ╔═╡ c2c326df-1474-4b06-b183-668f0d6502aa
@@ -488,7 +489,7 @@ function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 			position = (0, baseline[1]),
 			textsize = 16,
 			align = (:left, :center),
-			offset = Point2f0(-10, 2),
+			offset = (-10, 2),
 			color = 0.75*color,
 		)
 	end
@@ -516,7 +517,7 @@ end
 wbins = pyconvert(Matrix, np.array(LC["wbins"]));
 
 # ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
-if plot_stellar_spectra let
+let
 	fig = Figure(resolution=FIG_WIDE)
 	ax = Axis(fig[1, 1];
 		xlabel = "Wavelength (Å)",
@@ -544,7 +545,6 @@ if plot_stellar_spectra let
 	savefig(fig, "$(FIG_DIR)/extracted_spectra_$(fname_suff).png")
 
 	fig
-	end
 end
 
 # ╔═╡ 7962e716-8b0e-4c58-9d14-f51bbf72d419
@@ -577,7 +577,7 @@ target / $(cName)
 blc_plots[cName]
 
 # ╔═╡ 6303ef67-c03f-4d2b-9aba-c80f87140bc5
-CondaPkg.add("numpy"); CondaPkg.resolve()
+#CondaPkg.add("numpy"); CondaPkg.resolve()
 
 # ╔═╡ Cell order:
 # ╟─ee24f7df-c4db-4065-afe9-10be80cbcd6b

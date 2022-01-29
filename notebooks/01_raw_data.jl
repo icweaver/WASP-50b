@@ -51,12 +51,15 @@ For each fits files (1 per chip), we extract the region of each chip dedicated t
 
 # ╔═╡ 90845d70-35d9-402d-8936-74936b069577
 @mdx """
-## $(@bind plot_IMACS CheckBox()) IMACS 🎱
+## IMACS 🎱
 Starting with IMACS, let's first select the night we would like to visualize from the dropdown menu below:
 """
 
 # ╔═╡ 8b9581db-71c6-42b6-915b-bde307755bcd
-@bind DATA_DIR_IMACS Select(glob("$(DATA_DIR)/IMACS/ut*"))
+@bind DATA_DIR_IMACS Select(
+	glob("$(DATA_DIR)/IMACS/ut*"),
+	default = "$(DATA_DIR)/IMACS/ut161211"
+)
 
 # ╔═╡ fb6e6221-8136-44e2-979b-ecbbd71f740d
 df_sci_IMACS = fitscollection(DATA_DIR_IMACS, abspath=false)
@@ -106,7 +109,7 @@ df_sci_LDSS3 = fitscollection(DATA_DIR_LDSS3, abspath=false)
 
 # ╔═╡ 06a834f0-8c90-4013-af34-725166970969
 @mdx """
-## $(@bind plot_LDSS3 CheckBox()) LDSS3 2️⃣
+## LDSS3 2️⃣
 
 We follow the same operations to visualize the $(nrow(df_sci_LDSS3)) chips for LDSS3 below.
 """
@@ -241,7 +244,7 @@ function savefig(fig, fpath; save_kwargs=())
 end
 
 # ╔═╡ 3a6ab0c0-ba08-4151-9646-c19d45749b9f
-if plot_IMACS let
+let
 	fig = Figure(resolution = FIG_WIDE)
 	hm = nothing
 	stepsize = 1
@@ -283,11 +286,10 @@ if plot_IMACS let
 	savefig(fig, "$(FIG_DIR)/sci_IMACS_$(basename(DATA_DIR_IMACS)).png")
 
 	fig
-	end
 end
 
 # ╔═╡ 71ba9181-90e4-4d12-97c0-462b3f1df077
-if plot_LDSS3 let
+let
 	fig = Figure(resolution = FIG_WIDE)
 	stepsize = 1
 	hm = nothing
@@ -321,7 +323,6 @@ if plot_LDSS3 let
 	)
 	
 	fig
-	end
 end
 
 # ╔═╡ Cell order:

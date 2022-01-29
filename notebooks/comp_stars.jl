@@ -13,11 +13,12 @@ using DataFramesMeta
 # ╔═╡ 403b0807-419c-4804-86b8-aca28751a1a6
 using AstroAngles
 
-# ╔═╡ 1be7d092-b655-48b3-87e1-8ef006aedd28
-using PythonCall
-
-# ╔═╡ b258ea27-bd58-41c1-b5e6-b9c6ccdf69d9
-using CondaPkg
+# ╔═╡ 5337ca99-20c5-4418-8fff-76191d718522
+begin
+	using CondaPkg
+	CondaPkg.add.(("astroquery", "astropy", "pandas")); CondaPkg.resolve()
+	using PythonCall
+end
 
 # ╔═╡ 8293e156-e76e-41bc-a3cd-07877eb23663
 using LinearAlgebra # Defines `norm` for us
@@ -171,14 +172,8 @@ Here comes the fun part. We are going to feed this table into the Python package
 
 # ╔═╡ 75a654c0-f15d-4cf0-b8bd-8f7a10de0e59
 @mdx """
-We use [`PythonCall.jl`](https://github.com/cjdoris/PythonCall.jl) to install a light-weight Python environment (using [micromamba](https://mamba.readthedocs.io/en/latest/user_guide/micromamba.html)) into a temporary folder via [`CondaPkg.jl`](https://github.com/cjdoris/CondaPkg.jl). `PythonCall.jl` will also enable us to seamlessly interact with Python objects from Julia. Finally, we download `astroquery` and a few other Python packages that will be needed for compatibility reasons later:
-"""
+We used [CondaPkg.jl](https://github.com/cjdoris/CondaPkg.jl) to install a light-weight Python environment (via [MicroMamba.jl](https://github.com/cjdoris/MicroMamba.jl)) into a temporary folder, along with `astroquery` and a few other Python packages that will be needed for compatibility reasons later. We next use `PythonCall.jl` to allow us to seamlessly interact with Python objects from Julia. 
 
-# ╔═╡ 5337ca99-20c5-4418-8fff-76191d718522
-CondaPkg.add.(("astroquery", "astropy", "pandas")); CondaPkg.resolve()
-
-# ╔═╡ 137bb020-1aae-4eb3-9ad7-976163f9f685
-@mdx """
 Now that that's all set up, let's import some things!
 """
 
@@ -340,7 +335,7 @@ t
 
 # ╔═╡ 34d1417b-2d56-4de0-800e-e65d5f9817fb
 @mdx """
-We now have a copy-and-pasteable table ✔
+We now have a copy-and-pasteable table for a paper that we are totally not ignoring right now ✔
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -360,7 +355,7 @@ PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
 [compat]
 AstroAngles = "~0.1.3"
 CSV = "~0.10.2"
-CondaPkg = "~0.2.4"
+CondaPkg = "~0.2.6"
 DataFrames = "~1.3.2"
 DataFramesMeta = "~0.10.0"
 Latexify = "~0.15.9"
@@ -396,12 +391,6 @@ version = "0.1.3"
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
-[[deps.Bzip2_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "19a35467a82e236ff51bc17a3a44b69ef35185a2"
-uuid = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
-version = "1.0.8+0"
-
 [[deps.CSV]]
 deps = ["CodecZlib", "Dates", "FilePathsBase", "InlineStrings", "Mmap", "Parsers", "PooledArrays", "SentinelArrays", "Tables", "Unicode", "WeakRefStrings"]
 git-tree-sha1 = "9519274b50500b8029973d241d32cfbf0b127d97"
@@ -412,12 +401,6 @@ version = "0.10.2"
 git-tree-sha1 = "339237319ef4712e6e5df7758d0bccddf5c237d9"
 uuid = "8be319e6-bccf-4806-a6f7-6fae938471bc"
 version = "0.4.10"
-
-[[deps.CodecBzip2]]
-deps = ["Bzip2_jll", "Libdl", "TranscodingStreams"]
-git-tree-sha1 = "2e62a725210ce3c3c2e1a3080190e7ca491f18d7"
-uuid = "523fee87-0ab8-5b00-afb7-3ecf72e48cfd"
-version = "0.7.2"
 
 [[deps.CodecZlib]]
 deps = ["TranscodingStreams", "Zlib_jll"]
@@ -448,10 +431,10 @@ deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
 
 [[deps.CondaPkg]]
-deps = ["MicroMamba", "Pkg", "TOML"]
-git-tree-sha1 = "b257b31acb6b41e95759bfd0bfd2729252209ea6"
+deps = ["JSON3", "Markdown", "MicroMamba", "Pkg", "TOML"]
+git-tree-sha1 = "49589b0a9284fd8ea84c64a42e96739d1fe06751"
 uuid = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
-version = "0.2.4"
+version = "0.2.6"
 
 [[deps.Crayons]]
 git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
@@ -561,17 +544,17 @@ git-tree-sha1 = "a3f24677c21f5bbe9d2a714f95dcd58337fb2856"
 uuid = "82899510-4779-5014-852e-03e436cf321d"
 version = "1.0.0"
 
-[[deps.JLLWrappers]]
-deps = ["Preferences"]
-git-tree-sha1 = "22df5b96feef82434b07327e2d3c770a9b21e023"
-uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
-version = "1.4.0"
-
 [[deps.JSON]]
 deps = ["Dates", "Mmap", "Parsers", "Unicode"]
 git-tree-sha1 = "8076680b162ada2a031f707ac7b4953e30667a37"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 version = "0.21.2"
+
+[[deps.JSON3]]
+deps = ["Dates", "Mmap", "Parsers", "StructTypes", "UUIDs"]
+git-tree-sha1 = "7d58534ffb62cd947950b3aa9b993e63307a6125"
+uuid = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+version = "1.9.2"
 
 [[deps.LaTeXStrings]]
 git-tree-sha1 = "f2355693d6778a178ade15952b7ac47a4ff97996"
@@ -631,10 +614,10 @@ deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
 
 [[deps.MicroMamba]]
-deps = ["CodecBzip2", "Downloads", "Scratch", "Tar"]
-git-tree-sha1 = "5b0b23d102c53e83fb06d934b847ae242180e648"
+deps = ["Pkg", "Scratch"]
+git-tree-sha1 = "e61632c723f4d0fafa5419a506f08baafe973391"
 uuid = "0b3b1443-0f03-428d-bdfb-f27f9c1191ea"
-version = "0.1.3"
+version = "0.1.4"
 
 [[deps.Missings]]
 deps = ["DataAPI"]
@@ -681,12 +664,6 @@ deps = ["DataAPI", "Future"]
 git-tree-sha1 = "db3a23166af8aebf4db5ef87ac5b00d36eb771e2"
 uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
 version = "1.4.0"
-
-[[deps.Preferences]]
-deps = ["TOML"]
-git-tree-sha1 = "2cf929d64681236a2e074ffafb8d568733d2e6af"
-uuid = "21216c6a-2e73-6563-6e65-726566657250"
-version = "1.2.3"
 
 [[deps.PrettyTables]]
 deps = ["Crayons", "Formatting", "Markdown", "Reexport", "Tables"]
@@ -761,6 +738,12 @@ uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 [[deps.Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[[deps.StructTypes]]
+deps = ["Dates", "UUIDs"]
+git-tree-sha1 = "d24a825a95a6d98c385001212dc9020d609f2d4f"
+uuid = "856f2bd8-1eba-4b0a-8007-ebc267875bd4"
+version = "1.8.1"
 
 [[deps.TOML]]
 deps = ["Dates"]
@@ -852,11 +835,8 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─ed944c35-09a6-4b69-8ccc-20e238fa488d
 # ╟─07d51156-9b82-4b9b-b6a6-a8bf09966880
 # ╟─21e927a2-ae8b-4623-ba17-e98ca3c04f60
-# ╠═1be7d092-b655-48b3-87e1-8ef006aedd28
-# ╟─75a654c0-f15d-4cf0-b8bd-8f7a10de0e59
-# ╠═b258ea27-bd58-41c1-b5e6-b9c6ccdf69d9
 # ╠═5337ca99-20c5-4418-8fff-76191d718522
-# ╟─137bb020-1aae-4eb3-9ad7-976163f9f685
+# ╟─75a654c0-f15d-4cf0-b8bd-8f7a10de0e59
 # ╠═5926658d-bcb1-477a-bebc-9414eaa3813c
 # ╟─9a4f6266-f761-4eca-8eba-dd8f611a56bf
 # ╠═f9d21956-347b-48fc-abe2-04d733c92668
