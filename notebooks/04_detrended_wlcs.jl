@@ -141,7 +141,7 @@ We summarize the Bayesian Model Averag (BMA) results for selected parameters for
 
 # ╔═╡ 68ec4343-5f6c-4dfd-90b5-6393b4c819b9
 @mdx """
-## $(@bind plot_corner CheckBox()) Corner plots 📐
+## Corner plots 📐
 """
 
 # ╔═╡ e452d2b1-1010-4ce3-8d32-9e9f1d0dfa0b
@@ -227,6 +227,108 @@ function savefig(fig, fpath)
 	mkpath(dirname(fpath))
     save(fpath, fig)
 	@info "Saved to: $(fpath)"
+end
+
+# ╔═╡ db539901-f0b0-4692-a8d2-6c72dff41196
+begin
+	@pyexec """
+	global np, pickle, load_npz, load_pickle
+	import numpy as np
+	import pickle
+
+	def load_npz(fpath, allow_pickle=False):
+		return np.load(fpath, allow_pickle=allow_pickle)[()]
+
+	def load_pickle(fpath):
+		with open(fpath, "rb") as f:
+			data = pickle.load(f)
+		return data
+	"""
+	load_npz(s; allow_pickle=false) = @pyeval("load_npz")(s, allow_pickle=allow_pickle)
+	load_pickle(s) = @pyeval("load_pickle")(s)
+end;
+
+# ╔═╡ f539e06d-a1b5-413a-b90e-91cb0bbd5a4c
+load_data(fpath_sample, fpath_model, fpath_result; allow_pickle=true) = Dict(
+	"samples" => load_pickle(fpath_sample),
+	"models" => load_npz(fpath_model, allow_pickle=allow_pickle),
+	"results" => CSV.File(
+		fpath_result,
+		comment = "#",
+		normalizenames = true,
+	) |> DataFrame
+)
+
+# ╔═╡ 2191791b-df62-4f1b-88bf-060cc47896b2
+begin
+	cubes = Dict(
+		name(fpath_sample, dates_to_names) => load_data(
+			fpath_sample, fpath_model, fpath_result
+		)
+
+		for (fpath_sample, fpath_model, fpath_result) ∈ zip(
+			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")),
+			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_WLC.npy")),
+			sort(glob("$(DATA_DIR)/w50*/white-light/results.dat")),
+		)
+	)
+
+	cubes = sort(cubes)
+end
+
+# ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
+begin
+	summary_tables = DataFrame[]
+	
+	for (transit, cube) in cubes
+		param_idxs = [
+			findfirst(cube["results"][!, :Variable] .== param)
+			for param in keys(PARAMS)
+		]
+		summary_table = cube["results"][param_idxs, :]
+		push!(summary_tables, summary_table)
+	end
+end
+
+# ╔═╡ de0a4468-56aa-4748-80a0-6c9ab6b8579e
+BMA_matrix = let
+	x = hcat((
+	summary[!, "Value"] .± maximum((summary[!, "SigmaUp"], summary[!, "SigmaDown"]))
+	for summary in summary_tables
+)...) |> x-> hcat(x, mean(x, dims=2))
+	#x[2, :] .-= 2.45e6
+	x
+end
+
+# ╔═╡ 19fcaa15-6f01-46a6-8225-4b5cafd89cc1
+BMA = DataFrame(
+	[PARAMS.vals BMA_matrix],
+	["Parameter", keys(cubes)..., "Combined"]
+);
+
+# ╔═╡ c7a179a3-9966-452d-b430-a28b2f004bc5
+latextabular(BMA, latex=false) |> PlutoUI.Text
+
+# ╔═╡ d714cb8c-801c-4afc-9f80-5e8ccac7081e
+[@sprintf "%.10f" v for v in BMA[!, "Combined"]]
+
+# ╔═╡ d279e93e-8665-41b2-bd5c-723458fabe86
+BMA |> x -> latexify(x, env=:table) |> PlutoUI.Text
+
+# ╔═╡ 56d0de38-5639-4196-aafe-79a9ab933980
+begin
+	samples_cube = Dict()
+	
+	for (transit, cube) in cubes
+		samples_cube[transit] = Dict(
+			param => scale_samples(
+				pyconvert(Dict{String, Vector}, cube["samples"])[param],
+				PARAMS[param],
+				BMA
+			)
+			for param in keys(PARAMS)
+		)
+	end
 end
 
 # ╔═╡ 1f7b883c-0192-45bd-a206-2a9fde1409ca
@@ -323,53 +425,6 @@ function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 	rowsize!(gl, 2, Relative(1/3))
 end
 
-# ╔═╡ db539901-f0b0-4692-a8d2-6c72dff41196
-begin
-	@pyexec """
-	global np, pickle, load_npz, load_pickle
-	import numpy as np
-	import pickle
-
-	def load_npz(fpath, allow_pickle=False):
-		return np.load(fpath, allow_pickle=allow_pickle)[()]
-
-	def load_pickle(fpath):
-		with open(fpath, "rb") as f:
-			data = pickle.load(f)
-		return data
-	"""
-	load_npz(s; allow_pickle=false) = @pyeval("load_npz")(s, allow_pickle=allow_pickle)
-	load_pickle(s) = @pyeval("load_pickle")(s)
-end;
-
-# ╔═╡ f539e06d-a1b5-413a-b90e-91cb0bbd5a4c
-load_data(fpath_sample, fpath_model, fpath_result; allow_pickle=true) = Dict(
-	"samples" => load_pickle(fpath_sample),
-	"models" => load_npz(fpath_model, allow_pickle=allow_pickle),
-	"results" => CSV.File(
-		fpath_result,
-		comment = "#",
-		normalizenames = true,
-	) |> DataFrame
-)
-
-# ╔═╡ 2191791b-df62-4f1b-88bf-060cc47896b2
-begin
-	cubes = Dict(
-		name(fpath_sample, dates_to_names) => load_data(
-			fpath_sample, fpath_model, fpath_result
-		)
-
-		for (fpath_sample, fpath_model, fpath_result) ∈ zip(
-			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")),
-			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_WLC.npy")),
-			sort(glob("$(DATA_DIR)/w50*/white-light/results.dat")),
-		)
-	)
-
-	cubes = sort(cubes)
-end
-
 # ╔═╡ 4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
 let
 	fig = Figure(resolution=FIG_LARGE)
@@ -407,63 +462,8 @@ let
 	fig
 end
 
-# ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
-begin
-	summary_tables = DataFrame[]
-	
-	for (transit, cube) in cubes
-		param_idxs = [
-			findfirst(cube["results"][!, :Variable] .== param)
-			for param in keys(PARAMS)
-		]
-		summary_table = cube["results"][param_idxs, :]
-		push!(summary_tables, summary_table)
-	end
-end
-
-# ╔═╡ de0a4468-56aa-4748-80a0-6c9ab6b8579e
-BMA_matrix = let
-	x = hcat((
-	summary[!, "Value"] .± maximum((summary[!, "SigmaUp"], summary[!, "SigmaDown"]))
-	for summary in summary_tables
-)...) |> x-> hcat(x, mean(x, dims=2))
-	#x[2, :] .-= 2.45e6
-	x
-end
-
-# ╔═╡ 19fcaa15-6f01-46a6-8225-4b5cafd89cc1
-BMA = DataFrame(
-	[PARAMS.vals BMA_matrix],
-	["Parameter", keys(cubes)..., "Combined"]
-);
-
-# ╔═╡ c7a179a3-9966-452d-b430-a28b2f004bc5
-latextabular(BMA, latex=false) |> PlutoUI.Text
-
-# ╔═╡ d714cb8c-801c-4afc-9f80-5e8ccac7081e
-[@sprintf "%.10f" v for v in BMA[!, "Combined"]]
-
-# ╔═╡ d279e93e-8665-41b2-bd5c-723458fabe86
-BMA |> x -> latexify(x, env=:table) |> PlutoUI.Text
-
-# ╔═╡ 56d0de38-5639-4196-aafe-79a9ab933980
-begin
-	samples_cube = Dict()
-	
-	for (transit, cube) in cubes
-		samples_cube[transit] = Dict(
-			param => scale_samples(
-				pyconvert(Dict{String, Vector}, cube["samples"])[param],
-				PARAMS[param],
-				BMA
-			)
-			for param in keys(PARAMS)
-		)
-	end
-end
-
 # ╔═╡ d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
-if plot_corner let
+begin
 	n_params = length(PARAMS) # Number of fitted parameters
 	
 	# Create empty corner plot grid
@@ -501,8 +501,7 @@ if plot_corner let
 	end
 			
 	# Plot corners from each night
-	diamond = [(0.5, 0), (1, 0.5), (0.5, 1), (0, 0.5), (0.5, 0.0)]
-	elems = LineElement[]
+	elems = MarkerElement[]
 	elem_labels = String[]
 	for (i, (transit, cube)) in enumerate(cubes)
 		c = COLORS[i]
@@ -510,7 +509,7 @@ if plot_corner let
 			samples_cube[transit], keys(PARAMS), color=c
 		)
 		push!(elems,
-			LineElement(color=c, linewidth=3, linepoints=diamond,)
+			MarkerElement(marker='◇', color=c, strokecolor=c)
 		)
 		push!(elem_labels, transit)
 	end
@@ -533,6 +532,8 @@ if plot_corner let
 		labelsize = 25,
 		nbanks = 2,
 		orientation = :horizontal,
+		markersize = 35,
+		markerstrokewidth = 1,
 	)
 
 	if occursin("sp", DATA_DIR)
@@ -542,7 +543,6 @@ if plot_corner let
 	end
 	
 	fig
-	end
 end
 
 # ╔═╡ Cell order:

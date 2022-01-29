@@ -21,24 +21,14 @@ begin
 
 	using PlutoUI
 	import MarkdownLiteral: @mdx
-	using AlgebraOfGraphics
-	using CairoMakie
-	using CSV, DataFrames, DataFramesMeta
-	using DelimitedFiles
-	using Glob
-	using ImageFiltering
-	using Latexify
-	using Measurements, Statistics
-	using OrderedCollections
+	using AlgebraOfGraphics, CairoMakie
+	using CSV, DataFrames, DataFramesMeta, DelimitedFiles, Glob, OrderedCollections
+	using ImageFiltering, LombScargle, Measurements, Statistics
+	using Latexify, Printf
+	using Dates, NaturalSort
 	using CondaPkg
 	using PythonCall
 end
-
-# ╔═╡ 327ea081-73eb-42d2-b7b8-6a6b309a693e
-xx = 10
-
-# ╔═╡ c2a48ed3-a91e-459a-bf13-5dce3c4158a3
-DataFrame(xx = rand(10))
 
 # ╔═╡ a21aad0b-5998-420e-b437-d7ad262d0fe4
 begin
@@ -438,8 +428,6 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
-# ╠═327ea081-73eb-42d2-b7b8-6a6b309a693e
-# ╠═c2a48ed3-a91e-459a-bf13-5dce3c4158a3
 # ╟─0132b4ab-0447-4546-b412-ec598b20d21d
 # ╠═a21aad0b-5998-420e-b437-d7ad262d0fe4
 # ╟─60dc161c-2aa2-4264-884d-6da3ead0e57b

@@ -177,9 +177,6 @@ sort(df_wakeford, :Name, lt=natural)
 # ╔═╡ 7f956b36-ce65-4e4e-afa5-9b97b9e06954
 @mdx """
 ## HGHJ population
-
-!!! warning "TODO"
-	add text
 """
 
 # ╔═╡ 0f9262ef-b774-45bc-bdab-46860779683d
@@ -203,9 +200,9 @@ val(df, name, col) = df[df.pl_name .== name, col][1]
 # ╔═╡ f07ad06b-81d2-454f-988f-a7ae1713eac4
 function annotate_text!(ax, t, p1, p2, l, lm; align=(:center, :center))
 	hyp = 2.0*lm + l
-	eps = lm*(p2 - p1) / hyp
+	eps = @. lm*(p2 - p1) / hyp
 	text!(ax, t, position=p1, align=align)
-	lines!(ax, [p1 + eps, p2 - eps], color=:darkgrey, linewidth=1)
+	lines!(ax, [p1 .+ eps, p2 .- eps], color=:darkgrey, linewidth=1)
 end
 
 # ╔═╡ 2776646e-47e7-4b9e-ab91-4035bc6df99f
@@ -462,8 +459,8 @@ let
 	annotate_text!(
 		ax,
 		"HAT-P-23b",
-		Point2f((HP23x[1], HP23y[1])) .- (-600, -3),
-		Point2f((HP23x[1], HP23y[1])),
+		(HP23x[1], HP23y[1]) .- (-600, -3),
+		(HP23x[1], HP23y[1]),
 		0.5,
 		0.1;
 		align = (:center, :baseline),
@@ -472,8 +469,8 @@ let
 	annotate_text!(
 		ax,
 		"WASP-43b",
-		Point2f((W43x[1], W43y[1])) .- (800, 5),
-		Point2f((W43x[1], W43y[1])),
+		(W43x[1], W43y[1]) .- (800, 5),
+		(W43x[1], W43y[1]),
 		0.3,
 		0.1;
 		align = (:center, :top),
@@ -482,8 +479,8 @@ let
 	annotate_text!(
 		ax,
 		"WASP-50b",
-		Point2f((W50x[1], W50y[1])) .- (-300, -8),
-		Point2f((W50x[1], W50y[1])),
+		(W50x[1], W50y[1]) .- (-300, -8),
+		(W50x[1], W50y[1]),
 		0.5,
 		0.1;
 		align = (:center, :baseline),
@@ -492,8 +489,8 @@ let
 	annotate_text!(
 		ax,
 		"HD 189733 b",
-		Point2f((hdx[1], hdy[1])) .- (600, -4),
-		Point2f((hdx[1], hdy[1])),
+		(hdx[1], hdy[1]) .- (600, -4),
+		(hdx[1], hdy[1]),
 		0.0,
 		0.0;
 		align = (:center, :baseline),

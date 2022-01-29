@@ -54,7 +54,7 @@ In this notebook we gather and analyze the available photometric data for this t
 
 # ╔═╡ 0cbe4263-799f-4ee3-9a94-3ba879528b01
 @mdx """
-## $(@bind plot_ASASSN CheckBox()) ASAS-SN 🌍
+## ASAS-SN 🌍
 
 We downloaded [all photometric monitoring data](https://asas-sn.osu.edu/photometry/7df0eb29-0b68-57ef-8ce2-83dc7b5684da) gathered by the [ASAS-SN](https://asas-sn.osu.edu/) survey for this target, and include it below.
 """
@@ -96,7 +96,7 @@ begin
 end;
 
 # ╔═╡ 8e6008ca-a762-4450-a09e-bd0c2bbac4f2
-if plot_ASASSN let
+let
 	phot_mon = data(df_ASASSN) * mapping(
 	    :hjd => "Time (HJD)",
 	    :mag => "Magnitude",
@@ -113,16 +113,15 @@ if plot_ASASSN let
 
 	for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, julian_transit_dates))
 		text!(ax, "Transit $i\n$utc";
-			position = Point2f0(jd, 11.83),
+			position = (jd, 11.83),
 			textsize = 14,
 			align = (:left, :center),
-			offset = Point2f0(10, 0),
+			offset = (10, 0),
 			color = :grey,
 		)
 	end
 
 	fig
-	end
 end
 
 # ╔═╡ 50ee0fbb-30f8-4e29-9de8-0173efcee364
@@ -167,7 +166,7 @@ For comparison, the average cadence for this data is $(t_ASASSN |> diff |> mean)
 
 # ╔═╡ 78d85c7c-da06-41ab-915b-48d93a010967
 @mdx """
-## $(@bind plot_TESS CheckBox()) TESS 🌌
+## TESS 🌌
 We next turn to the TESS photometry.
 """
 
@@ -282,7 +281,7 @@ end
 
 # ╔═╡ 99fcf959-665b-44cf-9b5f-fd68a919f846
 @mdx """
-### $(@bind plot_pg CheckBox()) Periodogram
+### Periodogram
 """
 
 # ╔═╡ de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
@@ -296,7 +295,7 @@ function compute_pgram(lc; min_period=0.5, max_period=30.0)
 end
 
 # ╔═╡ f3425d9c-861e-4b26-b352-bd0669c7f1f9
-if plot_ASASSN let
+let
 	fig = Figure(resolution=(800, 800))
 
 	### Photometry plot ####
@@ -312,10 +311,10 @@ if plot_ASASSN let
 	# Label transit epochs
 	# for (i, (utc, jd)) in enumerate(zip(utc_transit_dates, Δjulian_transit_dates))
 	# 	text!(ax, "Transit $i\n$utc";
-	# 		position = Point2f0(jd, 5.0e4),
+	# 		position = (jd, 5.0e4),
 	# 		textsize = 14,
 	# 		align = (:left, :center),
-	# 		offset = Point2f0(10, 0),
+	# 		offset = (10, 0),
 	# 		color = :grey,
 	# 	)
 	# end
@@ -337,7 +336,6 @@ if plot_ASASSN let
 	axislegend(ax_pg, position=:lc)
 
 	fig
-	end
 end
 
 # ╔═╡ 2215ed86-fa78-4811-88ab-e3521e4a1dea
@@ -553,7 +551,7 @@ begin
 end
 
 # ╔═╡ 82222ee8-f759-499d-a072-c219cc33ccad
-if plot_TESS let
+let
 	fig = Figure(resolution=FIG_WIDE)
 	
 	for (i, (lc, lc_oot)) ∈ enumerate(zip(lcs_cleaned[1:end-1], lcs_oot[1:end-1]))
@@ -586,11 +584,10 @@ if plot_TESS let
 	savefig(fig, "$(FIG_DIR)/TESS_flux.png")
 	
 	fig
-	end
 end
 
 # ╔═╡ 94d05a5b-b05e-4407-bcd3-7d625680a262
-if plot_pg let
+let
 	fig = Figure(resolution=FIG_WIDE)
 	
 	ax_window = Axis(fig[1, 1])
@@ -630,11 +627,10 @@ if plot_pg let
 	savefig(fig, "$(FIG_DIR)/stellar_activity_pg.png")
 	
 	fig
-	end
 end
 
 # ╔═╡ 49bcddbe-d413-48ae-91d8-92bcebf40518
-if plot_folded let
+let
 	fig = Figure(resolution=FIG_WIDE)
 	
 	axs = []
@@ -666,7 +662,6 @@ if plot_folded let
 	savefig(fig, "$(FIG_DIR)/stellar_activity_phase.png")
 	
 	fig
-	end
 end
 
 # ╔═╡ 01bfe0ad-3cb9-42f0-9d72-3deef3969d05
