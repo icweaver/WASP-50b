@@ -394,25 +394,19 @@ let
 	fig = Figure(resolution=FIG_WIDE)
 	ax = Axis(fig[1, 1], limits=((0, 4100), (-1, 60)))
 	
-	p = data(df) *
-			mapping(
-				:pl_eqt => "Equilibrium temperature (K)",
-				:g_SI => "Surface gravity (m/s²)",
-			) *
-			visual(color=(:darkgrey, 0.25)) +
-		data(df_wakeford) *
-				mapping(
-				:pl_eqt => "Equilibrium temperature (K)",
-				:g_SI => "Surface gravity (m/s²)",
-				color = :H2OJ => "H₂O - J",
-			) *
-			visual(marker=:rect, markersize=20, strokewidth=1, colormap=:cividis) +
-		data(df_tspecs) *
-			mapping(
-				:pl_eqt => "Equilibrium temperature (K)",
-				:g_SI => "Surface gravity (m/s²)",
-			) *
-			visual(marker='□', markersize=20)
+	p = mapping(
+		:pl_eqt => "Equilibrium temperature (K)",
+		:g_SI => "Surface gravity (m/s²)",
+	) *
+	(
+		  data(df) * visual(color=(:darkgrey, 0.25))
+		
+		+ data(df_wakeford)
+			* mapping(color=:H2OJ => "H₂O - J")
+			* visual(marker=:rect, markersize=20, strokewidth=1, colormap=:cividis)
+		
+		+ data(df_tspecs) * visual(marker='□', markersize=20)
+	)
 
 	fg = draw!(ax, p)
 	colorbar!(fig[1, 2], fg)
@@ -449,10 +443,6 @@ let
 	plt = m*data(df_HGHJs_all) * visual(colormap=:viridis)
 	fg = draw!(ax, plt)
 	colorbar!(fig[1, 2], fg)
-	
-	# HGHJ g boundary
-	# ax = fg.grid[1, 1].axis
-	#hlines!(ax, 20.0, color=:darkgrey, linestyle=:dash)
 	
 	# Annotate HGHJs with tspec observations
 	HP23x, HP23y = val.(Ref(df_HGHJs), Ref("HAT-P-23 b"), [:pl_eqt, :g_SI])
