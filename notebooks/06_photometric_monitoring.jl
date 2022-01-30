@@ -205,9 +205,9 @@ From the $(length(all_srs)) data products found, we see that $(length(srs)) are 
 lcs = srs.download_all(flux_column="pdcsap_flux")
 
 # ╔═╡ 241c462c-3cd9-402d-b948-b9b1f608b727
-@mdx """
-We show the normalized PDCSAP flux below for each sector:
-"""
+# @mdx """
+# We show the normalized PDCSAP flux below for each sector:
+# """
 
 # ╔═╡ 31d5bc92-a1f2-4c82-82f2-67755f9aa235
 begin
@@ -275,6 +275,42 @@ function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=
 
 	return ax, t_binned, f_binned, f_err_binned, lc_binned_py, f_med
 end
+
+# ╔═╡ 82222ee8-f759-499d-a072-c219cc33ccad
+# let
+# 	fig = Figure(resolution=FIG_WIDE)
+	
+# 	for (i, (lc, lc_oot)) ∈ enumerate(zip(lcs_cleaned[1:end-1], lcs_oot[1:end-1]))
+# 		lc, lc_oot = to_PyPandas(lc), to_PyPandas(lc_oot)
+# 		ax = Axis(fig[i, 1])
+# 		errorbars!(ax, lc.time, lc.flux, lc.flux_err;
+# 			color = (:darkgrey, 0.25),
+# 			markersize = 15,
+# 			# label = """
+# 			# Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
+# 			# """
+# 		)
+		
+# 		ylims!(ax, 0.97, 1.02)
+# 		#scatter!(fig[i, 1], lc.time.value, lc.flux)
+		
+# 		scatter!(ax, lc_oot.time, lc_oot.flux;
+# 			color = :darkgrey, label="OOT baseline",
+# 			#markersize = 5,
+# 		)
+
+# 		axislegend()
+# 	end
+
+# 	linkyaxes!(filter(x -> x isa Axis, fig.content)...)
+
+# 	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
+# 	Label(fig[1:end-1, 0], "Relative flux", rotation=π/2)
+
+# 	savefig(fig, "$(FIG_DIR)/TESS_flux.png")
+	
+# 	fig
+# end
 
 # ╔═╡ 43de00bf-e616-43c5-92ce-1044cbd8cfe5
 1e6 .* [median(to_PyPandas(lc).flux_err) for lc ∈ lcs_oot]
@@ -366,14 +402,11 @@ end
 
 # ╔═╡ a50ef756-ade6-48a3-8d3a-17b56ce03c26
 @mdx """
-### $(@bind plot_folded CheckBox()) Folded lightcurves
+### Folded lightcurves
 """
 
 # ╔═╡ 1955e266-eb55-46da-890b-08cc6fc7dfc4
 @py import matplotlib.pyplot as plt
-
-# ╔═╡ 37c2e695-8458-41bb-b7e5-2b3763dc0e6f
-lcs_oot[1].fold(P_maxs[1]).bin(bins=200)
 
 # ╔═╡ 3128e57f-df4f-4811-b867-8a293d7d536d
 function compute_pgram_model(lc, P)
@@ -550,42 +583,6 @@ begin
 
 end
 
-# ╔═╡ 82222ee8-f759-499d-a072-c219cc33ccad
-let
-	fig = Figure(resolution=FIG_WIDE)
-	
-	for (i, (lc, lc_oot)) ∈ enumerate(zip(lcs_cleaned[1:end-1], lcs_oot[1:end-1]))
-		lc, lc_oot = to_PyPandas(lc), to_PyPandas(lc_oot)
-		ax = Axis(fig[i, 1])
-		errorbars!(ax, lc.time, lc.flux, lc.flux_err;
-			color = (:darkgrey, 0.25),
-			markersize = 15,
-			# label = """
-			# Sector $(lc.meta["SECTOR"]), $(lc.meta["AUTHOR"])
-			# """
-		)
-		
-		ylims!(ax, 0.97, 1.02)
-		#scatter!(fig[i, 1], lc.time.value, lc.flux)
-		
-		scatter!(ax, lc_oot.time, lc_oot.flux;
-			color = :darkgrey, label="OOT baseline",
-			#markersize = 5,
-		)
-
-		axislegend()
-	end
-
-	linkyaxes!(filter(x -> x isa Axis, fig.content)...)
-
-	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
-	Label(fig[1:end-1, 0], "Relative flux", rotation=π/2)
-
-	savefig(fig, "$(FIG_DIR)/TESS_flux.png")
-	
-	fig
-end
-
 # ╔═╡ 94d05a5b-b05e-4407-bcd3-7d625680a262
 let
 	fig = Figure(resolution=FIG_WIDE)
@@ -656,7 +653,7 @@ let
 	
 	linkaxes!(axs...)
 	
-	axs[end].xlabel = "Phase"
+	axs[end].xlabel = "Phase-folded time (d)"
 	axs[2].ylabel = "Normalized flux"
 	
 	savefig(fig, "$(FIG_DIR)/stellar_activity_phase.png")
@@ -725,7 +722,6 @@ body.disable_ui main {
 # ╠═1955e266-eb55-46da-890b-08cc6fc7dfc4
 # ╠═49bcddbe-d413-48ae-91d8-92bcebf40518
 # ╠═97ced6ba-ff74-46b4-90d5-18e7b2f1b903
-# ╠═37c2e695-8458-41bb-b7e5-2b3763dc0e6f
 # ╠═3128e57f-df4f-4811-b867-8a293d7d536d
 # ╟─056281a2-4786-45eb-a9fa-57515153f66c
 # ╠═3a612743-7071-4d85-a48d-0a4b12facffc

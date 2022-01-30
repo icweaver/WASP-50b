@@ -269,14 +269,14 @@ let
 			ch,
 			coords = coords_IMACS,
 			stepsize,
-			hm_kwargs = (highclip=:yellow, colorrange=(0, 200)),
+			hm_kwargs = (highclip=COLORS[2], colorrange=(0, 200)),
 		)
 	end
 
 	rowgap!(fig.layout, 0)
 	colgap!(fig.layout, 0)
 	
-	Colorbar(fig[2:3, end+1], hm, width=20, label="Counts",)
+	Colorbar(fig[2:3, end+1], hm, width=20, label="Counts", ticksvisible=false)
 	axs = filter(x -> x isa Axis, fig.content)
 	linkaxes!(axs...)
 	hidedecorations!.(axs)
@@ -301,7 +301,7 @@ let
 			ch = j,
 			coords = coords_LDSS3,
 			stepsize,
-			hm_kwargs = (highclip=:yellow, colorrange=(0, 200)),
+			hm_kwargs = (highclip=COLORS[2], colorrange=(0, 200)),
 		)
 		Label(fig[1, j], "c$(j)", tellwidth=false)
 		Label(fig[3, j], "c$(j)", tellwidth=false)
@@ -310,7 +310,7 @@ let
 	rowgap!(fig.layout, 0)
 	colgap!(fig.layout, 0)
 
-	Colorbar(fig[2, end+1], hm, width=20, label="Counts",)
+	Colorbar(fig[2, end+1], hm, width=20, ticksvisible=false, label="Counts")
 	
 	axs = filter(x -> x isa Axis, fig.content)
 	linkaxes!(axs...)
