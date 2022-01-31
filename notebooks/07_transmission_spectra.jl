@@ -238,7 +238,6 @@ latextabular(df_tspecs, latex=false) |> PlutoUI.Text
 # ╔═╡ fe04e248-c47b-4913-8405-26365c6027f4
 avg_prec = getproperty.(df_tspecs[!, :Combined], :err) |> median
 
-
 # ╔═╡ 5d25caa3-916a-40b1-ba7c-ea1295afb775
 @mdx """
 Average precision per bin: $(avg_prec) ppm
@@ -253,11 +252,17 @@ mean_wlc_depth = weightedmean2(wlc_depths)
 # ╔═╡ a915f236-8dae-4c91-8f96-fb9a805a0a7f
 wlc_offsets = reshape(wlc_depths .- mean_wlc_depth, 1, :)
 
+# ╔═╡ e61c7fbd-d030-4915-bbe4-d8f4405e9c3f
+@views begin
+wbins = df_tspecs[:, [:Wlow, :Wup]]
+wbins_odd = wbins[begin:2:end, :]
+end;
+
 # ╔═╡ 09887c41-022a-4109-8c5d-0ba033c50bcb
 function plot_tspec!(ax, df, col;
 	nudge = 0.0,
-	kwargs_errorbars = Dict(),
-	kwargs_scatter = Dict(),
+	kwargs_errorbars = (),
+	kwargs_scatter = (),
 	color = :black,
 	label = "enter label",
 )
@@ -320,6 +325,27 @@ avg_prec_IMACS = getproperty.(df_IMACS[!, :Combined], :err) |> median
 
 # ╔═╡ b6fa6c00-14cf-47af-9593-c70514373db5
 avg_prec_LDSS3 = getproperty.(df_LDSS3[!, :Combined], :err) |> median
+
+# ╔═╡ 13aa9e7a-df2d-4ae7-8030-1afc8ddd2c51
+df_IMACS
+
+# ╔═╡ 6cc5338e-c058-4100-ab2c-f86259c3407c
+vals = [1, 1, 1]
+
+# ╔═╡ eb18dcca-3fd7-44dd-b6f9-cc3a36d2cbc7
+uncs = [1e10, 1e10, 1e10]
+
+# ╔═╡ 2671af35-9e1d-45b5-a30f-7b12377cb7e8
+weightedmean(vals .± uncs)
+
+# ╔═╡ 0f99c159-fb35-4dfc-a824-aff6327fb528
+mean_and_std(vals, pweights(1 ./ uncs.^2))
+
+# ╔═╡ f5e026a1-34c3-4159-9b9d-b5bb93537717
+@views begin
+wbins_LDSS3 = df_LDSS3[:, [:Wlow, :Wup]]
+wbins_LDSS3_odd = wbins[begin:2:end, :]
+end;
 
 # ╔═╡ 146a2be7-1c08-4d7c-802f-41f65aeae0d5
 @mdx """
@@ -439,7 +465,7 @@ end
 
 # ╔═╡ 8c077881-fc5f-4fad-8497-1cb6106c6ed5
 let
-	fig = Figure(resolution=(1_200, 400))
+	fig = Figure(resolution=(1200, 400))
 		
 	ax = Axis(
 		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
@@ -448,14 +474,15 @@ let
 	)
 	
 	# Overplot lines
+	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:lightgrey, 0.5))
 	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
 	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
 	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
 	mean_wlc_depth.val - mean_wlc_depth.err), linestyle=:dash, color=:grey)
 	
 	# Individual nights
-	kwargs_errorbars = Dict(:whiskerwidth=>10.0, :linewidth=>1.0)
-	kwargs_scatter = Dict(:markersize=>12.0)
+	kwargs_errorbars = (whiskerwidth=10.0, linewidth=1.0)
+	kwargs_scatter = (markersize=12.0,)
 	for (i, transit) in enumerate(keys(cubes))
 		plot_tspec!(ax, df_tspecs, transit;
 			kwargs_errorbars,
@@ -466,13 +493,10 @@ let
 	end
 	
 	# Combined
-	nudge = 25.0
-	kwargs_errorbars = Dict(:whiskerwidth=>10.0, :linewidth=>3.0)
-	kwargs_scatter = Dict(:color=>:white, :strokewidth=>3.0, :markersize=>16.0)
 	plot_tspec!(ax, df_tspecs, "Combined";
-			nudge,
-			kwargs_errorbars,
-			kwargs_scatter,
+			nudge = 50,
+			kwargs_errorbars = (whiskerwidth=10.0, linewidth=3.0),
+			kwargs_scatter = (color=:white, strokewidth=3.0, markersize=16.0),
 			label = "Combined",
 	)
 
@@ -491,7 +515,7 @@ end
 
 # ╔═╡ 72affb58-6f0c-4b76-9956-a027b57a0c8e
 let
-	fig = Figure(resolution=(1_200, 400))
+	fig = Figure(resolution=(1200, 400))
 
 	ax = Axis(
 		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
@@ -500,22 +524,27 @@ let
 	)
 
 	# Overplot lines
+	vspan!(ax, wbins_LDSS3_odd[:, 1], wbins_LDSS3_odd[:, 2], color=(:lightgrey, 0.5))
 	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
 	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
 	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
 	mean_wlc_depth.val - mean_wlc_depth.err), linestyle=:dash, color=:grey)
 
 	# Individual nights
-	kwargs_errorbars = Dict(:whiskerwidth=>10.0, :linewidth=>1.0)
-	kwargs_scatter = Dict(:markersize=>12.0)
+	kwargs_errorbars = (whiskerwidth=10.0, linewidth=1.0)
+	kwargs_scatter = (markersize=12.0,)
 	for (i, transit) in enumerate(keys(cubes))
 		if occursin("LDSS3C", transit)
-			plot_tspec!(ax, df_tspecs, transit;
-				kwargs_errorbars,
-				kwargs_scatter,
+			p = plot_tspec!(ax, df_tspecs, transit;
+				nudge = 25.0,
+				kwargs_errorbars = (
+					whiskerwidth=10.0, linewidth=3.0, color=:black
+				),
+				kwargs_scatter = (strokewidth=3.0, markersize=16.0),
 				color = COLORS[i],
 				label = transit,
 			)
+			translate!(p, 0, 0, 10)
 		else
 			plot_tspec!(ax, df_IMACS, transit;
 				kwargs_errorbars,
@@ -527,11 +556,10 @@ let
 	end
 
 	# Combined
-	nudge = 25.0
-	kwargs_errorbars = Dict(:whiskerwidth=>10.0, :linewidth=>3.0)
-	kwargs_scatter = Dict(:color=>:white, :strokewidth=>3.0, :markersize=>16.0)
+	kwargs_errorbars = (whiskerwidth=10.0, linewidth=3.0)
+	kwargs_scatter = (color=:white, strokewidth=3.0, markersize=16.0)
 	plot_tspec!(ax, df_IMACS, "Combined";
-			nudge,
+			nudge = 75.0,
 			kwargs_errorbars,
 			kwargs_scatter,
 			label = "Combined (IMACS)",
@@ -603,6 +631,7 @@ body.disable_ui main {
 # ╠═2f377692-2abf-404e-99ea-a18c7af1a840
 # ╠═c405941d-bdcc-458f-b0bf-01abf02982e0
 # ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
+# ╠═e61c7fbd-d030-4915-bbe4-d8f4405e9c3f
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
 # ╠═09887c41-022a-4109-8c5d-0ba033c50bcb
 # ╟─f92ecf4d-aab8-413e-a32d-5f77a969d1ca
@@ -612,6 +641,12 @@ body.disable_ui main {
 # ╠═094bd22d-8e42-440f-a78c-3a2787f380ea
 # ╠═f37d9e45-575c-40d9-8f26-31bd6cc6d145
 # ╠═b6fa6c00-14cf-47af-9593-c70514373db5
+# ╠═13aa9e7a-df2d-4ae7-8030-1afc8ddd2c51
+# ╠═6cc5338e-c058-4100-ab2c-f86259c3407c
+# ╠═eb18dcca-3fd7-44dd-b6f9-cc3a36d2cbc7
+# ╠═2671af35-9e1d-45b5-a30f-7b12377cb7e8
+# ╠═0f99c159-fb35-4dfc-a824-aff6327fb528
+# ╠═f5e026a1-34c3-4159-9b9d-b5bb93537717
 # ╠═72affb58-6f0c-4b76-9956-a027b57a0c8e
 # ╠═3af0d3b0-c698-4845-a74e-c7186b03a721
 # ╟─146a2be7-1c08-4d7c-802f-41f65aeae0d5

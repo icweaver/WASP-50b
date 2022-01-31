@@ -32,6 +32,9 @@ begin
 	using PythonCall
 end
 
+# ╔═╡ f3a8f6fb-023c-4077-8c73-7502e56eb607
+using StatsBase
+
 # ╔═╡ 25d1284c-7260-4f3a-916a-b2814d2606af
 begin
 	const BASE_DIR = "data/detrended"
@@ -74,8 +77,8 @@ dates_to_names = Dict(
 	"131219_sp_IMACS" => "Transit 1 (IMACS)",
 	"150927_IMACS" => "Transit 2 (IMACS)",
 	"150927_sp_IMACS" => "Transit 2 (IMACS)",
-	"150927_LDSS3" => "Transit 2 (LDSS3C)",
-	"150927_sp_LDSS3" => "Transit 2 (LDSS3C)",
+	"150927_LDSS3C" => "Transit 2 (LDSS3C)",
+	"150927_sp_LDSS3C" => "Transit 2 (LDSS3C)",
 	"161211_IMACS" => "Transit 3 (IMACS)",
 	"161211_sp_IMACS" => "Transit 3 (IMACS)",
  )
@@ -133,6 +136,79 @@ end
 @mdx """
 We summarize the Bayesian Model Averag (BMA) results for selected parameters for each night below, and average together each parameter from each night, weighted by its maximum uncertainty per night:
 """
+
+# ╔═╡ 22c72eeb-8e32-4d7c-86c8-ab117735769e
+@mdx """
+The old python version:
+
+```python
+def weightedmean(values, weights):
+	# weights = 1./err_bar^2. Where err_bar=std & err_bar^2 = variance
+	average = np.average(values, weights=weights)
+	# Fast and numerically precise
+	variance = np.average((values-average)**2, weights=weights)
+	return average, np.sqrt(variance)
+```
+
+is just:
+
+```julia
+function weightedmean3(m)
+	x = value.(m)
+	x_unc = uncertainty.(m)
+	w = @. 1.0 / x_unc^2
+	a, b = mean_and_std(x, weights(w))
+	return a ± b
+end
+```
+
+or in other words, a simple weighted average uncorrected for sample bias
+"""
+
+# ╔═╡ a96ee19b-39fe-4f5b-bc75-124b4e422713
+begin
+	@pyexec """
+	global weightedmean, np
+	import numpy as np
+	def weightedmean(vals, uncs):
+		vals = np.array(vals)
+		uncs = np.array(uncs)
+		weights = 1.0 / uncs**2
+		average = np.average(vals, weights=weights)
+		variance = np.average((vals-average)**2, weights=weights)
+		return average, np.sqrt(variance)
+	"""
+	weightedmean_py(vals, uncs) = @pyeval("weightedmean")(vals, uncs)
+end
+
+# ╔═╡ 47278372-b311-4ea7-bfa4-82b8f95c97fa
+import Measurements: value, uncertainty
+
+# ╔═╡ 7cbadc33-5b32-4816-8092-09054c64073f
+function weightedmean3(m)
+	if length(collect(m)) == 1
+		return collect(m)[1] # Convert back to Measurement from skipmissing wrapper
+	end
+	x = value.(m)
+	x_unc = uncertainty.(m)
+	w = @. 1.0 / x_unc^2
+	# Use ProbabilityWeights for bias correction
+	a, b = mean_and_std(x, weights(w))
+	return a ± b
+end
+
+# ╔═╡ bbc14e57-57fe-4811-91d4-d07b102cfa5d
+function weightedmean2(m; corrected=true)
+	if length(collect(m)) == 1
+		return collect(m)[1] # Convert back to Measurement from skipmissing wrapper
+	end
+	x = value.(m)
+	x_unc = uncertainty.(m)
+	w = @. inv(x_unc^2)
+	# Use ProbabilityWeights for bias correction
+	a, b = mean_and_std(x, aweights(w); corrected)
+	return a ± b
+end
 
 # ╔═╡ c936b76a-636b-4f10-b556-fa19808c1562
 @mdx """
@@ -260,21 +336,19 @@ load_data(fpath_sample, fpath_model, fpath_result; allow_pickle=true) = Dict(
 )
 
 # ╔═╡ 2191791b-df62-4f1b-88bf-060cc47896b2
-begin
-	cubes = Dict(
-		name(fpath_sample, dates_to_names) => load_data(
-			fpath_sample, fpath_model, fpath_result
-		)
-
-		for (fpath_sample, fpath_model, fpath_result) ∈ zip(
-			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")),
-			sort(glob("$(DATA_DIR)/w50*/white-light/BMA_WLC.npy")),
-			sort(glob("$(DATA_DIR)/w50*/white-light/results.dat")),
-		)
+cubes = OrderedDict(
+	name(fpath_sample, dates_to_names) => load_data(
+		fpath_sample, fpath_model, fpath_result
 	)
+	for (fpath_sample, fpath_model, fpath_result) ∈ zip(
+		sort(glob("$(DATA_DIR)/w50*/white-light/BMA_posteriors.pkl")),
+		sort(glob("$(DATA_DIR)/w50*/white-light/BMA_WLC.npy")),
+		sort(glob("$(DATA_DIR)/w50*/white-light/results.dat")),
+	)
+)
 
-	cubes = sort(cubes)
-end
+# ╔═╡ 88a92472-f20d-4908-8bfd-fcbf11f80b8a
+cubes["Transit 1 (IMACS)"]["models"]["LC_det_err"]
 
 # ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
 begin
@@ -295,9 +369,9 @@ BMA_matrix = let
 	x = hcat((
 	summary[!, "Value"] .± maximum((summary[!, "SigmaUp"], summary[!, "SigmaDown"]))
 	for summary in summary_tables
-)...) |> x-> hcat(x, mean(x, dims=2))
+	)...) |> x-> hcat(x, mean(x; dims=2))
 	#x[2, :] .-= 2.45e6
-	x
+	#x
 end
 
 # ╔═╡ 19fcaa15-6f01-46a6-8225-4b5cafd89cc1
@@ -309,11 +383,30 @@ BMA = DataFrame(
 # ╔═╡ c7a179a3-9966-452d-b430-a28b2f004bc5
 latextabular(BMA, latex=false) |> PlutoUI.Text
 
-# ╔═╡ d714cb8c-801c-4afc-9f80-5e8ccac7081e
-[@sprintf "%.10f" v for v in BMA[!, "Combined"]]
-
 # ╔═╡ d279e93e-8665-41b2-bd5c-723458fabe86
 BMA |> x -> latexify(x, env=:table) |> PlutoUI.Text
+
+# ╔═╡ 935106ba-8e21-490a-bebe-920dacddc52e
+BMA_matrix2 = let
+	x = hcat((
+	summary[!, "Value"] .± maximum((summary[!, "SigmaUp"], summary[!, "SigmaDown"]))
+	for summary in summary_tables
+	)...) |> x-> hcat(x, weightedmean3.(eachrow(x)))
+	#x[2, :] .-= 2.45e6
+	#x
+end
+
+# ╔═╡ a747d77e-6025-45e0-a96a-e114b5f4addb
+vals, uncs = value.(BMA_matrix2[1, 1:4]), uncertainty.(BMA_matrix2[1, 1:4])
+
+# ╔═╡ f225d0e6-b064-4649-af61-ed4ce9c3662f
+py_mean = weightedmean_py(vals, uncs)
+
+# ╔═╡ 192d4842-c1e3-4c23-8a7e-b6dfa72443ea
+let
+	m = weightedmean3(vals .± uncs)
+	m.val == py_mean[0], m.err == py_mean[1]
+end
 
 # ╔═╡ 56d0de38-5639-4196-aafe-79a9ab933980
 begin
@@ -561,15 +654,25 @@ end
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
+# ╠═88a92472-f20d-4908-8bfd-fcbf11f80b8a
 # ╠═89c48710-651e-45ff-8fcb-e4173559defd
 # ╠═0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # ╠═d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c
 # ╟─b28bb1b6-c148-41c4-9f94-0833e365cad4
 # ╟─30b84501-fdcd-4d83-b929-ff354de69a17
 # ╠═c7a179a3-9966-452d-b430-a28b2f004bc5
-# ╠═d714cb8c-801c-4afc-9f80-5e8ccac7081e
 # ╠═19fcaa15-6f01-46a6-8225-4b5cafd89cc1
 # ╠═de0a4468-56aa-4748-80a0-6c9ab6b8579e
+# ╠═935106ba-8e21-490a-bebe-920dacddc52e
+# ╠═7cbadc33-5b32-4816-8092-09054c64073f
+# ╟─22c72eeb-8e32-4d7c-86c8-ab117735769e
+# ╠═a96ee19b-39fe-4f5b-bc75-124b4e422713
+# ╠═a747d77e-6025-45e0-a96a-e114b5f4addb
+# ╠═f225d0e6-b064-4649-af61-ed4ce9c3662f
+# ╠═192d4842-c1e3-4c23-8a7e-b6dfa72443ea
+# ╠═47278372-b311-4ea7-bfa4-82b8f95c97fa
+# ╠═f3a8f6fb-023c-4077-8c73-7502e56eb607
+# ╠═bbc14e57-57fe-4811-91d4-d07b102cfa5d
 # ╠═ee9347b2-e97d-4f66-9c21-7487ca2c2e30
 # ╟─c936b76a-636b-4f10-b556-fa19808c1562
 # ╠═d279e93e-8665-41b2-bd5c-723458fabe86
