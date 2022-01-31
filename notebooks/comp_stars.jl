@@ -46,7 +46,7 @@ TableOfContents()
 @mdx """
 ## Introduction 🤚
 
-Las Campanas Observatory ([LCO](http://www.lco.cl/)) is home to several world-class telescopes that are used in a wide range of astronomy fields. In particular, The 6.5 meter twin [Magellan telescopes](https://obs.carnegiescience.edu/Magellan) provide essential facilities for observing exoplanet atmopsheres with their [IMACS and LDSS3C spectrographs](http://www.lco.cl/instruments/).
+Las Campanas Observatory ([LCO](http://www.lco.cl/)) is home to several world-class telescopes that are used in a wide range of astronomy fields. In particular, The 6.5 meter twin [Magellan telescopes](https://obs.carnegiescience.edu/Magellan) provide essential facilities for observing exoplanet atmopsheres with their [IMACS and LDSS3CC spectrographs](http://www.lco.cl/instruments/).
 
 SMF files are essentially just text files with a list of target names and positions that are sent to the telescope to let the observatory know how to cut the mask for observations. They also include additonal information for the slits, but this will not be the focus for this notebook. Now this is all well and good, except for the fact that these SMF files tend to look something like this:
 """

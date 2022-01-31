@@ -43,7 +43,7 @@ end
 @mdx """
 # Detrended white-light curves
 
-In this notebook we will visualize the detrended white-light curves from IMACS and LDSS3. We used the average orbital and system parameters obtained from these detrended fits to place uniform constraints on our binned wavelength analysis.
+In this notebook we will visualize the detrended white-light curves from IMACS and LDSS3C. We used the average orbital and system parameters obtained from these detrended fits to place uniform constraints on our binned wavelength analysis.
 
 !!! tip "Data download"
 	```
@@ -74,8 +74,8 @@ dates_to_names = Dict(
 	"131219_sp_IMACS" => "Transit 1 (IMACS)",
 	"150927_IMACS" => "Transit 2 (IMACS)",
 	"150927_sp_IMACS" => "Transit 2 (IMACS)",
-	"150927_LDSS3" => "Transit 2 (LDSS3)",
-	"150927_sp_LDSS3" => "Transit 2 (LDSS3)",
+	"150927_LDSS3" => "Transit 2 (LDSS3C)",
+	"150927_sp_LDSS3" => "Transit 2 (LDSS3C)",
 	"161211_IMACS" => "Transit 3 (IMACS)",
 	"161211_sp_IMACS" => "Transit 3 (IMACS)",
  )
@@ -88,7 +88,7 @@ The data cube is organized by night as follows:
 cubes
 ├── Transit 1 (IMACS)
 ├── Transit 2 (IMACS)
-├── Transit 2 (LDSS3)
+├── Transit 2 (LDSS3C)
 └── Transit 3 (IMACS)
     ├── samples
     │   └── Dict
@@ -331,6 +331,9 @@ begin
 	end
 end
 
+# ╔═╡ c7791371-9010-44f6-9aca-1d50f8e43ad4
+Makie.ColorSchemes.Paired_8[3] |> Makie.Colors.hex
+
 # ╔═╡ 1f7b883c-0192-45bd-a206-2a9fde1409ca
 begin
 	##############
@@ -342,7 +345,7 @@ begin
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
-			"#a6cee3",  # Cyan
+			"#B2DF8A",  # Green
 			"#fdbf6f",  # Yellow
 			"#ff7f00",  # Orange
 			"#1f78b4",  # Blue
@@ -426,7 +429,7 @@ function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 end
 
 # ╔═╡ 4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
-let
+begin
 	fig = Figure(resolution=FIG_LARGE)
 	
 	grid = CartesianIndices((2, 2))
@@ -440,7 +443,7 @@ let
 		ylabel = "Residuals (ppm)",
 		#limits=(xlims..., -3000, 3000),
 	)
-	for (i, (transit, cube)) in enumerate(cubes)
+	for (i, (transit, cube)) ∈ enumerate(cubes)
 		g_idxs = grid[i]
 		gl = fig[g_idxs.I...] = GridLayout()
 		plot_lc!(gl, i, transit, cube; ax_top_kwargs, ax_bottom_kwargs)
@@ -463,7 +466,7 @@ let
 end
 
 # ╔═╡ d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
-begin
+let
 	n_params = length(PARAMS) # Number of fitted parameters
 	
 	# Create empty corner plot grid
@@ -582,5 +585,6 @@ end
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
 # ╟─bf9c0b95-fe17-425d-8904-8298f7e5451c
 # ╠═db539901-f0b0-4692-a8d2-6c72dff41196
+# ╠═c7791371-9010-44f6-9aca-1d50f8e43ad4
 # ╠═1f7b883c-0192-45bd-a206-2a9fde1409ca
 # ╠═5939e2a3-8407-4579-8274-e3891acbabb1

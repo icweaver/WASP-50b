@@ -390,7 +390,7 @@ function plot_div_WLCS!(
 	c = :darkgrey
 	for (i, cName) ∈ enumerate(cNames)
 		# All points
-		if cName ∈ ("c06", "c15", "c21") # LDSS3 comps
+		if cName ∈ ("c06", "c15", "c21") # LDSS3C comps
 			c_text = COLORS[end]
 		else
 			c_text = :darkgrey
@@ -576,9 +576,6 @@ target / $(cName)
 # ╔═╡ f2a2d747-0f9d-46ea-94a4-3db5b45d29c7
 blc_plots[cName]
 
-# ╔═╡ 6303ef67-c03f-4d2b-9aba-c80f87140bc5
-#CondaPkg.add("numpy"); CondaPkg.resolve()
-
 # ╔═╡ Cell order:
 # ╟─ee24f7df-c4db-4065-afe9-10be80cbcd6b
 # ╠═0d766fde-8e6f-4a88-94df-49747d7c03fa
@@ -630,5 +627,4 @@ blc_plots[cName]
 # ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
 # ╠═a8d1c3e6-c020-495f-a443-07203b7dcd50
 # ╠═a6ec8699-475b-4a86-ab0b-d65b85de2c2d
-# ╠═6303ef67-c03f-4d2b-9aba-c80f87140bc5
 # ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23

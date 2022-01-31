@@ -33,9 +33,9 @@ end
 
 # ╔═╡ 34ef4580-bb95-11eb-34c1-25893217f422
 @mdx """
-# Reduced data -- LDSS3
+# Reduced data -- LDSS3C
 
-In this notebook we will examine the stellar spectra, white-light, and wavelength binned light curves from the raw flux extracted from LDSS3.
+In this notebook we will examine the stellar spectra, white-light, and wavelength binned light curves from the raw flux extracted from LDSS3C.
 
 !!! tip "Data download"
 	```
@@ -46,7 +46,7 @@ In this notebook we will examine the stellar spectra, white-light, and wavelengt
 
 # ╔═╡ e1294e56-8103-443b-80e9-118cac36750f
 begin
-	const DATA_DIR = "data/reduced_data/LDSS3"
+	const DATA_DIR = "data/reduced_data/LDSS3C"
 	const FIG_DIR = "figures/reduced_data"
 	TableOfContents()
 end
@@ -55,7 +55,7 @@ end
 @mdx """
 ## Data extraction 🔳
 
-The data from this instrument is stored in an `npy` file that contains the following fields:
+The data from this instrument are stored in an `npy` file that contains the following fields:
 
 * temporal
     * Table of external params (``N`` rows, where ``N`` is the number of timeseries points)
@@ -154,7 +154,7 @@ wbins = readdlm(FPATH_WBINS, comments=true)
 
 # ╔═╡ 25903146-2f23-4e54-bd7d-aed1025f2fa5
 fname_suff = let
-	suff = "LDSS3_" * basename(dirname(FPATH))
+	suff = "LDSS3C_" * basename(dirname(FPATH))
 	occursin("species", FPATH_WBINS) ? (suff *= "_species") : suff
 end
 
@@ -301,7 +301,7 @@ fmt_float(x) = @sprintf "%.10f" x
 
 # ╔═╡ 0be35b52-caea-4000-8cf8-ab99205bdb97
 function template_dir(fpath)
-	base_dir = "$(dirname(dirname(fpath)))/LDSS3_template/WASP50"
+	base_dir = "$(dirname(dirname(fpath)))/LDSS3C_template/WASP50"
 	date, flat_status = split(basename(dirname(fpath)), '_')
 	if occursin("species", fname_suff)
 		f = "$(base_dir)/w50_$(date[3:end])_sp_LDSS3_$(flat_status)"
@@ -624,7 +624,7 @@ let
 	xlims!(ax, 4_500, 11_000)
 	ylims!(ax, 0, 2.6)
 
-	axislegend("Transit 2 (LDSS3)")
+	axislegend("Transit 2 (LDSS3C)")
 
 	savefig(fig, "$(FIG_DIR)/extracted_spectra_$(fname_suff).png")
 
@@ -646,7 +646,7 @@ function plot_div_WLCS!(
 	c = :darkgrey
 	for (i, cName) ∈ enumerate(cNames)
 		# All points
-		if cName ∈ ("c06", "c15", "c21") # LDSS3 comps
+		if cName ∈ ("c06", "c15", "c21") # LDSS3C comps
 			c_text = COLORS[end]
 		else
 			c_text = :darkgrey
@@ -698,7 +698,7 @@ let
 	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2, tellheight=false)
 	axs[2].xlabel = "Index"
 
-	Label(fig[0, end], "Transit 2 (LDSS3)";
+	Label(fig[0, end], "Transit 2 (LDSS3C)";
 		tellwidth = false,
 		halign = :right,
 		font = AlgebraOfGraphics.firasans("Bold"),

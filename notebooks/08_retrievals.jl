@@ -389,7 +389,7 @@ let
 	if occursin("offs", fpath_suff)
 		plot_instr!(ax, "retr_Clay_LDSS3.txt";
 			color = :black,
-			label = "LDSS3",
+			label = "LDSS3C",
 		)
 		plot_instr!(ax, "retr_Magellan_IMACS.txt";
 			color = :white,
@@ -398,7 +398,7 @@ let
 	else
 		plot_instr!(ax, "retr_Magellan_IMACS.txt";
 			color = :white,
-			label = "IMACS + LDSS3",
+			label = "IMACS + LDSS3C",
 		)
 	end
 

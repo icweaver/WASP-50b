@@ -102,16 +102,16 @@ transits = merge(
 )
 
 # ╔═╡ 0e66d467-1098-46dc-8d06-36d488b14637
-@bind DATA_DIR_LDSS3 Select(glob("$(DATA_DIR)/LDSS3/ut*"))
+@bind DATA_DIR_LDSS3 Select(glob("$(DATA_DIR)/LDSS3C/ut*"))
 
 # ╔═╡ 5c6e6f7b-70e0-49a8-b064-60dcf1440223
 df_sci_LDSS3 = fitscollection(DATA_DIR_LDSS3, abspath=false)
 
 # ╔═╡ 06a834f0-8c90-4013-af34-725166970969
 @mdx """
-## LDSS3 2️⃣
+## LDSS3C 2️⃣
 
-We follow the same operations to visualize the $(nrow(df_sci_LDSS3)) chips for LDSS3 below.
+We follow the same operations to visualize the $(nrow(df_sci_LDSS3)) chips for LDSS3C below.
 """
 
 # ╔═╡ 5fe61a6a-7147-4c48-a3a7-41183a015325
@@ -170,7 +170,7 @@ We show the wavelength bins used for each instrument here:
 """
 
 # ╔═╡ f58aba9d-bccb-4d8b-ab83-559d6ff1ea62
-df_wbins = let
+df_wbins2 = let
 	dirpath = "$(DATA_DIR)/wbins"
 	df = CSV.read.(
 		("$(dirpath)/w50_bins$(fname).dat" for fname ∈ ("_ut131219", "", "_LDSS3")),
@@ -180,6 +180,23 @@ df_wbins = let
 	)
 	df_wbins_comb = DataFrame(∪(eachrow.(df)...))
 	@transform df_wbins_comb begin
+		:wav_cen = mean((:wav_d, :wav_u))
+		:wav_Δ = :wav_u .- :wav_d
+	end
+end
+
+# ╔═╡ 9e3d2013-a4ac-4413-912e-aa94046e2f44
+@bind fpath_wbin Select(glob("$(DATA_DIR)/wbins/*.dat"))
+
+# ╔═╡ f2ccf230-f2ac-43c2-b313-8821ef69a1e7
+df_wbins = let
+	df = CSV.read(fpath_wbin, DataFrame;
+		header = [:wav_d, :wav_u],
+		comment = "#",
+		delim = ' ',
+		ignorerepeated = true,
+	)
+	@select df begin
 		:wav_cen = mean((:wav_d, :wav_u))
 		:wav_Δ = :wav_u .- :wav_d
 	end
@@ -316,7 +333,7 @@ let
 	linkaxes!(axs...)
 	hidedecorations!.(axs)
 
-	Label(fig[0, end], "Transit 2 (LDSS3)", tellwidth=false, halign=:right)
+	Label(fig[0, end], "Transit 2 (LDSS3C)", tellwidth=false, halign=:right)
 	
     savefig(fig, "$(FIG_DIR)/sci_LDSS3_$(basename(DATA_DIR_LDSS3)).png";
 		#save_kwargs = (px_per_unit=0.5,),
@@ -352,6 +369,8 @@ end
 # ╠═71ba9181-90e4-4d12-97c0-462b3f1df077
 # ╟─8fadd0b6-6ff8-42e5-9014-4e79593e3502
 # ╠═f58aba9d-bccb-4d8b-ab83-559d6ff1ea62
+# ╟─9e3d2013-a4ac-4413-912e-aa94046e2f44
+# ╠═f2ccf230-f2ac-43c2-b313-8821ef69a1e7
 # ╠═0d2476b1-2864-4bfc-ac37-f771aab77368
 # ╟─4480ae72-3bb2-4e17-99be-28afc756332a
 # ╠═db4a4cd8-c5e8-4124-935f-0666f6e73fe2

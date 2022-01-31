@@ -72,12 +72,12 @@ maxmeasure(x, x_u, x_d) = x ± max(x_u, x_d)
 dates_to_names = OrderedDict(
 	"131219_IMACS" => "Transit 1 (IMACS)",
 	"150927_IMACS" => "Transit 2 (IMACS)",
-	"150927_LDSS3" => "Transit 2 (LDSS3)",
+	"150927_LDSS3C" => "Transit 2 (LDSS3C)",
 	"161211_IMACS" => "Transit 3 (IMACS)",
 
 	"131219_sp_IMACS" => "Transit 1 (IMACS)",
 	"150927_sp_IMACS" => "Transit 2 (IMACS)",
-	"150927_sp_LDSS3" => "Transit 2 (LDSS3)",
+	"150927_sp_LDSS3C" => "Transit 2 (LDSS3C)",
 	"161211_sp_IMACS" => "Transit 3 (IMACS)",
  )
 
@@ -102,7 +102,7 @@ begin
 		)
 
 		# Add wav bins for external instruments (not saved in pkl)
-		if occursin("LDSS3", dirpath)
+		if occursin("LDSS3C", dirpath)
 			wbins = readdlm("$(dirpath)/wbins.dat", comments=true)
 			cubes[transit]["tspec"][:, [:Wav_d, :Wav_u]] .= wbins
 		end
@@ -149,32 +149,32 @@ df_common_0
 
 # ╔═╡ acde40fd-8ed4-4175-9a52-13ed91dc5495
 @mdx """
-Conversely, we also store which points in the spectrum are not common between all nights. `Transit 2 (LDSS3)` encompasses the spectra from all other nights, so we `antijoin` relative to this dataset:
+Conversely, we also store which points in the spectrum are not common between all nights. `Transit 2 (LDSS3C)` encompasses the spectra from all other nights, so we `antijoin` relative to this dataset:
 """
 
 # ╔═╡ 461097e9-a687-4ef2-a5b4-8bf4d9e1c98f
 dfs_unique = (
 	"Transit 1 (IMACS)" => antijoin(
 		cubes["Transit 1 (IMACS)"]["tspec"],
-		cubes["Transit 2 (LDSS3)"]["tspec"],
+		cubes["Transit 2 (LDSS3C)"]["tspec"],
 		on = :wav,
 	),
 
 	"Transit 2 (IMACS)" => antijoin(
 		cubes["Transit 2 (IMACS)"]["tspec"],
-		cubes["Transit 2 (LDSS3)"]["tspec"],
+		cubes["Transit 2 (LDSS3C)"]["tspec"],
 		on = :wav,
 	),
 
-	"Transit 2 (LDSS3)" => antijoin(
-		cubes["Transit 2 (LDSS3)"]["tspec"],
+	"Transit 2 (LDSS3C)" => antijoin(
+		cubes["Transit 2 (LDSS3C)"]["tspec"],
 		cubes["Transit 1 (IMACS)"]["tspec"],
 		on = :wav,
 	),
 
 	"Transit 3 (IMACS)" => antijoin(
 		cubes["Transit 3 (IMACS)"]["tspec"],
-		cubes["Transit 2 (LDSS3)"]["tspec"],
+		cubes["Transit 2 (LDSS3C)"]["tspec"],
 		on = :wav,
 	),
 );
@@ -188,7 +188,7 @@ function weightedmean2(m; corrected=true)
 	x_unc = uncertainty.(m)
 	w = @. inv(x_unc^2)
 	# Use ProbabilityWeights for bias correction
-	a, b = mean_and_std(x, pweights(w), corrected=corrected)
+	a, b = mean_and_std(x, pweights(w); corrected)
 	return a ± b
 end
 
@@ -235,11 +235,9 @@ df_tspecs = sort(vcat(df_common, df_extra), :Wcen)
 # ╔═╡ 64f608b9-76df-402e-801c-006dc3096f94
 latextabular(df_tspecs, latex=false) |> PlutoUI.Text
 
-# ╔═╡ 4ce88d88-ff08-4ea8-b397-fc61c22adc4e
-df_tspecs[3, 5].err
-
 # ╔═╡ fe04e248-c47b-4913-8405-26365c6027f4
-avg_prec = round(Int, getproperty.(df_tspecs[!, :Combined], :err) |> median)
+avg_prec = getproperty.(df_tspecs[!, :Combined], :err) |> median
+
 
 # ╔═╡ 5d25caa3-916a-40b1-ba7c-ea1295afb775
 @mdx """
@@ -275,7 +273,7 @@ end
 @mdx """
 ## Offset test
 
-Here we combine only the IMACS data and plot it along with the LDSS3 data set.
+Here we combine only the IMACS data and plot it along with the LDSS3C data set.
 """
 
 # ╔═╡ 1a6067ca-645a-448b-815f-6a2966548ca6
@@ -297,14 +295,14 @@ end
 # ╔═╡ b555e372-2292-4f0e-b511-88b92588ad14
 begin
 	df_LDSS3 = @chain df_tspecs begin
-		select(_, ["Wlow","Wup", "Wcen", "Transit 2 (LDSS3)"])
+		select(_, ["Wlow","Wup", "Wcen", "Transit 2 (LDSS3C)"])
 		#z.Combined = [weightedmean2(skipmissing(row)) for row ∈ eachrow(z)]
 		rename(_, names(_, r"Tr") .=> [:x1])
 		#@rtransform :Combined = sum(skipmissing([:x1, :x2, :x3]))
 		dropmissing(_)
 		@transform :Combined = :x1
 		#@rtransform :Combined = weightedmean2(skipmissing([:x1, :x2, :x3]))
-		rename(_, names(_, r"x") .=> ["Transit 2 (LDSS3)"])
+		rename(_, names(_, r"x") .=> ["Transit 2 (LDSS3C)"])
 	end
 	insertcols!(df_LDSS3, 4,
 		:ΔW => df_LDSS3.Wup .- df_LDSS3.Wlow
@@ -318,10 +316,10 @@ latextabular(df_IMACS, latex=false) |> PlutoUI.Text
 df_LDSS3
 
 # ╔═╡ f37d9e45-575c-40d9-8f26-31bd6cc6d145
-avg_prec_IMACS = round(Int, getproperty.(df_IMACS[!, :Combined], :err) |> median)
+avg_prec_IMACS = getproperty.(df_IMACS[!, :Combined], :err) |> median
 
 # ╔═╡ b6fa6c00-14cf-47af-9593-c70514373db5
-avg_prec_LDSS3 = round(Int, getproperty.(df_LDSS3[!, :Combined], :err) |> median)
+avg_prec_LDSS3 = getproperty.(df_LDSS3[!, :Combined], :err) |> median
 
 # ╔═╡ 146a2be7-1c08-4d7c-802f-41f65aeae0d5
 @mdx """
@@ -364,7 +362,7 @@ let
 	@info "Saved to $(f)"
 	f = "$(DATA_DIR)/tspec_w50_LDSS3.csv"
 	CSV.write(f,
-		create_df(df_LDSS3, instrument="Clay/LDSS3")
+		create_df(df_LDSS3, instrument="Clay/LDSS3C")
 	)
 	@info "Saved to $(f)"
 end
@@ -402,7 +400,7 @@ begin
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
-			"#a6cee3",  # Cyan
+			"#B2DF8A",  # Green
 			"#fdbf6f",  # Yellow
 			"#ff7f00",  # Orange
 			"#1f78b4",  # Blue
@@ -478,7 +476,7 @@ let
 			label = "Combined",
 	)
 
-	text!(ax, "Average precision: $(avg_prec) ppm";
+	text!(ax, "Average precision: $(round(avg_prec, digits=2)) ppm";
 		position = (4700, 16000),
 		align = (:left, :center),
 	)
@@ -511,7 +509,7 @@ let
 	kwargs_errorbars = Dict(:whiskerwidth=>10.0, :linewidth=>1.0)
 	kwargs_scatter = Dict(:markersize=>12.0)
 	for (i, transit) in enumerate(keys(cubes))
-		if occursin("LDSS3", transit)
+		if occursin("LDSS3C", transit)
 			plot_tspec!(ax, df_tspecs, transit;
 				kwargs_errorbars,
 				kwargs_scatter,
@@ -536,14 +534,14 @@ let
 			nudge,
 			kwargs_errorbars,
 			kwargs_scatter,
-			label = "Combined",
+			label = "Combined (IMACS)",
 	)
 
-	text!(ax, "Average precision (IMACS): $(avg_prec_IMACS) ppm";
+	text!(ax, "Average precision (IMACS): $(round(avg_prec_IMACS, digits=2)) ppm";
 		position = (4700, 16500),
 		align = (:left, :center),
 	)
-	text!(ax, "Average precision (LDSS3): $(avg_prec_LDSS3)  ppm";
+	text!(ax, "Average precision (LDSS3C): $(round(avg_prec_LDSS3, digits=2))  ppm";
 		position = (4700, 16000),
 		align = (:left, :center),
 	)
@@ -600,7 +598,6 @@ body.disable_ui main {
 # ╠═ed954843-34e5-49be-8643-e2671b659e06
 # ╠═b32273bc-1bb5-406a-acfe-57fd643ded51
 # ╠═64f608b9-76df-402e-801c-006dc3096f94
-# ╠═4ce88d88-ff08-4ea8-b397-fc61c22adc4e
 # ╟─5d25caa3-916a-40b1-ba7c-ea1295afb775
 # ╠═fe04e248-c47b-4913-8405-26365c6027f4
 # ╠═2f377692-2abf-404e-99ea-a18c7af1a840
