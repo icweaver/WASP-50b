@@ -137,6 +137,9 @@ end
 We summarize the Bayesian Model Averag (BMA) results for selected parameters for each night below, and average together each parameter from each night, weighted by its maximum uncertainty per night:
 """
 
+# ╔═╡ f7b6ce6a-13e7-41b6-b5a6-182776aa7b1a
+println("hey")
+
 # ╔═╡ 22c72eeb-8e32-4d7c-86c8-ab117735769e
 @mdx """
 The old python version:
@@ -184,19 +187,6 @@ end
 # ╔═╡ 47278372-b311-4ea7-bfa4-82b8f95c97fa
 import Measurements: value, uncertainty
 
-# ╔═╡ 7cbadc33-5b32-4816-8092-09054c64073f
-function weightedmean3(m)
-	if length(collect(m)) == 1
-		return collect(m)[1] # Convert back to Measurement from skipmissing wrapper
-	end
-	x = value.(m)
-	x_unc = uncertainty.(m)
-	w = @. 1.0 / x_unc^2
-	# Use ProbabilityWeights for bias correction
-	a, b = mean_and_std(x, weights(w))
-	return a ± b
-end
-
 # ╔═╡ bbc14e57-57fe-4811-91d4-d07b102cfa5d
 function weightedmean2(m; corrected=true)
 	if length(collect(m)) == 1
@@ -205,8 +195,21 @@ function weightedmean2(m; corrected=true)
 	x = value.(m)
 	x_unc = uncertainty.(m)
 	w = @. inv(x_unc^2)
-	# Use ProbabilityWeights for bias correction
+	# Use AnalyticWeights for bias correction
 	a, b = mean_and_std(x, aweights(w); corrected)
+	return a ± b
+end
+
+# ╔═╡ 7cbadc33-5b32-4816-8092-09054c64073f
+function weightedmean3(m)
+	if length(collect(m)) == 1
+		return collect(m)[1] # Convert back to Measurement from skipmissing wrapper
+	end
+	x = value.(m)
+	x_unc = uncertainty.(m)
+	w = @. 1.0 / x_unc^2
+	# Use standard Weights for bias correction
+	a, b = mean_and_std(x, weights(w))
 	return a ± b
 end
 
@@ -369,9 +372,7 @@ BMA_matrix = let
 	x = hcat((
 	summary[!, "Value"] .± maximum((summary[!, "SigmaUp"], summary[!, "SigmaDown"]))
 	for summary in summary_tables
-	)...) |> x-> hcat(x, mean(x; dims=2))
-	#x[2, :] .-= 2.45e6
-	#x
+	)...) |> x-> hcat(x, weightedmean2.(eachrow(x)))
 end
 
 # ╔═╡ 19fcaa15-6f01-46a6-8225-4b5cafd89cc1
@@ -386,27 +387,16 @@ latextabular(BMA, latex=false) |> PlutoUI.Text
 # ╔═╡ d279e93e-8665-41b2-bd5c-723458fabe86
 BMA |> x -> latexify(x, env=:table) |> PlutoUI.Text
 
-# ╔═╡ 935106ba-8e21-490a-bebe-920dacddc52e
-BMA_matrix2 = let
-	x = hcat((
-	summary[!, "Value"] .± maximum((summary[!, "SigmaUp"], summary[!, "SigmaDown"]))
-	for summary in summary_tables
-	)...) |> x-> hcat(x, weightedmean3.(eachrow(x)))
-	#x[2, :] .-= 2.45e6
-	#x
+# ╔═╡ 25dd0c88-089b-406b-ac0f-6f21c57fe986
+@with_terminal begin
+	map(enumerate(BMA_matrix[:, end])) do (i, x)
+		#println(x.val)
+		println(PARAMS.vals[i], ": ", round(x.val, digits=10))
+	end
 end
 
-# ╔═╡ a747d77e-6025-45e0-a96a-e114b5f4addb
-vals, uncs = value.(BMA_matrix2[1, 1:4]), uncertainty.(BMA_matrix2[1, 1:4])
-
-# ╔═╡ f225d0e6-b064-4649-af61-ed4ce9c3662f
-py_mean = weightedmean_py(vals, uncs)
-
-# ╔═╡ 192d4842-c1e3-4c23-8a7e-b6dfa72443ea
-let
-	m = weightedmean3(vals .± uncs)
-	m.val == py_mean[0], m.err == py_mean[1]
-end
+# ╔═╡ 43bfd433-263c-42f5-abc7-f5491ac6d53a
+@printf "%f" BMA_matrix[2, end].val
 
 # ╔═╡ 56d0de38-5639-4196-aafe-79a9ab933980
 begin
@@ -663,16 +653,15 @@ end
 # ╠═c7a179a3-9966-452d-b430-a28b2f004bc5
 # ╠═19fcaa15-6f01-46a6-8225-4b5cafd89cc1
 # ╠═de0a4468-56aa-4748-80a0-6c9ab6b8579e
-# ╠═935106ba-8e21-490a-bebe-920dacddc52e
-# ╠═7cbadc33-5b32-4816-8092-09054c64073f
+# ╠═bbc14e57-57fe-4811-91d4-d07b102cfa5d
+# ╠═25dd0c88-089b-406b-ac0f-6f21c57fe986
+# ╠═43bfd433-263c-42f5-abc7-f5491ac6d53a
+# ╠═f7b6ce6a-13e7-41b6-b5a6-182776aa7b1a
 # ╟─22c72eeb-8e32-4d7c-86c8-ab117735769e
 # ╠═a96ee19b-39fe-4f5b-bc75-124b4e422713
-# ╠═a747d77e-6025-45e0-a96a-e114b5f4addb
-# ╠═f225d0e6-b064-4649-af61-ed4ce9c3662f
-# ╠═192d4842-c1e3-4c23-8a7e-b6dfa72443ea
+# ╠═7cbadc33-5b32-4816-8092-09054c64073f
 # ╠═47278372-b311-4ea7-bfa4-82b8f95c97fa
 # ╠═f3a8f6fb-023c-4077-8c73-7502e56eb607
-# ╠═bbc14e57-57fe-4811-91d4-d07b102cfa5d
 # ╠═ee9347b2-e97d-4f66-9c21-7487ca2c2e30
 # ╟─c936b76a-636b-4f10-b556-fa19808c1562
 # ╠═d279e93e-8665-41b2-bd5c-723458fabe86

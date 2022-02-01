@@ -29,6 +29,9 @@ begin
 	using Dates, NaturalSort
 end
 
+# ╔═╡ a0a58ebb-32f2-462f-a8d4-bad7a86f0707
+using JLD2
+
 # ╔═╡ 209dae9c-4c14-4a02-bec9-36407bf1426f
 begin
 	const BASE_DIR = "data/detrended"
@@ -187,8 +190,8 @@ function weightedmean2(m; corrected=true)
 	x = value.(m)
 	x_unc = uncertainty.(m)
 	w = @. inv(x_unc^2)
-	# Use ProbabilityWeights for bias correction
-	a, b = mean_and_std(x, pweights(w); corrected)
+	# Use AnalyticWeights for bias correction
+	a, b = mean_and_std(x, aweights(w); corrected)
 	return a ± b
 end
 
@@ -329,17 +332,8 @@ avg_prec_LDSS3 = getproperty.(df_LDSS3[!, :Combined], :err) |> median
 # ╔═╡ 13aa9e7a-df2d-4ae7-8030-1afc8ddd2c51
 df_IMACS
 
-# ╔═╡ 6cc5338e-c058-4100-ab2c-f86259c3407c
-vals = [1, 1, 1]
+# ╔═╡ 9ef58d51-dccc-4a46-8084-102864073ae7
 
-# ╔═╡ eb18dcca-3fd7-44dd-b6f9-cc3a36d2cbc7
-uncs = [1e10, 1e10, 1e10]
-
-# ╔═╡ 2671af35-9e1d-45b5-a30f-7b12377cb7e8
-weightedmean(vals .± uncs)
-
-# ╔═╡ 0f99c159-fb35-4dfc-a824-aff6327fb528
-mean_and_std(vals, pweights(1 ./ uncs.^2))
 
 # ╔═╡ f5e026a1-34c3-4159-9b9d-b5bb93537717
 @views begin
@@ -485,6 +479,7 @@ let
 	kwargs_scatter = (markersize=12.0,)
 	for (i, transit) in enumerate(keys(cubes))
 		plot_tspec!(ax, df_tspecs, transit;
+			nudge = -50.0,
 			kwargs_errorbars,
 			kwargs_scatter,
 			color = COLORS[i],
@@ -547,6 +542,7 @@ let
 			translate!(p, 0, 0, 10)
 		else
 			plot_tspec!(ax, df_IMACS, transit;
+				nudge = -50.0,
 				kwargs_errorbars,
 				kwargs_scatter,
 				color = COLORS[i],
@@ -556,14 +552,13 @@ let
 	end
 
 	# Combined
-	kwargs_errorbars = (whiskerwidth=10.0, linewidth=3.0)
-	kwargs_scatter = (color=:white, strokewidth=3.0, markersize=16.0)
-	plot_tspec!(ax, df_IMACS, "Combined";
-			nudge = 75.0,
-			kwargs_errorbars,
-			kwargs_scatter,
+	p = plot_tspec!(ax, df_IMACS, "Combined";
+			nudge = 50.0,
+			kwargs_errorbars = (whiskerwidth=10.0, linewidth=3.0),
+			kwargs_scatter = (color=:white, strokewidth=3.0, markersize=16.0),
 			label = "Combined (IMACS)",
 	)
+	translate!(p, 0, 0, 100)
 
 	text!(ax, "Average precision (IMACS): $(round(avg_prec_IMACS, digits=2)) ppm";
 		position = (4700, 16500),
@@ -642,10 +637,8 @@ body.disable_ui main {
 # ╠═f37d9e45-575c-40d9-8f26-31bd6cc6d145
 # ╠═b6fa6c00-14cf-47af-9593-c70514373db5
 # ╠═13aa9e7a-df2d-4ae7-8030-1afc8ddd2c51
-# ╠═6cc5338e-c058-4100-ab2c-f86259c3407c
-# ╠═eb18dcca-3fd7-44dd-b6f9-cc3a36d2cbc7
-# ╠═2671af35-9e1d-45b5-a30f-7b12377cb7e8
-# ╠═0f99c159-fb35-4dfc-a824-aff6327fb528
+# ╠═a0a58ebb-32f2-462f-a8d4-bad7a86f0707
+# ╠═9ef58d51-dccc-4a46-8084-102864073ae7
 # ╠═f5e026a1-34c3-4159-9b9d-b5bb93537717
 # ╠═72affb58-6f0c-4b76-9956-a027b57a0c8e
 # ╠═3af0d3b0-c698-4845-a74e-c7186b03a721
