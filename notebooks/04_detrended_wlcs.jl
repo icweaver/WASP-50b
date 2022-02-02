@@ -700,7 +700,7 @@ let
 
 	for (i, param) in enumerate(reverse(BMA.Parameter))
 		plot_x_pairs!(ax, param, BMA; h1=i-0.1, h2=i+0.1)
-		hlines!(ax, i+0.5, color=:darkgrey, linewidth=0.5)
+		hlines!(ax, i+0.5, color=:darkgrey, linewidth=1.0)
 		text!(param; position=(-4.0, i), align=(:left, :center))
 	end
 

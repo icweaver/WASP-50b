@@ -294,7 +294,7 @@ end
 
 # ╔═╡ f92ecf4d-aab8-413e-a32d-5f77a969d1ca
 @mdx """
-## Offset test
+## Offset test 🧪
 
 Here we combine only the IMACS data and plot it along with the LDSS3C data set.
 """
@@ -352,7 +352,7 @@ end;
 
 # ╔═╡ 146a2be7-1c08-4d7c-802f-41f65aeae0d5
 @mdx """
-## Retrieval params
+## Retrieval params 🐕
 
 Finally, we save the final combined transmission spectrum to file for our retrieval analysis, along with planet/star parameters computed from the WLC fits:
 """
