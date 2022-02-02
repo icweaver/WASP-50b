@@ -137,9 +137,6 @@ end
 We summarize the Bayesian Model Averag (BMA) results for selected parameters for each night below, and average together each parameter from each night, weighted by its maximum uncertainty per night:
 """
 
-# ╔═╡ 694a6067-390e-4b79-b8b1-87e0c6d15f48
-.1382 - 0.13746
-
 # ╔═╡ 22c72eeb-8e32-4d7c-86c8-ab117735769e
 @mdx """
 The standard version we used to use gives relatively errorbars (thanks for bringing this to my attention during my TAC, Dave!) and is also particularly biased for small sample sizes. For these reasons, we have opted for the more sophisticated machinery of [reliability weighting](https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Reliability_weights) going forward.
@@ -258,24 +255,6 @@ function scale_samples(samples, param, BMA)
 	return Δx
 end
 
-# ╔═╡ 7fdd0cb7-7af3-4ca1-8939-9d9b7d6e9527
-function plot_x!(ax, x; h=1, errorbar_kwargs=(), scatter_kwargs=())
-	errorbars!(ax, [x.val], [h], [x.err], [x.err], direction=:x; errorbar_kwargs...)
-	scatter!(ax, [x.val], [h]; scatter_kwargs...)
-end
-
-# ╔═╡ 3225ad37-6264-48b8-b1fc-c6f0136f8beb
-get_m_scaled(m, param, BMA) = scale_samples(m, param, BMA)
-
-# ╔═╡ 8f795cda-b905-4c89-ade5-05e35b10d4b3
-get_m(param, transit, BMA) = BMA[BMA.Parameter .== param, transit][1]
-
-# ╔═╡ 266b5871-22e5-4b4a-80b1-468a9ddd9193
-function get_x(param, transit, BMA)
-	m = get_m(param, transit, BMA)
-	return get_m_scaled(m, param, BMA)
-end
-
 # ╔═╡ 8c9428a9-f2ad-4329-97a3-97ffa6b40f28
 function plot_scaled_density!(ax, dist)
 	k = kde(dist)
@@ -287,11 +266,11 @@ end
 # ╔═╡ ed935d16-ddce-4334-a880-005732b38936
 # Params to show in corner plot
 const PARAMS = OrderedDict(
-	"p" => "Rp/Rs",
+	"p" => "Rₚ/Rₛ",
 	"t0" => "t₀",
 	"P" => "P",
-	"rho" => "ρs",
-	"aR" => "a/Rs",
+	"rho" => "ρₛ",
+	"aR" => "a/Rₛ",
 	"inc" => "i",
 	"b" => "b",
 	"q1" => "u",
@@ -341,8 +320,27 @@ end
 ## A closer look at Transit 2
 """
 
-# ╔═╡ 2bfaa81e-f0bd-4527-a5fe-091589b1f76e
+# ╔═╡ 7fdd0cb7-7af3-4ca1-8939-9d9b7d6e9527
+function plot_x!(ax, x; h=1, errorbar_kwargs=(), scatter_kwargs=())
+	errorbars!(ax, [x.val], [h], [x.err], [x.err], direction=:x; errorbar_kwargs...)
+	scatter!(ax, [x.val], [h]; scatter_kwargs...)
+end
 
+# ╔═╡ 3225ad37-6264-48b8-b1fc-c6f0136f8beb
+get_m_scaled(m, param, BMA) = scale_samples(m, param, BMA)
+
+# ╔═╡ 8f795cda-b905-4c89-ade5-05e35b10d4b3
+get_m(param, transit, BMA) = BMA[BMA.Parameter .== param, transit][1]
+
+# ╔═╡ 266b5871-22e5-4b4a-80b1-468a9ddd9193
+function get_x(param, transit, BMA; scale=true)
+	m = get_m(param, transit, BMA)
+	if scale
+		return get_m_scaled(m, param, BMA)
+	else
+		return m
+	end
+end
 
 # ╔═╡ 30ae3744-0e7e-4c16-b91a-91eb518fba5b
 @mdx """
@@ -398,9 +396,6 @@ cubes = OrderedDict(
 	)
 )
 
-# ╔═╡ 88a92472-f20d-4908-8bfd-fcbf11f80b8a
-cubes["Transit 1 (IMACS)"]["models"]["LC_det_err"]
-
 # ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
 begin
 	summary_tables = DataFrame[]
@@ -434,23 +429,6 @@ latextabular(BMA, latex=false) |> PlutoUI.Text
 
 # ╔═╡ d279e93e-8665-41b2-bd5c-723458fabe86
 BMA |> x -> latexify(x, env=:table) |> PlutoUI.Text
-
-# ╔═╡ 18c90ed4-2f07-493f-95b2-e308cd7a03a9
-let
-	fig  = Figure()
-	ax = Axis(fig[1, 1])
-
-	x = get_x("Rp/Rs", "Transit 2 (IMACS)", BMA)
-	plot_x!(ax, x; scatter_kwargs=(color=:black, markersize=20))
-
-	x = get_x("Rp/Rs", "Transit 2 (LDSS3C)", BMA)
-	plot_x!(ax, x; h=3, scatter_kwargs=(color=:red, markersize=20))
-		
-	fig
-end
-
-# ╔═╡ 8969ff2e-d160-4eb3-8f77-f8c2006518ff
-get_x("Rp/Rs", "Transit 2 (IMACS)", BMA)
 
 # ╔═╡ 25dd0c88-089b-406b-ac0f-6f21c57fe986
 @with_terminal begin
@@ -508,9 +486,14 @@ begin
 				topspinecolor = :darkgrey,
 				rightspinecolor = :darkgrey
 			),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
+			Label = (
+				textsize = 18,
+				padding = (0, 10, 0, 0),
+				font = AlgebraOfGraphics.firasans("Medium")
+			),
 			Lines = (linewidth=3,),
 			Scatter = (linewidth=10,),
+			Text = (font = AlgebraOfGraphics.firasans("Medium"),),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
 			fontsize = 18,
 			rowgap = 5,
@@ -693,6 +676,60 @@ let
 	fig
 end
 
+# ╔═╡ f47944d8-4501-47c7-a852-d5e2f90e9204
+function plot_x_pairs!(ax, param, BMA; h1=1, h2=2, c1=COLORS[2], c2=COLORS[3], scale=true)
+	x = get_x(param, "Transit 2 (IMACS)", BMA; scale)
+	plot_x!(ax, x;
+		h = h1,
+		scatter_kwargs = (color=c1, markersize=20),
+		errorbar_kwargs = (; whiskerwidth=10.0),
+	)
+
+	x = get_x(param, "Transit 2 (LDSS3C)", BMA; scale)
+	plot_x!(ax, x;
+		h = h2,
+		scatter_kwargs = (color=c2, markersize=20),
+		errorbar_kwargs = (; whiskerwidth=10.0),
+	)
+end
+
+# ╔═╡ 18c90ed4-2f07-493f-95b2-e308cd7a03a9
+let
+	fig  = Figure()
+	ax = Axis(fig[1, 1], xlabel="x", ylabel="Parameter")
+
+	for (i, param) in enumerate(reverse(BMA.Parameter))
+		plot_x_pairs!(ax, param, BMA; h1=i-0.1, h2=i+0.1)
+		hlines!(ax, i+0.5, color=:darkgrey, linewidth=0.5)
+		text!(param; position=(-4.0, i), align=(:left, :center))
+	end
+
+	Label(fig[0, 1], "Transit 2 (IMACS)";
+		halign = :left,
+		tellwidth = false,
+		color = COLORS[2],
+	)
+	# so hack much rush
+	Label(fig[1, 1], " "^35 * "Transit 2 (LDSS3C)";
+		halign = :left,
+		tellwidth = false,
+		color = COLORS[3],
+	)
+
+	hideydecorations!(ax, label=false)
+
+	xlims!(ax, -4.2, 4.2)
+	ylims!(ax, 0.5, 8.5)
+
+	if occursin("sp", DATA_DIR)
+		savefig(fig, "$(FIG_DIR)/detrended_wlcs_params_comp_sp.png")
+	else
+		savefig(fig, "$(FIG_DIR)/detrended_wlcs_params_comp.png")
+	end
+		
+	fig
+end
+
 # ╔═╡ Cell order:
 # ╟─506eeeb2-e56d-436b-91b8-605e52201563
 # ╠═25d1284c-7260-4f3a-916a-b2814d2606af
@@ -706,14 +743,12 @@ end
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
-# ╠═88a92472-f20d-4908-8bfd-fcbf11f80b8a
 # ╠═89c48710-651e-45ff-8fcb-e4173559defd
 # ╠═0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # ╠═d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c
 # ╟─b28bb1b6-c148-41c4-9f94-0833e365cad4
 # ╟─30b84501-fdcd-4d83-b929-ff354de69a17
 # ╠═c7a179a3-9966-452d-b430-a28b2f004bc5
-# ╠═694a6067-390e-4b79-b8b1-87e0c6d15f48
 # ╠═19fcaa15-6f01-46a6-8225-4b5cafd89cc1
 # ╠═de0a4468-56aa-4748-80a0-6c9ab6b8579e
 # ╠═bbc14e57-57fe-4811-91d4-d07b102cfa5d
@@ -730,19 +765,18 @@ end
 # ╟─e452d2b1-1010-4ce3-8d32-9e9f1d0dfa0b
 # ╠═56d0de38-5639-4196-aafe-79a9ab933980
 # ╠═706f1fb6-2895-48f6-a315-842fbf35da18
-# ╠═18c90ed4-2f07-493f-95b2-e308cd7a03a9
-# ╠═7fdd0cb7-7af3-4ca1-8939-9d9b7d6e9527
-# ╠═8969ff2e-d160-4eb3-8f77-f8c2006518ff
-# ╠═266b5871-22e5-4b4a-80b1-468a9ddd9193
-# ╠═3225ad37-6264-48b8-b1fc-c6f0136f8beb
-# ╠═8f795cda-b905-4c89-ade5-05e35b10d4b3
 # ╠═d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
 # ╠═8c9428a9-f2ad-4329-97a3-97ffa6b40f28
 # ╠═2cbc6ddb-210e-41e8-b745-5c41eba4e778
 # ╠═ed935d16-ddce-4334-a880-005732b38936
 # ╠═6fcd1377-8364-45a3-9ff6-89d61df1ef42
 # ╟─807e913f-d8c3-41e9-acb3-4c024dedd67b
-# ╠═2bfaa81e-f0bd-4527-a5fe-091589b1f76e
+# ╠═18c90ed4-2f07-493f-95b2-e308cd7a03a9
+# ╠═f47944d8-4501-47c7-a852-d5e2f90e9204
+# ╠═7fdd0cb7-7af3-4ca1-8939-9d9b7d6e9527
+# ╠═266b5871-22e5-4b4a-80b1-468a9ddd9193
+# ╠═3225ad37-6264-48b8-b1fc-c6f0136f8beb
+# ╠═8f795cda-b905-4c89-ade5-05e35b10d4b3
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
 # ╟─bf9c0b95-fe17-425d-8904-8298f7e5451c
 # ╠═db539901-f0b0-4692-a8d2-6c72dff41196
