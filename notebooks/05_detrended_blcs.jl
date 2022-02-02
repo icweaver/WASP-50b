@@ -52,7 +52,7 @@ In this notebook we will plot the detrended binned light curves for all nights.
 
 # ╔═╡ 0158a760-1229-4089-bf90-7c7b2f1f548a
 @mdx """
-## Load data ⬇
+## Load data ⬇️
 
 First, let's load the relevant data needed for this notebook:
 """
@@ -147,7 +147,7 @@ end
 
 # ╔═╡ 1dd4968e-959a-4f6e-a0e2-9fe9b8ecdd74
 @mdx """
-## Notebook setup
+## Notebook setup 🔧
 """
 
 # ╔═╡ c59e2697-d2a3-4bdb-ba64-059246697c1c

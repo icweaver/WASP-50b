@@ -51,7 +51,7 @@ In this notebook we will load in the individual transmission spectra from each n
 
 # ╔═╡ 0c752bd5-5232-4e82-b519-5ca23fff8a52
 @mdx """
-## Load data ⬇
+## Load data ⬇️
 
 First let's load up all of the data, including the white-light transit depths from each night.
 """
@@ -130,6 +130,8 @@ end
 # ╔═╡ e58ec082-d654-44e3-bcd4-906fc34171c8
 @mdx """
 ## Combine spectra 🌈
+
+We will step through the process to create the following figure:
 """
 
 # ╔═╡ 11066667-9da2-4b36-b784-c3515c04a659
@@ -344,11 +346,25 @@ avg_prec_IMACS = getproperty.(df_IMACS[!, :Combined], :err) |> median
 # ╔═╡ b6fa6c00-14cf-47af-9593-c70514373db5
 avg_prec_LDSS3 = getproperty.(df_LDSS3[!, :Combined], :err) |> median
 
-# ╔═╡ f5e026a1-34c3-4159-9b9d-b5bb93537717
+# ╔═╡ 27811c9d-1ee5-49ca-bf09-04dc75dd66be
+@mdx """
+## A closer look at Transit 2 🔎
+"""
+
+# ╔═╡ b971503b-bfef-4ca7-98ad-b5940bbda10f
 @views begin
 wbins_LDSS3 = df_LDSS3[:, [:Wlow, :Wup]]
-wbins_LDSS3_odd = wbins[begin:2:end, :]
+wbins_LDSS3_odd = wbins_LDSS3[begin:2:end, :]
 end;
+
+# ╔═╡ 86b55627-556d-4bda-b042-16dad98f021d
+avg_prec_T2_IMACS = getproperty.(df_IMACS[!, "Transit 2 (IMACS)"], :err) |> median
+
+# ╔═╡ 943844ce-a78b-403d-8bae-341216308392
+df_IMACS |> dropmissing#[!, "Transit 2 (IMACS)"]
+
+# ╔═╡ ef04759d-6a2d-488b-ae3b-6595c35dd70a
+wbins_LDSS3
 
 # ╔═╡ 146a2be7-1c08-4d7c-802f-41f65aeae0d5
 @mdx """
@@ -408,7 +424,7 @@ end
 
 # ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
 @mdx """
-## Notebook setup
+## Notebook setup 🔧
 """
 
 # ╔═╡ e9b22d93-1994-4c31-a951-1ab00dc4c102
@@ -416,6 +432,56 @@ function savefig(fig, fpath)
 	mkpath(dirname(fpath))
     save(fpath, fig)
 	@info "Saved to: $(fpath)"
+end
+
+# ╔═╡ 8644fa54-0407-4494-aef4-eb497a86c35d
+let
+	fig = Figure(resolution=(1200, 400))
+
+	ax = Axis(
+		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
+		limits = (nothing, nothing, 15_500, 22_500),
+		grid = (linewidth=(0, 0),),
+	)
+
+	# Overplot lines
+	vspan!(ax, wbins_LDSS3_odd[:, 1], wbins_LDSS3_odd[:, 2], color=(:darkgrey, 0.25))
+	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
+	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
+	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
+	mean_wlc_depth.val - mean_wlc_depth.err), linestyle=:dash, color=:grey)
+
+	# Transit 2
+	transit = "Transit 2 (IMACS)"
+	plot_tspec!(ax, df_IMACS, transit;
+		nudge = -25.0,
+		kwargs_errorbars = (whiskerwidth=10.0, linewidth=3.0),
+		kwargs_scatter = (color=Cycled(2), strokewidth=3.0, markersize=16.0),
+		label = transit,
+	)
+	transit = "Transit 2 (LDSS3C)"
+	plot_tspec!(ax, df_LDSS3, transit;
+		nudge = 25.0,
+		kwargs_errorbars = (whiskerwidth=10.0, linewidth=3.0),
+		kwargs_scatter = (color=Cycled(3), strokewidth=3.0, markersize=16.0),
+		label = transit,
+	)
+
+	# text!(ax, "Average precision (IMACS): $(round(avg_prec_IMACS, digits=2)) ppm";
+	# 	position = (4700, 16500),
+	# 	align = (:left, :center),
+	# )
+	# text!(ax, "Average precision (LDSS3C): $(round(avg_prec_LDSS3, digits=2))  ppm";
+	# 	position = (4700, 16000),
+	# 	align = (:left, :center),
+	# )
+
+	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
+	
+	suf = basename(dirname(DATA_DIR))
+	savefig(fig, "$(FIG_DIR)/tspec_transit_2_$(suf).png")
+	
+	fig
 end
 
 # ╔═╡ ef970c0c-d08a-4856-b10b-531bb5e7e53e
@@ -429,10 +495,10 @@ begin
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
-			"#B2DF8A",  # Green
-			"#fdbf6f",  # Yellow
-			"#ff7f00",  # Orange
-			"#1f78b4",  # Blue
+			"#66C2A5",  # Green
+			"#FDBF6F",  # Yellow
+			"#FF7F00",  # Orange
+			"#1F78B4",  # Blue
 		]
 	)
 	
@@ -477,20 +543,18 @@ let
 	)
 	
 	# Overplot lines
-	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:lightgrey, 0.5))
+	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
 	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
 	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
 	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
 	mean_wlc_depth.val - mean_wlc_depth.err), linestyle=:dash, color=:grey)
 	
 	# Individual nights
-	kwargs_errorbars = (whiskerwidth=10.0, linewidth=1.0)
-	kwargs_scatter = (markersize=12.0,)
 	for (i, transit) in enumerate(keys(cubes))
 		plot_tspec!(ax, df_tspecs, transit;
 			nudge = -50.0,
-			kwargs_errorbars,
-			kwargs_scatter,
+			kwargs_errorbars = (whiskerwidth=10.0, linewidth=1.0),
+			kwargs_scatter = (markersize=12.0,),
 			color = COLORS[i],
 			label = transit,
 		)
@@ -528,7 +592,7 @@ let
 	)
 
 	# Overplot lines
-	vspan!(ax, wbins_LDSS3_odd[:, 1], wbins_LDSS3_odd[:, 2], color=(:lightgrey, 0.5))
+	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
 	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
 	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
 	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
@@ -620,6 +684,7 @@ body.disable_ui main {
 # ╠═774c4ab2-ad34-4a0d-a523-7234ac3d98e5
 # ╠═7b6d3a33-cb3b-4776-86f6-3af1663b9e49
 # ╟─e58ec082-d654-44e3-bcd4-906fc34171c8
+# ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
 # ╟─11066667-9da2-4b36-b784-c3515c04a659
 # ╠═cb1b277b-aa92-44de-91ce-88122bc34bb9
 # ╠═59cc9c0a-332a-4f32-9f22-824f4c8f81b3
@@ -637,18 +702,22 @@ body.disable_ui main {
 # ╠═c405941d-bdcc-458f-b0bf-01abf02982e0
 # ╠═a915f236-8dae-4c91-8f96-fb9a805a0a7f
 # ╠═e61c7fbd-d030-4915-bbe4-d8f4405e9c3f
-# ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
 # ╠═09887c41-022a-4109-8c5d-0ba033c50bcb
 # ╟─f92ecf4d-aab8-413e-a32d-5f77a969d1ca
+# ╠═72affb58-6f0c-4b76-9956-a027b57a0c8e
 # ╠═1a6067ca-645a-448b-815f-6a2966548ca6
 # ╠═b555e372-2292-4f0e-b511-88b92588ad14
 # ╠═940ad41b-910c-40a8-8752-e68e13ff4a1f
 # ╠═094bd22d-8e42-440f-a78c-3a2787f380ea
 # ╠═f37d9e45-575c-40d9-8f26-31bd6cc6d145
 # ╠═b6fa6c00-14cf-47af-9593-c70514373db5
-# ╠═f5e026a1-34c3-4159-9b9d-b5bb93537717
-# ╠═72affb58-6f0c-4b76-9956-a027b57a0c8e
 # ╠═3af0d3b0-c698-4845-a74e-c7186b03a721
+# ╟─27811c9d-1ee5-49ca-bf09-04dc75dd66be
+# ╠═8644fa54-0407-4494-aef4-eb497a86c35d
+# ╠═b971503b-bfef-4ca7-98ad-b5940bbda10f
+# ╠═86b55627-556d-4bda-b042-16dad98f021d
+# ╠═943844ce-a78b-403d-8bae-341216308392
+# ╠═ef04759d-6a2d-488b-ae3b-6595c35dd70a
 # ╟─146a2be7-1c08-4d7c-802f-41f65aeae0d5
 # ╠═5718672b-1bc6-4676-8703-5fc06b83f0f9
 # ╠═9141dba4-4c11-404d-b18a-b22f3466caba

@@ -332,7 +332,7 @@ end
 
 # ╔═╡ f788835c-8e81-4afe-805e-4caf2d5e5d5b
 @mdx """
-## Notebook setup
+## Notebook setup 🔧
 """
 
 # ╔═╡ 36c1aa6d-cde9-4ff0-b55c-13f43e94256d
@@ -600,6 +600,7 @@ end
 
 # ╔═╡ 45418bd3-74a3-4758-9fce-adddbeeec076
 let
+	@views wbins_odd = wbins[begin:2:end, :]
 	fig = Figure(resolution=FIG_WIDE)
 	ax = Axis(fig[1, 1];
 		xlabel = "Wavelength Å",
@@ -610,6 +611,7 @@ let
 	labels = obj_names.vals
 	#f_norm = 40362.188283796 # median IMACS WASP-50 flux for comparison
 
+	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
 	for (i, (name, f)) in enumerate(zip(labels, fluxes))
 		spec_plot!(ax, wav, f;
 			color=COLORS_SERIES[i],
@@ -619,7 +621,6 @@ let
 		)
 	end
 
-	vlines!.(ax, wbins, linewidth=1.0, color=:lightgrey)
 
 	xlims!(ax, 4_500, 11_000)
 	ylims!(ax, 0, 2.6)

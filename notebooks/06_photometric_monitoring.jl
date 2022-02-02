@@ -525,7 +525,7 @@ end
 
 # ╔═╡ ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd
 @mdx """
-## Notebook setup
+## Notebook setup 🔧
 """
 
 # ╔═╡ 79acbb60-803a-4047-b26d-1cf6262274a0

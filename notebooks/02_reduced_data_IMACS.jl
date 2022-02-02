@@ -125,7 +125,7 @@ comps = Dict(
 	#use_comps = ["c15", "c21"]
 
 	# Transit 2
-	"ut150927" => ["c15", "c18", "c21", "c23"],
+	"ut150927" => ["c06", "c15", "c18", "c21", "c23"],
 	#use_comps = ["c15", "c21"]
 
 	# Transit 3
@@ -133,17 +133,20 @@ comps = Dict(
 	#use_comps = ["c06", "c13"]
 )
 
-# ╔═╡ 15745120-f0e4-44d8-98b3-1f9732dacc5d
-fname_suff
-
-# ╔═╡ c2eecbe7-488c-4378-b660-49d3e172501a
-comps
-
-# ╔═╡ 9654bb17-458c-4797-95b9-3cb9060349a7
-split(fname_suff, "_ut")
-
 # ╔═╡ 2df82761-b9fe-4d37-b57c-1eabb0ffa8dd
 use_comps = comps[match(r"ut[0-9]{6}", fname_suff).match]
+
+# ╔═╡ c06b8ef5-a6c8-4bb0-9583-78c25a17e950
+# Taken from wl_options.dat files to double-triple check
+wlc_bad_idx_time = Dict(
+	"Transit 1 (IMACS)" => [18, 31, 43, 75, 81, 87, 103, 106, 114, 117, 129, 136, 139, 140, 145, 146, 153, 154, 158, 159, 160, 161, 162, 164, 167, 169, 170, 172, 175, 179, 184, 188, 191, 197, 198, 200, 204, 206],
+
+	"Transit 1 (IMACS) sp" => [0, 1, 3, 5, 6, 8, 9, 10, 12, 14, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25, 26, 27, 28, 30, 31, 32, 33, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 61, 62, 63, 64, 65, 66, 67, 69, 70, 72, 73, 75, 76, 77, 78, 79, 81, 83, 84, 87, 88, 90, 92, 93, 94, 95, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 116, 117, 118, 121, 122, 123, 126, 127, 129, 130, 131, 133, 134, 135, 136, 137, 138, 139, 142, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 174, 176, 177, 178, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 191, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206],
+
+	"Transit 2 (IMACS)" => [0, 1, 5, 7, 8, 10, 11, 21, 22, 31, 33, 38, 48, 63, 65, 70, 80, 89, 93, 112, 123, 125, 129, 135, 136, 144, 145, 153, 157, 161, 182, 183, 186, 194, 211, 218, 239, 240, 242, 264, 267, 281, 286, 294, 307, 337, 342, 346, 352],
+
+	"Transit 3 (IMACS)" => [14, 17, 18, 37, 40, 41, 42, 43, 44, 45, 48, 51, 53, 55, 56, 57, 58, 77, 88, 134, 151, 155, 162, 170, 181, 182, 211, 212, 220, 246, 248, 259, 286, 288, 295, 296, 301, 305, 308, 317, 321],
+)
 
 # ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
 @bind window_width PlutoUI.Slider(3:2:21, default=15, show_value=true)
@@ -237,7 +240,7 @@ We plot these below for each comparison star division:
 
 # ╔═╡ eeb3da97-72d5-4317-acb9-d28637a06d67
 @mdx """
-## Notebook setup
+## Notebook setup 🔧
 """
 
 # ╔═╡ 06bbb3e4-9b30-43bd-941f-e357acaa80fc
@@ -307,6 +310,10 @@ begin
 	use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
 	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
 end;
+
+# ╔═╡ bdd04819-c0f9-46a0-9162-6b933d7b604d
+# CHECK THIS
+wlc_bad_idx_time[transits[fname_suff]] == bad_idxs .- 1
 
 # ╔═╡ 22b57aad-e886-4d36-bab8-baef5f3fabe6
 f_div_WLC_norm
@@ -516,6 +523,9 @@ end
 # ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
 wbins = pyconvert(Matrix, np.array(LC["wbins"]));
 
+# ╔═╡ 40269026-a833-4dd8-bb22-7d26f35163e9
+@views wbins_odd = wbins[begin:2:end, :]
+
 # ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
 let
 	fig = Figure(resolution=FIG_WIDE)
@@ -527,6 +537,8 @@ let
 	wav = LC_spectra["wavelengths"]
 	f_norm = median(LC_spectra["WASP50"])
 
+	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
+
 	i = 1
 	for (name, f) in sort(LC_spectra)
 		if name != "wavelengths"
@@ -534,8 +546,6 @@ let
 			i += 1
 		end
 	end
-
-	vlines!.(ax, wbins, linewidth=1.0, color=:lightgrey)
 
 	axislegend(transits[fname_suff])
 
@@ -546,6 +556,9 @@ let
 
 	fig
 end
+
+# ╔═╡ fd53702b-9cd7-4abc-a95a-fc08993ced11
+wbins[:, 1]
 
 # ╔═╡ 7962e716-8b0e-4c58-9d14-f51bbf72d419
 begin
@@ -589,6 +602,8 @@ blc_plots[cName]
 # ╠═65cc9f56-1e9e-446c-82db-10dcd6334ce3
 # ╠═6471fc66-47a5-455e-9611-c6fd9d56e9dc
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
+# ╠═40269026-a833-4dd8-bb22-7d26f35163e9
+# ╠═fd53702b-9cd7-4abc-a95a-fc08993ced11
 # ╠═1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
 # ╠═6fd88483-d005-4186-8dd2-82cea767ce90
 # ╟─e3468c61-782b-4f55-a4a1-9d1883655d11
@@ -598,11 +613,10 @@ blc_plots[cName]
 # ╠═18d58341-0173-4eb1-9f01-cfa893088613
 # ╟─941cd721-07d8-4a8f-9d75-42854e6e8edb
 # ╠═4b763b58-862e-4c88-a7c9-fe0b1271c0b4
-# ╠═15745120-f0e4-44d8-98b3-1f9732dacc5d
-# ╠═c2eecbe7-488c-4378-b660-49d3e172501a
-# ╠═9654bb17-458c-4797-95b9-3cb9060349a7
 # ╠═2df82761-b9fe-4d37-b57c-1eabb0ffa8dd
 # ╠═df46d106-f186-4900-9d3f-b711bc803707
+# ╠═bdd04819-c0f9-46a0-9162-6b933d7b604d
+# ╠═c06b8ef5-a6c8-4bb0-9583-78c25a17e950
 # ╠═ab058d99-ce5f-4ed3-97bd-a62d2f258773
 # ╠═13523326-a5f2-480d-9961-d23cd51192b8
 # ╠═169197fe-983d-420b-8c56-353a65b28ddc

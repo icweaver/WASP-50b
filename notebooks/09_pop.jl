@@ -334,7 +334,7 @@ sort(df_tspecs, :pl_name, lt=natural)
 
 # ╔═╡ 683a8d85-b9a8-4eab-8a4b-e2b57d0783c0
 @mdx """
-## Notebook setup
+## Notebook setup 🔧
 """
 
 # ╔═╡ 95bb5b9e-0c50-48fa-bf4c-d0819c327bcc

@@ -185,7 +185,7 @@ end
 
 # ╔═╡ 1eff1230-2423-4ac3-8e9b-f4e7bcd0121b
 @mdx """
-## Notebook setup
+## Notebook setup 🔧
 """
 
 # ╔═╡ eab74923-a084-468c-9b0d-c2cc98a23913

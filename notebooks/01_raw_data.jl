@@ -213,7 +213,7 @@ latextabular(df_wbins, latex=false) |> PlutoUI.Text
 
 # ╔═╡ 4480ae72-3bb2-4e17-99be-28afc756332a
 @mdx """
-## Notebook setup
+## Notebook setup 🔧
 """
 
 # ╔═╡ db4a4cd8-c5e8-4124-935f-0666f6e73fe2

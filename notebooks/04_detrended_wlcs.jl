@@ -57,7 +57,7 @@ In this notebook we will visualize the detrended white-light curves from IMACS a
 
 # ╔═╡ 782806a6-efd2-45a9-b898-788a276c282b
 @mdx """
-## Load data ⬇
+## Load data ⬇️
 
 First, let's load the relevant data needed for this notebook:
 """
@@ -344,7 +344,7 @@ end
 
 # ╔═╡ 30ae3744-0e7e-4c16-b91a-91eb518fba5b
 @mdx """
-## Notebook setup
+## Notebook setup 🔧
 """
 
 # ╔═╡ bf9c0b95-fe17-425d-8904-8298f7e5451c
@@ -455,7 +455,10 @@ begin
 end
 
 # ╔═╡ c7791371-9010-44f6-9aca-1d50f8e43ad4
-Makie.ColorSchemes.Paired_8[3] |> Makie.Colors.hex
+let
+	c = Makie.ColorSchemes.Set2_4
+	c, c .|> Makie.Colors.hex
+end
 
 # ╔═╡ 1f7b883c-0192-45bd-a206-2a9fde1409ca
 begin
@@ -468,10 +471,10 @@ begin
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
-			"#B2DF8A",  # Green
-			"#fdbf6f",  # Yellow
-			"#ff7f00",  # Orange
-			"#1f78b4",  # Blue
+			"#66C2A5",  # Green
+			"#FDBF6F",  # Yellow
+			"#FF7F00",  # Orange
+			"#1F78B4",  # Blue
 		]
 	)
 
@@ -699,8 +702,9 @@ let
 	ax = Axis(fig[1, 1], xlabel="x", ylabel="Parameter")
 
 	for (i, param) in enumerate(reverse(BMA.Parameter))
+		i%2 != 0 && hspan!(ax, i-0.5, i+0.5, color=(:darkgrey, 0.25))
 		plot_x_pairs!(ax, param, BMA; h1=i-0.1, h2=i+0.1)
-		hlines!(ax, i+0.5, color=:darkgrey, linewidth=1.0)
+		#hlines!(ax, i+0.5, color=:darkgrey, linewidth=1.0)
 		text!(param; position=(-4.0, i), align=(:left, :center))
 	end
 
