@@ -517,6 +517,7 @@ function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 	t = ϕ.(pyconvert(Vector, cube["models"]["t"]), t₀, P)
 	t_interp = ϕ.(pyconvert(Vector, cube["models"]["t_interp"]), t₀, P)
 	LC_det = pyconvert(Vector, cube["models"]["LC_det"])
+	LC_det_err = pyconvert(Vector, cube["models"]["LC_det_err"])
 	LC_transit_model = pyconvert(Vector, cube["models"]["LC_transit_model"])
 	LC_det_model_interp = pyconvert(Vector, cube["models"]["LC_det_model_interp"])
 	resids = LC_det - LC_transit_model
@@ -527,16 +528,9 @@ function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 	color_dark = 0.75 * COLORS[i]
 
 	# Top panel
-	scatter!(ax_top,
-		t,
-		LC_det,
-		color = color,
-	)
-	lines!(ax_top,
-		t_interp,
-		LC_det_model_interp,
-		color = color_dark,
-	)
+	errorbars!(ax_top, t, LC_det, LC_det_err; color)
+	scatter!(ax_top, t, LC_det; color)
+	lines!(ax_top, t_interp, LC_det_model_interp; color = color_dark)
 	t_x = 0.06
 	text!(ax_top, "$transit";
 		position = (t_x, 0.9765),
@@ -545,8 +539,8 @@ function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 	)
 
 	# Bottom panel
-	scatter!(ax_bottom, t, resids, color=color)
-	lines!(ax_bottom, t_interp, zero(t_interp), color=color_dark)
+	scatter!(ax_bottom, t, resids; color)
+	lines!(ax_bottom, t_interp, zero(t_interp); color=color_dark)
 	text!(ax_bottom, "$resids_σ ppm";
 		position = (t_x, 2300),
 		align = (:right, :top),
