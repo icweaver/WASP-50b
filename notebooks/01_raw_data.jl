@@ -64,6 +64,12 @@ Starting with IMACS, let's first select the night we would like to visualize fro
 # ╔═╡ fb6e6221-8136-44e2-979b-ecbbd71f740d
 df_sci_IMACS = fitscollection(DATA_DIR_IMACS, abspath=false)
 
+# ╔═╡ dd17c74e-92d7-418a-a3fa-1dabb6542c0d
+h = fitscollection("data/raw_data", abspath=false)
+
+# ╔═╡ 06ec650c-c88d-474a-8f84-52606e2feb51
+h[:, [:path, :OBSERVER]]
+
 # ╔═╡ 1ae830c3-fe46-48bc-ba26-bd53b82d7926
 df_sci_IMACS.FILTER
 
@@ -348,6 +354,8 @@ end
 # ╟─90845d70-35d9-402d-8936-74936b069577
 # ╟─8b9581db-71c6-42b6-915b-bde307755bcd
 # ╠═fb6e6221-8136-44e2-979b-ecbbd71f740d
+# ╠═dd17c74e-92d7-418a-a3fa-1dabb6542c0d
+# ╠═06ec650c-c88d-474a-8f84-52606e2feb51
 # ╠═1ae830c3-fe46-48bc-ba26-bd53b82d7926
 # ╟─0d42f6f9-d789-46a3-9e9a-381dbed2d5a5
 # ╠═c83c2161-95e2-4d08-9934-6d9c12c42a44

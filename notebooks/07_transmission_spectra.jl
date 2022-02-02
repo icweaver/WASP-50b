@@ -29,9 +29,6 @@ begin
 	using Dates, NaturalSort
 end
 
-# ╔═╡ a0a58ebb-32f2-462f-a8d4-bad7a86f0707
-using JLD2
-
 # ╔═╡ 209dae9c-4c14-4a02-bec9-36407bf1426f
 begin
 	const BASE_DIR = "data/detrended"
@@ -214,6 +211,24 @@ begin
 	df_common
 end
 
+# ╔═╡ a8345769-504e-446b-a679-88ef7913fee5
+# This is the old version we used to use (gives super tiny errorbars)
+# https://stackoverflow.com/a/2415343/16402912
+# It's also biased (as stated in the SO comments section and wiki link)
+# https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Weighted_sample_variance
+# This is why we use the more sophisticated weighted average, `weightedmean2`
+function weightedmean3(m)
+	if length(collect(m)) == 1
+		return collect(m)[1] # Convert back to Measurement from skipmissing wrapper
+	end
+	x = value.(m)
+	x_unc = uncertainty.(m)
+	w = @. 1.0 / x_unc^2
+	# Use standard Weights for bias correction
+	a, b = mean_and_std(x, weights(w))
+	return a ± b
+end
+
 # ╔═╡ ed954843-34e5-49be-8643-e2671b659e06
 df_extra = let
 	y = outerjoin((x[2] for x in dfs_unique)...;
@@ -287,8 +302,11 @@ Here we combine only the IMACS data and plot it along with the LDSS3C data set.
 # ╔═╡ 1a6067ca-645a-448b-815f-6a2966548ca6
 begin
 	df_IMACS = @chain df_tspecs begin
-		select(_, ["Wlow","Wup", "Wcen","Transit 1 (IMACS)", "Transit 2 (IMACS)", "Transit 3 (IMACS)"])
-		#z.Combined = [weightedmean2(skipmissing(row)) for row ∈ eachrow(z)]
+		select(
+			_,
+			["Wlow", "Wup", "Wcen",
+			"Transit 1 (IMACS)", "Transit 2 (IMACS)", "Transit 3 (IMACS)"]
+		)
 		rename(_, names(_, r"Tr") .=> [:x1, :x2, :x3])
 		#@rtransform :Combined = sum(skipmissing([:x1, :x2, :x3]))
 		dropmissing(_, :x1)
@@ -304,12 +322,9 @@ end
 begin
 	df_LDSS3 = @chain df_tspecs begin
 		select(_, ["Wlow","Wup", "Wcen", "Transit 2 (LDSS3C)"])
-		#z.Combined = [weightedmean2(skipmissing(row)) for row ∈ eachrow(z)]
 		rename(_, names(_, r"Tr") .=> [:x1])
-		#@rtransform :Combined = sum(skipmissing([:x1, :x2, :x3]))
 		dropmissing(_)
 		@transform :Combined = :x1
-		#@rtransform :Combined = weightedmean2(skipmissing([:x1, :x2, :x3]))
 		rename(_, names(_, r"x") .=> ["Transit 2 (LDSS3C)"])
 	end
 	insertcols!(df_LDSS3, 4,
@@ -328,12 +343,6 @@ avg_prec_IMACS = getproperty.(df_IMACS[!, :Combined], :err) |> median
 
 # ╔═╡ b6fa6c00-14cf-47af-9593-c70514373db5
 avg_prec_LDSS3 = getproperty.(df_LDSS3[!, :Combined], :err) |> median
-
-# ╔═╡ 13aa9e7a-df2d-4ae7-8030-1afc8ddd2c51
-df_IMACS
-
-# ╔═╡ 9ef58d51-dccc-4a46-8084-102864073ae7
-
 
 # ╔═╡ f5e026a1-34c3-4159-9b9d-b5bb93537717
 @views begin
@@ -618,6 +627,7 @@ body.disable_ui main {
 # ╠═461097e9-a687-4ef2-a5b4-8bf4d9e1c98f
 # ╠═4b9cfc02-5e18-422d-b18e-6301a659561a
 # ╠═45acc116-e585-4ddf-943d-128db7736921
+# ╠═a8345769-504e-446b-a679-88ef7913fee5
 # ╠═ed954843-34e5-49be-8643-e2671b659e06
 # ╠═b32273bc-1bb5-406a-acfe-57fd643ded51
 # ╠═64f608b9-76df-402e-801c-006dc3096f94
@@ -636,9 +646,6 @@ body.disable_ui main {
 # ╠═094bd22d-8e42-440f-a78c-3a2787f380ea
 # ╠═f37d9e45-575c-40d9-8f26-31bd6cc6d145
 # ╠═b6fa6c00-14cf-47af-9593-c70514373db5
-# ╠═13aa9e7a-df2d-4ae7-8030-1afc8ddd2c51
-# ╠═a0a58ebb-32f2-462f-a8d4-bad7a86f0707
-# ╠═9ef58d51-dccc-4a46-8084-102864073ae7
 # ╠═f5e026a1-34c3-4159-9b9d-b5bb93537717
 # ╠═72affb58-6f0c-4b76-9956-a027b57a0c8e
 # ╠═3af0d3b0-c698-4845-a74e-c7186b03a721

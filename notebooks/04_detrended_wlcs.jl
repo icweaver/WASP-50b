@@ -137,14 +137,16 @@ end
 We summarize the Bayesian Model Averag (BMA) results for selected parameters for each night below, and average together each parameter from each night, weighted by its maximum uncertainty per night:
 """
 
-# ╔═╡ f7b6ce6a-13e7-41b6-b5a6-182776aa7b1a
-println("hey")
+# ╔═╡ 694a6067-390e-4b79-b8b1-87e0c6d15f48
+.1382 - 0.13746
 
 # ╔═╡ 22c72eeb-8e32-4d7c-86c8-ab117735769e
 @mdx """
-The old python version:
+The standard version we used to use gives relatively errorbars (thanks for bringing this to my attention during my TAC, Dave!) and is also particularly biased for small sample sizes. For these reasons, we have opted for the more sophisticated machinery of [reliability weighting](https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Reliability_weights) going forward.
 
+* Old version:
 ```python
+# From https://stackoverflow.com/a/2415343/16402912
 def weightedmean(values, weights):
 	# weights = 1./err_bar^2. Where err_bar=std & err_bar^2 = variance
 	average = np.average(values, weights=weights)
@@ -153,8 +155,7 @@ def weightedmean(values, weights):
 	return average, np.sqrt(variance)
 ```
 
-is just:
-
+AKA
 ```julia
 function weightedmean3(m)
 	x = value.(m)
@@ -165,7 +166,7 @@ function weightedmean3(m)
 end
 ```
 
-or in other words, a simple weighted average uncorrected for sample bias
+* New version: `weightedmean2`
 """
 
 # ╔═╡ a96ee19b-39fe-4f5b-bc75-124b4e422713
@@ -188,6 +189,22 @@ end
 import Measurements: value, uncertainty
 
 # ╔═╡ bbc14e57-57fe-4811-91d4-d07b102cfa5d
+@doc raw"""
+Given a collection of $N$ dependent observations $\boldsymbol x = [x_1, x_2, \dots, x_N]$, the biased-corrected weighted mean estimator $\hat x \equiv \mu^* \pm s_\mathrm{w}$ is given by:
+
+```math
+\begin{align}
+\mu^* &= \sum w_i x_i / \sum w_i\,, \\
+s_\mathrm{w} &= \sqrt{
+    \frac
+    {\sum w_i(x_i - \mu^*)^2}
+    {\sum w_i - \sum w_i^2 / \sum w_i}
+}\,,
+\end{align}
+```
+
+where $\sum$ is taken to be the sum over all indices $i$ for convenience, and $w_i$ is defined to be the inverse variance $w_i \equiv 1/\sigma_i^2$ for each measurement $x_i$. More [here](https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Reliability_weights).
+"""
 function weightedmean2(m; corrected=true)
 	if length(collect(m)) == 1
 		return collect(m)[1] # Convert back to Measurement from skipmissing wrapper
@@ -237,7 +254,34 @@ where ``x`` is a sample from the posterior distribution for the given parameter,
 # ╔═╡ 706f1fb6-2895-48f6-a315-842fbf35da18
 function scale_samples(samples, param, BMA)
 	m = @subset(BMA, :Parameter .== param)[!, "Combined"][1]
-	return (samples .- m.val) ./ m.err
+	Δx = (samples .- m.val) ./ m.err
+	return Δx
+end
+
+# ╔═╡ 7fdd0cb7-7af3-4ca1-8939-9d9b7d6e9527
+function plot_x!(ax, x; h=1, errorbar_kwargs=(), scatter_kwargs=())
+	errorbars!(ax, [x.val], [h], [x.err], [x.err], direction=:x; errorbar_kwargs...)
+	scatter!(ax, [x.val], [h]; scatter_kwargs...)
+end
+
+# ╔═╡ 3225ad37-6264-48b8-b1fc-c6f0136f8beb
+get_m_scaled(m, param, BMA) = scale_samples(m, param, BMA)
+
+# ╔═╡ 8f795cda-b905-4c89-ade5-05e35b10d4b3
+get_m(param, transit, BMA) = BMA[BMA.Parameter .== param, transit][1]
+
+# ╔═╡ 266b5871-22e5-4b4a-80b1-468a9ddd9193
+function get_x(param, transit, BMA)
+	m = get_m(param, transit, BMA)
+	return get_m_scaled(m, param, BMA)
+end
+
+# ╔═╡ 8c9428a9-f2ad-4329-97a3-97ffa6b40f28
+function plot_scaled_density!(ax, dist)
+	k = kde(dist)
+	k_scaled = k.density ./ maximum(k.density)
+	lines!(ax, k.x, k_scaled)
+	band!(ax, k.x, zero(k.x), k_scaled)
 end
 
 # ╔═╡ ed935d16-ddce-4334-a880-005732b38936
@@ -264,16 +308,18 @@ function plot_corner!(fig, samples, params; n_levels=4, color=:blue)
 	for (j, p1) in enumerate(params), (i, p2) in enumerate(params)
 		# 1D plot
 		if i == j
-			density!(fig[i, i], samples[p1];
-				color = (color, 0.125),
-				strokewidth = 3,
-				strokecolor = color,
-				strokearound = true,
-			)
+			plot_scaled_density!(fig[i, i], samples[p1])
+			# density!(fig[i, i], samples[p1];
+			# 	color = (color, 0.125),
+			# 	strokewidth = 3,
+			# 	strokecolor = color,
+			# 	strokearound = true,
+			# 	offset = 1.0 - maximum(k.density),
+			# )
 		end
 		# 2D plot
 		if i > j
-			Z = kde((samples[p1], samples[p2]), npoints=(2^4, 2^4),)
+			Z = kde((samples[p1], samples[p2]), npoints=(2^5, 2^5),)
 			contourf!(fig[i, j], Z;
 				levels = compute_levels(Z.density, n_levels),
 				colormap = cgrad(
@@ -290,11 +336,13 @@ function plot_corner!(fig, samples, params; n_levels=4, color=:blue)
 	end
 end
 
-# ╔═╡ 82a23101-9e1f-4eae-b529-e750a44c98b1
+# ╔═╡ 807e913f-d8c3-41e9-acb3-4c024dedd67b
 @mdx """
-!!! note
-	The sampled values have been scaled so that the distance of each sample from its literature "truth" value is in units of that truth value's reported uncertainty. We show this operation below.
+## A closer look at Transit 2
 """
+
+# ╔═╡ 2bfaa81e-f0bd-4527-a5fe-091589b1f76e
+
 
 # ╔═╡ 30ae3744-0e7e-4c16-b91a-91eb518fba5b
 @mdx """
@@ -387,6 +435,23 @@ latextabular(BMA, latex=false) |> PlutoUI.Text
 # ╔═╡ d279e93e-8665-41b2-bd5c-723458fabe86
 BMA |> x -> latexify(x, env=:table) |> PlutoUI.Text
 
+# ╔═╡ 18c90ed4-2f07-493f-95b2-e308cd7a03a9
+let
+	fig  = Figure()
+	ax = Axis(fig[1, 1])
+
+	x = get_x("Rp/Rs", "Transit 2 (IMACS)", BMA)
+	plot_x!(ax, x; scatter_kwargs=(color=:black, markersize=20))
+
+	x = get_x("Rp/Rs", "Transit 2 (LDSS3C)", BMA)
+	plot_x!(ax, x; h=3, scatter_kwargs=(color=:red, markersize=20))
+		
+	fig
+end
+
+# ╔═╡ 8969ff2e-d160-4eb3-8f77-f8c2006518ff
+get_x("Rp/Rs", "Transit 2 (IMACS)", BMA)
+
 # ╔═╡ 25dd0c88-089b-406b-ac0f-6f21c57fe986
 @with_terminal begin
 	map(enumerate(BMA_matrix[:, end])) do (i, x)
@@ -394,9 +459,6 @@ BMA |> x -> latexify(x, env=:table) |> PlutoUI.Text
 		println(PARAMS.vals[i], ": ", round(x.val, digits=10))
 	end
 end
-
-# ╔═╡ 43bfd433-263c-42f5-abc7-f5491ac6d53a
-@printf "%f" BMA_matrix[2, end].val
 
 # ╔═╡ 56d0de38-5639-4196-aafe-79a9ab933980
 begin
@@ -447,7 +509,7 @@ begin
 				rightspinecolor = :darkgrey
 			),
 			Label = (textsize=18,  padding=(0, 10, 0, 0)),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Lines = (linewidth=3,),
 			Scatter = (linewidth=10,),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
 			fontsize = 18,
@@ -562,12 +624,12 @@ let
 			xticklabelrotation = π/4,
 			xticks = LinearTicks(3),
 			yticks = LinearTicks(3),
-			limits = ((-14, 14), (-14, 14)),
+			limits = ((-15, 15), (-15, 15)),
 		)
 		# Hide upper triangle
 		j > i && (hidedecorations!(ax); hidespines!(ax))
 		# Hide y ticks on diagonals
-		j == i && (hideydecorations!(ax); ylims!(0, 0.4))
+		j == i && (hideydecorations!(ax); ylims!(0, 1.2))
 		# Hide x ticks on all diagonal elements except the bottom one
 		j == i && i != n_params && (
 			hidexdecorations!(ax, grid=false);
@@ -651,12 +713,11 @@ end
 # ╟─b28bb1b6-c148-41c4-9f94-0833e365cad4
 # ╟─30b84501-fdcd-4d83-b929-ff354de69a17
 # ╠═c7a179a3-9966-452d-b430-a28b2f004bc5
+# ╠═694a6067-390e-4b79-b8b1-87e0c6d15f48
 # ╠═19fcaa15-6f01-46a6-8225-4b5cafd89cc1
 # ╠═de0a4468-56aa-4748-80a0-6c9ab6b8579e
 # ╠═bbc14e57-57fe-4811-91d4-d07b102cfa5d
 # ╠═25dd0c88-089b-406b-ac0f-6f21c57fe986
-# ╠═43bfd433-263c-42f5-abc7-f5491ac6d53a
-# ╠═f7b6ce6a-13e7-41b6-b5a6-182776aa7b1a
 # ╟─22c72eeb-8e32-4d7c-86c8-ab117735769e
 # ╠═a96ee19b-39fe-4f5b-bc75-124b4e422713
 # ╠═7cbadc33-5b32-4816-8092-09054c64073f
@@ -669,11 +730,19 @@ end
 # ╟─e452d2b1-1010-4ce3-8d32-9e9f1d0dfa0b
 # ╠═56d0de38-5639-4196-aafe-79a9ab933980
 # ╠═706f1fb6-2895-48f6-a315-842fbf35da18
+# ╠═18c90ed4-2f07-493f-95b2-e308cd7a03a9
+# ╠═7fdd0cb7-7af3-4ca1-8939-9d9b7d6e9527
+# ╠═8969ff2e-d160-4eb3-8f77-f8c2006518ff
+# ╠═266b5871-22e5-4b4a-80b1-468a9ddd9193
+# ╠═3225ad37-6264-48b8-b1fc-c6f0136f8beb
+# ╠═8f795cda-b905-4c89-ade5-05e35b10d4b3
 # ╠═d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
-# ╠═ed935d16-ddce-4334-a880-005732b38936
+# ╠═8c9428a9-f2ad-4329-97a3-97ffa6b40f28
 # ╠═2cbc6ddb-210e-41e8-b745-5c41eba4e778
+# ╠═ed935d16-ddce-4334-a880-005732b38936
 # ╠═6fcd1377-8364-45a3-9ff6-89d61df1ef42
-# ╟─82a23101-9e1f-4eae-b529-e750a44c98b1
+# ╟─807e913f-d8c3-41e9-acb3-4c024dedd67b
+# ╠═2bfaa81e-f0bd-4527-a5fe-091589b1f76e
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
 # ╟─bf9c0b95-fe17-425d-8904-8298f7e5451c
 # ╠═db539901-f0b0-4692-a8d2-6c72dff41196
