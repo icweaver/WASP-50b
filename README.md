@@ -17,3 +17,11 @@ HTML pages for all figure notebooks are available below and include directions f
 1. [Transmission spectra](https://icweaver.github.io/WASP-50b/html/07_transmission_spectra.html)
 1. [Retrievals](https://icweaver.github.io/WASP-50b/html/08_retrievals.html)
 1. [HGHJ Population](https://icweaver.github.io/WASP-50b/html/09_pop.html)
+
+### General organization and navigation
+The top of each notebook points to a link to download the specific dataset for each notebook. Each figure in the paper
+is given its own section. Within each section, the overal goal is first stated and then the figure is displayed. The
+analysis code to produce each figure is then shown directly underneath. The plotting-specific code is hidden for
+clarity, but can be revealed by clicking on the "eyeball" icon next to each figure in the downloaded notebook. All
+dependent cells in the notebook will run and save the figures in the same directory. The path to each figure will also
+be displayed in the notebook surrounded by a blue box.

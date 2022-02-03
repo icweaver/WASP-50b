@@ -61,21 +61,17 @@ Starting with IMACS, let's first select the night we would like to visualize fro
 	default = "$(DATA_DIR)/IMACS/ut161211"
 )
 
+# ╔═╡ c040905d-23bf-4484-8743-98d917db9c81
+@mdx """
+This figure uses the following data:
+"""
+
 # ╔═╡ fb6e6221-8136-44e2-979b-ecbbd71f740d
 df_sci_IMACS = fitscollection(DATA_DIR_IMACS, abspath=false)
 
-# ╔═╡ dd17c74e-92d7-418a-a3fa-1dabb6542c0d
-h = fitscollection("data/raw_data", abspath=false)
-
-# ╔═╡ 06ec650c-c88d-474a-8f84-52606e2feb51
-h[:, [:path, :OBSERVER]]
-
-# ╔═╡ 1ae830c3-fe46-48bc-ba26-bd53b82d7926
-df_sci_IMACS.FILTER
-
 # ╔═╡ 0d42f6f9-d789-46a3-9e9a-381dbed2d5a5
 @mdx """
-We next compute the bias-subtracted science frame for each of these $(nrow(df_sci_IMACS)) chips:
+We compute the bias-subtracted science frame for each of these $(nrow(df_sci_IMACS)) chips:
 """
 
 # ╔═╡ c83c2161-95e2-4d08-9934-6d9c12c42a44
@@ -107,30 +103,23 @@ transits = merge(
 	),
 )
 
-# ╔═╡ 0e66d467-1098-46dc-8d06-36d488b14637
-@bind DATA_DIR_LDSS3 Select(glob("$(DATA_DIR)/LDSS3C/ut*"))
-
-# ╔═╡ 5c6e6f7b-70e0-49a8-b064-60dcf1440223
-df_sci_LDSS3 = fitscollection(DATA_DIR_LDSS3, abspath=false)
-
 # ╔═╡ 06a834f0-8c90-4013-af34-725166970969
 @mdx """
 ## LDSS3C 2️⃣
 
-We follow the same operations to visualize the $(nrow(df_sci_LDSS3)) chips for LDSS3C below.
+We follow the same operations to visualize the two chips for LDSS3C below.
 """
 
-# ╔═╡ 5fe61a6a-7147-4c48-a3a7-41183a015325
-df_sci_LDSS3.GRISM
+# ╔═╡ 0e66d467-1098-46dc-8d06-36d488b14637
+@bind DATA_DIR_LDSS3 Select(glob("$(DATA_DIR)/LDSS3C/ut*"))
 
-# ╔═╡ aa94926c-ffc3-44b4-ab8b-0aa98c0fcecf
-df_sci_LDSS3.FILTER
+# ╔═╡ c6205ad9-4d3c-420a-a279-81731d83603b
+@mdx """
+This figure uses the following data:
+"""
 
-# ╔═╡ e57832a4-3375-4052-bdb7-54ffccabe5e9
-df_sci_LDSS3.OBJECT
-
-# ╔═╡ 7aa57c15-263c-4eb4-b6c7-048ff7af5fc7
-df_sci_LDSS3.APERTURE
+# ╔═╡ 5c6e6f7b-70e0-49a8-b064-60dcf1440223
+df_sci_LDSS3 = fitscollection(DATA_DIR_LDSS3, abspath=false)
 
 # ╔═╡ c488270a-3126-4e38-a0c8-ee242115a3ea
 frames_LDSS3 = process_frames(df_sci_LDSS3)
@@ -174,22 +163,6 @@ end
 
 We show the wavelength bins used for each instrument here:
 """
-
-# ╔═╡ f58aba9d-bccb-4d8b-ab83-559d6ff1ea62
-df_wbins2 = let
-	dirpath = "$(DATA_DIR)/wbins"
-	df = CSV.read.(
-		("$(dirpath)/w50_bins$(fname).dat" for fname ∈ ("_ut131219", "", "_LDSS3")),
-		DataFrame,
-		header = [:wav_d, :wav_u],
-		comment = "#",
-	)
-	df_wbins_comb = DataFrame(∪(eachrow.(df)...))
-	@transform df_wbins_comb begin
-		:wav_cen = mean((:wav_d, :wav_u))
-		:wav_Δ = :wav_u .- :wav_d
-	end
-end
 
 # ╔═╡ 9e3d2013-a4ac-4413-912e-aa94046e2f44
 @bind fpath_wbin Select(glob("$(DATA_DIR)/wbins/*.dat"))
@@ -353,30 +326,24 @@ end
 # ╠═d8019fa7-380d-4f40-9e08-420a32c34483
 # ╟─90845d70-35d9-402d-8936-74936b069577
 # ╟─8b9581db-71c6-42b6-915b-bde307755bcd
+# ╟─3a6ab0c0-ba08-4151-9646-c19d45749b9f
+# ╟─c040905d-23bf-4484-8743-98d917db9c81
 # ╠═fb6e6221-8136-44e2-979b-ecbbd71f740d
-# ╠═dd17c74e-92d7-418a-a3fa-1dabb6542c0d
-# ╠═06ec650c-c88d-474a-8f84-52606e2feb51
-# ╠═1ae830c3-fe46-48bc-ba26-bd53b82d7926
 # ╟─0d42f6f9-d789-46a3-9e9a-381dbed2d5a5
 # ╠═c83c2161-95e2-4d08-9934-6d9c12c42a44
 # ╠═86b4ace1-a891-41e5-a29f-f7eee5f8fb17
 # ╟─27b793f3-7a7c-48ad-8302-deffa2dd017b
 # ╠═26feb668-4e7e-4a9d-a2b6-a5dac81e3ab7
-# ╠═3a6ab0c0-ba08-4151-9646-c19d45749b9f
 # ╟─8c5a4e21-897f-4fbc-bd4f-18adf71fa926
 # ╠═bf8ef5a9-0806-44b4-907d-c95d6926dabb
 # ╟─06a834f0-8c90-4013-af34-725166970969
 # ╟─0e66d467-1098-46dc-8d06-36d488b14637
+# ╟─71ba9181-90e4-4d12-97c0-462b3f1df077
+# ╟─c6205ad9-4d3c-420a-a279-81731d83603b
 # ╠═5c6e6f7b-70e0-49a8-b064-60dcf1440223
-# ╠═5fe61a6a-7147-4c48-a3a7-41183a015325
-# ╠═aa94926c-ffc3-44b4-ab8b-0aa98c0fcecf
-# ╠═e57832a4-3375-4052-bdb7-54ffccabe5e9
-# ╠═7aa57c15-263c-4eb4-b6c7-048ff7af5fc7
 # ╠═c488270a-3126-4e38-a0c8-ee242115a3ea
 # ╠═83a9357d-836b-4cee-a41f-eabc8f3f12e7
-# ╠═71ba9181-90e4-4d12-97c0-462b3f1df077
 # ╟─8fadd0b6-6ff8-42e5-9014-4e79593e3502
-# ╠═f58aba9d-bccb-4d8b-ab83-559d6ff1ea62
 # ╟─9e3d2013-a4ac-4413-912e-aa94046e2f44
 # ╠═f2ccf230-f2ac-43c2-b313-8821ef69a1e7
 # ╠═0d2476b1-2864-4bfc-ac37-f771aab77368

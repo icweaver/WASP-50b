@@ -539,6 +539,7 @@ function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 	)
 
 	# Bottom panel
+	#errorbars!(ax_bottom, t, resids, LC_det_err * 1e6; color)
 	scatter!(ax_bottom, t, resids; color)
 	lines!(ax_bottom, t_interp, zero(t_interp); color=color_dark)
 	text!(ax_bottom, "$resids_σ ppm";
