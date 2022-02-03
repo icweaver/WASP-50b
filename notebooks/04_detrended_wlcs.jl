@@ -74,13 +74,13 @@ end
 # ╔═╡ e72dba55-6a33-462f-aeac-5f62b25cb46a
 dates_to_names = Dict(
 	"131219_IMACS" => "Transit 1 (IMACS)",
-	"131219_sp_IMACS" => "Transit 1 (IMACS)",
+	"131219_sp_IMACS" => "Transit 1 (IMACS) sp",
 	"150927_IMACS" => "Transit 2 (IMACS)",
-	"150927_sp_IMACS" => "Transit 2 (IMACS)",
+	"150927_sp_IMACS" => "Transit 2 (IMACS) sp",
 	"150927_LDSS3_flat" => "Transit 2 (LDSS3C)",
-	"150927_sp_LDSSC_flat" => "Transit 2 (LDSS3C)",
+	"150927_sp_LDSS3_flat" => "Transit 2 (LDSS3C) sp",
 	"161211_IMACS" => "Transit 3 (IMACS)",
-	"161211_sp_IMACS" => "Transit 3 (IMACS)",
+	"161211_sp_IMACS" => "Transit 3 (IMACS) sp",
  )
 
 # ╔═╡ 579e62da-7ffb-4639-bd73-3826ade1cfa2
