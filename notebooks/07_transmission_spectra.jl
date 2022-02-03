@@ -62,6 +62,12 @@ First let's load up all of the data, including the white-light transit depths fr
 # ╔═╡ 1decb49e-a875-412c-938f-74b4fa0e2e85
 maxmeasure(x, x_u, x_d) = x ± max(x_u, x_d)
 
+# ╔═╡ 1e8524c4-a732-4e2f-80a9-b5e7548ef2b2
+function name(fpath, dates_to_names)
+	date_target = splitpath(split(fpath, "w50_")[2])[1]
+	return dates_to_names[date_target]
+end
+
 # ╔═╡ b8abb240-65d6-4358-bd95-955be047371a
 #fpath = "data/detrended/out_sp/WASP50/w50_131219_sp_IMACS/transpec.csv"
 
@@ -80,12 +86,6 @@ dates_to_names = OrderedDict(
 	"150927_sp_LDSS3C" => "Transit 2 (LDSS3C)",
 	"161211_sp_IMACS" => "Transit 3 (IMACS)",
  )
-
-# ╔═╡ 1e8524c4-a732-4e2f-80a9-b5e7548ef2b2
-function name(fpath, data_to_names)
-	date_target = splitpath(split(fpath, "w50_")[2])[1]
-	return dates_to_names[date_target]
-end
 
 # ╔═╡ 5c4fcb25-9a26-43f1-838b-338b33fb9ee6
 begin

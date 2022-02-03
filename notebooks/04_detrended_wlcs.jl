@@ -77,8 +77,8 @@ dates_to_names = Dict(
 	"131219_sp_IMACS" => "Transit 1 (IMACS)",
 	"150927_IMACS" => "Transit 2 (IMACS)",
 	"150927_sp_IMACS" => "Transit 2 (IMACS)",
-	"150927_LDSS3C" => "Transit 2 (LDSS3C)",
-	"150927_sp_LDSS3C" => "Transit 2 (LDSS3C)",
+	"150927_LDSS3_flat" => "Transit 2 (LDSS3C)",
+	"150927_sp_LDSSC_flat" => "Transit 2 (LDSS3C)",
 	"161211_IMACS" => "Transit 3 (IMACS)",
 	"161211_sp_IMACS" => "Transit 3 (IMACS)",
  )
@@ -396,6 +396,9 @@ cubes = OrderedDict(
 	)
 )
 
+# ╔═╡ 1b1ecf3f-eab8-48b0-955e-ee582e6fbe9e
+cubes["Transit 2 (LDSS3C)"]["models"]["LC_det_err"]
+
 # ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
 begin
 	summary_tables = DataFrame[]
@@ -605,7 +608,7 @@ let
 			xticklabelrotation = π/4,
 			xticks = LinearTicks(3),
 			yticks = LinearTicks(3),
-			limits = ((-15, 15), (-15, 15)),
+			limits = ((-10, 10), (-10, 10)),
 		)
 		# Hide upper triangle
 		j > i && (hidedecorations!(ax); hidespines!(ax))
@@ -698,7 +701,7 @@ let
 
 	for (i, param) in enumerate(reverse(BMA.Parameter))
 		i%2 != 0 && hspan!(ax, i-0.5, i+0.5, color=(:darkgrey, 0.25))
-		plot_x_pairs!(ax, param, BMA; h1=i-0.1, h2=i+0.1)
+		plot_x_pairs!(ax, param, BMA; h1=i+0.1, h2=i-0.1)
 		#hlines!(ax, i+0.5, color=:darkgrey, linewidth=1.0)
 		text!(param; position=(-4.0, i), align=(:left, :center))
 	end
@@ -742,6 +745,7 @@ end
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
+# ╠═1b1ecf3f-eab8-48b0-955e-ee582e6fbe9e
 # ╠═89c48710-651e-45ff-8fcb-e4173559defd
 # ╠═0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # ╠═d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c

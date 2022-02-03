@@ -83,6 +83,9 @@ Each cube (`LC`) can be selected from the following drop-down menu, and will be 
 # ╔═╡ 48713a10-6ba7-4de5-a147-85a9cb136dd8
 @bind FPATH Select(glob("$(DATA_DIR)/ut150927_*/LCs_*.npy"))
 
+# ╔═╡ f420e100-b713-4e2b-9805-c9c9051b76f3
+DATA_DIR
+
 # ╔═╡ 698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 @mdx """
 We next define the mapping between the standard aperture names defined in `stellar` and the target/comparison star names used:
@@ -805,6 +808,7 @@ blc_plots[cName]
 # ╠═e1294e56-8103-443b-80e9-118cac36750f
 # ╟─a8e3b170-3fc2-4d12-b117-07bd37d27710
 # ╟─48713a10-6ba7-4de5-a147-85a9cb136dd8
+# ╠═f420e100-b713-4e2b-9805-c9c9051b76f3
 # ╠═01e27cf6-0a1b-4741-828a-ef8bf7037ae9
 # ╟─698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 # ╠═d8236985-9a36-4357-ac78-7eb39dd0f080
