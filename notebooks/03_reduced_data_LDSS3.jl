@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.7
+# v0.18.0
 
 using Markdown
 using InteractiveUtils
@@ -629,10 +629,13 @@ end
 # ╔═╡ 45418bd3-74a3-4758-9fce-adddbeeec076
 let
 	@views wbins_odd = wbins[begin:2:end, :]
-	fig = Figure(resolution=FIG_WIDE)
+	# Larger font for two-column
+	fig = Figure(resolution=FIG_WIDE, fontsize=24)
 	ax = Axis(fig[1, 1];
 		xlabel = "Wavelength Å",
 		ylabel = "Relative flux",
+		xlabelsize = 24,
+		ylabelsize = 24,
 	)
 
 	fluxes = [f_target, [f_comps[:, :, i] for i in 1:3]...]
@@ -653,7 +656,7 @@ let
 	xlims!(ax, 4_500, 11_000)
 	ylims!(ax, 0, 2.6)
 
-	axislegend("Transit 2 (LDSS3C)")
+	axislegend("Transit 2 (LDSS3C)", halign=:right, gridshalign=:right)
 
 	savefig(fig, "$(FIG_DIR)/extracted_spectra_$(fname_suff).pdf")
 
@@ -692,6 +695,7 @@ function plot_div_WLCS!(axs;
 				position =(3, 0.98),
 				align = (:right, :center),
 				color = c_text,
+				textsize = 24,
 			)
 			# Used points
 			if cName ∈ use_comps
@@ -715,9 +719,18 @@ end
 
 # ╔═╡ 1bb71101-adc8-4e9b-9354-d7411b131920
 let
-	fig = Figure(resolution=FIG_WIDE)
-
-	axs = [Axis(fig[i, j], limits=(-2.5, 3.5, 0.975, 1.02)) for i ∈ 1:2, j ∈ 1:4]
+	# Larger font for two-column
+	fig = Figure(resolution=FIG_WIDE, fontsize=24)
+	
+	axs = [
+		Axis(
+			fig[i, j],
+			limits = (-2.5, 3.5, 0.975, 1.02),
+			xlabelsize = 24,
+			ylabelsize = 24,
+		)
+		for i ∈ 1:2, j ∈ 1:4
+	]
 	axs = reshape(copy(fig.content), 2, 4)
 
 	t_rel = compute_t_rel(times)
@@ -729,12 +742,13 @@ let
 	hidexdecorations!.(axs[begin:end-1, :], grid=false)
 	hideydecorations!.(axs[:, begin+1:end], grid=false)
 
-	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
-	fig[end+1, 2:end] = Label(fig, "Time from estimated mid-transit (hours)")
+	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2, textsize=24)
+	fig[end+1, 2:end] = Label(fig, "Time from estimated mid-transit (hours)", textsize=24)
 
 	Label(fig[0, end], "Transit 2 (LDSS3C)";
 		tellwidth = false,
 		halign = :right,
+		textsize=24,
 	)
 
 	savefig(fig, "$(FIG_DIR)/div_wlcs_$(fname_suff).pdf")

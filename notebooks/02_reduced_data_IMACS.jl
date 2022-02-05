@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.7
+# v0.18.0
 
 using Markdown
 using InteractiveUtils
@@ -88,6 +88,12 @@ transits = merge(
 
 With the flux extracted for each object, we now plot the resulting stellar spectra:
 """
+
+# ╔═╡ 48856d68-3dca-48a9-8b79-5381aca82457
+tc = Theme(; AlgebraOfGraphics.aog_theme()...);
+
+# ╔═╡ 5be51329-2f4c-45d9-8a52-166b4f308095
+two_column = Theme(fontsize=24, Axis=(xlabelsize=24, ylabelsize=24,))
 
 # ╔═╡ 6fd88483-d005-4186-8dd2-82cea767ce90
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
@@ -422,6 +428,7 @@ function plot_div_WLCS!(axs;
 				position =(3, 0.98),
 				align = (:right, :center),
 				color = c_text,
+				textsize = 24,
 			)
 			# Used points
 			if cName ∈ use_comps
@@ -445,9 +452,18 @@ end
 
 # ╔═╡ 13523326-a5f2-480d-9961-d23cd51192b8
 let
-	fig = Figure(resolution=FIG_WIDE)
+	# Larger font for two-column
+	fig = Figure(resolution=FIG_WIDE, fontsize=24)
 
-	axs = [Axis(fig[i, j], limits=(-2.5, 3.5, 0.975, 1.02)) for i ∈ 1:2, j ∈ 1:4]
+	axs = [
+		Axis(
+			fig[i, j],
+			limits = (-2.5, 3.5, 0.975, 1.02),
+			xlabelsize = 24,
+			ylabelsize = 24,
+		)
+		for i ∈ 1:2, j ∈ 1:4
+	]
 	axs = reshape(copy(fig.content), 2, 4)
 
 	t_rel = compute_t_rel(LC["t"])
@@ -459,12 +475,13 @@ let
 	hidexdecorations!.(axs[begin:end-1, :], grid=false)
 	hideydecorations!.(axs[:, begin+1:end], grid=false)
 
-	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
-	fig[end+1, 2:end] = Label(fig, "Time from estimated mid-transit (hours)")
+	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2, textsize=24)
+	fig[end+1, 2:end] = Label(fig, "Time from estimated mid-transit (hours)", textsize=24)
 
 	Label(fig[0, end], transits[fname_suff];
 		tellwidth = false,
 		halign = :right,
+		textsize = 24,
 	)
 
 	savefig(fig, "$(FIG_DIR)/div_wlcs_$(fname_suff).pdf")
@@ -544,10 +561,13 @@ wbins_odd = @view wbins[begin:2:end, :] # Selects alternating bins to highlight
 
 # ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
 let
-	fig = Figure(resolution=FIG_WIDE)
+	# Larger font for two-column
+	fig = Figure(resolution=FIG_WIDE, fontsize=24)
 	ax = Axis(fig[1, 1];
 		xlabel = "Wavelength (Å)",
 		ylabel = "Relative flux",
+		xlabelsize = 24,
+		ylabelsize = 24,
 		limits = (4_500, 11_000, 0.0, nothing),
 	)
 
@@ -564,7 +584,7 @@ let
 		end
 	end
 
-	axislegend(transits[fname_suff])
+	axislegend(transits[fname_suff], halign=:right, gridshalign=:right)
 
 	savefig(fig, "$(FIG_DIR)/extracted_spectra_$(fname_suff).pdf")
 
@@ -606,6 +626,8 @@ blc_plots[cName]
 # ╠═dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
 # ╟─e774a20f-2d58-486a-ab71-6bde678b26f8
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
+# ╠═48856d68-3dca-48a9-8b79-5381aca82457
+# ╠═5be51329-2f4c-45d9-8a52-166b4f308095
 # ╠═65cc9f56-1e9e-446c-82db-10dcd6334ce3
 # ╠═6471fc66-47a5-455e-9611-c6fd9d56e9dc
 # ╠═40269026-a833-4dd8-bb22-7d26f35163e9

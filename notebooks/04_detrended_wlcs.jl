@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.7
+# v0.18.0
 
 using Markdown
 using InteractiveUtils
@@ -227,11 +227,6 @@ function weightedmean3(m)
 	return a ± b
 end
 
-# ╔═╡ c936b76a-636b-4f10-b556-fa19808c1562
-@mdx """
-### Print table
-"""
-
 # ╔═╡ 68ec4343-5f6c-4dfd-90b5-6393b4c819b9
 @mdx """
 ## Corner plots 📐
@@ -317,7 +312,7 @@ end
 
 # ╔═╡ 807e913f-d8c3-41e9-acb3-4c024dedd67b
 @mdx """
-## A closer look at Transit 2
+## A closer look at Transit 2 🔎
 """
 
 # ╔═╡ 7fdd0cb7-7af3-4ca1-8939-9d9b7d6e9527
@@ -426,9 +421,6 @@ BMA = DataFrame(
 
 # ╔═╡ c7a179a3-9966-452d-b430-a28b2f004bc5
 latextabular(BMA, latex=false) |> PlutoUI.Text
-
-# ╔═╡ d279e93e-8665-41b2-bd5c-723458fabe86
-BMA |> x -> latexify(x, env=:table) |> PlutoUI.Text
 
 # ╔═╡ 25dd0c88-089b-406b-ac0f-6f21c57fe986
 @with_terminal begin
@@ -758,8 +750,6 @@ end
 # ╠═47278372-b311-4ea7-bfa4-82b8f95c97fa
 # ╠═f3a8f6fb-023c-4077-8c73-7502e56eb607
 # ╠═ee9347b2-e97d-4f66-9c21-7487ca2c2e30
-# ╟─c936b76a-636b-4f10-b556-fa19808c1562
-# ╠═d279e93e-8665-41b2-bd5c-723458fabe86
 # ╟─68ec4343-5f6c-4dfd-90b5-6393b4c819b9
 # ╟─e452d2b1-1010-4ce3-8d32-9e9f1d0dfa0b
 # ╠═56d0de38-5639-4196-aafe-79a9ab933980
