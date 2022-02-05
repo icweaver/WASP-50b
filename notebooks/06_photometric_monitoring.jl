@@ -556,6 +556,7 @@ begin
 	set_aog_theme!()
 	update_theme!(
 		Theme(
+			figure_padding = 0.0,
 			Axis = (
 				xlabelsize = 18,
 				ylabelsize = 18,

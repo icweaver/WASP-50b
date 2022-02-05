@@ -186,16 +186,36 @@ Next, we will extract the integrated white-light curves from these spectra. We i
 @bind window_width PlutoUI.Slider(3:2:21, default=15, show_value=true)
 
 # ╔═╡ 83263daf-a902-4414-850b-aa6949752fbb
-comp_names = obj_names.vals[2:4]
+cNames = obj_names.vals[2:4]
 
 # ╔═╡ cd10cbf3-22f4-46cd-8345-cec3d141e3ca
-use_comps = comp_names
+use_comps = cNames
+
+# ╔═╡ d386b581-a885-4461-9087-055269e77005
+cNames_global = ("c06", "c13", "c15", "c18", "c20", "c21", "c23", "c28")
+
+# ╔═╡ 31732bf1-8797-497f-8669-40519898255e
+mid_transit_times = Dict(
+	"LDSS3C_ut150927_flat" => "2015-09-27 06:37",
+	"LDSS3C_ut150927_flat_species" => "2015-09-27 06:37",
+)
+
+# ╔═╡ a82de6b2-35a6-4f90-8b38-1e50ffb1c586
+date_fmt = dateformat"y-m-d H:M"
+
+# ╔═╡ 6ce2ec33-bc6c-4f13-9904-2321658f9407
+function compute_t_rel(t_py)
+	t = pyconvert(Vector, t_py)
+	t₀_utc = mid_transit_times[fname_suff]
+	t₀ = DateTime(t₀_utc, date_fmt) |> datetime2julian
+	return @. (t - t₀) * 24.0
+end
 
 # ╔═╡ 9372c69a-0aad-4e6e-9ea3-e934fa09b758
 get_idx(needle, haystack) = findfirst(==(needle), haystack)
 
 # ╔═╡ 4f71ba8d-bfa0-4adc-8d82-cd3bca8b6c14
-use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
+use_comps_idxs = get_idx.(use_comps, Ref(cNames))
 
 # ╔═╡ d5c6d058-17c6-4cf0-97b8-d863b1529161
 @mdx """
@@ -243,11 +263,11 @@ Just as a quick check:
 # 		ylabel="Relative flux",
 # 	)
 
-# 	comp_names = obj_names.vals[2:4]
+# 	cNames = obj_names.vals[2:4]
 # 	f_wlc_targ = f_target_wlc[:]
 # 	f_wlc_comps = f_comps_wlc ./ mean(f_comps_wlc, dims=1)
 
-# 	for (cName, col) in zip(sort(comp_names), eachcol(f_wlc_comps))
+# 	for (cName, col) in zip(sort(cNames), eachcol(f_wlc_comps))
 # 		lines!(ax, col; label=cName)
 # 	end
 
@@ -341,7 +361,7 @@ end
 # ╔═╡ 36c1aa6d-cde9-4ff0-b55c-13f43e94256d
 function savefig(fig, fpath)
 	mkpath(dirname(fpath))
-    save(fpath, fig)
+    save(fpath, fig, pt_per_unit=1)
 	@info "Saved to: $(fpath)"
 end
 
@@ -564,16 +584,16 @@ begin
 	##############
 	# PLOT CONFIGS
 	##############
-	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (800, 600)
-	const FIG_LARGE = (1_200, 1_000)
+	const FIG_TALL = 72 .* (6, 8)
+	const FIG_WIDE = 72 .* (12, 6)
+	const FIG_LARGE = 72 .* (12, 12)
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
-			"#a6cee3",  # Cyan
-			"#fdbf6f",  # Yellow
-			"#ff7f00",  # Orange
-			"#1f78b4",  # Blue
+			"#66C2A5",  # Green
+			"#FDBF6F",  # Yellow
+			"#FF7F00",  # Orange
+			"#1F78B4",  # Blue
 		]
 	)
 
@@ -586,12 +606,17 @@ begin
 				topspinevisible = true,
 				rightspinevisible = true,
 				topspinecolor = :darkgrey,
-				rightspinecolor = :darkgrey
+				rightspinecolor = :darkgrey,
 			),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Label = (
+				textsize = 18,
+				font = AlgebraOfGraphics.firasans("Medium"),
+			),
+			Lines = (linewidth=3,),
 			Scatter = (linewidth=10,),
+			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=18),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
+			figure_padding = 1.5,
 			fontsize = 18,
 			rowgap = 5,
 			colgap = 5,
@@ -630,92 +655,96 @@ let
 
 	axislegend("Transit 2 (LDSS3C)")
 
-	savefig(fig, "$(FIG_DIR)/extracted_spectra_$(fname_suff).png")
+	savefig(fig, "$(FIG_DIR)/extracted_spectra_$(fname_suff).pdf")
 
 	fig
 end
 
-# ╔═╡ 20d12d7b-c666-46c3-8f48-5501641e8df3
-function plot_div_WLCS!(
-	axs, f_div_wlc, window_width, cNames, use_comps_idxs; ferr=0.002
+# ╔═╡ 7208b284-4eb3-44e3-bd8c-206a31bb362b
+FIG_WIDE
+
+# ╔═╡ 0a6e66a1-4863-4429-af8d-227a1785e759
+function plot_div_WLCS!(axs;
+	t_rel, f, window_width, cNames, use_comps_idxs, ferr=0.002
 )
 	use_comps = cNames[use_comps_idxs]
 
 	# Only apply filter to specified comp star divided WLCs
 	f_filt, use_idxs, bad_idxs = filt_idxs(
-		f_div_wlc[:, use_comps_idxs], window_width; ferr=ferr
+		f[:, use_comps_idxs], window_width; ferr=ferr
 	)
-	idxs = 1:size(f_div_wlc, 1)
+	
 	k = 1
 	c = :darkgrey
-	for (i, cName) ∈ enumerate(cNames)
-		# All points
-		if cName ∈ ("c06", "c15", "c21") # LDSS3C comps
-			c_text = COLORS[end]
+	z = 1
+	for (i, cName) ∈ enumerate(cNames_global)
+		if (z ≤ ncomps) && cNames_global[i] == cNames[z]
+			# All points
+			if cName ∈ ("c06", "c15", "c21") # LDSS3C comps
+				c_text = COLORS[end]
+			else
+				c_text = :darkgrey
+			end
+			scatter!(axs[i], t_rel, f[:, z];
+				color = (c, 0.3),
+			)
+			text!(axs[i], "$(cName)";
+				position =(3, 0.98),
+				align = (:right, :center),
+				color = c_text,
+			)
+			# Used points
+			if cName ∈ use_comps
+				scatter!(axs[i], t_rel[use_idxs], f[use_idxs, z];
+					color = c,
+				)
+				lines!(axs[i], t_rel, f_filt[:, k];
+					color = COLORS[end-2],
+					linewidth = 2,
+				)
+				k += 1
+			end
+			z += 1 # So hacky
 		else
-			c_text = :darkgrey
-		end
-		scatter!(axs[i], idxs, f_div_wlc[:, i];
-			color = (c, 0.3),
-		)
-		text!(axs[i], "$(cName)";
-			position =(300, 0.98),
-			align = (:right, :center),
-			color = c_text,
-		)
-
-		# Used points
-		if cName ∈ use_comps
-			scatter!(axs[i], idxs[use_idxs], f_div_wlc[use_idxs, i];
-				color = c,
-			)
-			lines!(axs[i], idxs, f_filt[:, k];
-				color = COLORS[end-2],
-				linewidth = 2,
-			)
-			k += 1
+			continue
 		end
 
 		#axislegend(axs[i])
 	end
 end
 
-# ╔═╡ 4b2ed9db-0a17-4e52-a04d-3a6a5bf2c054
+# ╔═╡ 1bb71101-adc8-4e9b-9354-d7411b131920
 let
 	fig = Figure(resolution=FIG_WIDE)
 
-	# comp_names = obj_names.vals[2:4]
-	# ncomps = length(comp_names)
-	# use_comps = comp_names # use all comps
-	# use_comps_idxs = get_idx.(use_comps, Ref(comp_names))
+	axs = [Axis(fig[i, j], limits=(-2.5, 3.5, 0.975, 1.02)) for i ∈ 1:2, j ∈ 1:4]
+	axs = reshape(copy(fig.content), 2, 4)
 
-	axs = [Axis(fig[1, i], limits=(-60, 380, 0.975, 1.02)) for i in 1:ncomps]
-	axs = reshape(copy(fig.content), ncomps, 1)
-
-	plot_div_WLCS!(
-		axs, f_div_WLC_norm, window_width, comp_names, use_comps_idxs
+	t_rel = compute_t_rel(times)
+	plot_div_WLCS!(axs;
+		t_rel, f=f_div_WLC_norm, window_width, cNames, use_comps_idxs
 	)
 
-	hideydecorations!.(axs[begin+1:end], grid=false)
-	#linkaxes!(axs...)
+	linkaxes!(axs...)
+	hidexdecorations!.(axs[begin:end-1, :], grid=false)
+	hideydecorations!.(axs[:, begin+1:end], grid=false)
 
-	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2, tellheight=false)
-	axs[2].xlabel = "Index"
+	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2)
+	fig[end+1, 2:end] = Label(fig, "Time from estimated mid-transit (hours)")
 
 	Label(fig[0, end], "Transit 2 (LDSS3C)";
 		tellwidth = false,
 		halign = :right,
-		font = AlgebraOfGraphics.firasans("Bold"),
 	)
 
-	savefig(fig, "$(FIG_DIR)/div_wlcs_$(fname_suff).png")
+	savefig(fig, "$(FIG_DIR)/div_wlcs_$(fname_suff).pdf")
 
 	fig
 end
 
 # ╔═╡ 2419e060-f5ab-441b-9ec2-51ce4e57e319
 function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
-	fig = Figure(resolution=FIG_TALL)
+	fig = Figure(resolution=FIG_LARGE)
 	median_prec = round(Int, median(errs))
 
 	ax_left = Axis(fig[1, 1], title = "Divided BLCs")
@@ -766,7 +795,7 @@ function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 	fig[1:2, 0] = Label(fig, "Relative flux + offset", rotation=π/2)
 	fig[end, 2:3] = Label(fig, "Index")
 
-	savefig(fig, "$(FIG_DIR)/div_blcs_$(fname_suff)_$(comp_name).png")
+	savefig(fig, "$(FIG_DIR)/div_blcs_$(fname_suff)_$(comp_name).pdf")
 
 	fig
 end
@@ -776,7 +805,7 @@ begin
 	blc_plots = OrderedDict()
 	for comp_idx ∈ use_comps_idxs
 		datas = f_norm_w[:, comp_idx, :]
-		cName = comp_names[comp_idx]
+		cName = cNames[comp_idx]
 		f_med, _, f_diff = filt(datas, window_width)
 		p = plot_BLCs(
 			datas[use_idxs, :],
@@ -799,9 +828,6 @@ target / $(cName)
 
 # ╔═╡ 7fa35566-d327-4319-9ae9-17c4c9825e05
 blc_plots[cName]
-
-# ╔═╡ 7f7ed0cc-be9b-449c-b933-f892707e9941
-#CondaPkg.add("numpy"); CondaPkg.resolve()
 
 # ╔═╡ Cell order:
 # ╟─34ef4580-bb95-11eb-34c1-25893217f422
@@ -845,10 +871,15 @@ blc_plots[cName]
 # ╠═83263daf-a902-4414-850b-aa6949752fbb
 # ╠═4f71ba8d-bfa0-4adc-8d82-cd3bca8b6c14
 # ╠═3e7b0a0b-1ee9-4436-935e-c4ced50620ba
-# ╠═4b2ed9db-0a17-4e52-a04d-3a6a5bf2c054
+# ╠═7208b284-4eb3-44e3-bd8c-206a31bb362b
+# ╠═d386b581-a885-4461-9087-055269e77005
+# ╠═1bb71101-adc8-4e9b-9354-d7411b131920
+# ╠═31732bf1-8797-497f-8669-40519898255e
+# ╠═a82de6b2-35a6-4f90-8b38-1e50ffb1c586
+# ╠═6ce2ec33-bc6c-4f13-9904-2321658f9407
 # ╠═9372c69a-0aad-4e6e-9ea3-e934fa09b758
 # ╟─d5c6d058-17c6-4cf0-97b8-d863b1529161
-# ╠═20d12d7b-c666-46c3-8f48-5501641e8df3
+# ╠═0a6e66a1-4863-4429-af8d-227a1785e759
 # ╠═470514e7-0f08-44a3-8519-5d704ea6b8d4
 # ╠═f80347e8-dc5a-4b0c-a6c0-db5c12eadcbb
 # ╠═89256633-3c12-4b94-b245-4fdda44d686c
@@ -892,5 +923,4 @@ blc_plots[cName]
 # ╟─36c1aa6d-cde9-4ff0-b55c-13f43e94256d
 # ╠═2d34e125-548e-41bb-a530-ba212c0ca17c
 # ╠═c911cecd-0747-4cd1-826f-941f2f58091c
-# ╠═7f7ed0cc-be9b-449c-b933-f892707e9941
 # ╠═f883b759-65fc-466e-9c8f-e4f941def935

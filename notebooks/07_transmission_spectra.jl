@@ -78,12 +78,12 @@ end
 dates_to_names = OrderedDict(
 	"131219_IMACS" => "Transit 1 (IMACS)",
 	"150927_IMACS" => "Transit 2 (IMACS)",
-	"150927_LDSS3C" => "Transit 2 (LDSS3C)",
+	"150927_LDSS3_flat" => "Transit 2 (LDSS3C)",
 	"161211_IMACS" => "Transit 3 (IMACS)",
 
 	"131219_sp_IMACS" => "Transit 1 (IMACS)",
 	"150927_sp_IMACS" => "Transit 2 (IMACS)",
-	"150927_sp_LDSS3C" => "Transit 2 (LDSS3C)",
+	"150927_sp_LDSS3_flat" => "Transit 2 (LDSS3C)",
 	"161211_sp_IMACS" => "Transit 3 (IMACS)",
  )
 
@@ -102,7 +102,7 @@ begin
 		)
 
 		# Add wav bins for external instruments (not saved in pkl)
-		if occursin("LDSS3C", dirpath)
+		if occursin("LDSS3", dirpath)
 			wbins = readdlm("$(dirpath)/wbins.dat", comments=true)
 			cubes[transit]["tspec"][:, [:Wav_d, :Wav_u]] .= wbins
 		end
@@ -133,6 +133,10 @@ end
 
 We will step through the process to create the following figure:
 """
+
+# ╔═╡ 4b8497f7-d285-4632-98e3-0699d284f291
+label_spec!(f, label) = Label(
+	f, label, valign=:top, padding=(0, 0, 0, 10), tellwidth=false, tellheight=false)
 
 # ╔═╡ 11066667-9da2-4b36-b784-c3515c04a659
 @mdx """
@@ -274,8 +278,9 @@ wlc_offsets = reshape(wlc_depths .- mean_wlc_depth, 1, :)
 
 # ╔═╡ e61c7fbd-d030-4915-bbe4-d8f4405e9c3f
 @views begin
-wbins = df_tspecs[:, [:Wlow, :Wup]]
-wbins_odd = wbins[begin:2:end, :]
+	wbins = df_tspecs[:, [:Wlow, :Wup]]
+	wbins_odd = wbins[begin:2:end, :]
+	wbins_even = wbins[begin+1:2:end, :]
 end;
 
 # ╔═╡ 09887c41-022a-4109-8c5d-0ba033c50bcb
@@ -533,17 +538,15 @@ begin
 end
 
 # ╔═╡ 8c077881-fc5f-4fad-8497-1cb6106c6ed5
-let
-	fig = Figure(resolution=(1200, 400))
-		
-	ax = Axis(
-		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
-		limits = (4_600, 9_800, 15_500, 22_500),
-		grid = (linewidth=(0, 0),),
-	)
+function plot_tspecs!(ax; i=1, nudge_indiv=-50, nudge_comb=50, wbins=wbins_odd)
+	# ax = Axis(fig[1, i];
+	# 	xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
+	# 	limits,
+	# 	grid = (linewidth=(0, 0),),
+	# )
 	
 	# Overplot lines
-	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
+	vspan!(ax, wbins[:, 1], wbins[:, 2], color=(:darkgrey, 0.25))
 	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
 	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
 	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
@@ -552,7 +555,7 @@ let
 	# Individual nights
 	for (i, transit) in enumerate(keys(cubes))
 		plot_tspec!(ax, df_tspecs, transit;
-			nudge = -50.0,
+			nudge = nudge_indiv,
 			kwargs_errorbars = (whiskerwidth=10.0, linewidth=1.0),
 			kwargs_scatter = (markersize=12.0,),
 			color = COLORS[i],
@@ -562,7 +565,7 @@ let
 	
 	# Combined
 	plot_tspec!(ax, df_tspecs, "Combined";
-			nudge = 50,
+			nudge = nudge_comb,
 			kwargs_errorbars = (whiskerwidth=10.0, linewidth=3.0),
 			kwargs_scatter = (color=:white, strokewidth=3.0, markersize=16.0),
 			label = "Combined",
@@ -573,11 +576,52 @@ let
 		align = (:left, :center),
 	)
 	
-	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
+	#axislegend(orientation=:horizontal, valign=:top, labelsize=16)
+end
+
+# ╔═╡ cafc773a-ee51-4bd2-b766-182ad728e253
+begin
+	fig = Figure(resolution=(1100, 400))
+	if occursin("sp", DATA_DIR)
+		ax_NaD = Axis(fig[1, 1], limits=(5_755, 6_031, nothing, nothing))
+		ax_K = Axis(fig[1, 2], limits=(7_652, 7_712, nothing, nothing))
+		ax_Na8200 = Axis(fig[1, 3], limits=(8_069, 8_309, nothing, nothing))
+
+		elems = [
+			[MarkerElement(marker=:circle, markersize=20, color=COLORS[i])
+				for i in 1:4];
+			MarkerElement(
+				marker=:circle, markersize=20, color=:white, strokewidth=3,)
+		]
+		elem_labels = [[df.first for df ∈ dfs_unique]; "Combined"]
+		
+		plot_tspecs!(ax_NaD, nudge_indiv=-11.5, nudge_comb=11.5)
+		label_spec!(fig[1, 1], "Na I -D")
+		
+		plot_tspecs!(ax_K; i=2, nudge_indiv=-2.5, nudge_comb=2.5, wbins=wbins_even)
+		label_spec!(fig[1, 2], "K I")
+		
+		plot_tspecs!(ax_Na8200; i=2, nudge_indiv=-10, nudge_comb=10)
+		label_spec!(fig[1, 3], "Na I-8200")
+		
+		hideydecorations!.((ax_K, ax_Na8200))
+
+		Label(fig[2, 2], "Wavelength (Å)", tellwidth=false, tellheight=true)
+		Label(fig[1, 0], "Transit depth (ppm)", tellwidth=true, tellheight=false,
+		rotation=π/2)
+
+		Legend(fig[0, 3], elems, elem_labels;
+			tellwidth = false,
+			tellheight = true,
+			orientation = :horizontal,
+		)
+		colgap!(fig.layout, 30)
+	else
+		plot_tspecs!(fig, limits=(4_600, 9_800, 15_500, 22_500))
+	end
 	
 	suf = basename(dirname(DATA_DIR))
 	savefig(fig, "$(FIG_DIR)/tspec_$(suf).png")
-
 	fig
 end
 
@@ -644,8 +688,8 @@ let
 
 	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
 
-	suf = basename(dirname(DATA_DIR))
-	savefig(fig, "$(FIG_DIR)/tspec_$(suf)_uncombined.png")
+	# suf = basename(dirname(DATA_DIR))
+	# savefig(fig, "$(FIG_DIR)/tspec_$(suf)_uncombined.png")
 	
 	fig
 end
@@ -684,6 +728,8 @@ body.disable_ui main {
 # ╠═774c4ab2-ad34-4a0d-a523-7234ac3d98e5
 # ╠═7b6d3a33-cb3b-4776-86f6-3af1663b9e49
 # ╟─e58ec082-d654-44e3-bcd4-906fc34171c8
+# ╠═cafc773a-ee51-4bd2-b766-182ad728e253
+# ╠═4b8497f7-d285-4632-98e3-0699d284f291
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
 # ╟─11066667-9da2-4b36-b784-c3515c04a659
 # ╠═cb1b277b-aa92-44de-91ce-88122bc34bb9

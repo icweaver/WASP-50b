@@ -350,7 +350,7 @@ end
 # ╔═╡ bf9c0b95-fe17-425d-8904-8298f7e5451c
 function savefig(fig, fpath)
 	mkpath(dirname(fpath))
-    save(fpath, fig)
+    save(fpath, fig, pt_per_unit=1)
 	@info "Saved to: $(fpath)"
 end
 
@@ -395,9 +395,6 @@ cubes = OrderedDict(
 		sort(glob("$(DATA_DIR)/w50*/white-light/results.dat")),
 	)
 )
-
-# ╔═╡ 1b1ecf3f-eab8-48b0-955e-ee582e6fbe9e
-cubes["Transit 2 (LDSS3C)"]["models"]["LC_det_err"]
 
 # ╔═╡ ee9347b2-e97d-4f66-9c21-7487ca2c2e30
 begin
@@ -457,20 +454,14 @@ begin
 	end
 end
 
-# ╔═╡ c7791371-9010-44f6-9aca-1d50f8e43ad4
-let
-	c = Makie.ColorSchemes.Set2_4
-	c, c .|> Makie.Colors.hex
-end
-
 # ╔═╡ 1f7b883c-0192-45bd-a206-2a9fde1409ca
 begin
 	##############
 	# PLOT CONFIGS
 	##############
-	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (800, 600)
-	const FIG_LARGE = (1_200, 1_000)
+	const FIG_TALL = 72 .* (6, 8)
+	const FIG_WIDE = 72 .* (8, 5)
+	const FIG_LARGE = 72 .* (12, 12)
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
@@ -490,17 +481,17 @@ begin
 				topspinevisible = true,
 				rightspinevisible = true,
 				topspinecolor = :darkgrey,
-				rightspinecolor = :darkgrey
+				rightspinecolor = :darkgrey,
 			),
 			Label = (
 				textsize = 18,
-				padding = (0, 10, 0, 0),
-				font = AlgebraOfGraphics.firasans("Medium")
+				font = AlgebraOfGraphics.firasans("Medium"),
 			),
 			Lines = (linewidth=3,),
 			Scatter = (linewidth=10,),
-			Text = (font = AlgebraOfGraphics.firasans("Medium"),),
+			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=18),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
+			figure_padding = 1.5,
 			fontsize = 18,
 			rowgap = 5,
 			colgap = 5,
@@ -558,7 +549,7 @@ function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 end
 
 # ╔═╡ 4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
-begin
+let
 	fig = Figure(resolution=FIG_LARGE)
 	
 	grid = CartesianIndices((2, 2))
@@ -586,9 +577,9 @@ begin
 	hideydecorations!.(axs[:, 2])
 
 	if occursin("sp", DATA_DIR)
-		savefig(fig, "$(FIG_DIR)/detrended_wlcs_sp.png")
+		savefig(fig, "$(FIG_DIR)/detrended_wlcs_sp.pdf")
 	else
-		savefig(fig, "$(FIG_DIR)/detrended_wlcs.png")
+		savefig(fig, "$(FIG_DIR)/detrended_wlcs.pdf")
 	end
 	
 	fig
@@ -599,7 +590,7 @@ let
 	n_params = length(PARAMS) # Number of fitted parameters
 	
 	# Create empty corner plot grid
-	fig = Figure(resolution=(1_400, 1_400))
+	fig = Figure(resolution=FIG_LARGE)
 	
 	for j in 1:n_params, i in 1:n_params
 		# Create subplot apply global settings
@@ -661,7 +652,7 @@ let
 		tellwidth = false,
 		tellheight = false,
 		rowgap = 10,
-		labelsize = 25,
+		#labelsize = 25,
 		nbanks = 2,
 		orientation = :horizontal,
 		markersize = 35,
@@ -669,9 +660,9 @@ let
 	)
 
 	if occursin("sp", DATA_DIR)
-		savefig(fig, "$(FIG_DIR)/detrended_wlcs_corner_sp.png")
+		savefig(fig, "$(FIG_DIR)/detrended_wlcs_corner_sp.pdf")
 	else
-		savefig(fig, "$(FIG_DIR)/detrended_wlcs_corner.png")
+		savefig(fig, "$(FIG_DIR)/detrended_wlcs_corner.pdf")
 	end
 	
 	fig
@@ -679,14 +670,18 @@ end
 
 # ╔═╡ f47944d8-4501-47c7-a852-d5e2f90e9204
 function plot_x_pairs!(ax, param, BMA; h1=1, h2=2, c1=COLORS[2], c2=COLORS[3], scale=true)
-	x = get_x(param, "Transit 2 (IMACS)", BMA; scale)
+	transit =  "Transit 2 (IMACS)"
+	occursin("sp", DATA_DIR) && (transit *= " sp")
+	x = get_x(param, transit, BMA; scale)
 	plot_x!(ax, x;
 		h = h1,
 		scatter_kwargs = (color=c1, markersize=20),
 		errorbar_kwargs = (; whiskerwidth=10.0),
 	)
 
-	x = get_x(param, "Transit 2 (LDSS3C)", BMA; scale)
+	transit =  "Transit 2 (LDSS3C)"
+	occursin("sp", DATA_DIR) && (transit *= " sp")
+	x = get_x(param, transit, BMA; scale)
 	plot_x!(ax, x;
 		h = h2,
 		scatter_kwargs = (color=c2, markersize=20),
@@ -696,7 +691,7 @@ end
 
 # ╔═╡ 18c90ed4-2f07-493f-95b2-e308cd7a03a9
 let
-	fig  = Figure()
+	fig = Figure(resolution=FIG_TALL)
 	ax = Axis(fig[1, 1], xlabel="x", ylabel="Parameter")
 
 	for (i, param) in enumerate(reverse(BMA.Parameter))
@@ -710,12 +705,14 @@ let
 		halign = :left,
 		tellwidth = false,
 		color = COLORS[2],
+		font = AlgebraOfGraphics.firasans("Medium"),
 	)
 	# so hack much rush
 	Label(fig[1, 1], " "^35 * "Transit 2 (LDSS3C)";
 		halign = :left,
 		tellwidth = false,
 		color = COLORS[3],
+		font = AlgebraOfGraphics.firasans("Medium"),
 	)
 
 	hideydecorations!(ax, label=false)
@@ -724,9 +721,9 @@ let
 	ylims!(ax, 0.5, 8.5)
 
 	if occursin("sp", DATA_DIR)
-		savefig(fig, "$(FIG_DIR)/detrended_wlcs_params_comp_sp.png")
+		savefig(fig, "$(FIG_DIR)/detrended_wlcs_params_comp_sp.pdf")
 	else
-		savefig(fig, "$(FIG_DIR)/detrended_wlcs_params_comp.png")
+		savefig(fig, "$(FIG_DIR)/detrended_wlcs_params_comp.pdf")
 	end
 		
 	fig
@@ -745,7 +742,6 @@ end
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e
 # ╠═4be0d7b7-2ea5-4c4d-92b9-1f8109014e12
-# ╠═1b1ecf3f-eab8-48b0-955e-ee582e6fbe9e
 # ╠═89c48710-651e-45ff-8fcb-e4173559defd
 # ╠═0dd63eaf-1afd-4caf-a74b-7cd217b3c515
 # ╠═d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c
@@ -781,8 +777,7 @@ end
 # ╠═3225ad37-6264-48b8-b1fc-c6f0136f8beb
 # ╠═8f795cda-b905-4c89-ade5-05e35b10d4b3
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
-# ╟─bf9c0b95-fe17-425d-8904-8298f7e5451c
+# ╠═bf9c0b95-fe17-425d-8904-8298f7e5451c
 # ╠═db539901-f0b0-4692-a8d2-6c72dff41196
-# ╠═c7791371-9010-44f6-9aca-1d50f8e43ad4
 # ╠═1f7b883c-0192-45bd-a206-2a9fde1409ca
 # ╠═5939e2a3-8407-4579-8274-e3891acbabb1

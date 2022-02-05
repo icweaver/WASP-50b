@@ -72,8 +72,8 @@ dates_to_names = Dict(
 	"131219_sp_IMACS" => "Transit_1_IMACS_sp",
 	"150927_IMACS" => "Transit_2_IMACS",
 	"150927_sp_IMACS" => "Transit_2_IMACS_sp",
-	"150927_LDSS3" => "Transit_2_LDSS3",
-	"150927_sp_LDSS3" => "Transit_2_LDSS3_sp",
+	"150927_LDSS3_flat" => "Transit_2_LDSS3",
+	"150927_sp_LDSS3_flat" => "Transit_2_LDSS3_sp",
 	"161211_IMACS" => "Transit_3_IMACS",
 	"161211_sp_IMACS" => "Transit_3_IMACS_sp"
  )
@@ -162,19 +162,19 @@ begin
 	##############
 	# PLOT CONFIGS
 	##############
-	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (800, 600)
-	const FIG_LARGE = (1_200, 1_000)
+	const FIG_TALL = 72 .* (6, 8)
+	const FIG_WIDE = 72 .* (8, 5)
+	const FIG_LARGE = 72 .* (12, 12)
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
-			"#a6cee3",  # Cyan
-			"#fdbf6f",  # Yellow
-			"#ff7f00",  # Orange
-			"#1f78b4",  # Blue
+			"#66C2A5",  # Green
+			"#FDBF6F",  # Yellow
+			"#FF7F00",  # Orange
+			"#1F78B4",  # Blue
 		]
 	)
-	
+
 	set_aog_theme!()
 	update_theme!(
 		Theme(
@@ -184,24 +184,29 @@ begin
 				topspinevisible = true,
 				rightspinevisible = true,
 				topspinecolor = :darkgrey,
-				rightspinecolor = :darkgrey
+				rightspinecolor = :darkgrey,
 			),
-			Label = (textsize=18,  padding=(0, 10, 0, 0)),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Label = (
+				textsize = 18,
+				font = AlgebraOfGraphics.firasans("Medium"),
+			),
+			Lines = (linewidth=3,),
 			Scatter = (linewidth=10,),
+			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=18),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
+			figure_padding = 1.5,
 			fontsize = 18,
 			rowgap = 5,
 			colgap = 5,
 		)
 	)
-	
+
 	COLORS
 end
 
 # ╔═╡ bec88974-b150-4f53-9497-ddec4883ae17
 function plot_BLCs(transit, datas, models, wbins, errs; offset=0.3)
-	fig = Figure(resolution=FIG_TALL)
+	fig = Figure(resolution=FIG_LARGE)
 	median_prec = round(Int, median(errs))
 	ax_left = Axis(fig[1, 1], title = "Detrended BLCs")
 	ax_right = Axis(fig[1, 2], title = "Residuals")
@@ -250,7 +255,7 @@ function plot_BLCs(transit, datas, models, wbins, errs; offset=0.3)
 	Label(fig[end, 2:3], "Index")
 
 	f_suff = basename(dirname(DATA_DIR))
-	savefig(fig, "$(FIG_DIR)/detrended_blcs_$(transit)_$(f_suff).png")
+	savefig(fig, "$(FIG_DIR)/detrended_blcs_$(transit)_$(f_suff).pdf")
 	
 	fig
 end
