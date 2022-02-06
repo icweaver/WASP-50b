@@ -411,7 +411,7 @@ BMA_matrix = let
 	summary[!, "Value"] .± maximum((summary[!, "SigmaUp"], summary[!, "SigmaDown"]))
 	for summary in summary_tables
 	)...) |> x-> hcat(x, weightedmean2.(eachrow(x)))
-end
+end;
 
 # ╔═╡ 19fcaa15-6f01-46a6-8225-4b5cafd89cc1
 BMA = DataFrame(

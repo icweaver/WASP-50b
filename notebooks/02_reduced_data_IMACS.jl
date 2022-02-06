@@ -92,9 +92,6 @@ transits = merge(
 With the flux extracted for each object, we now plot the resulting stellar spectra:
 """
 
-# ╔═╡ ac671cde-bb34-41c8-bf0d-1a52a1a0b6c6
-[[1,2 ], [3, 4]] isa Array{}
-
 # ╔═╡ 6fd88483-d005-4186-8dd2-82cea767ce90
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
 
@@ -580,21 +577,29 @@ begin
 	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
 	specs = filter(p -> p.first != "wavelengths", LC_spectra)
 	
-	cube_spectra = OrderedDict{String, Array}()
+	cube_path = "data/reduced_data/cubes/LC_spectra.jld2"
+	if ispath(cube_path)
+		cube = load("data/reduced_data/cubes/LC_spectra.jld2")
+	else
+		cube = OrderedDict()
+	end
+	cube_spectra = OrderedDict()
 	cube_spectra["wav"] = wav
 	cube_spectra["norm"] = [norm]
-	cube_spectra["wbins"] = wbins	
+	cube_spectra["wbins"] = wbins
+	cube_spectra["spec"] = OrderedDict()
 	for (i, (label, f)) in enumerate(sort(specs))
 		μ, σ = spec_plot!(ax, wav, f;
 			color=COLORS_SERIES[i], norm, label
 		)
-		cube_spectra["spec_$(label)"] = [μ, σ]
+		cube_spectra["spec"][label] = [μ, σ]
 	end
-
+	cube[fname_suff] = cube_spectra
+	
 	axislegend(transits[fname_suff], halign=:right, gridshalign=:right)
 
 	savefig(fig, "$(FIG_DIR)/extracted_spectra_$(fname_suff).pdf")
-	save_object("/home/mango/Desktop/hmmm.jld2", cube_spectra)
+	save(cube_path, sort(cube))
 
 	fig
 end
@@ -634,7 +639,6 @@ blc_plots[cName]
 # ╠═dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
 # ╟─e774a20f-2d58-486a-ab71-6bde678b26f8
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
-# ╠═ac671cde-bb34-41c8-bf0d-1a52a1a0b6c6
 # ╠═65cc9f56-1e9e-446c-82db-10dcd6334ce3
 # ╠═e4e9899c-68c3-4bc4-aadd-7c5d3446e57d
 # ╠═6471fc66-47a5-455e-9611-c6fd9d56e9dc
