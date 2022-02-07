@@ -31,6 +31,9 @@ begin
 	using PythonCall
 end
 
+# ╔═╡ 501b0cd4-117c-4b6d-a2a1-e26580f7c008
+using JLD2
+
 # ╔═╡ 34ef4580-bb95-11eb-34c1-25893217f422
 @mdx """
 # Reduced data -- LDSS3C
@@ -164,15 +167,12 @@ end
 # ╔═╡ a6088ea2-904f-4909-b1be-9470e7ec2010
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
 
-# ╔═╡ 7d68ad39-3e39-48fa-939a-e56c6659d2b3
+# ╔═╡ b9460e17-4034-4132-a57e-94721fa15d15
 function spec_plot!(ax, wav, A; color=:blue, norm=1.0, label="")
 	μ, σ = med_std(A) ./ norm
 	band!(ax, wav, μ .- σ, μ .+ σ, color=(color, 0.25))
-	lines!(ax, wav, μ;
-		color = color,
-		cycle = Cycle(:linestyle),
-		label = label,
-	)
+	lines!(ax, wav, μ; color, label)
+	return μ, σ
 end
 
 # ╔═╡ bd937d51-17e9-4de3-a5d0-4c436d413940
@@ -636,29 +636,40 @@ let
 		ylabel = "Relative flux",
 		xlabelsize = 24,
 		ylabelsize = 24,
+		limits = (4_500, 11_000, 0.0, 2.8),
 	)
 
 	fluxes = [f_target, [f_comps[:, :, i] for i in 1:3]...]
 	labels = obj_names.vals
-	#f_norm = 40362.188283796 # median IMACS WASP-50 flux for comparison
+	norm = 40_000.0 #median(f_target)
 
 	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
-	for (i, (name, f)) in enumerate(zip(labels, fluxes))
-		spec_plot!(ax, wav, f;
-			color=COLORS_SERIES[i],
-			#norm = f_norm,
-			norm = median(f),
-			label = name,
-		)
+	
+	cube_path = "data/reduced_data/cubes/LC_spectra.jld2"
+	if ispath(cube_path)
+		cube = load("data/reduced_data/cubes/LC_spectra.jld2")
+	else
+		cube = OrderedDict()
 	end
-
-
-	xlims!(ax, 4_500, 11_000)
-	ylims!(ax, 0, 2.6)
+	cube_spectra = OrderedDict()
+	cube_spectra["wav"] = wav
+	cube_spectra["norm"] = [norm]
+	cube_spectra["wbins"] = wbins
+	cube_spectra["spec"] = OrderedDict()
+	for (i, (label, f)) in enumerate(zip(labels, fluxes))
+		μ, σ = spec_plot!(ax, wav, f;
+			color = COLORS_SERIES[i],
+			norm,
+			label,
+		)
+		cube_spectra["spec"][label] = [μ, σ]
+	end
+	cube[fname_suff] = cube_spectra
 
 	axislegend("Transit 2 (LDSS3C)", halign=:right, gridshalign=:right)
 
 	savefig(fig, "$(FIG_DIR)/extracted_spectra_$(fname_suff).pdf")
+	save(cube_path, sort(cube))
 
 	fig
 end
@@ -873,7 +884,7 @@ blc_plots[cName]
 # ╟─db933939-b8df-48b2-b53e-1dbd7ec1b07c
 # ╟─25903146-2f23-4e54-bd7d-aed1025f2fa5
 # ╠═45418bd3-74a3-4758-9fce-adddbeeec076
-# ╠═7d68ad39-3e39-48fa-939a-e56c6659d2b3
+# ╠═b9460e17-4034-4132-a57e-94721fa15d15
 # ╠═a6088ea2-904f-4909-b1be-9470e7ec2010
 # ╟─bd937d51-17e9-4de3-a5d0-4c436d413940
 # ╠═8c82a78d-7382-40d4-a76b-02e7cd061d67
@@ -938,3 +949,4 @@ blc_plots[cName]
 # ╠═2d34e125-548e-41bb-a530-ba212c0ca17c
 # ╠═c911cecd-0747-4cd1-826f-941f2f58091c
 # ╠═f883b759-65fc-466e-9c8f-e4f941def935
+# ╠═501b0cd4-117c-4b6d-a2a1-e26580f7c008

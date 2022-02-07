@@ -99,11 +99,7 @@ med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
 function spec_plot!(ax, wav, A; color=:blue, norm=1.0, label="")
 	μ, σ = med_std(A) ./ norm
 	band!(ax, wav, μ .- σ, μ .+ σ, color=(color, 0.25))
-	lines!(ax, wav, μ;
-		color = color,
-		cycle = Cycle(:linestyle),
-		label = label,
-	)
+	lines!(ax, wav, μ; color, label)
 	return μ, σ
 end
 
@@ -569,11 +565,11 @@ begin
 		ylabel = "Relative flux",
 		xlabelsize = 24,
 		ylabelsize = 24,
-		limits = (4_500, 11_000, 0.0, nothing),
+		limits = (4_500, 11_000, 0.0, 2.8),
 	)
 
 	wav = LC_spectra["wavelengths"]
-	norm = median(LC_spectra["WASP50"])
+	norm = 40_000.0 #median(LC_spectra["WASP50"])
 	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
 	specs = filter(p -> p.first != "wavelengths", LC_spectra)
 	
