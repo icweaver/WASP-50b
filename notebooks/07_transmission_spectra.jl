@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.7
+# v0.18.0
 
 using Markdown
 using InteractiveUtils
@@ -617,7 +617,8 @@ begin
 		)
 		colgap!(fig.layout, 30)
 	else
-		plot_tspecs!(fig, limits=(4_600, 9_800, 15_500, 22_500))
+		ax = Axis(fig[1, 1]; limits=(4_600, 9_800, 15_500, 22_500))
+		plot_tspecs!(ax)
 	end
 	
 	suf = basename(dirname(DATA_DIR))
