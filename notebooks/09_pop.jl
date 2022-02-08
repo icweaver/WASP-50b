@@ -87,19 +87,41 @@ end
 # ╔═╡ 86a99042-bb9b-43e6-87ae-d76f88b10533
 df_ps = let
 		columns = [
+		# Planet name
 		"pl_name",
+
+		# Rₛ
 		"st_rad",
 		"st_raderr1",
 		"st_raderr2",
+
+		# Mₛ
+		"st_mass",
+		"st_masserr1",
+		"st_masserr2",
+
+		# P
+		"pl_orbper",
+		"pl_orbpererr1",
+		"pl_orbpererr2",
+
+		# K
+		"pl_rvamp",
+		"pl_rvamperr1",
+		"pl_rvamperr2",
+
+		# i
+		"pl_orbincl",
+		"pl_orbinclerr1",
+		"pl_orbinclerr2",
+		
+		# Rₚ/Rₛ
 		"pl_ratror",
 		"pl_ratrorerr1",
 		"pl_ratrorerr2",
-		"pl_bmassj",
-		"pl_bmassjerr1",
-		"pl_bmassjerr2",
-		"pl_eqt",
-		"pl_eqterr1",
-		"pl_eqterr2",
+		
+		
+		# References
 		"pl_refname",
 		"st_refname",
 	]
@@ -120,8 +142,14 @@ gdf[1]
 # ╔═╡ 3b730613-4fe1-4ee7-8f78-603d8aa70aac
 df_w43 = df_ps[df_ps.pl_name .== "WASP-43 b", :]
 
+# ╔═╡ 0d7fab79-32ae-4297-bc92-9e6cf11f89a8
+dropmissing(df_w43, [:st_raderr1, :st_masserr1, :pl_orbpererr1])
+
 # ╔═╡ 0bfb06df-3e61-46d3-b968-0c0b5e723ad8
 dropmissing(df_w43)
+
+# ╔═╡ 44db28f6-8e6c-4d4f-821e-8a8fb0974feb
+df_hatp23 = df_all[df_all.pl_name .== "HAT-P-23 b", :]
 
 # ╔═╡ 4d1a7740-24c7-4cec-b788-a386bc25f836
 @mdx """
@@ -635,7 +663,9 @@ end
 # ╠═a803278f-1de2-48dd-a7bc-3b73fa648a33
 # ╠═55b4e42a-2869-4c63-b50b-28c7720410b3
 # ╠═3b730613-4fe1-4ee7-8f78-603d8aa70aac
+# ╠═0d7fab79-32ae-4297-bc92-9e6cf11f89a8
 # ╠═0bfb06df-3e61-46d3-b968-0c0b5e723ad8
+# ╠═44db28f6-8e6c-4d4f-821e-8a8fb0974feb
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
 # ╠═42ca0d12-7322-4bc0-8c4d-98b7a42c9696
 # ╠═7336f748-5a5a-476e-80d0-cb6200aefeff
