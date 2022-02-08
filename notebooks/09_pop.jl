@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.7
+# v0.18.0
 
 using Markdown
 using InteractiveUtils
@@ -12,13 +12,16 @@ begin
 	using PlutoUI
 	import MarkdownLiteral: @mdx
 	using AlgebraOfGraphics, CairoMakie
-	using CSV, Chain, DataFrames, DataFrameMacros
+	using CSV, Chain, DataFrames, DataFramesMeta
 	using HTTP
 	using Unitful, UnitfulAstro
 	import Unitful: k, G
 	using NaturalSort
 	using Latexify
 end
+
+# ╔═╡ 333d13f6-e6dd-4312-9d0f-84a41aebbde7
+using Measurements
 
 # ╔═╡ 7493bb13-ee41-4798-99f6-dc1df97bd624
 begin
@@ -54,11 +57,24 @@ df_all = let
 		"disc_facility",
 		"tic_id",
 		"pl_rade",
+		"pl_radeerr1",
+		"pl_radeerr2",
 		"pl_bmasse",
+		"pl_bmasseerr1",
+		"pl_bmasseerr2",
 		"pl_orbsmax",
 		"st_teff",
 		"st_rad",
+		"st_raderr1",
+		"st_raderr2",
 		"sy_jmag",
+		"pl_eqt",
+		"pl_eqterr1",
+		"pl_eqterr2",
+		"pl_eqt_reflink",
+		"pl_ratror",
+		"pl_ratrorerr1",
+		"pl_ratrorerr2",
 	]
 	url = "https://exoplanetarchive.ipac.caltech.edu/TAP"
 	#cond = "tran_flag+=1+and+pl_eqt+<+1000+and+pl_rade+<+4"
@@ -67,6 +83,20 @@ df_all = let
 	request = HTTP.get("$(url)/sync?query=$(query)")
 	CSV.read(request.body, DataFrame)
 end
+
+# ╔═╡ 86a99042-bb9b-43e6-87ae-d76f88b10533
+# df_ps = let
+# 		columns = [
+# 		"pl_name",
+# 		"st_rad",
+# 	]
+# 	url = "https://exoplanetarchive.ipac.caltech.edu/TAP"
+# 	#cond = "tran_flag+=1+and+pl_eqt+<+1000+and+pl_rade+<+4"
+# 	cond = "pl_name+=0"
+# 	query = "select+$(join(columns, ','))+from+ps+where+$(cond)&format=csv"
+# 	request = HTTP.get("$(url)/sync?query=$(query)")
+# 	CSV.read(request.body, DataFrame)
+# end
 
 # ╔═╡ 4d1a7740-24c7-4cec-b788-a386bc25f836
 @mdx """
@@ -160,6 +190,30 @@ tspec_targs = [
 	# "XO-1 b",
 ]
 
+# ╔═╡ 05d65745-6972-41fe-8308-e5c97c85692b
+get_gₚ(Mₚ, RₚRₛ, Rₛ) = G * Mₚ / (RₚRₛ^2 * Rₛ^2)
+
+# ╔═╡ 32449eeb-a772-423c-bd52-fd6b3b8e2bba
+df_T_vs_g = let
+	df = DataFrame(
+		pl_name = ["HAT-P-23 b", "HD 189733 b", "WASP-43 b", "WASP-50 b"],
+		RₚRₛ = [0.11616±0.00081, 0.1504±0.0039, 0.1588±0.0040, 0.1390±0.0006],
+		Rₛ   = [1.089±0.028,     0.765±0.019,   0.6506±0.0054, 0.843±0.031  ]u"Rsun",
+		Mₚ   = [2.07±0.12,       1.166±0.052,   1.998±0.079,   1.4688±0.0920]u"Mjup",
+		Rₚ   = [1.224±0.037,     1.119±0.038,   1.006±0.017,   1.166±0.043  ]u"Rjup",
+		Teq  = [1951±30,         1209±11,       1426.7±8.5,    1394.84±32.70],
+	)
+	@chain df begin
+		@aside g_SI_m = @. get_gₚ(_.Mₚ, _.RₚRₛ, _.Rₛ) .|> u"m/s^2"
+		@transform! begin
+			:g_SI = Measurements.value.(g_SI_m) |> ustrip
+			:g_SI_err = Measurements.uncertainty.(g_SI_m) |> ustrip
+			:T_K = Measurements.value.(:Teq)
+			:T_K_err = Measurements.uncertainty.(:Teq)
+		end
+	end
+end
+
 # ╔═╡ ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
 df_wakeford = let
 	df = CSV.read("data/pop/H2O_J_data.txt", DataFrame;
@@ -174,8 +228,8 @@ df_wakeford = let
 	df
 end
 
-# ╔═╡ 15980829-67b5-4ccc-b914-dc188df67563
-sort(df_wakeford, :Name, lt=natural)
+# ╔═╡ 920ac6ab-2fb9-4980-8563-b52c708cb65f
+df_T_vs_g
 
 # ╔═╡ 7f956b36-ce65-4e4e-afa5-9b97b9e06954
 @mdx """
@@ -234,27 +288,39 @@ end
 # ╔═╡ abaee9cc-9841-4b6b-ad33-2093c27422c8
 compute_g(M, R) = G * M / R^2
 
+# ╔═╡ 6bbdf2a5-0f97-404d-aa5c-a6681e8efa61
+compute_g((565.714 ± 31.782)u"Mearth", (10.424 ± 1.009)u"Rearth") |> u"m/s^2"
+
 # ╔═╡ 1e587a84-ed43-4fac-81cf-134a4f3d65d5
 compute_H(μ, T, g) = k * T / (μ * g)
 
 # ╔═╡ 7336f748-5a5a-476e-80d0-cb6200aefeff
 _df = @chain df_all begin
-	dropmissing([:pl_rade, :pl_bmasse, :pl_orbsmax, :st_teff, :sy_jmag])
-	@transform begin
-		:pl_eqt = compute_Teq(
-			:st_teff*u"K", :st_rad*u"Rsun", :pl_orbsmax*u"AU"; α=0.1
-		) |> strip_u(u"K")
-
-		:g_SI = compute_g(
-			:pl_bmasse*u"Mearth", :pl_rade*u"Rearth"
+	dropmissing([:pl_rade, :pl_bmasse, :pl_bmasseerr1, :pl_eqt, :pl_orbsmax, :st_teff, :sy_jmag, :pl_radeerr1, :pl_radeerr2, :pl_bmasseerr2, :tic_id,
+	:pl_eqterr1, :pl_eqterr2, :pl_ratror, :pl_ratrorerr1, :pl_ratrorerr2,])
+	@aside begin
+		Mₚ_err_max = maximum.(eachrow(abs.(_[:, [:pl_bmasseerr1, :pl_bmasseerr2]])))
+		Mₚ = _.pl_bmasse .± Mₚ_err_max
+		Rₚ_err_max = maximum.(eachrow(abs.(_[:, [:pl_radeerr1, :pl_radeerr2]])))
+		Rₚ = _.pl_rade .± Rₚ_err_max
+		g_SI_m = @. compute_g(
+			Mₚ*u"Mearth", Rₚ*u"Rearth"
 		) |> strip_u(u"m/s^2")
 	end
 	@transform begin
-		:H_km = compute_H(
+		# :pl_eqt = @. compute_Teq(
+		# 	:st_teff*u"K", :st_rad*u"Rsun", :pl_orbsmax*u"AU"; α=0.1
+		# ) |> strip_u(u"K")
+
+		:g_SI = Measurements.value.(g_SI_m)
+		:g_SI_err = Measurements.uncertainty.(g_SI_m)
+	end
+	@transform begin
+		:H_km = @. compute_H(
 			2.0*u"u", :pl_eqt*u"K", :g_SI*u"m/s^2"
 		) |> strip_u(u"km")
 
-		:TSM = compute_TSM(
+		:TSM = @. compute_TSM(
 			:pl_rade, :pl_eqt, :pl_bmasse, :st_rad, :sy_jmag
 		)
 	end
@@ -290,10 +356,18 @@ With this list of $(nrow(df)) transiting exoplanets, we now select the subset of
 	Double check constraints
 """
 
+# ╔═╡ 0f118d0e-0eb6-4517-8378-9623337f73ca
+df_tspecs = @subset df :pl_name ∈ tspec_targs
+
+# ╔═╡ 72fc2033-74cf-4e62-9c26-71016caacbea
+@subset df :pl_name ∈ ["HAT-P-23 b", "WASP-43 b", "WASP-50 b"]
+
 # ╔═╡ c98c5618-4bac-4322-b4c3-c76181f47889
 df_HGHJs_all = @chain df begin
-	@subset (1.0 ≤ :TSMR) &
-	(15.0 ≤ :g_SI ≤ 100.0)
+	@subset (1.0 .≤ :TSMR) .&
+	(20.0 .≤ :g_SI) .&
+	(1_000.0 .≤ :pl_eqt) .&
+	(10.0 .≤ :pl_rade)
 	sort(:TSMR, rev=true) # To stack smaller circles on top in Figure
 end
 
@@ -310,27 +384,17 @@ function label_text!(ax, targ;
 )
 	targg = split(targ, " (")[1]
 	x, y = val.(Ref(df), Ref(targg), [:pl_eqt, :g_SI])
-	text!(ax, targ, position=(x, y), align=(al_x, al_y), textsize=16, offset=offset)
+	text!(ax, targ, position=(x, y), align=(al_x, al_y), offset=offset)
 end
 
 # ╔═╡ 53c4fd02-7a48-47a1-9341-ede3e8d497f7
 y = @chain df_HGHJs_all begin
-	@select :pl_name :disc_facility :pl_eqt :g_SI :ΔD_ppm :TSMR
-	@sort :ΔD_ppm
-	#first(20)
+	@select :pl_name :disc_facility :pl_eqt :g_SI :TSMR
+	#first(10)
 end
 
 # ╔═╡ 94a5f868-d043-4c1f-831c-17ebabd3df6c
 latextabular(y, latex=false, fmt="%.2f") |> PlutoUI.Text
-
-# ╔═╡ 0f118d0e-0eb6-4517-8378-9623337f73ca
-df_tspecs = @subset df :pl_name ∈ tspec_targs
-
-# ╔═╡ b20216ab-edf0-4f70-a9ab-3b9148e4392c
-sort(df_tspecs, :pl_name, lt=natural)
-
-# ╔═╡ 72fc2033-74cf-4e62-9c26-71016caacbea
-@subset df :pl_name ∈ ["HAT-P-23 b", "WASP-43 b", "WASP-50 b"]
 
 # ╔═╡ 683a8d85-b9a8-4eab-8a4b-e2b57d0783c0
 @mdx """
@@ -340,7 +404,7 @@ sort(df_tspecs, :pl_name, lt=natural)
 # ╔═╡ 95bb5b9e-0c50-48fa-bf4c-d0819c327bcc
 function savefig(fig, fpath)
 	mkpath(dirname(fpath))
-    save(fpath, fig)
+    save(fpath, fig, pt_per_unit=1)
 	@info "Saved to: $(fpath)"
 end
 
@@ -349,47 +413,46 @@ begin
 	##############
 	# PLOT CONFIGS
 	##############
-	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (800, 600)
-	const FIG_LARGE = (1_200, 1_000)
+	const FIG_TALL = 72 .* (6, 8)
+	const FIG_WIDE = 72 .* (12, 6)
+	const FIG_LARGE = 72 .* (12, 12)
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
-			"#a6cee3",  # Cyan
-			"#fdbf6f",  # Yellow
-			"#ff7f00",  # Orange
-			"#1f78b4",  # Blue
+			"#66C2A5",  # Green
+			"#FDBF6F",  # Yellow
+			"#FF7F00",  # Orange
+			"#1F78B4",  # Blue
 		]
 	)
-	
+
 	set_aog_theme!()
 	update_theme!(
 		Theme(
 			Axis = (
-				xlabelsize = 18,
-				ylabelsize = 18,
+				xlabelsize = 24,
+				ylabelsize = 24,
 				topspinevisible = true,
 				rightspinevisible = true,
 				topspinecolor = :darkgrey,
-				rightspinecolor = :darkgrey
+				rightspinecolor = :darkgrey,
 			),
 			Label = (
-				textsize = 18,
-				padding = (0, 10, 0, 0),
-				font = AlgebraOfGraphics.firasans("Medium")
+				textsize = 24,
+				font = AlgebraOfGraphics.firasans("Medium"),
 			),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Lines = (linewidth=3,),
 			Scatter = (linewidth=10,),
-			Text = (font = AlgebraOfGraphics.firasans("Medium"),),
+			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=24),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
-			fontsize = 18,
+			figure_padding = (0, 1.5, 0, 0.0),
+			fontsize = 24,
 			rowgap = 5,
 			colgap = 5,
 		)
 	)
-	
-	COLORS
 
+	COLORS
 end
 
 # ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
@@ -399,29 +462,34 @@ let
 		:g_SI => "Surface gravity (m/s²)",
 	) *
 	(
-		  data(df) * visual(color=(:darkgrey, 0.25))
+		data(df) * visual(color=(:darkgrey, 0.25)) +
 		
-		+ data(df_wakeford)
+		data(df_wakeford)
 			* mapping(color=:H2OJ => "H₂O - J")
-			* visual(marker=:rect, markersize=20, strokewidth=1, colormap=:cividis)
+			* visual(
+				marker=:rect, markersize=20, strokewidth=1, colormap=:cividis
+			) +
 		
-		+ data(df_tspecs) * visual(marker='□', markersize=20)
-	)
+		data(df_tspecs) * visual(marker='□', markersize=20)
+	) +
+	data(df_T_vs_g) * mapping(:T_K, :g_SI, :T_K_err) * visual(Errorbars, direction=:x) +
+	data(df_T_vs_g) * mapping(:T_K, :g_SI, :g_SI_err) * visual(Errorbars, direction=:y)
 	
 	fg = draw(p;
-		axis = (; limits=((0, 4100), (-1, 60))),
-		figure = (; resolution=FIG_WIDE),
+		axis = (; limits=((0, 3_400), (-1, 55)), yticks=0:10:50),
+		figure = (; resolution=FIG_LARGE),
+		colorbar = (; limits=(0, 2.3)),
 	)
 	ax = fg.grid[1].axis
 	
 	label_text!(ax, "WASP-43 b (Weaver+ 2020)", al_x=:left, offset=(10, 0))
 	label_text!(ax, "HAT-P-23 b (Weaver+ 2021)", al_x=:left, offset=(0, 8))
-	label_text!(ax, "WASP-50 b (this work)", al_x=:right, offset=(0, 8))
+	label_text!(ax, "WASP-50 b (this work)", al_x=:right, offset=(8, 8))
 	label_text!(ax, "HD 189733 b (Sing+ 2016.)", al_x=:left, offset=(0, 8))
 	hl = hlines!(ax, 20, color=:darkgrey, linestyle=:dash)
 	translate!(hl, 0, 0, -1) # Place behind plot markers
 
-    savefig(fg, "$(FIG_DIR)/t_vs_g.png")
+    savefig(fg, "$(FIG_DIR)/t_vs_g.pdf")
 
 	fg
 end
@@ -430,31 +498,31 @@ end
 # TODO: Place latitude constraints
 let
 	# Phase plot
-	markersize_factor = 8.0
+	markersize_factor = 14.0
 	m = mapping(
 		:pl_eqt => "Equilibrium temperature (K)",
 		:g_SI => "Surface gravity (m/s²)",
-		color = :ΔD_ppm => "ΔD (ppm)",
+		#color = :ΔD_ppm => "ΔD (ppm)",
 		markersize = :TSMR => (x -> markersize_factor*x),
 	)
-	p = m * data(df_HGHJs_all) * visual(colormap=:viridis)
+	p = m * data(df_HGHJs_all) * visual(colormap=:viridis, marker='○')
 
 	fg = draw(p;
-		axis = (; limits=((0, 4100), (-1, 60))),
-		figure = (; resolution=FIG_WIDE),
+		axis = (; limits=((0, 3_400), (-1, 55)), yticks=0:10:50),
+		figure = (; resolution=FIG_LARGE),
 	)
 	ax = fg.grid[1].axis
 
 	# HGHJ g boundary
 	hl = hlines!(ax, 20.0, color=:darkgrey, linestyle=:dash)
 	translate!(hl, 0, 0, -1) # Place behind plot markers
-	
+
 	# Annotate HGHJs with tspec observations
 	HP23x, HP23y = val.(Ref(df_HGHJs), Ref("HAT-P-23 b"), [:pl_eqt, :g_SI])
 	annotate_text!(
 		ax,
 		"HAT-P-23b",
-		(HP23x[1], HP23y[1]) .- (-600, -3),
+		(HP23x[1], HP23y[1]) .- (-100, -5),
 		(HP23x[1], HP23y[1]),
 		0.5,
 		0.1;
@@ -464,17 +532,17 @@ let
 	annotate_text!(
 		ax,
 		"WASP-43b",
-		(W43x[1], W43y[1]) .- (800, 5),
+		(W43x[1], W43y[1]) .- (300, 0),
 		(W43x[1], W43y[1]),
-		0.3,
-		0.1;
+		0.0,
+		0.0;
 		align = (:center, :top),
 	)
 	W50x, W50y = val.(Ref(df_HGHJs), Ref("WASP-50 b"), [:pl_eqt, :g_SI])
 	annotate_text!(
 		ax,
 		"WASP-50b",
-		(W50x[1], W50y[1]) .- (-300, -8),
+		(W50x[1], W50y[1]) .- (400, -5),
 		(W50x[1], W50y[1]),
 		0.5,
 		0.1;
@@ -490,7 +558,7 @@ let
 		0.0;
 		align = (:center, :baseline),
 	)
-	
+
 	# TSMR legend
 	tsmrs = [14, 4, 1]
 	axislegend(
@@ -498,15 +566,16 @@ let
 		[MarkerElement(marker='○', markersize=markersize_factor*ms) for ms ∈ tsmrs],
 		["$tsmr" for tsmr ∈ tsmrs],
 		"TSMR",
-		position = :rt,
-		patchsize = (120, 80),
+		position = :cb,
+		patchsize = (160, 200),
 		framevisible = true,
-		padding = (5, 5, -24, 10),
-		margin = (0, 0, 0, 0),
-		titlegap = 24,
+		padding = (10, 10, -20, 0),
+		#margin = (0, 0, 0, 0),
+		titlegap = -40,
+		orientation = :horizontal,
 	)
 
-	savefig(fg, "$(FIG_DIR)/hg_pop.png")
+	savefig(fg, "$(FIG_DIR)/hg_pop.pdf")
 	
 	fg
 end
@@ -516,12 +585,13 @@ end
 # ╠═7493bb13-ee41-4798-99f6-dc1df97bd624
 # ╟─6b06701b-05e2-4284-a308-e9edeb65a648
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
+# ╠═86a99042-bb9b-43e6-87ae-d76f88b10533
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
 # ╠═7336f748-5a5a-476e-80d0-cb6200aefeff
+# ╠═333d13f6-e6dd-4312-9d0f-84a41aebbde7
 # ╠═56ad4c87-069b-4815-955b-7a8d7d012031
 # ╟─c7eabcc6-5139-448d-abdb-ec752788bd59
 # ╟─31c05377-2ed4-4ad6-910f-5dedddcbf6dc
-# ╠═c98c5618-4bac-4322-b4c3-c76181f47889
 # ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
 # ╠═e0365154-d6c8-4db2-bb85-bf2536a3aa74
 # ╠═9aed232f-ec74-4ec6-9ae7-06b90539833b
@@ -529,12 +599,15 @@ end
 # ╠═b4c7316d-d198-4449-ad45-66397fd1a9a5
 # ╠═0f118d0e-0eb6-4517-8378-9623337f73ca
 # ╠═72fc2033-74cf-4e62-9c26-71016caacbea
-# ╠═b20216ab-edf0-4f70-a9ab-3b9148e4392c
-# ╠═15980829-67b5-4ccc-b914-dc188df67563
+# ╠═6bbdf2a5-0f97-404d-aa5c-a6681e8efa61
+# ╠═05d65745-6972-41fe-8308-e5c97c85692b
+# ╠═32449eeb-a772-423c-bd52-fd6b3b8e2bba
 # ╠═ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
 # ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
+# ╠═920ac6ab-2fb9-4980-8563-b52c708cb65f
 # ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
 # ╟─7f956b36-ce65-4e4e-afa5-9b97b9e06954
+# ╠═c98c5618-4bac-4322-b4c3-c76181f47889
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d
 # ╠═94a5f868-d043-4c1f-831c-17ebabd3df6c

@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.7
+# v0.18.0
 
 using Markdown
 using InteractiveUtils
@@ -307,8 +307,8 @@ end
 # 	Label(fig[end+1, 1], "Time (BTJD days)", tellwidth=false)
 # 	Label(fig[1:end-1, 0], "Relative flux", rotation=π/2)
 
-# 	savefig(fig, "$(FIG_DIR)/TESS_flux.png")
-	
+# 	savefig(fig, "$(FIG_DIR)/TESS_flux.pdf")
+
 # 	fig
 # end
 
@@ -531,7 +531,7 @@ end
 # ╔═╡ 79acbb60-803a-4047-b26d-1cf6262274a0
 function savefig(fig, fpath)
 	mkpath(dirname(fpath))
-    save(fpath, fig)
+    save(fpath, fig, pt_per_unit=1)
 	@info "Saved to: $(fpath)"
 end
 
@@ -540,68 +540,68 @@ begin
 	##############
 	# PLOT CONFIGS
 	##############
-	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (800, 600)
-	const FIG_LARGE = (1_200, 1_000)
+	const FIG_TALL = 72 .* (6, 8)
+	const FIG_WIDE = 72 .* (12, 6)
+	const FIG_LARGE = 72 .* (12, 12)
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
-			"#a6cee3",  # Cyan
-			"#fdbf6f",  # Yellow
-			"#ff7f00",  # Orange
-			"#1f78b4",  # Blue
+			"#66C2A5",  # Green
+			"#FDBF6F",  # Yellow
+			"#FF7F00",  # Orange
+			"#1F78B4",  # Blue
 		]
 	)
-	
+
 	set_aog_theme!()
 	update_theme!(
 		Theme(
-			figure_padding = 0.0,
 			Axis = (
 				xlabelsize = 18,
 				ylabelsize = 18,
 				topspinevisible = true,
 				rightspinevisible = true,
 				topspinecolor = :darkgrey,
-				rightspinecolor = :darkgrey
+				rightspinecolor = :darkgrey,
 			),
 			Label = (
 				textsize = 18,
-				padding = (0, 10, 0, 0),
-				font = AlgebraOfGraphics.firasans("Medium")
+				font = AlgebraOfGraphics.firasans("Medium"),
 			),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Lines = (linewidth=3,),
 			Scatter = (linewidth=10,),
-			Text = (font = AlgebraOfGraphics.firasans("Medium"),),
+			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=18),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
+			figure_padding = (0, 1.5, 0, 0),
 			fontsize = 18,
 			rowgap = 5,
 			colgap = 5,
 		)
 	)
-	
-	COLORS
 
+	COLORS
 end
 
 # ╔═╡ 94d05a5b-b05e-4407-bcd3-7d625680a262
 let
-	fig = Figure(resolution=FIG_WIDE)
-	
-	ax_window = Axis(fig[1, 1])
+	fig = Figure(resolution=FIG_WIDE, fontsize=24)
+
+	ax_window = Axis(fig[1, 1], xlabelsize = 24,
+		ylabelsize = 24,)
 	for (i, pgram_window) ∈ enumerate(pgrams_window)
 		lines!(ax_window, periodpower(pgram_window)..., color=COLORS_SERIES[i])
 	end
-	text!(ax_window, "Window function", position=(1, 0.3))
-	
-	ax = Axis(fig[2, 1], xlabel="Period (days)")
+	text!(ax_window, "Window function", position=(1, 0.3), textsize=24)
+
+	ax = Axis(fig[2, 1], xlabel="Period (days)", xlabelsize = 24,
+		ylabelsize = 24,)
 	sectors = ("Sector 04", "Sector 31", "Combined")
 	for (i, (pgram, plan, P_max, sector)) ∈ enumerate(
 		zip(pgrams, plans, P_maxs, sectors)
 	)
 		# Compute FAPs
 		b = LombScargle.bootstrap(100, plan)
-		
+
 		# Plot
 		lines!(ax, periodpower(pgram)...;
 			color = COLORS_SERIES[i],
@@ -609,28 +609,28 @@ let
 		)
 		hlines!(ax, collect(fapinv.(Ref(b), (0.01, 0.05, 0.1))), color=:darkgrey)
 	end
-	
+
 	axislegend("P_max (days)")
-	
+
 	hidexdecorations!(ax_window)
 	linkxaxes!(ax_window, ax)
-	
+
 	#xlims!(ax, 0, 10)
 	#ylims!(ax, 0, 0.3)
-	
-	Label(fig[1:2, 0], "Normalized power", rotation=π/2)
-	
+
+	Label(fig[1:2, 0], "Normalized power", rotation=π/2, textsize=24)
+
 	#axislegend()
-	
-	savefig(fig, "$(FIG_DIR)/stellar_activity_pg.png")
-	
+
+	savefig(fig, "$(FIG_DIR)/stellar_activity_pg.pdf")
+
 	fig
 end
 
 # ╔═╡ 49bcddbe-d413-48ae-91d8-92bcebf40518
 let
-	fig = Figure(resolution=FIG_WIDE)
-	
+	fig = Figure(resolution=FIG_LARGE, fontsize=24)
+
 	axs = []
 	sectors = ("Sector 04", "Sector 31", "Combined")
 	for (i, (lc_folded, lc_folded_binned, lc_fit_folded)) in enumerate(zip(
@@ -639,7 +639,8 @@ let
 		lc_folded = to_PyPandas(lc_folded)
 		lc_folded_binned = to_PyPandas(lc_folded_binned)
 		lc_fit_folded = to_PyPandas(lc_fit_folded)
-		ax = Axis(fig[i, 1])
+		ax = Axis(fig[i, 1], xlabelsize = 24,
+		ylabelsize = 24,)
 		push!(axs, ax)
 		scatter!(ax, lc_folded.time, lc_folded.flux, color=(:darkgrey, 0.5))
 		scatter!(ax, lc_folded_binned.time, lc_folded_binned.flux, color=COLORS[2])
@@ -648,16 +649,17 @@ let
 		)
 		text!(ax, "$(sectors[i])";
 			position = (3.8, 1.006),
+			textsize = 24,
 		)
 		ylims!(ax, 0.991, 1.01)
 	end
-	
+
 	linkaxes!(axs...)
-	
+
 	axs[end].xlabel = "Phase-folded time (d)"
 	axs[2].ylabel = "Normalized flux"
-	
-	savefig(fig, "$(FIG_DIR)/stellar_activity_phase.png")
+
+	savefig(fig, "$(FIG_DIR)/stellar_activity_phase.pdf")
 	
 	fig
 end
@@ -740,7 +742,7 @@ body.disable_ui main {
 # ╟─18223d42-66d8-40d1-9d89-be8af46853e2
 # ╠═682c3732-e68f-4fdb-bd63-553223308364
 # ╟─ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd
-# ╟─79acbb60-803a-4047-b26d-1cf6262274a0
+# ╠═79acbb60-803a-4047-b26d-1cf6262274a0
 # ╠═9e2ce576-c9bd-11eb-0699-47af13e79589
 # ╠═55beac98-0929-4a55-91f7-cee7c781498c
 # ╟─01bfe0ad-3cb9-42f0-9d72-3deef3969d05

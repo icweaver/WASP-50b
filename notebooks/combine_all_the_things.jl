@@ -15,12 +15,6 @@ end
 # ╔═╡ 3e3b35da-8aff-492a-b3db-6d07fe418577
 LC_spectra = load("data/reduced_data/cubes/LC_spectra.jld2");
 
-# ╔═╡ 63ed64d0-8b5f-4873-a098-ef572c1ef602
-LC_spectra["LDSS3C_ut150927_flat"]
-
-# ╔═╡ 452cd5af-c17c-4eab-b07a-c60939e4cdeb
-x = [1, 2, 3 ,4]
-
 # ╔═╡ 7db2747a-4616-4733-a169-d851772625a7
 function spec_plot!(ax, wav, μ, σ; color=:blue, norm=1.0, label="")
 	band!(ax, wav, μ .- σ, μ .+ σ, color=(color, 0.25))
@@ -38,6 +32,7 @@ begin
 	const FIG_TALL = 72 .* (6, 8)
 	const FIG_WIDE = 72 .* (12, 6)
 	const FIG_LARGE = 72 .* (12, 12)
+	const FIG_WIDE_LARGE = 72 .* (12, 8)
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
@@ -63,7 +58,7 @@ begin
 				textsize = 18,
 				font = AlgebraOfGraphics.firasans("Medium"),
 			),
-			Lines = (linewidth=3,),
+			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
 			Scatter = (linewidth=10,),
 			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=18),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
@@ -88,7 +83,7 @@ end
 
 # ╔═╡ a0d9d9b3-427d-4903-bbcf-9877c4a9d4ea
 let
-	fig = Figure(resolution=FIG_LARGE)
+	fig = Figure(resolution=FIG_WIDE_LARGE)
 	grid = CartesianIndices((2, 2))
 	axs = []
 	for (i, (transit, cube)) ∈ enumerate(LC_spectra)
@@ -109,9 +104,7 @@ end
 # ╔═╡ Cell order:
 # ╠═45c6d6f6-86c0-11ec-017f-95b00d819374
 # ╠═3e3b35da-8aff-492a-b3db-6d07fe418577
-# ╠═63ed64d0-8b5f-4873-a098-ef572c1ef602
 # ╠═a0d9d9b3-427d-4903-bbcf-9877c4a9d4ea
-# ╠═452cd5af-c17c-4eab-b07a-c60939e4cdeb
 # ╠═77d5b506-6887-4bb0-aed9-61cc9af88630
 # ╠═7db2747a-4616-4733-a169-d851772625a7
 # ╠═008ee0a0-9a98-4442-a43c-bb30a3960057

@@ -92,6 +92,9 @@ transits = merge(
 With the flux extracted for each object, we now plot the resulting stellar spectra:
 """
 
+# ╔═╡ 16bf1b8c-f45e-4b6c-a740-6f7fe4fe1a7a
+
+
 # ╔═╡ 6fd88483-d005-4186-8dd2-82cea767ce90
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
 
@@ -293,7 +296,7 @@ LC = load_pickle(FPATH_LC);
 LC_spectra = pyconvert(Dict{String, Array}, LC["spectra"]);
 
 # ╔═╡ e4e9899c-68c3-4bc4-aadd-7c5d3446e57d
-save_object("/home/mango/Desktop/hmmm.jld2", LC_spectra)
+#save_object("/home/mango/Desktop/hmmm.jld2", LC_spectra)
 
 # ╔═╡ bcda2043-f8c7-46bc-a5d4-b6f1f0883e9e
 LC_cNames = pyconvert(Vector, LC["cNames"])
@@ -386,7 +389,7 @@ begin
 			Scatter = (linewidth=10,),
 			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=18),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
-			figure_padding = 1.5,
+			figure_padding = (0, 1.5, 0, 0),
 			fontsize = 18,
 			rowgap = 5,
 			colgap = 5,
@@ -395,6 +398,12 @@ begin
 
 	COLORS
 end
+
+# ╔═╡ cb1c4a44-09a8-4fff-8703-2d37647148f0
+cName_color = OrderedDict(
+	cName => color
+	for (cName, color) ∈ zip(["WASP50"; cNames_global...], COLORS_SERIES)
+);
 
 # ╔═╡ ccabf5d2-5739-4284-a972-23c02a263a5c
 function plot_div_WLCS!(axs;
@@ -556,6 +565,9 @@ wbins = pyconvert(Matrix, np.array(LC["wbins"]));
 # ╔═╡ 40269026-a833-4dd8-bb22-7d26f35163e9
 wbins_odd = @view wbins[begin:2:end, :] # Selects alternating bins to highlight
 
+# ╔═╡ ca277dd2-351c-4b65-91cb-3b44ed40e0ba
+wbins_even = @view wbins[begin+1:2:end, :]
+
 # ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
 begin
 	# Larger font for two-column
@@ -565,12 +577,15 @@ begin
 		ylabel = "Relative flux",
 		xlabelsize = 24,
 		ylabelsize = 24,
-		limits = (4_500, 11_000, 0.0, 2.8),
+		limits = (4000, 11_000, 0.0, 2.8),
+		xticks = (4_500:1000:10_500),
+		yticks = 0:0.5:3.0,
 	)
 
 	wav = LC_spectra["wavelengths"]
 	norm = 40_000.0 #median(LC_spectra["WASP50"])
 	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
+	vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:black, 0.25))
 	specs = filter(p -> p.first != "wavelengths", LC_spectra)
 	
 	cube_path = "data/reduced_data/cubes/LC_spectra.jld2"
@@ -586,7 +601,7 @@ begin
 	cube_spectra["spec"] = OrderedDict()
 	for (i, (label, f)) in enumerate(sort(specs))
 		μ, σ = spec_plot!(ax, wav, f;
-			color=COLORS_SERIES[i], norm, label
+			color=cName_color[label], norm, label
 		)
 		cube_spectra["spec"][label] = [μ, σ]
 	end
@@ -633,12 +648,15 @@ blc_plots[cName]
 # ╠═3959e46c-87c9-4566-8ab1-f437323f0a9f
 # ╟─32b9a326-ddc8-4557-bcf5-9dcc54ed83e5
 # ╠═dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
+# ╠═cb1c4a44-09a8-4fff-8703-2d37647148f0
 # ╟─e774a20f-2d58-486a-ab71-6bde678b26f8
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
+# ╠═16bf1b8c-f45e-4b6c-a740-6f7fe4fe1a7a
 # ╠═65cc9f56-1e9e-446c-82db-10dcd6334ce3
 # ╠═e4e9899c-68c3-4bc4-aadd-7c5d3446e57d
 # ╠═6471fc66-47a5-455e-9611-c6fd9d56e9dc
 # ╠═40269026-a833-4dd8-bb22-7d26f35163e9
+# ╠═ca277dd2-351c-4b65-91cb-3b44ed40e0ba
 # ╠═1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
 # ╠═6fd88483-d005-4186-8dd2-82cea767ce90
 # ╠═818282bb-03ed-49db-9c1c-c744dad47db8

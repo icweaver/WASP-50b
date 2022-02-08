@@ -616,7 +616,7 @@ begin
 			Scatter = (linewidth=10,),
 			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=18),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
-			figure_padding = 1.5,
+			figure_padding = (0, 1.5, 0, 0),
 			fontsize = 18,
 			rowgap = 5,
 			colgap = 5,
@@ -626,9 +626,16 @@ begin
 	COLORS
 end
 
+# ╔═╡ 1ec8c68f-4e76-4764-a520-320aebbefc27
+cName_color = OrderedDict(
+	cName => color
+	for (cName, color) ∈ zip(["WASP50"; cNames_global...], COLORS_SERIES)
+);
+
 # ╔═╡ 45418bd3-74a3-4758-9fce-adddbeeec076
 let
-	@views wbins_odd = wbins[begin:2:end, :]
+	wbins_odd = @view wbins[begin:2:end, :]
+	wbins_even = @view wbins[begin+1:2:end, :]
 	# Larger font for two-column
 	fig = Figure(resolution=FIG_WIDE, fontsize=24)
 	ax = Axis(fig[1, 1];
@@ -636,14 +643,17 @@ let
 		ylabel = "Relative flux",
 		xlabelsize = 24,
 		ylabelsize = 24,
-		limits = (4_500, 11_000, 0.0, 2.8),
+		limits = (4000, 11_000, 0.0, 2.8),
+		xticks = (4_500:1000:10_500),
+		yticks = 0:0.5:3.0,
 	)
 
 	fluxes = [f_target, [f_comps[:, :, i] for i in 1:3]...]
 	labels = obj_names.vals
 	norm = 40_000.0 #median(f_target)
 
-	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
+	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:black, 0.25))
+	vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:darkgrey, 0.25))
 	
 	cube_path = "data/reduced_data/cubes/LC_spectra.jld2"
 	if ispath(cube_path)
@@ -658,7 +668,7 @@ let
 	cube_spectra["spec"] = OrderedDict()
 	for (i, (label, f)) in enumerate(zip(labels, fluxes))
 		μ, σ = spec_plot!(ax, wav, f;
-			color = COLORS_SERIES[i],
+			color = cName_color[label],
 			norm,
 			label,
 		)
@@ -883,6 +893,7 @@ blc_plots[cName]
 # ╟─9697e26b-b6d9-413b-869f-47bc2ab99919
 # ╟─db933939-b8df-48b2-b53e-1dbd7ec1b07c
 # ╟─25903146-2f23-4e54-bd7d-aed1025f2fa5
+# ╠═1ec8c68f-4e76-4764-a520-320aebbefc27
 # ╠═45418bd3-74a3-4758-9fce-adddbeeec076
 # ╠═b9460e17-4034-4132-a57e-94721fa15d15
 # ╠═a6088ea2-904f-4909-b1be-9470e7ec2010
