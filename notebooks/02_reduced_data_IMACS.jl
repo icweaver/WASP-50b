@@ -95,6 +95,9 @@ With the flux extracted for each object, we now plot the resulting stellar spect
 # ╔═╡ 16bf1b8c-f45e-4b6c-a740-6f7fe4fe1a7a
 
 
+# ╔═╡ e4e9899c-68c3-4bc4-aadd-7c5d3446e57d
+#save_object("/home/mango/Desktop/hmmm.jld2", LC_spectra)
+
 # ╔═╡ 6fd88483-d005-4186-8dd2-82cea767ce90
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
 
@@ -294,9 +297,6 @@ LC = load_pickle(FPATH_LC);
 
 # ╔═╡ 65cc9f56-1e9e-446c-82db-10dcd6334ce3
 LC_spectra = pyconvert(Dict{String, Array}, LC["spectra"]);
-
-# ╔═╡ e4e9899c-68c3-4bc4-aadd-7c5d3446e57d
-#save_object("/home/mango/Desktop/hmmm.jld2", LC_spectra)
 
 # ╔═╡ bcda2043-f8c7-46bc-a5d4-b6f1f0883e9e
 LC_cNames = pyconvert(Vector, LC["cNames"])

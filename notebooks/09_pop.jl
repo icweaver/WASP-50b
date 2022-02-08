@@ -85,23 +85,51 @@ df_all = let
 end
 
 # ╔═╡ 86a99042-bb9b-43e6-87ae-d76f88b10533
-# df_ps = let
-# 		columns = [
-# 		"pl_name",
-# 		"st_rad",
-# 	]
-# 	url = "https://exoplanetarchive.ipac.caltech.edu/TAP"
-# 	#cond = "tran_flag+=1+and+pl_eqt+<+1000+and+pl_rade+<+4"
-# 	cond = "pl_name+=0"
-# 	query = "select+$(join(columns, ','))+from+ps+where+$(cond)&format=csv"
-# 	request = HTTP.get("$(url)/sync?query=$(query)")
-# 	CSV.read(request.body, DataFrame)
-# end
+df_ps = let
+		columns = [
+		"pl_name",
+		"st_rad",
+		"st_raderr1",
+		"st_raderr2",
+		"pl_ratror",
+		"pl_ratrorerr1",
+		"pl_ratrorerr2",
+		"pl_bmassj",
+		"pl_bmassjerr1",
+		"pl_bmassjerr2",
+		"pl_eqt",
+		"pl_eqterr1",
+		"pl_eqterr2",
+		"pl_refname",
+		"st_refname",
+	]
+	url = "https://exoplanetarchive.ipac.caltech.edu/TAP"
+	#cond = "tran_flag+=1+and+pl_eqt+<+1000+and+pl_rade+<+4"
+	cond = "tran_flag+=1"
+	query = "select+$(join(columns, ','))+from+ps+where+$(cond)&format=csv"
+	request = HTTP.get("$(url)/sync?query=$(query)")
+	CSV.read(request.body, DataFrame)
+end
+
+# ╔═╡ a803278f-1de2-48dd-a7bc-3b73fa648a33
+gdf = groupby(df_ps, :pl_name)
+
+# ╔═╡ 55b4e42a-2869-4c63-b50b-28c7720410b3
+gdf[1]
+
+# ╔═╡ 3b730613-4fe1-4ee7-8f78-603d8aa70aac
+df_w43 = df_ps[df_ps.pl_name .== "WASP-43 b", :]
+
+# ╔═╡ 0bfb06df-3e61-46d3-b968-0c0b5e723ad8
+dropmissing(df_w43)
 
 # ╔═╡ 4d1a7740-24c7-4cec-b788-a386bc25f836
 @mdx """
 We next compute the relevant quantities for estimating atmospheric observability:
 """
+
+# ╔═╡ 42ca0d12-7322-4bc0-8c4d-98b7a42c9696
+df_all[df_all.pl_name .== "WASP-43 b", :]
 
 # ╔═╡ c7eabcc6-5139-448d-abdb-ec752788bd59
 strip_u(u) = x -> ustrip(u, x)
@@ -214,6 +242,12 @@ df_T_vs_g = let
 	end
 end
 
+# ╔═╡ 31ecaea8-8fe4-49d1-b7ab-11988981b7c9
+@with_terminal PrettyTables.pretty_table(df_T_vs_g, nosubheader=true)
+
+# ╔═╡ 84a9837c-552c-4982-a55c-8d268e463758
+df_T_vs_g[df_T_vs_g.pl_name .== "HAT-P-23 b", :].Mₚ[1] |> u"Mearth"
+
 # ╔═╡ ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
 df_wakeford = let
 	df = CSV.read("data/pop/H2O_J_data.txt", DataFrame;
@@ -227,9 +261,6 @@ df_wakeford = let
 
 	df
 end
-
-# ╔═╡ 920ac6ab-2fb9-4980-8563-b52c708cb65f
-df_T_vs_g
 
 # ╔═╡ 7f956b36-ce65-4e4e-afa5-9b97b9e06954
 @mdx """
@@ -288,32 +319,39 @@ end
 # ╔═╡ abaee9cc-9841-4b6b-ad33-2093c27422c8
 compute_g(M, R) = G * M / R^2
 
-# ╔═╡ 6bbdf2a5-0f97-404d-aa5c-a6681e8efa61
-compute_g((565.714 ± 31.782)u"Mearth", (10.424 ± 1.009)u"Rearth") |> u"m/s^2"
-
 # ╔═╡ 1e587a84-ed43-4fac-81cf-134a4f3d65d5
 compute_H(μ, T, g) = k * T / (μ * g)
 
 # ╔═╡ 7336f748-5a5a-476e-80d0-cb6200aefeff
 _df = @chain df_all begin
-	dropmissing([:pl_rade, :pl_bmasse, :pl_bmasseerr1, :pl_eqt, :pl_orbsmax, :st_teff, :sy_jmag, :pl_radeerr1, :pl_radeerr2, :pl_bmasseerr2, :tic_id,
-	:pl_eqterr1, :pl_eqterr2, :pl_ratror, :pl_ratrorerr1, :pl_ratrorerr2,])
+	dropmissing([:pl_rade, :pl_bmasse, :pl_eqt, :pl_orbsmax, :st_teff, :sy_jmag, :tic_id, :pl_ratror, :st_rad,
+	:pl_bmasseerr1, :pl_bmasseerr2, :st_raderr1, :pl_eqterr1, :pl_eqterr2])
 	@aside begin
-		Mₚ_err_max = maximum.(eachrow(abs.(_[:, [:pl_bmasseerr1, :pl_bmasseerr2]])))
+		Mₚ_err_max = maximum.(
+			skipmissing.(eachrow(abs.(_[:, [:pl_bmasseerr1, :pl_bmasseerr2]]))))
 		Mₚ = _.pl_bmasse .± Mₚ_err_max
-		Rₚ_err_max = maximum.(eachrow(abs.(_[:, [:pl_radeerr1, :pl_radeerr2]])))
+		Rₚ_err_max = maximum.(
+			skipmissing.(eachrow(abs.(_[:, [:pl_radeerr1, :pl_radeerr2]]))))
 		Rₚ = _.pl_rade .± Rₚ_err_max
-		g_SI_m = @. compute_g(
-			Mₚ*u"Mearth", Rₚ*u"Rearth"
-		) |> strip_u(u"m/s^2")
+		Rₛ_err_max = maximum.(
+			skipmissing.(eachrow(abs.(_[:, [:st_raderr1, :st_raderr2]]))))
+		Rₛ = _.st_rad .± Rₛ_err_max
+		RₚRₛ_err_max = maximum.(
+			skipmissing.(eachrow(abs.(_[:, [:pl_ratrorerr1, :pl_ratrorerr2]]))))
+		RₚRₛ = _.pl_ratror .± RₚRₛ_err_max
+		g_SI_m = @. get_gₚ(Mₚ*u"Mearth", RₚRₛ, Rₛ*u"Rsun") |> strip_u(u"m/s^2")
+		T_eq_err_max = maximum.(
+			skipmissing.(eachrow(abs.(_[:, [:pl_eqterr1, :pl_eqterr2]]))))
+		T_eq_m = _.pl_eqt .± T_eq_err_max
 	end
 	@transform begin
-		# :pl_eqt = @. compute_Teq(
-		# 	:st_teff*u"K", :st_rad*u"Rsun", :pl_orbsmax*u"AU"; α=0.1
-		# ) |> strip_u(u"K")
-
+		:pl_eqt = @. compute_Teq(
+			:st_teff*u"K", :st_rad*u"Rsun", :pl_orbsmax*u"AU"; α=0.1
+		) |> strip_u(u"K")
 		:g_SI = Measurements.value.(g_SI_m)
 		:g_SI_err = Measurements.uncertainty.(g_SI_m)
+		:Teq_K = Measurements.value.(T_eq_m)
+		:Teq_K_err = Measurements.uncertainty.(T_eq_m)
 	end
 	@transform begin
 		:H_km = @. compute_H(
@@ -324,7 +362,7 @@ _df = @chain df_all begin
 			:pl_rade, :pl_eqt, :pl_bmasse, :st_rad, :sy_jmag
 		)
 	end
-end;
+end
 
 # ╔═╡ c1e63cf3-7f30-4858-bdd6-125d2a99529f
 compute_ΔD(H, Rₚ, Rₛ) = 2.0 * H * Rₚ/Rₛ^2
@@ -359,8 +397,11 @@ With this list of $(nrow(df)) transiting exoplanets, we now select the subset of
 # ╔═╡ 0f118d0e-0eb6-4517-8378-9623337f73ca
 df_tspecs = @subset df :pl_name ∈ tspec_targs
 
-# ╔═╡ 72fc2033-74cf-4e62-9c26-71016caacbea
-@subset df :pl_name ∈ ["HAT-P-23 b", "WASP-43 b", "WASP-50 b"]
+# ╔═╡ 8a43e9a3-f9a1-4f15-a914-2b7b4f4bf3cd
+df[df.pl_name .== "HAT-P-23 b", :]
+
+# ╔═╡ 3a4112a5-f211-4160-a6e8-688d04751a42
+names(df)
 
 # ╔═╡ c98c5618-4bac-4322-b4c3-c76181f47889
 df_HGHJs_all = @chain df begin
@@ -389,12 +430,15 @@ end
 
 # ╔═╡ 53c4fd02-7a48-47a1-9341-ede3e8d497f7
 y = @chain df_HGHJs_all begin
-	@select :pl_name :disc_facility :pl_eqt :g_SI :TSMR
+	@select :pl_name :pl_eqt :g_SI :TSMR
 	#first(10)
 end
 
 # ╔═╡ 94a5f868-d043-4c1f-831c-17ebabd3df6c
 latextabular(y, latex=false, fmt="%.2f") |> PlutoUI.Text
+
+# ╔═╡ 18e6c65f-b999-41d6-81d2-7398bc05ab47
+@with_terminal PrettyTables.pretty_table(y, nosubheader=true)
 
 # ╔═╡ 683a8d85-b9a8-4eab-8a4b-e2b57d0783c0
 @mdx """
@@ -471,9 +515,11 @@ let
 			) +
 		
 		data(df_tspecs) * visual(marker='□', markersize=20)
-	) +
-	data(df_T_vs_g) * mapping(:T_K, :g_SI, :T_K_err) * visual(Errorbars, direction=:x) +
-	data(df_T_vs_g) * mapping(:T_K, :g_SI, :g_SI_err) * visual(Errorbars, direction=:y)
+	) #+
+	# data(df_T_vs_g) * mapping(:T_K, :g_SI, :T_K_err) * visual(Errorbars, direction=:x) +
+	# data(df_T_vs_g) * mapping(:T_K, :g_SI, :g_SI_err) * visual(Errorbars, direction=:y)
+	# data(df_tspecs) * mapping(:Teq_K, :g_SI, :Teq_K_err) * visual(Errorbars, direction=:x) +
+	# data(df_tspecs) * mapping(:Teq_K, :g_SI, :g_SI_err) * visual(Errorbars, direction=:y)
 	
 	fg = draw(p;
 		axis = (; limits=((0, 3_400), (-1, 55)), yticks=0:10:50),
@@ -586,7 +632,12 @@ end
 # ╟─6b06701b-05e2-4284-a308-e9edeb65a648
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
 # ╠═86a99042-bb9b-43e6-87ae-d76f88b10533
+# ╠═a803278f-1de2-48dd-a7bc-3b73fa648a33
+# ╠═55b4e42a-2869-4c63-b50b-28c7720410b3
+# ╠═3b730613-4fe1-4ee7-8f78-603d8aa70aac
+# ╠═0bfb06df-3e61-46d3-b968-0c0b5e723ad8
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
+# ╠═42ca0d12-7322-4bc0-8c4d-98b7a42c9696
 # ╠═7336f748-5a5a-476e-80d0-cb6200aefeff
 # ╠═333d13f6-e6dd-4312-9d0f-84a41aebbde7
 # ╠═56ad4c87-069b-4815-955b-7a8d7d012031
@@ -598,13 +649,14 @@ end
 # ╟─b5c0dbc8-d700-473e-9f00-d89a319f6432
 # ╠═b4c7316d-d198-4449-ad45-66397fd1a9a5
 # ╠═0f118d0e-0eb6-4517-8378-9623337f73ca
-# ╠═72fc2033-74cf-4e62-9c26-71016caacbea
-# ╠═6bbdf2a5-0f97-404d-aa5c-a6681e8efa61
 # ╠═05d65745-6972-41fe-8308-e5c97c85692b
 # ╠═32449eeb-a772-423c-bd52-fd6b3b8e2bba
+# ╠═31ecaea8-8fe4-49d1-b7ab-11988981b7c9
+# ╠═84a9837c-552c-4982-a55c-8d268e463758
+# ╠═8a43e9a3-f9a1-4f15-a914-2b7b4f4bf3cd
 # ╠═ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
 # ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
-# ╠═920ac6ab-2fb9-4980-8563-b52c708cb65f
+# ╠═3a4112a5-f211-4160-a6e8-688d04751a42
 # ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
 # ╟─7f956b36-ce65-4e4e-afa5-9b97b9e06954
 # ╠═c98c5618-4bac-4322-b4c3-c76181f47889
@@ -612,6 +664,7 @@ end
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d
 # ╠═94a5f868-d043-4c1f-831c-17ebabd3df6c
 # ╠═53c4fd02-7a48-47a1-9341-ede3e8d497f7
+# ╠═18e6c65f-b999-41d6-81d2-7398bc05ab47
 # ╟─18094afc-b77f-4cae-a30c-2691d34125d8
 # ╠═958453c3-7993-4620-ab7f-e7ad79781dd5
 # ╠═f07ad06b-81d2-454f-988f-a7ae1713eac4
