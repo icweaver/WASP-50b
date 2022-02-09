@@ -95,6 +95,16 @@ df_ps_all = let
 		"st_raderr1",
 		"st_raderr2",
 
+		# Tₛ,
+		"st_teff",
+		"st_tefferr1",
+		"st_tefferr2",
+
+		# ρₛ
+		"st_dens",
+		"st_denserr1",
+		"st_denserr2",
+
 		# Mₛ
 		"st_mass",
 		"st_masserr1",
@@ -132,19 +142,25 @@ df_ps_all = let
 	query = "select+$(join(columns, ','))+from+ps+where+$(cond)&format=csv"
 	request = HTTP.get("$(url)/sync?query=$(query)")
 	CSV.read(request.body, DataFrame)
-end
+end;
+
+# ╔═╡ 56dfee72-3856-4eef-b36e-61cb6a5acb9f
+nrow(df_ps_all)
+
+# ╔═╡ ca479f56-e93b-43ad-9284-f5d44d436d03
+df_ps = dropmissing(df_ps_all, [:st_rad, :st_dens, :st_teff, :pl_rvamp])
+
+# ╔═╡ ee08f4e9-4b7f-43eb-a48e-eee2dd3c4709
+df_ps[df_ps.pl_name .== "GJ 9827 c", :] |> describe
 
 # ╔═╡ 9f5c2970-39fe-4ca8-a42c-22a3a04e2de8
-df_hp1 = df_ps_all[df_ps_all.pl_name .== "HAT-P-1 b", :]
-
-# ╔═╡ 3b730613-4fe1-4ee7-8f78-603d8aa70aac
-dropmissing(df_hp1[argmax.(df_hp1.pl_pubdate), [:pl_rvamp, :pl_rvamperr1, :pl_refname, :pl_pubdate]])
+df_hp1 = df_ps[df_ps.pl_name .== "GJ 9827 c", :]
 
 # ╔═╡ 3df4218d-e1c7-4af1-a0a9-4a189db2cf5b
 df_rv = @chain df_hp1 begin
 	dropmissing([:pl_rvamp, :pl_rvamperr1, :pl_rvamperr2, :pl_refname, :pl_pubdate])
-	@subset :pl_pubdate .== maximum(:pl_pubdate)
-	@select :pl_name :pl_rvamp :pl_rvamperr1 :pl_rvamperr2 :pl_refname
+	#@subset :pl_pubdate .== maximum(:pl_pubdate)
+	#@select :pl_name :pl_rvamp :pl_rvamperr1 :pl_rvamperr2 :pl_refname
 end
 
 # ╔═╡ dc077a06-c24e-4f2e-a1fd-5762a01f5e86
@@ -154,13 +170,20 @@ max_m(p, pu, pd) = p, maximum((pu, abs(pd)))
 K, K_err = max_m(df_rv.pl_rvamp[1], df_rv.pl_rvamperr1[1], df_rv.pl_rvamperr2[1])
 
 # ╔═╡ e8a13c3b-819a-490e-a967-e2da54ca6617
-df_ps = @chain df_ps_all begin
-	groupby(:pl_name)
-	
-end;
+for df in groupby(df_ps, :pl_name)
+	df_rv = @chain df begin
+		dropmissing(
+			[:pl_rvamp, :pl_rvamperr1, :pl_rvamperr2, :pl_refname, :pl_pubdate]
+		)
+		println(df.pl_name)
+		@subset :pl_pubdate .== maximum(:pl_pubdate)
+		@select :pl_name :pl_rvamp :pl_rvamperr1 :pl_rvamperr2 :pl_refname
+	end
+	K, K_err = max_m(df_rv.pl_rvamp[1], df_rv.pl_rvamperr1[1], df_rv.pl_rvamperr2[1])
+end
 
-# ╔═╡ d7cfb453-059d-43d3-9f89-b1048c426499
-df0 = DataFrame(x = [1, 1, 2, 2], y = [1, 2, 101, 102])
+# ╔═╡ 220beeec-9572-4323-957a-93c08ee09de7
+gd = groupby(dropmissing(df_ps), :pl_name);
 
 # ╔═╡ 4d1a7740-24c7-4cec-b788-a386bc25f836
 @mdx """
@@ -678,13 +701,15 @@ end
 # ╟─6b06701b-05e2-4284-a308-e9edeb65a648
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
 # ╠═86a99042-bb9b-43e6-87ae-d76f88b10533
+# ╠═56dfee72-3856-4eef-b36e-61cb6a5acb9f
+# ╠═ca479f56-e93b-43ad-9284-f5d44d436d03
+# ╠═ee08f4e9-4b7f-43eb-a48e-eee2dd3c4709
 # ╠═9f5c2970-39fe-4ca8-a42c-22a3a04e2de8
-# ╠═3b730613-4fe1-4ee7-8f78-603d8aa70aac
 # ╠═3df4218d-e1c7-4af1-a0a9-4a189db2cf5b
 # ╠═bd72a5a8-7f86-49e1-9655-dfd9f7d875ab
 # ╠═dc077a06-c24e-4f2e-a1fd-5762a01f5e86
 # ╠═e8a13c3b-819a-490e-a967-e2da54ca6617
-# ╠═d7cfb453-059d-43d3-9f89-b1048c426499
+# ╠═220beeec-9572-4323-957a-93c08ee09de7
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
 # ╠═7336f748-5a5a-476e-80d0-cb6200aefeff
 # ╠═c43b2476-9696-4d43-89d0-78bb2c293b55
