@@ -147,27 +147,14 @@ end;
 # ╔═╡ 56dfee72-3856-4eef-b36e-61cb6a5acb9f
 nrow(df_ps_all)
 
-# ╔═╡ bd72a5a8-7f86-49e1-9655-dfd9f7d875ab
-#K, K_err = max_m(df_rv.pl_rvamp[1], df_rv.pl_rvamperr1[1], df_rv.pl_rvamperr2[1])
-
-# ╔═╡ dc077a06-c24e-4f2e-a1fd-5762a01f5e86
-max_m(p, pu, pd) = p, maximum(skipmissing(pu, abs(pd)))
-
 # ╔═╡ ca479f56-e93b-43ad-9284-f5d44d436d03
-df_ps = dropmissing(df_ps_all, [:st_rad])
+df_ps = df_ps_all
 
 # ╔═╡ eba47bb4-9b86-4a47-9fd5-b4610675322d
 df_ps[occursin.("XO-1", df_ps.pl_name), :]
 
 # ╔═╡ 9f5c2970-39fe-4ca8-a42c-22a3a04e2de8
 df_hp1 = df_ps[occursin.("XO-1", df_ps.pl_name), :]
-
-# ╔═╡ 3df4218d-e1c7-4af1-a0a9-4a189db2cf5b
-df_rv = @chain df_hp1 begin
-	dropmissing([:pl_rvamp, :pl_rvamperr1, :pl_rvamperr2, :pl_refname, :pl_pubdate])
-	@subset :pl_pubdate .== maximum(:pl_pubdate)
-	@select :pl_name :pl_rvamp :pl_rvamperr1 :pl_rvamperr2 :pl_refname
-end
 
 # ╔═╡ 686a1f3b-6900-42e0-b392-966dc16124d6
 nrow(df_ps)
@@ -193,7 +180,55 @@ nrow(df_ps)
 # end
 
 # ╔═╡ 63281206-5487-46c9-9b66-7140942d50a8
-df_ps[occursin.("WASP-60", df_ps.pl_name), [:pl_rvamp, :pl_rvamperr1, :pl_rvamperr2]]
+yee = df_ps[occursin.("HAT-P-12", df_ps.pl_name), :]
+# 	[
+# 	:pl_name,
+# 	:st_rad, :st_dens, :st_teff,
+# 	:pl_ratror, :pl_orbper, :pl_orbincl,
+# 	:pl_rvamp,
+# 	:st_refname, :pl_refname,
+# 	]
+# ]
+
+# ╔═╡ d6598eab-33b3-4873-b6fe-b16c6d5c37d7
+max_m(p, pu, pd) = p, maximum((pu, abs(pd)))
+
+# ╔═╡ 2584860a-8e24-49f7-a7d5-4c99c8deda8e
+# Extract K
+function extract_K(df)
+	df_rv = @chain df begin
+		dropmissing([:pl_rvamp, :pl_rvamperr1, :pl_rvamperr2, :pl_refname, :pl_pubdate])
+		@subset :pl_pubdate .== maximum(:pl_pubdate)
+	end
+	return max_m(df_rv.pl_rvamp[1], df_rv.pl_rvamperr1[1], df_rv.pl_rvamperr2[1])
+end
+
+# ╔═╡ 83649450-1cf4-4606-a9a8-5040c91fda4e
+K, K_err = extract_K(yee)
+
+# ╔═╡ 889f21e3-124c-4916-bb41-aa2a92dd0ae9
+
+
+# ╔═╡ 13c39419-c03b-4df1-9dd5-bf4a2917bb71
+
+
+# ╔═╡ 924bff96-54cd-4dd5-80e1-067f7a8f2c2a
+
+
+# ╔═╡ f7a95111-3efe-4b1e-a015-4126b2ee7503
+
+
+# ╔═╡ c390fa6e-1a22-4805-a172-5fc5f4cb1017
+
+
+# ╔═╡ 0ab3d796-2c83-49bf-81eb-41e297233210
+
+
+# ╔═╡ afe3eefe-805c-4e98-be45-f168638d032b
+
+
+# ╔═╡ 893ca49c-be90-4093-88e7-4891b09e5ec4
+
 
 # ╔═╡ 4d1a7740-24c7-4cec-b788-a386bc25f836
 @mdx """
@@ -714,13 +749,21 @@ end
 # ╠═56dfee72-3856-4eef-b36e-61cb6a5acb9f
 # ╠═eba47bb4-9b86-4a47-9fd5-b4610675322d
 # ╠═9f5c2970-39fe-4ca8-a42c-22a3a04e2de8
-# ╠═3df4218d-e1c7-4af1-a0a9-4a189db2cf5b
-# ╠═bd72a5a8-7f86-49e1-9655-dfd9f7d875ab
-# ╠═dc077a06-c24e-4f2e-a1fd-5762a01f5e86
 # ╠═686a1f3b-6900-42e0-b392-966dc16124d6
 # ╠═ca479f56-e93b-43ad-9284-f5d44d436d03
 # ╠═e8a13c3b-819a-490e-a967-e2da54ca6617
 # ╠═63281206-5487-46c9-9b66-7140942d50a8
+# ╠═2584860a-8e24-49f7-a7d5-4c99c8deda8e
+# ╠═83649450-1cf4-4606-a9a8-5040c91fda4e
+# ╠═d6598eab-33b3-4873-b6fe-b16c6d5c37d7
+# ╠═889f21e3-124c-4916-bb41-aa2a92dd0ae9
+# ╠═13c39419-c03b-4df1-9dd5-bf4a2917bb71
+# ╠═924bff96-54cd-4dd5-80e1-067f7a8f2c2a
+# ╠═f7a95111-3efe-4b1e-a015-4126b2ee7503
+# ╠═c390fa6e-1a22-4805-a172-5fc5f4cb1017
+# ╠═0ab3d796-2c83-49bf-81eb-41e297233210
+# ╠═afe3eefe-805c-4e98-be45-f168638d032b
+# ╠═893ca49c-be90-4093-88e7-4891b09e5ec4
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
 # ╠═7336f748-5a5a-476e-80d0-cb6200aefeff
 # ╠═c43b2476-9696-4d43-89d0-78bb2c293b55
