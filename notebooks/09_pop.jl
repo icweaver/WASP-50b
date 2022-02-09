@@ -85,7 +85,7 @@ df_all = let
 end
 
 # ╔═╡ 86a99042-bb9b-43e6-87ae-d76f88b10533
-df_ps = let
+df_ps_all = let
 		columns = [
 		# Planet name
 		"pl_name",
@@ -119,45 +119,59 @@ df_ps = let
 		"pl_ratror",
 		"pl_ratrorerr1",
 		"pl_ratrorerr2",
-		
-		
+	
 		# References
 		"pl_refname",
 		"st_refname",
+		"pl_pubdate",
 	]
 	url = "https://exoplanetarchive.ipac.caltech.edu/TAP"
 	#cond = "tran_flag+=1+and+pl_eqt+<+1000+and+pl_rade+<+4"
+	#cond = "tran_flag+=1+and+st_refname+LIKE+'%TICv8%'"
 	cond = "tran_flag+=1"
 	query = "select+$(join(columns, ','))+from+ps+where+$(cond)&format=csv"
 	request = HTTP.get("$(url)/sync?query=$(query)")
 	CSV.read(request.body, DataFrame)
 end
 
-# ╔═╡ a803278f-1de2-48dd-a7bc-3b73fa648a33
-gdf = groupby(df_ps, :pl_name)
-
-# ╔═╡ 55b4e42a-2869-4c63-b50b-28c7720410b3
-gdf[1]
+# ╔═╡ 9f5c2970-39fe-4ca8-a42c-22a3a04e2de8
+df_hp1 = df_ps_all[df_ps_all.pl_name .== "HAT-P-1 b", :]
 
 # ╔═╡ 3b730613-4fe1-4ee7-8f78-603d8aa70aac
-df_w43 = df_ps[df_ps.pl_name .== "WASP-43 b", :]
+dropmissing(df_hp1[argmax.(df_hp1.pl_pubdate), [:pl_rvamp, :pl_rvamperr1, :pl_refname, :pl_pubdate]])
 
-# ╔═╡ 0d7fab79-32ae-4297-bc92-9e6cf11f89a8
-dropmissing(df_w43, [:st_raderr1, :st_masserr1, :pl_orbpererr1])
+# ╔═╡ 3df4218d-e1c7-4af1-a0a9-4a189db2cf5b
+df_rv = @chain df_hp1 begin
+	dropmissing([:pl_rvamp, :pl_rvamperr1, :pl_rvamperr2, :pl_refname, :pl_pubdate])
+	@subset :pl_pubdate .== maximum(:pl_pubdate)
+	@select :pl_name :pl_rvamp :pl_rvamperr1 :pl_rvamperr2 :pl_refname
+end
 
-# ╔═╡ 0bfb06df-3e61-46d3-b968-0c0b5e723ad8
-dropmissing(df_w43)
+# ╔═╡ dc077a06-c24e-4f2e-a1fd-5762a01f5e86
+max_m(p, pu, pd) = p, maximum((pu, abs(pd)))
 
-# ╔═╡ 44db28f6-8e6c-4d4f-821e-8a8fb0974feb
-df_hatp23 = df_all[df_all.pl_name .== "HAT-P-23 b", :]
+# ╔═╡ bd72a5a8-7f86-49e1-9655-dfd9f7d875ab
+K, K_err = max_m(df_rv.pl_rvamp[1], df_rv.pl_rvamperr1[1], df_rv.pl_rvamperr2[1])
+
+# ╔═╡ e8a13c3b-819a-490e-a967-e2da54ca6617
+df_ps = @chain df_ps_all begin
+	groupby(:pl_name)
+	
+end;
+
+# ╔═╡ d7cfb453-059d-43d3-9f89-b1048c426499
+df0 = DataFrame(x = [1, 1, 2, 2], y = [1, 2, 101, 102])
 
 # ╔═╡ 4d1a7740-24c7-4cec-b788-a386bc25f836
 @mdx """
 We next compute the relevant quantities for estimating atmospheric observability:
 """
 
-# ╔═╡ 42ca0d12-7322-4bc0-8c4d-98b7a42c9696
-df_all[df_all.pl_name .== "WASP-43 b", :]
+# ╔═╡ c43b2476-9696-4d43-89d0-78bb2c293b55
+df_all[df_all.pl_name .== "WASP-140 b", :] |> describe
+
+# ╔═╡ 27e6bc7d-2f25-48f3-85a0-7f7ebd5acb84
+df_all[df_all.pl_name .== "WASP-95 b", :] |> describe
 
 # ╔═╡ c7eabcc6-5139-448d-abdb-ec752788bd59
 strip_u(u) = x -> ustrip(u, x)
@@ -456,6 +470,10 @@ function label_text!(ax, targ;
 	text!(ax, targ, position=(x, y), align=(al_x, al_y), offset=offset)
 end
 
+# ╔═╡ 32c0b1c9-0e99-4c43-a473-7122af2e36ab
+sort(df_HGHJs_all, :pl_name)#[df_HGHJs_all.pl_name .== "WASP-140 b", :]
+# check for WASP-95 b
+
 # ╔═╡ 53c4fd02-7a48-47a1-9341-ede3e8d497f7
 y = @chain df_HGHJs_all begin
 	@select :pl_name :pl_eqt :g_SI :TSMR
@@ -660,15 +678,17 @@ end
 # ╟─6b06701b-05e2-4284-a308-e9edeb65a648
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
 # ╠═86a99042-bb9b-43e6-87ae-d76f88b10533
-# ╠═a803278f-1de2-48dd-a7bc-3b73fa648a33
-# ╠═55b4e42a-2869-4c63-b50b-28c7720410b3
+# ╠═9f5c2970-39fe-4ca8-a42c-22a3a04e2de8
 # ╠═3b730613-4fe1-4ee7-8f78-603d8aa70aac
-# ╠═0d7fab79-32ae-4297-bc92-9e6cf11f89a8
-# ╠═0bfb06df-3e61-46d3-b968-0c0b5e723ad8
-# ╠═44db28f6-8e6c-4d4f-821e-8a8fb0974feb
+# ╠═3df4218d-e1c7-4af1-a0a9-4a189db2cf5b
+# ╠═bd72a5a8-7f86-49e1-9655-dfd9f7d875ab
+# ╠═dc077a06-c24e-4f2e-a1fd-5762a01f5e86
+# ╠═e8a13c3b-819a-490e-a967-e2da54ca6617
+# ╠═d7cfb453-059d-43d3-9f89-b1048c426499
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
-# ╠═42ca0d12-7322-4bc0-8c4d-98b7a42c9696
 # ╠═7336f748-5a5a-476e-80d0-cb6200aefeff
+# ╠═c43b2476-9696-4d43-89d0-78bb2c293b55
+# ╠═27e6bc7d-2f25-48f3-85a0-7f7ebd5acb84
 # ╠═333d13f6-e6dd-4312-9d0f-84a41aebbde7
 # ╠═56ad4c87-069b-4815-955b-7a8d7d012031
 # ╟─c7eabcc6-5139-448d-abdb-ec752788bd59
@@ -693,6 +713,7 @@ end
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d
 # ╠═94a5f868-d043-4c1f-831c-17ebabd3df6c
+# ╠═32c0b1c9-0e99-4c43-a473-7122af2e36ab
 # ╠═53c4fd02-7a48-47a1-9341-ede3e8d497f7
 # ╠═18e6c65f-b999-41d6-81d2-7398bc05ab47
 # ╟─18094afc-b77f-4cae-a30c-2691d34125d8
