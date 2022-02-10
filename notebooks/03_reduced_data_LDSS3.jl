@@ -461,7 +461,7 @@ comps = let
 end
 
 # ╔═╡ c65c2298-e3a3-4666-be9d-73ee43d94847
-fwhm, trace_center, sky_flux = median_eparam.(
+FWHM, Trace_Center, Sky_Flux = median_eparam.(
 	["width", "peak", "sky"],
 	Ref(LC_cubes),
 	Ref(target_name),
@@ -512,7 +512,7 @@ comp_binned_mags = mapslices(f_to_med_mag, cLCw, dims=1)[use_idxs, :, :]
 PyDict{String, Vector}(LC["spectral"])
 
 # ╔═╡ c03cb527-d16d-47aa-ab63-6970f4ff0b1f
-times, airmass = let
+Times, Airmass = let
 	vals = PyTable(LC["temporal"].to_pandas())
 	vals["bjd"], vals["airmass"]
 end
@@ -520,7 +520,7 @@ end
 # ╔═╡ 354580e4-0aa9-496f-b024-665025a2eeda
 lc = let
 	med_mag = f_to_med_mag(f_target_wlc |> vec)
-	hcat(times, med_mag, zeros(length(times)))[use_idxs, :]
+	hcat(Times, med_mag, zeros(length(Times)))[use_idxs, :]
 end
 
 # ╔═╡ 898a390b-49f7-45f4-b1a1-b22922d69a29
@@ -544,7 +544,7 @@ let
 		save_path_w = "$(savepath)/wbin$(i-1)"
 		mkpath("$(save_path_w)")
 		lc_w = hcat(
-			times[use_idxs], target_binned_mags[:, i], zeros(length(times[use_idxs]))
+			Times[use_idxs], target_binned_mags[:, i], zeros(length(Times[use_idxs]))
 		)
 		f = "$(save_path_w)/lc.dat"
 		writedlm(f, lc_w, ",    ")
@@ -561,12 +561,12 @@ specshifts = load_npz(
 );
 
 # ╔═╡ e4960d1a-8e33-478a-8100-d1838782938d
-delta_wav = pyconvert(Dict{String, Float64}, specshifts["shift"][target_name]) |>
+Delta_Wav = pyconvert(Dict{String, Float64}, specshifts["shift"][target_name]) |>
 		sort |> values |> collect |> x -> convert(Vector{Float64}, x)
 
 # ╔═╡ e4388fba-64ef-4588-a1ed-283da2f52196
 df_eparams = DataFrame(
-	(;times, airmass, delta_wav, fwhm, sky_flux, trace_center)
+	(;Times, Airmass, Delta_Wav, FWHM, Sky_Flux, Trace_Center)
 ) |> df -> mapcols(col -> fmt_float.(col), df)[use_idxs, :]
 
 # ╔═╡ 2aba612a-7599-4a2d-9ff0-2fd398c2a0db
@@ -754,7 +754,7 @@ let
 	]
 	axs = reshape(copy(fig.content), 2, 4)
 
-	t_rel = compute_t_rel(times)
+	t_rel = compute_t_rel(Times)
 	plot_div_WLCS!(axs;
 		t_rel, f=f_div_WLC_norm, window_width, cNames, use_comps_idxs
 	)

@@ -256,6 +256,9 @@ end
 df_tspecs = sort(vcat(df_common, df_extra), :Wcen)
 #df_tspecs = df_common
 
+# ╔═╡ dc2d133f-6ff4-4df4-8a43-efa4e629f01f
+df_tspecs
+
 # ╔═╡ 64f608b9-76df-402e-801c-006dc3096f94
 latextabular(df_tspecs, latex=false) |> PlutoUI.Text
 
@@ -545,13 +548,6 @@ function plot_tspecs!(ax; i=1, nudge_indiv=-50, nudge_comb=50, wbins=wbins_odd)
 	# 	grid = (linewidth=(0, 0),),
 	# )
 	
-	# Overplot lines
-	vspan!(ax, wbins[:, 1], wbins[:, 2], color=(:darkgrey, 0.25))
-	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
-	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
-	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
-	mean_wlc_depth.val - mean_wlc_depth.err), linestyle=:dash, color=:grey)
-	
 	# Individual nights
 	for (i, transit) in enumerate(keys(cubes))
 		plot_tspec!(ax, df_tspecs, transit;
@@ -575,8 +571,6 @@ function plot_tspecs!(ax; i=1, nudge_indiv=-50, nudge_comb=50, wbins=wbins_odd)
 		position = (4700, 16000),
 		align = (:left, :center),
 	)
-	
-	#axislegend(orientation=:horizontal, valign=:top, labelsize=16)
 end
 
 # ╔═╡ cafc773a-ee51-4bd2-b766-182ad728e253
@@ -618,7 +612,14 @@ begin
 		colgap!(fig.layout, 30)
 	else
 		ax = Axis(fig[1, 1]; limits=(4_600, 9_800, 15_500, 22_500))
+		# Overplot lines
+		#vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
+		vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
+		hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
+		hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
+		mean_wlc_depth.val - mean_wlc_depth.err), linestyle=:dash, color=:grey)
 		plot_tspecs!(ax)
+		axislegend(orientation=:horizontal, valign=:top, labelsize=16)
 	end
 	
 	suf = basename(dirname(DATA_DIR))
@@ -730,6 +731,7 @@ body.disable_ui main {
 # ╠═7b6d3a33-cb3b-4776-86f6-3af1663b9e49
 # ╟─e58ec082-d654-44e3-bcd4-906fc34171c8
 # ╠═cafc773a-ee51-4bd2-b766-182ad728e253
+# ╠═dc2d133f-6ff4-4df4-8a43-efa4e629f01f
 # ╠═4b8497f7-d285-4632-98e3-0699d284f291
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
 # ╟─11066667-9da2-4b36-b784-c3515c04a659

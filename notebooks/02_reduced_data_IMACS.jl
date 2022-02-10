@@ -85,15 +85,15 @@ transits = merge(
 	),
 )
 
+# ╔═╡ 02b9e4ee-f18a-434b-b462-b7b0a09250b9
+FPATH_LC
+
 # ╔═╡ e774a20f-2d58-486a-ab71-6bde678b26f8
 @mdx """
 ## Stellar spectra ⭐
 
 With the flux extracted for each object, we now plot the resulting stellar spectra:
 """
-
-# ╔═╡ 16bf1b8c-f45e-4b6c-a740-6f7fe4fe1a7a
-
 
 # ╔═╡ e4e9899c-68c3-4bc4-aadd-7c5d3446e57d
 #save_object("/home/mango/Desktop/hmmm.jld2", LC_spectra)
@@ -161,7 +161,7 @@ comps = Dict(
 	#use_comps = ["c15", "c21"]
 
 	# Transit 2
-	"ut150927" => ["c06", "c15", "c18", "c21", "c23"],
+	"ut150927" => ["c15", "c18", "c21", "c23"],
 	#use_comps = ["c15", "c21"]
 
 	# Transit 3
@@ -562,6 +562,9 @@ end
 # ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
 wbins = pyconvert(Matrix, np.array(LC["wbins"]));
 
+# ╔═╡ 0c09ac81-6b04-44f4-98ef-785b02f1a8fe
+wbins
+
 # ╔═╡ 40269026-a833-4dd8-bb22-7d26f35163e9
 wbins_odd = @view wbins[begin:2:end, :] # Selects alternating bins to highlight
 
@@ -647,11 +650,12 @@ blc_plots[cName]
 # ╟─bd2cdf33-0c41-4948-82ab-9a28929f72b3
 # ╠═3959e46c-87c9-4566-8ab1-f437323f0a9f
 # ╟─32b9a326-ddc8-4557-bcf5-9dcc54ed83e5
+# ╠═02b9e4ee-f18a-434b-b462-b7b0a09250b9
 # ╠═dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
 # ╠═cb1c4a44-09a8-4fff-8703-2d37647148f0
 # ╟─e774a20f-2d58-486a-ab71-6bde678b26f8
+# ╠═0c09ac81-6b04-44f4-98ef-785b02f1a8fe
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
-# ╠═16bf1b8c-f45e-4b6c-a740-6f7fe4fe1a7a
 # ╠═65cc9f56-1e9e-446c-82db-10dcd6334ce3
 # ╠═e4e9899c-68c3-4bc4-aadd-7c5d3446e57d
 # ╠═6471fc66-47a5-455e-9611-c6fd9d56e9dc
@@ -685,9 +689,9 @@ blc_plots[cName]
 # ╟─0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
 # ╠═e6e1ea18-216a-41ae-8a1a-590793fcb669
 # ╟─e98dee2e-a369-448e-bfe4-8fea0f318fa8
-# ╟─deb9e739-84c3-4c89-831e-1426b1ac3fbc
-# ╟─f2a2d747-0f9d-46ea-94a4-3db5b45d29c7
-# ╟─7962e716-8b0e-4c58-9d14-f51bbf72d419
+# ╠═deb9e739-84c3-4c89-831e-1426b1ac3fbc
+# ╠═f2a2d747-0f9d-46ea-94a4-3db5b45d29c7
+# ╠═7962e716-8b0e-4c58-9d14-f51bbf72d419
 # ╠═3ca393d6-01c0-4f77-88ff-7c4f6388670e
 # ╟─793c4d08-e2ee-4c9d-b7a0-11eaaddba895
 # ╠═c2c326df-1474-4b06-b183-668f0d6502aa

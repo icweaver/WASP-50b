@@ -315,6 +315,9 @@ end
 ## A closer look at Transit 2 🔎
 """
 
+# ╔═╡ cdee6d3e-2304-4dea-99b4-ed38d050179e
+(0.696 - 0.705) / 0.01
+
 # ╔═╡ 7fdd0cb7-7af3-4ca1-8939-9d9b7d6e9527
 function plot_x!(ax, x; h=1, errorbar_kwargs=(), scatter_kwargs=())
 	errorbars!(ax, [x.val], [h], [x.err], [x.err], direction=:x; errorbar_kwargs...)
@@ -421,6 +424,9 @@ BMA = DataFrame(
 
 # ╔═╡ c7a179a3-9966-452d-b430-a28b2f004bc5
 latextabular(BMA, latex=false) |> PlutoUI.Text
+
+# ╔═╡ ef097f90-4ae1-43e5-b035-71652c6ad1a3
+BMA
 
 # ╔═╡ 25dd0c88-089b-406b-ac0f-6f21c57fe986
 @with_terminal begin
@@ -647,7 +653,7 @@ let
 		#labelsize = 25,
 		nbanks = 2,
 		orientation = :horizontal,
-		markersize = 35,
+		markersize = 25,
 		markerstrokewidth = 1,
 	)
 
@@ -690,7 +696,7 @@ let
 		i%2 != 0 && hspan!(ax, i-0.5, i+0.5, color=(:darkgrey, 0.25))
 		plot_x_pairs!(ax, param, BMA; h1=i+0.1, h2=i-0.1)
 		#hlines!(ax, i+0.5, color=:darkgrey, linewidth=1.0)
-		text!(param; position=(-4.0, i), align=(:left, :center))
+		text!(param; position=(-4.5, i), align=(:left, :center))
 	end
 
 	Label(fig[0, 1], "Transit 2 (IMACS)";
@@ -709,7 +715,7 @@ let
 
 	hideydecorations!(ax, label=false)
 
-	xlims!(ax, -4.2, 4.2)
+	xlims!(ax, -4.8, 4.8)
 	ylims!(ax, 0.5, 8.5)
 
 	if occursin("sp", DATA_DIR)
@@ -740,6 +746,7 @@ end
 # ╟─b28bb1b6-c148-41c4-9f94-0833e365cad4
 # ╟─30b84501-fdcd-4d83-b929-ff354de69a17
 # ╠═c7a179a3-9966-452d-b430-a28b2f004bc5
+# ╠═ef097f90-4ae1-43e5-b035-71652c6ad1a3
 # ╠═19fcaa15-6f01-46a6-8225-4b5cafd89cc1
 # ╠═de0a4468-56aa-4748-80a0-6c9ab6b8579e
 # ╠═bbc14e57-57fe-4811-91d4-d07b102cfa5d
@@ -761,6 +768,7 @@ end
 # ╠═6fcd1377-8364-45a3-9ff6-89d61df1ef42
 # ╟─807e913f-d8c3-41e9-acb3-4c024dedd67b
 # ╠═18c90ed4-2f07-493f-95b2-e308cd7a03a9
+# ╠═cdee6d3e-2304-4dea-99b4-ed38d050179e
 # ╠═f47944d8-4501-47c7-a852-d5e2f90e9204
 # ╠═7fdd0cb7-7af3-4ca1-8939-9d9b7d6e9527
 # ╠═266b5871-22e5-4b4a-80b1-468a9ddd9193
