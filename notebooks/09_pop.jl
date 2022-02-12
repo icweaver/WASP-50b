@@ -57,11 +57,11 @@ We start by drawing our sample from the list of known exoplanets on the [NASA Ex
 # ╔═╡ f396cda3-f535-4ad9-b771-7ccbd45c54f3
 df_exoarchive = let
 		columns = [
+		"pl_name",
 		"tic_id",
 		"ra",
 		"dec",
 		"hostname",
-		"pl_name",
 		"pl_rade",
 		"pl_eqt",
 	]
@@ -79,21 +79,35 @@ df_exoarchive = let
 end
 
 # ╔═╡ 2f9012dc-880d-4d02-9e0d-faaf6cd30766
-df_exoarchive_HJ = @subset df_exoarchive begin
-	(1_000.0 .≤ :pl_eqt) .&
-	(10.0 .≤ :pl_rade)
+df_exoarchive_HJ = @chain df_exoarchive begin
+	@subset (1_000.0 .≤ :pl_eqt) .& (10.0 .≤ :pl_rade)
+	@select :pl_name :TIC :ra :dec
 end
+
+# ╔═╡ fccd3615-7726-45ac-8d5d-c4f1fc4d5425
+@mdx """
+!!! note
+	We only use the eqt and rade as an approximate cut-off, we go back re-compute these with the updated stellar params from TICv8 later
+"""
 
 # ╔═╡ cc5d072f-c4a8-4e4e-8e61-be21931026b1
 CSV.write("data/pop/exoarchive_HJ_coords.txt", df_exoarchive_HJ[:, [:ra, :dec]];
-	delim='\t'
+	delim = '\t',
+	header = false,
 )
 
 # ╔═╡ 9de3a7bc-29c0-455c-8b9a-f5d2031838ab
-df_exoachive_TICv8_HJ = CSV.read("data/pop/exoarchive_TICv8_HJ.csv", DataFrame;
-	#delim = ',',
-	stripwhitespace = true,
-)
+df_exoachive_TICv8_HJ = let
+	df = CSV.read("data/pop/exoarchive_TICv8_HJ.csv", DataFrame;
+		stripwhitespace = true,
+	)
+	@select df begin
+		:TIC
+		:Rₛ = :Rstar .± :Rstar_err
+		:ρₛ = :rho_star .± :rho_star_err
+		:T_eff = :Teff .± :Teff_err
+	end
+end
 
 # ╔═╡ 5c7a8b0a-02f0-465f-bd81-04dc1b76b875
 df_HJ = leftjoin(df_exoachive_TICv8_HJ, df_exoarchive_HJ, on=:TIC)
@@ -187,12 +201,6 @@ df_ps = leftjoin(df_HJ, df_ps_all, on=:TIC)
 * transit depth
 """
 
-# ╔═╡ 84d4bb1e-0bce-4956-924e-2c33aa471b34
-df_ps[occursin.("KELT-20", df_ps.pl_name), :]
-
-# ╔═╡ 6e103bf0-bddc-4776-b47a-06b9e6456569
-describe(df_whoa)
-
 # ╔═╡ d6598eab-33b3-4873-b6fe-b16c6d5c37d7
 max_m(p, pu, pd) = p ± mean(skipmissing((pu, abs(pd))))
 
@@ -204,18 +212,19 @@ end
 
 # ╔═╡ 759b0ca7-ade4-4929-afa5-51e0ab133a5b
 begin
-	pl_name_K, K_mps = [], []
+	TICs = []
+	K_mps = []
 	for df ∈ groupby(dropmissing(df_ps, [:pl_rvamp, :pl_rvamperr1, :pl_rvamperr2, :pl_refname, :pl_pubdate]), :TIC;
 	sort = true,
 	)
 		K = extract_K(df)
-		push!(pl_name_K, df.pl_name[1])
+		push!(TICs, df.TIC[1])
 		push!(K_mps, K)
 	end
 end
 
 # ╔═╡ 2ae250e2-cc4d-4824-9795-a8bc0a4b469b
-df_K = DataFrame(; pl_name=pl_name_K, K_mps)
+df_K = DataFrame(; TIC=TICs, K_mps)
 
 # ╔═╡ 0aa8aaf2-5343-4b6e-a47b-cf0fc8d27643
 function extract_orb_params(df₀)
@@ -229,12 +238,12 @@ end
 
 # ╔═╡ 2d63caf3-dd64-483d-8c85-5085d7aad2ac
 begin
-	pl_name_orb, rs, Ps, is = [], [], [], []
+	TICS, rs, Ps, is = [], [], [], []
 	for df ∈ groupby(dropmissing(df_ps, [:pl_ratror, :pl_ratrorerr1, :pl_orbper, :pl_orbpererr1, :pl_orbincl, :pl_orbinclerr1, :pl_pubdate]), :TIC;
 	sort = true,
 	)
 		r, P, i = extract_orb_params(df)
-		push!(pl_name_orb, df.pl_name[1])
+		push!(TICS, df.TIC[1])
 		push!(rs, r)
 		push!(Ps, P)
 		push!(is, i)
@@ -242,21 +251,24 @@ begin
 end
 
 # ╔═╡ 7898ea90-4863-4beb-995e-7a251235aa88
-df_orb = DataFrame(; pl_name=pl_name_orb, rs, Ps, is)
+df_orb = DataFrame(; TIC=TICS, r=rs, P_d=Ps, i_deg=is)
 
 # ╔═╡ 0128ada1-ca70-4c74-8d23-0704a6ed2f77
 nrow.((df_HJ, df_K, df_orb))
 
 # ╔═╡ 463341ab-318d-402f-9545-b44cf19a75ea
-leftjoin(leftjoin(df_orb, df_K, on=:pl_name), df_HJ, on=:pl_name) |> dropmissing
-
-# ╔═╡ 1ab47869-5086-4d90-afb9-24a28f03f1ff
-describe(df_orb)
+df_HJ_complete = leftjoin(leftjoin(df_orb, df_K, on=:TIC), df_HJ, on=:TIC) |> dropmissing
 
 # ╔═╡ 4d1a7740-24c7-4cec-b788-a386bc25f836
 @mdx """
 We next compute the relevant quantities for estimating atmospheric observability:
 """
+
+# ╔═╡ 542c59fd-782f-4e15-ab6c-a450bf4714ba
+compute_Mₚ(K, i, P, Mₛ) = (K/sin(i)) * cbrt(P / (2.0π*G)) * Mₛ^(2/3)
+
+# ╔═╡ 64e896bd-5213-4f93-8e4c-e506010e27dc
+
 
 # ╔═╡ c7eabcc6-5139-448d-abdb-ec752788bd59
 strip_u(u) = x -> ustrip(u, x)
@@ -774,6 +786,7 @@ end
 # ╟─6b06701b-05e2-4284-a308-e9edeb65a648
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
 # ╠═2f9012dc-880d-4d02-9e0d-faaf6cd30766
+# ╟─fccd3615-7726-45ac-8d5d-c4f1fc4d5425
 # ╠═cc5d072f-c4a8-4e4e-8e61-be21931026b1
 # ╠═9de3a7bc-29c0-455c-8b9a-f5d2031838ab
 # ╠═5c7a8b0a-02f0-465f-bd81-04dc1b76b875
@@ -792,11 +805,10 @@ end
 # ╠═7898ea90-4863-4beb-995e-7a251235aa88
 # ╠═0128ada1-ca70-4c74-8d23-0704a6ed2f77
 # ╠═463341ab-318d-402f-9545-b44cf19a75ea
-# ╠═84d4bb1e-0bce-4956-924e-2c33aa471b34
-# ╠═1ab47869-5086-4d90-afb9-24a28f03f1ff
-# ╠═6e103bf0-bddc-4776-b47a-06b9e6456569
 # ╠═d6598eab-33b3-4873-b6fe-b16c6d5c37d7
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
+# ╠═542c59fd-782f-4e15-ab6c-a450bf4714ba
+# ╠═64e896bd-5213-4f93-8e4c-e506010e27dc
 # ╠═7336f748-5a5a-476e-80d0-cb6200aefeff
 # ╠═56ad4c87-069b-4815-955b-7a8d7d012031
 # ╟─c7eabcc6-5139-448d-abdb-ec752788bd59
