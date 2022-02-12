@@ -61,17 +61,17 @@ First, let's load the relevant data needed for this notebook:
 @bind DATA_DIR Select(glob("$(BASE_DIR)/out_*/WASP50"))
 
 # ╔═╡ 3b2f1b26-075f-4578-90c2-8b3f64ffd8f6
-df = let
-	fpath = "/home/mango/Desktop/detrended_lc.dat"
-	CSV.read(fpath, DataFrame;
-				header=["Time", "DetFlux", "DetFluxErr", "Model"],
-				comment = "#",
-				select=[:DetFlux, :Model],
-			)
-end
+# df = let
+# 	fpath = "/home/mango/Desktop/detrended_lc.dat"
+# 	CSV.read(fpath, DataFrame;
+# 				header=["Time", "DetFlux", "DetFluxErr", "Model"],
+# 				comment = "#",
+# 				select=[:DetFlux, :Model],
+# 			)
+# end
 
 # ╔═╡ eed232c3-90cb-4b7a-a216-8c2934f12de8
-scatter(df.DetFlux)
+# scatter(df.DetFlux)
 
 # ╔═╡ 737c135a-7412-4b87-a718-642472d4bf4b
 function name(dirpath, dates_to_names)
@@ -98,7 +98,7 @@ begin
 
 	for dirpath ∈ sort(glob("$(DATA_DIR)/w50*/wavelength"))
 		fpaths = sort!(glob("$(dirpath)/wbin*/PCA_1/detrended_lc.dat"), lt=natural)
-		@show fpaths
+		#@show fpaths
 		dirpath_WLC = "$(dirname(dirpath))/white-light"
 
 		# TODO, track this down
@@ -129,7 +129,7 @@ begin
 				comment = "#",
 				select=[:DetFlux, :Model],
 			)
-			@show fpath nrow(df)
+			#@show fpath nrow(df)
 			lc .= df.DetFlux
 			model .= df.Model
 		end

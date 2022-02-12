@@ -137,6 +137,35 @@ end
 We summarize the Bayesian Model Averag (BMA) results for selected parameters for each night below, and average together each parameter from each night, weighted by its maximum uncertainty per night:
 """
 
+# ╔═╡ 619a3e5d-75ef-4f9c-8115-3ee26cb8396a
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1])
+	
+	scatter!(ax, rand(10), label="hey")
+
+	axislegend(labelcolor=:red)
+	
+	fig
+end
+
+# ╔═╡ 283874da-3946-4c1e-946e-e1c1d1f98c6d
+let
+fig = Figure()
+ax = Axis(fig[1, 1])
+
+labels = ["a looooooong label", "an even loooooonger label", "and one more long label"]
+df = (x=rand(100), y=rand(100), group=rand(labels, 100))
+layers = mapping(color=:group => "Legend title")
+
+plt = data(df) * layers * mapping(:x, :y)
+
+fg = draw!(ax, plt)
+legend!(fig[1, 2], fg)
+
+fig
+end
+
 # ╔═╡ 22c72eeb-8e32-4d7c-86c8-ab117735769e
 @mdx """
 The standard version we used to use gives relatively errorbars (thanks for bringing this to my attention during my TAC, Dave!) and is also particularly biased for small sample sizes. For these reasons, we have opted for the more sophisticated machinery of [reliability weighting](https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Reliability_weights) going forward.
@@ -751,6 +780,8 @@ end
 # ╠═de0a4468-56aa-4748-80a0-6c9ab6b8579e
 # ╠═bbc14e57-57fe-4811-91d4-d07b102cfa5d
 # ╠═25dd0c88-089b-406b-ac0f-6f21c57fe986
+# ╠═619a3e5d-75ef-4f9c-8115-3ee26cb8396a
+# ╠═283874da-3946-4c1e-946e-e1c1d1f98c6d
 # ╟─22c72eeb-8e32-4d7c-86c8-ab117735769e
 # ╠═a96ee19b-39fe-4f5b-bc75-124b4e422713
 # ╠═7cbadc33-5b32-4816-8092-09054c64073f

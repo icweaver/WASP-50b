@@ -26,6 +26,11 @@ using Statistics
 # ╔═╡ 333d13f6-e6dd-4312-9d0f-84a41aebbde7
 using Measurements
 
+# ╔═╡ c4375025-2691-40e0-b6ca-cd0472b916cd
+@mdx """
+As of this writing, the planetary parameters reported in the archive have not all been updated to be self-consistent with the latest TICv8 stellar measurements taken, so we will cross-reference the targets from the archive and compute them here.
+"""
+
 # ╔═╡ 7493bb13-ee41-4798-99f6-dc1df97bd624
 begin
 	const DATA_DIR = "data/pop"
@@ -50,46 +55,61 @@ In this notebook we will explore possible targets in the high-gravity hot-Jupite
 @mdx """
 ## Data sample
 
-We draw our sample from the NASA Exoplanet Archive [TAP API](https://exoplanetarchive.ipac.caltech.edu/docs/TAP/usingTAP.html):
+We start by drawing our sample from the list of known exoplanets on the [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/docs/TAP/usingTAP.html):
 """
 
 # ╔═╡ f396cda3-f535-4ad9-b771-7ccbd45c54f3
-df_all = let
+df_exoarchive = let
 		columns = [
-		"pl_name",
-		"disc_facility",
 		"tic_id",
+		"ra",
+		"dec",
+		"hostname",
+		"pl_name",
 		"pl_rade",
-		"pl_radeerr1",
-		"pl_radeerr2",
-		"pl_bmasse",
-		"pl_bmasseerr1",
-		"pl_bmasseerr2",
-		"pl_orbsmax",
-		"st_teff",
-		"st_rad",
-		"st_raderr1",
-		"st_raderr2",
-		"sy_jmag",
 		"pl_eqt",
-		"pl_eqterr1",
-		"pl_eqterr2",
-		"pl_eqt_reflink",
-		"pl_ratror",
-		"pl_ratrorerr1",
-		"pl_ratrorerr2",
-		"sy_dist",
 	]
 	url = "https://exoplanetarchive.ipac.caltech.edu/TAP"
 	#cond = "tran_flag+=1+and+pl_eqt+<+1000+and+pl_rade+<+4"
 	cond = "tran_flag+=1"
 	query = "select+$(join(columns, ','))+from+pscomppars+where+$(cond)&format=csv"
 	request = HTTP.get("$(url)/sync?query=$(query)")
-	CSV.read(request.body, DataFrame)
+	df = CSV.read(request.body, DataFrame)
+	@chain df begin
+		dropmissing!
+		@rtransform! :tic_id = parse(Int, split(:tic_id)[end])
+		rename!(_, :tic_id => :TIC)
+	end
 end
 
-# ╔═╡ a57457bf-c979-4afc-b08d-a269e55d8cdf
-hist(dropmissing(df_all, :sy_dist).sy_dist); xlims!(0, 1500); current_figure()
+# ╔═╡ 2f9012dc-880d-4d02-9e0d-faaf6cd30766
+df_exoachive_HJ = @subset df_exoarchive begin
+	(1_000.0 .≤ :pl_eqt) .&
+	(10.0 .≤ :pl_rade)
+end
+
+# ╔═╡ 479b47e8-071b-45e8-87ad-7e76a4da0912
+df_exoachive_HJ
+
+# ╔═╡ cc5d072f-c4a8-4e4e-8e61-be21931026b1
+CSV.write("data/pop/exoarchive_HJ_coords.txt", df_exoachive_HJ[:, [:ra, :dec]];
+	delim='\t'
+)
+
+# ╔═╡ 9de3a7bc-29c0-455c-8b9a-f5d2031838ab
+df_exoachive_TICv8_HJ = CSV.read("data/pop/exoarchive_TICv8_HJ.csv", DataFrame;
+	#delim = ',',
+	stripwhitespace = true,
+)
+
+# ╔═╡ 5c7a8b0a-02f0-465f-bd81-04dc1b76b875
+df_HJ = leftjoin(df_exoachive_TICv8_HJ, df_exoarchive_HJ, on=:TIC)
+
+# ╔═╡ 57097663-eb9a-4201-bf82-e90a0b98fb1a
+describe(df_exoachive_TICv8_HJ)
+
+# ╔═╡ ec85ac21-cdf7-4ef8-a6f3-e71a51d8431e
+describe(df_HJ)
 
 # ╔═╡ 86a99042-bb9b-43e6-87ae-d76f88b10533
 df_ps_all = let
@@ -151,17 +171,8 @@ df_ps_all = let
 	CSV.read(request.body, DataFrame)
 end;
 
-# ╔═╡ 56dfee72-3856-4eef-b36e-61cb6a5acb9f
-nrow(df_ps_all)
-
-# ╔═╡ d79f1feb-eab0-459d-b170-159749e4753f
-Legend
-
 # ╔═╡ ca479f56-e93b-43ad-9284-f5d44d436d03
 df_ps = dropmissing(df_ps_all, [:pl_rvamp, :pl_rvamperr1])
-
-# ╔═╡ 686a1f3b-6900-42e0-b392-966dc16124d6
-nrow(df_ps)
 
 # ╔═╡ e8a13c3b-819a-490e-a967-e2da54ca6617
 # for df in groupby(df_ps, :pl_name)
@@ -189,6 +200,17 @@ nrow(df_ps)
 # ╔═╡ 47eeee9f-57c0-4d16-8dc2-67d2cecb6a93
 ρ_sun * 18.5853
 
+# ╔═╡ 63281206-5487-46c9-9b66-7140942d50a8
+yee = ok[occursin.("WASP-43", ok.pl_name), :]
+# 	[
+# 	:pl_name,
+# 	:st_rad, :st_dens, :st_teff,
+# 	:pl_ratror, :pl_orbper, :pl_orbincl,
+# 	:pl_rvamp,
+# 	:st_refname, :pl_refname,
+# 	]
+# ]
+
 # ╔═╡ 83649450-1cf4-4606-a9a8-5040c91fda4e
 #K = extract_K(yee)
 
@@ -211,30 +233,6 @@ function extract_K(df)
 	end
 	return max_m(df_K.pl_rvamp[1], df_K.pl_rvamperr1[1], df_K.pl_rvamperr2[1])
 end
-
-# ╔═╡ 889f21e3-124c-4916-bb41-aa2a92dd0ae9
-
-
-# ╔═╡ 13c39419-c03b-4df1-9dd5-bf4a2917bb71
-
-
-# ╔═╡ 924bff96-54cd-4dd5-80e1-067f7a8f2c2a
-
-
-# ╔═╡ f7a95111-3efe-4b1e-a015-4126b2ee7503
-
-
-# ╔═╡ c390fa6e-1a22-4805-a172-5fc5f4cb1017
-
-
-# ╔═╡ 0ab3d796-2c83-49bf-81eb-41e297233210
-
-
-# ╔═╡ afe3eefe-805c-4e98-be45-f168638d032b
-
-
-# ╔═╡ 893ca49c-be90-4093-88e7-4891b09e5ec4
-
 
 # ╔═╡ 4d1a7740-24c7-4cec-b788-a386bc25f836
 @mdx """
@@ -382,30 +380,11 @@ df_wakeford_ps = sort!(leftjoin(df_wakeford, df_ps_all, on=:pl_name), :pl_name;
 	lt = natural
 )
 
-# ╔═╡ 63281206-5487-46c9-9b66-7140942d50a8
-yee = df_wakeford_ps[occursin.("HAT-P-32", df_wakeford_ps.pl_name), :]
-# 	[
-# 	:pl_name,
-# 	:st_rad, :st_dens, :st_teff,
-# 	:pl_ratror, :pl_orbper, :pl_orbincl,
-# 	:pl_rvamp,
-# 	:st_refname, :pl_refname,
-# 	]
-# ]
-
-# ╔═╡ f304344f-9771-42ea-9531-0992a836422f
-@select yee :pl_name :st_refname
-
-# ╔═╡ 070ac0f9-e95b-4b8b-967e-9b4136bc8edd
-@chain yee begin
-	@subset occursin.("TICv8", :st_refname)
-end
-
 # ╔═╡ 759b0ca7-ade4-4929-afa5-51e0ab133a5b
 begin
 	T_effs, Ks = [], []
 	for df ∈ groupby(df_wakeford_ps, :pl_name)
-		println(df.pl_name)
+		#println(df.pl_name)
 		T_eff = extract_Teff(df)
 		K = extract_K(df)
 		push!(T_effs, T_eff)
@@ -421,9 +400,6 @@ DataFrame(
 	pl_name = df_wakeford.pl_name,
 	K = Ks,
 )
-
-# ╔═╡ f64d6639-b8e2-4796-be15-0b0fef57b057
-df_wakeford
 
 # ╔═╡ aab7f672-a312-44d2-b8cc-937f877a662d
 10^2.78 / 100
@@ -801,39 +777,32 @@ end
 
 # ╔═╡ Cell order:
 # ╟─cd13d7f3-0ea3-4631-afd9-5f3e359000e6
+# ╟─c4375025-2691-40e0-b6ca-cd0472b916cd
 # ╠═7493bb13-ee41-4798-99f6-dc1df97bd624
 # ╟─6b06701b-05e2-4284-a308-e9edeb65a648
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
-# ╠═a57457bf-c979-4afc-b08d-a269e55d8cdf
+# ╠═2f9012dc-880d-4d02-9e0d-faaf6cd30766
+# ╠═479b47e8-071b-45e8-87ad-7e76a4da0912
+# ╠═cc5d072f-c4a8-4e4e-8e61-be21931026b1
+# ╠═9de3a7bc-29c0-455c-8b9a-f5d2031838ab
+# ╠═5c7a8b0a-02f0-465f-bd81-04dc1b76b875
+# ╠═57097663-eb9a-4201-bf82-e90a0b98fb1a
+# ╠═ec85ac21-cdf7-4ef8-a6f3-e71a51d8431e
 # ╠═86a99042-bb9b-43e6-87ae-d76f88b10533
-# ╠═56dfee72-3856-4eef-b36e-61cb6a5acb9f
-# ╠═686a1f3b-6900-42e0-b392-966dc16124d6
-# ╠═d79f1feb-eab0-459d-b170-159749e4753f
 # ╠═d0e6c6d7-c53f-449f-b49d-de2c22971bb7
 # ╠═ca479f56-e93b-43ad-9284-f5d44d436d03
 # ╠═e8a13c3b-819a-490e-a967-e2da54ca6617
 # ╠═47eeee9f-57c0-4d16-8dc2-67d2cecb6a93
 # ╠═d3f2eace-6272-4281-95fd-4b931c2ae332
 # ╠═63281206-5487-46c9-9b66-7140942d50a8
-# ╠═f304344f-9771-42ea-9531-0992a836422f
-# ╠═070ac0f9-e95b-4b8b-967e-9b4136bc8edd
 # ╠═07afe09f-3d00-44cf-9d59-d5c0669a4781
 # ╠═2584860a-8e24-49f7-a7d5-4c99c8deda8e
 # ╠═759b0ca7-ade4-4929-afa5-51e0ab133a5b
 # ╠═1585b5b2-8c41-43c1-a8a1-63dc63f17236
 # ╠═64a5e745-6701-4655-ba54-5711a830c1ff
-# ╠═f64d6639-b8e2-4796-be15-0b0fef57b057
 # ╠═dd53e10a-d191-44c4-8b36-cd881926cf74
 # ╠═83649450-1cf4-4606-a9a8-5040c91fda4e
 # ╠═d6598eab-33b3-4873-b6fe-b16c6d5c37d7
-# ╠═889f21e3-124c-4916-bb41-aa2a92dd0ae9
-# ╠═13c39419-c03b-4df1-9dd5-bf4a2917bb71
-# ╠═924bff96-54cd-4dd5-80e1-067f7a8f2c2a
-# ╠═f7a95111-3efe-4b1e-a015-4126b2ee7503
-# ╠═c390fa6e-1a22-4805-a172-5fc5f4cb1017
-# ╠═0ab3d796-2c83-49bf-81eb-41e297233210
-# ╠═afe3eefe-805c-4e98-be45-f168638d032b
-# ╠═893ca49c-be90-4093-88e7-4891b09e5ec4
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
 # ╠═7336f748-5a5a-476e-80d0-cb6200aefeff
 # ╠═c43b2476-9696-4d43-89d0-78bb2c293b55

@@ -702,22 +702,6 @@ const G = Unitful.G
 # ╔═╡ eaed62d7-5733-44b8-bd98-8b0fc4a18fe5
 gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 
-# ╔═╡ 3510ead9-6e66-4fec-84ca-15c8a3ce4c3e
-html"""
-<style>
-body.disable_ui main {
-		max-width : 95%;
-	}
-@media screen and (min-width: 1081px) {
-	body.disable_ui main {
-		margin-left : 10px;
-		max-width : 72%;
-		align-self: flex-start;
-	}
-}
-</style>
-"""
-
 # ╔═╡ Cell order:
 # ╟─e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 # ╠═209dae9c-4c14-4a02-bec9-36407bf1426f
@@ -780,4 +764,3 @@ body.disable_ui main {
 # ╠═ef970c0c-d08a-4856-b10b-531bb5e7e53e
 # ╠═6cb26c91-8a7c-4bd3-8978-d0c23105863c
 # ╠═e917bd8d-7f4a-44e4-9eb9-84199dd061f5
-# ╟─3510ead9-6e66-4fec-84ca-15c8a3ce4c3e
