@@ -127,7 +127,7 @@ df_exoarchive_TICv8 = let
 		ignorerepeated = true,
 	)
 	
-	df = leftjoin(df_exoarchive, df, on=:TIC) |> dropmissing
+	df = leftjoin(df_exoarchive, df, on=:TIC) |> dropmissing! |> unique!
 	
 	@select! df begin
 		:TIC
@@ -193,7 +193,7 @@ df_ps_all = let
 end
 
 # ╔═╡ 92fbb7d7-9782-44d4-b1b7-6db89d78a032
-df_ps = leftjoin(df_exoarchive_TICv8, df_ps_all, on=:pl_name)
+df_ps = leftjoin(df_ps_all, df_exoarchive_TICv8, on=[:TIC, :pl_name]) |> dropmissing
 
 # ╔═╡ e8a13c3b-819a-490e-a967-e2da54ca6617
 # for df in groupby(df_ps_all, :pl_name)
