@@ -140,17 +140,12 @@ df_exoarchive_TICv8 = let
 	#@transform! df :Mₛ = @. :ρₛ * :Rₛ^3 # Already in solar units
 end
 
-# ╔═╡ bf6a0c6a-eade-420a-99ee-6d8c7480aaac
-df_exoarchive
-
-# ╔═╡ fbed6625-0b71-4a53-b2f6-2b47653094e1
-df_exoarchive_TICv8
-
 # ╔═╡ 86a99042-bb9b-43e6-87ae-d76f88b10533
 df_ps_all = let
 	columns = [
 		# TIC ID
 		"tic_id",
+		"pl_name",
 		
 		# P
 		"pl_orbper",
@@ -171,6 +166,10 @@ df_ps_all = let
 		"pl_ratror",
 		"pl_ratrorerr1",
 		"pl_ratrorerr2",
+		#Rₚ, Rₛ (manual fallback for Wakeford+ targs with missing data)
+		"pl_radj",
+		"st_rad",
+		"pl_trandep",
 	
 		# References
 		"pl_refname",
@@ -194,7 +193,7 @@ df_ps_all = let
 end
 
 # ╔═╡ 92fbb7d7-9782-44d4-b1b7-6db89d78a032
-df_ps = leftjoin(df_exoachive_TICv8, df_ps_all, on=:TIC)
+df_ps = leftjoin(df_exoarchive_TICv8, df_ps_all, on=:pl_name)
 
 # ╔═╡ e8a13c3b-819a-490e-a967-e2da54ca6617
 # for df in groupby(df_ps_all, :pl_name)
@@ -224,6 +223,29 @@ df_ps = leftjoin(df_exoachive_TICv8, df_ps_all, on=:TIC)
 * K
 """
 
+# ╔═╡ 2584860a-8e24-49f7-a7d5-4c99c8deda8e
+function extract_K(df₀)
+	df = @subset df₀ :pl_pubdate .== maximum(:pl_pubdate)
+	return df.pl_rvamp[1]
+	#return max_m(df.pl_rvamp[1], df.pl_rvamperr1[1], df.pl_rvamperr2[1])
+end
+
+# ╔═╡ 759b0ca7-ade4-4929-afa5-51e0ab133a5b
+begin
+	pl_names_K = []
+	K_mps = []
+	for df ∈ groupby(dropmissing(df_ps, [:pl_rvamp, :pl_rvamperr1, :pl_rvamperr2, :pl_refname, :pl_pubdate]), :pl_name;
+	sort = true,
+	)
+		K = extract_K(df)
+		push!(pl_names_K, df.pl_name[1])
+		push!(K_mps, K)
+	end
+end
+
+# ╔═╡ 2ae250e2-cc4d-4824-9795-a8bc0a4b469b
+df_K = DataFrame(; pl_name=pl_names_K, K_mps)
+
 # ╔═╡ 3ed05d01-b489-46d6-bcd4-9028d756ab35
 @mdx """
 ## Transit params
@@ -232,55 +254,30 @@ df_ps = leftjoin(df_exoachive_TICv8, df_ps_all, on=:TIC)
 * transit depth
 """
 
-# ╔═╡ fede3db9-ff7f-4966-b76b-c9953e7e3de2
-let
-	df = df_HJ_complete
-	df[occursin.("HAT-P-1", df.pl_name), :]
-end
-
-# ╔═╡ d6598eab-33b3-4873-b6fe-b16c6d5c37d7
-max_m(p, pu, pd) = p ± mean(skipmissing((pu, abs(pd))))
-
-# ╔═╡ 2584860a-8e24-49f7-a7d5-4c99c8deda8e
-function extract_K(df₀)
-	df = @subset df₀ :pl_pubdate .== maximum(:pl_pubdate)
-	return max_m(df.pl_rvamp[1], df.pl_rvamperr1[1], df.pl_rvamperr2[1])
-end
-
-# ╔═╡ 759b0ca7-ade4-4929-afa5-51e0ab133a5b
-begin
-	TICs = []
-	K_mps = []
-	for df ∈ groupby(dropmissing(df_ps, [:pl_rvamp, :pl_rvamperr1, :pl_rvamperr2, :pl_refname, :pl_pubdate]), :TIC;
-	sort = true,
-	)
-		K = extract_K(df)
-		push!(TICs, df.TIC[1])
-		push!(K_mps, K)
-	end
-end
-
-# ╔═╡ 2ae250e2-cc4d-4824-9795-a8bc0a4b469b
-df_K = DataFrame(; TIC=TICs, K_mps)
-
 # ╔═╡ 0aa8aaf2-5343-4b6e-a47b-cf0fc8d27643
 function extract_orb_params(df₀)
 	df = @subset df₀ :pl_pubdate .== maximum(:pl_pubdate)
-	return (
-		max_m(df.pl_ratror[1], df.pl_ratrorerr1[1], df.pl_ratrorerr2[1]),
-		max_m(df.pl_orbper[1], df.pl_orbpererr1[1], df.pl_orbpererr2[1]),
-		max_m(df.pl_orbincl[1], df.pl_orbinclerr1[1], df.pl_orbinclerr2[1])
-	)
+	return df.pl_ratror[1], df.pl_orbper[1], df.pl_orbincl[1]
+	# return (
+	# 	max_m(df.pl_ratror[1], df.pl_ratrorerr1[1], df.pl_ratrorerr2[1]),
+	# 	max_m(df.pl_orbper[1], df.pl_orbpererr1[1], df.pl_orbpererr2[1]),
+	# 	max_m(df.pl_orbincl[1], df.pl_orbinclerr1[1], df.pl_orbinclerr2[1])
+	# )
 end
 
 # ╔═╡ 2d63caf3-dd64-483d-8c85-5085d7aad2ac
 begin
-	TICS, rs, Ps, is = [], [], [], []
-	for df ∈ groupby(dropmissing(df_ps, [:pl_ratror, :pl_ratrorerr1, :pl_orbper, :pl_orbpererr1, :pl_orbincl, :pl_orbinclerr1, :pl_pubdate]), :TIC;
+	pl_names_orb, rs, Ps, is = [], [], [], []
+	for df ∈ groupby(dropmissing(df_ps, [
+		:pl_ratror, #:pl_ratrorerr1,
+		:pl_orbper, #:pl_orbpererr1,
+		:pl_orbincl, #:pl_orbinclerr1,
+		:pl_pubdate
+	]), :pl_name;
 	sort = true,
 	)
 		r, P, i = extract_orb_params(df)
-		push!(TICS, df.TIC[1])
+		push!(pl_names_orb, df.pl_name[1])
 		push!(rs, r)
 		push!(Ps, P)
 		push!(is, i)
@@ -288,10 +285,28 @@ begin
 end
 
 # ╔═╡ 7898ea90-4863-4beb-995e-7a251235aa88
-df_orb = DataFrame(; TIC=TICS, r=rs, P_d=Ps, i_deg=is)
+df_orb = DataFrame(; pl_name=pl_names_orb, r=rs, P_d=Ps, i_deg=is)
 
 # ╔═╡ 0128ada1-ca70-4c74-8d23-0704a6ed2f77
-nrow.((df_exoachive_TICv8, df_K, df_orb))
+nrow.((df_exoarchive_TICv8, df_K, df_orb))
+
+# ╔═╡ 0f939597-807b-4381-8461-09c7b9bdf3b1
+occursin_df(df, s) = df[occursin.(s, df.pl_name), :]
+
+# ╔═╡ d872c8e9-e125-4288-b240-18672235b008
+occursin_df(df_ps_all, "WASP-31")
+
+# ╔═╡ de292655-8afb-46e9-8f54-053c50c049f7
+occursin_df(df_orb, "WASP-31")
+
+# ╔═╡ 53a043ee-783e-4313-b579-d166dea39012
+occursin_df(df_orb, "WASP-101")
+
+# ╔═╡ a88ea35f-15fc-4b18-b711-c366cb412cf1
+
+
+# ╔═╡ d6598eab-33b3-4873-b6fe-b16c6d5c37d7
+max_m(p, pu, pd) = p ± mean(skipmissing((pu, abs(pd))))
 
 # ╔═╡ 4d1a7740-24c7-4cec-b788-a386bc25f836
 @mdx """
@@ -506,9 +521,9 @@ compute_gₚ(Mₚ, RₚRₛ, Rₛ) = G * Mₚ / (RₚRₛ^2 * Rₛ^2)
 
 # ╔═╡ 463341ab-318d-402f-9545-b44cf19a75ea
 df_complete = let
-	df = leftjoin(leftjoin(df_K, df_orb; on=:TIC), df_exoachive_TICv8;
-		on = :TIC
-	) |> dropmissing
+	df = leftjoin(leftjoin(df_K, df_orb; on=:pl_name), df_exoarchive_TICv8;
+		on = :pl_name
+	) |> dropmissing |> unique
 	@transform! df begin
 		:Mₚ_J = @. compute_Mₚ(
 			:K_mps*u"m/s", :i_deg*u"°", :P_d*u"d", :Mₛ*u"Msun"
@@ -519,10 +534,17 @@ df_complete = let
 			:Mₚ_J*u"Mjup", :r, :Rₛ*u"Rsun"
 		) |> u"m/s^2" |> ustrip
 	end
+	@select! df :TIC :pl_name :Rₛ :T_eff :ρₛ :Mₛ :K_mps :r :P_d :i_deg :Mₚ_J :gₚ_SI
 end
 
 # ╔═╡ a9bbac33-fbcd-45b6-9a15-850d0407a800
 setdiff(df_wakeford.pl_name, df_complete.pl_name)
+
+# ╔═╡ fede3db9-ff7f-4966-b76b-c9953e7e3de2
+let
+	df = df_complete
+	df[occursin.("HAT-P-1", df.pl_name), :]
+end
 
 # ╔═╡ 1e587a84-ed43-4fac-81cf-134a4f3d65d5
 compute_H(μ, T, g) = k * T / (μ * g)
@@ -847,10 +869,9 @@ end
 # ╠═0d629db3-7370-406f-989b-7a2caca020dc
 # ╠═9de3a7bc-29c0-455c-8b9a-f5d2031838ab
 # ╠═380d05a4-35e9-4db4-b35a-b03de9e695ee
-# ╠═bf6a0c6a-eade-420a-99ee-6d8c7480aaac
-# ╠═fbed6625-0b71-4a53-b2f6-2b47653094e1
 # ╠═86a99042-bb9b-43e6-87ae-d76f88b10533
 # ╠═92fbb7d7-9782-44d4-b1b7-6db89d78a032
+# ╠═d872c8e9-e125-4288-b240-18672235b008
 # ╠═e8a13c3b-819a-490e-a967-e2da54ca6617
 # ╠═d3f2eace-6272-4281-95fd-4b931c2ae332
 # ╟─97c9f1ae-21da-4f99-94ff-a8adaabf30bb
@@ -861,9 +882,13 @@ end
 # ╠═0aa8aaf2-5343-4b6e-a47b-cf0fc8d27643
 # ╠═2d63caf3-dd64-483d-8c85-5085d7aad2ac
 # ╠═7898ea90-4863-4beb-995e-7a251235aa88
+# ╠═a9bbac33-fbcd-45b6-9a15-850d0407a800
+# ╠═de292655-8afb-46e9-8f54-053c50c049f7
 # ╠═0128ada1-ca70-4c74-8d23-0704a6ed2f77
 # ╠═463341ab-318d-402f-9545-b44cf19a75ea
-# ╠═a9bbac33-fbcd-45b6-9a15-850d0407a800
+# ╠═0f939597-807b-4381-8461-09c7b9bdf3b1
+# ╠═53a043ee-783e-4313-b579-d166dea39012
+# ╠═a88ea35f-15fc-4b18-b711-c366cb412cf1
 # ╠═fede3db9-ff7f-4966-b76b-c9953e7e3de2
 # ╠═d6598eab-33b3-4873-b6fe-b16c6d5c37d7
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
