@@ -193,7 +193,7 @@ df_ps_all = let
 end
 
 # ╔═╡ 92fbb7d7-9782-44d4-b1b7-6db89d78a032
-df_ps = leftjoin(df_ps_all, df_exoarchive_TICv8, on=[:TIC, :pl_name]) |> dropmissing
+df_ps = leftjoin(df_ps_all, df_exoarchive_TICv8, on=[:TIC, :pl_name])# |> dropmissing
 
 # ╔═╡ e8a13c3b-819a-490e-a967-e2da54ca6617
 # for df in groupby(df_ps_all, :pl_name)
@@ -244,6 +244,7 @@ begin
 end
 
 # ╔═╡ 2ae250e2-cc4d-4824-9795-a8bc0a4b469b
+# Fixed params
 df_K = DataFrame(; pl_name=pl_names_K, K_mps)
 
 # ╔═╡ 3ed05d01-b489-46d6-bcd4-9028d756ab35
@@ -267,7 +268,7 @@ end
 
 # ╔═╡ 2d63caf3-dd64-483d-8c85-5085d7aad2ac
 begin
-	pl_names_orb, rs, Ps, is = [], [], [], []
+	pl_names_orb, rs, Ps, is = String[], Float64[], Float64[], Float64[]
 	for df ∈ groupby(dropmissing(df_ps, [
 		:pl_ratror, #:pl_ratrorerr1,
 		:pl_orbper, #:pl_orbpererr1,
@@ -285,25 +286,14 @@ begin
 end
 
 # ╔═╡ 7898ea90-4863-4beb-995e-7a251235aa88
+# Fixed params
 df_orb = DataFrame(; pl_name=pl_names_orb, r=rs, P_d=Ps, i_deg=is)
-
-# ╔═╡ 0128ada1-ca70-4c74-8d23-0704a6ed2f77
-nrow.((df_exoarchive_TICv8, df_K, df_orb))
 
 # ╔═╡ 0f939597-807b-4381-8461-09c7b9bdf3b1
 occursin_df(df, s) = df[occursin.(s, df.pl_name), :]
 
-# ╔═╡ d872c8e9-e125-4288-b240-18672235b008
-occursin_df(df_ps_all, "WASP-31")
-
-# ╔═╡ de292655-8afb-46e9-8f54-053c50c049f7
-occursin_df(df_orb, "WASP-31")
-
-# ╔═╡ 53a043ee-783e-4313-b579-d166dea39012
-occursin_df(df_orb, "WASP-101")
-
-# ╔═╡ a88ea35f-15fc-4b18-b711-c366cb412cf1
-
+# ╔═╡ 4e8ffccf-ca3e-4201-b2ad-702a174afd04
+occursin_df(df_ps, "WASP-31")
 
 # ╔═╡ d6598eab-33b3-4873-b6fe-b16c6d5c37d7
 max_m(p, pu, pd) = p ± mean(skipmissing((pu, abs(pd))))
@@ -523,7 +513,7 @@ compute_gₚ(Mₚ, RₚRₛ, Rₛ) = G * Mₚ / (RₚRₛ^2 * Rₛ^2)
 df_complete = let
 	df = leftjoin(leftjoin(df_K, df_orb; on=:pl_name), df_exoarchive_TICv8;
 		on = :pl_name
-	) |> dropmissing |> unique
+	) |> dropmissing!
 	@transform! df begin
 		:Mₚ_J = @. compute_Mₚ(
 			:K_mps*u"m/s", :i_deg*u"°", :P_d*u"d", :Mₛ*u"Msun"
@@ -538,13 +528,7 @@ df_complete = let
 end
 
 # ╔═╡ a9bbac33-fbcd-45b6-9a15-850d0407a800
-setdiff(df_wakeford.pl_name, df_complete.pl_name)
-
-# ╔═╡ fede3db9-ff7f-4966-b76b-c9953e7e3de2
-let
-	df = df_complete
-	df[occursin.("HAT-P-1", df.pl_name), :]
-end
+@with_terminal println(setdiff(df_wakeford.pl_name, df_complete.pl_name))
 
 # ╔═╡ 1e587a84-ed43-4fac-81cf-134a4f3d65d5
 compute_H(μ, T, g) = k * T / (μ * g)
@@ -871,7 +855,7 @@ end
 # ╠═380d05a4-35e9-4db4-b35a-b03de9e695ee
 # ╠═86a99042-bb9b-43e6-87ae-d76f88b10533
 # ╠═92fbb7d7-9782-44d4-b1b7-6db89d78a032
-# ╠═d872c8e9-e125-4288-b240-18672235b008
+# ╠═4e8ffccf-ca3e-4201-b2ad-702a174afd04
 # ╠═e8a13c3b-819a-490e-a967-e2da54ca6617
 # ╠═d3f2eace-6272-4281-95fd-4b931c2ae332
 # ╟─97c9f1ae-21da-4f99-94ff-a8adaabf30bb
@@ -880,16 +864,11 @@ end
 # ╠═2ae250e2-cc4d-4824-9795-a8bc0a4b469b
 # ╟─3ed05d01-b489-46d6-bcd4-9028d756ab35
 # ╠═0aa8aaf2-5343-4b6e-a47b-cf0fc8d27643
+# ╠═a9bbac33-fbcd-45b6-9a15-850d0407a800
 # ╠═2d63caf3-dd64-483d-8c85-5085d7aad2ac
 # ╠═7898ea90-4863-4beb-995e-7a251235aa88
-# ╠═a9bbac33-fbcd-45b6-9a15-850d0407a800
-# ╠═de292655-8afb-46e9-8f54-053c50c049f7
-# ╠═0128ada1-ca70-4c74-8d23-0704a6ed2f77
 # ╠═463341ab-318d-402f-9545-b44cf19a75ea
 # ╠═0f939597-807b-4381-8461-09c7b9bdf3b1
-# ╠═53a043ee-783e-4313-b579-d166dea39012
-# ╠═a88ea35f-15fc-4b18-b711-c366cb412cf1
-# ╠═fede3db9-ff7f-4966-b76b-c9953e7e3de2
 # ╠═d6598eab-33b3-4873-b6fe-b16c6d5c37d7
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
 # ╠═542c59fd-782f-4e15-ab6c-a450bf4714ba
