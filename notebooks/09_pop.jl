@@ -98,16 +98,27 @@ CSV.write("data/pop/exoarchive_HJ_coords.txt", df_exoarchive_HJ[:, [:ra, :dec]];
 
 # ╔═╡ 9de3a7bc-29c0-455c-8b9a-f5d2031838ab
 df_exoachive_TICv8_HJ = let
-	df = CSV.read("data/pop/exoarchive_TICv8_HJ.csv", DataFrame;
-		stripwhitespace = true,
+	df = CSV.read("data/pop/exoarchive_TICv8_HJ.txt", DataFrame;
+		comment = "#",
+		delim = ' ',
+		ignorerepeated = true,
 	)
-	@select df begin
+	@select! df begin
 		:TIC
 		:Rₛ = :Rstar .± :Rstar_err
+		:Mₛ = :Mstar .± :M_star_err
 		:ρₛ = :rho_star .± :rho_star_err
 		:T_eff = :Teff .± :Teff_err
 	end
+	#@transform! df :Mₛ = @. :ρₛ * :Rₛ^3 # Already in solar units
 end
+
+# ╔═╡ 58a87832-d4fe-4dee-86e2-394c75222088
+CSV.read("data/pop/exoarchive_TICv8_HJ.txt", DataFrame;
+	comment = "#",
+	delim = ' ',
+	ignorerepeated = true,
+)
 
 # ╔═╡ 5c7a8b0a-02f0-465f-bd81-04dc1b76b875
 df_HJ = leftjoin(df_exoachive_TICv8_HJ, df_exoarchive_HJ, on=:TIC)
@@ -184,9 +195,6 @@ df_ps = leftjoin(df_HJ, df_ps_all, on=:TIC)
 # ╔═╡ d3f2eace-6272-4281-95fd-4b931c2ae332
 ρ_sun = uconvert(u"g/cm^3", (1*u"Msun" / ((4/3) * π * u"Rsun"^3))) |> ustrip
 
-# ╔═╡ 47eeee9f-57c0-4d16-8dc2-67d2cecb6a93
-ρ_sun * 18.5853
-
 # ╔═╡ 97c9f1ae-21da-4f99-94ff-a8adaabf30bb
 @mdx """
 ## Radial velocity (RV params)
@@ -256,19 +264,13 @@ df_orb = DataFrame(; TIC=TICS, r=rs, P_d=Ps, i_deg=is)
 # ╔═╡ 0128ada1-ca70-4c74-8d23-0704a6ed2f77
 nrow.((df_HJ, df_K, df_orb))
 
-# ╔═╡ 463341ab-318d-402f-9545-b44cf19a75ea
-df_HJ_complete = leftjoin(leftjoin(df_orb, df_K, on=:TIC), df_HJ, on=:TIC) |> dropmissing
-
 # ╔═╡ 4d1a7740-24c7-4cec-b788-a386bc25f836
 @mdx """
 We next compute the relevant quantities for estimating atmospheric observability:
 """
 
 # ╔═╡ 542c59fd-782f-4e15-ab6c-a450bf4714ba
-compute_Mₚ(K, i, P, Mₛ) = (K/sin(i)) * cbrt(P / (2.0π*G)) * Mₛ^(2/3)
-
-# ╔═╡ 64e896bd-5213-4f93-8e4c-e506010e27dc
-
+compute_Mₚ(K, i, P, Mₛ) = (K/sin(i)) * cbrt(P / (2.0π*G)) * Mₛ^(2//3)
 
 # ╔═╡ c7eabcc6-5139-448d-abdb-ec752788bd59
 strip_u(u) = x -> ustrip(u, x)
@@ -465,8 +467,42 @@ function compute_TSM(Rp, Teq, Mp, Rs, J; denom=1.0)
 	return f * (Rp^3 * Teq / (Mp * Rs^2)) * 10.0^(-J/5.0) / denom
 end
 
-# ╔═╡ abaee9cc-9841-4b6b-ad33-2093c27422c8
-compute_g(M, R) = G * M / R^2
+# ╔═╡ cff3a9c4-2a9f-4769-b309-f215bfff27f7
+compute_gₚ(Mₚ, RₚRₛ, Rₛ) = G * Mₚ / (RₚRₛ^2 * Rₛ^2)
+
+# ╔═╡ 463341ab-318d-402f-9545-b44cf19a75ea
+df_HJ_complete = let
+	df = leftjoin(leftjoin(df_orb, df_K; on=:TIC), df_HJ;
+		on = :TIC
+	) |> dropmissing
+	@transform! df begin
+		:Mₚ_J = @. compute_Mₚ(
+			:K_mps*u"m/s", :i_deg*u"°", :P_d*u"d", :Mₛ*u"Msun"
+		) |> u"Mjup" |> ustrip
+	end
+	@transform! df begin
+		:gₚ_SI = @. compute_gₚ(
+			:Mₚ_J*u"Mjup", :r, :Rₛ*u"Rsun"
+		) |> u"m/s^2" |> ustrip
+	end
+end
+
+# ╔═╡ bdc13e42-b250-4e32-a0ce-228a69b855aa
+names(df_HJ_complete)
+
+# ╔═╡ fede3db9-ff7f-4966-b76b-c9953e7e3de2
+let
+	df = df_HJ_complete
+	df[occursin.("WASP-43", df.pl_name), :]
+end
+
+# ╔═╡ 64e896bd-5213-4f93-8e4c-e506010e27dc
+let
+	K, i, P = df_HJ_complete[1, [:K_mps, :i_deg, :P_d]]
+end
+
+# ╔═╡ 808c3bb1-4215-46aa-87fb-80a51cc44485
+compute_gₚ(2u"Msun", 0.001, 1u"Rsun") |> u"m/s^2" |> ustrip
 
 # ╔═╡ 1e587a84-ed43-4fac-81cf-134a4f3d65d5
 compute_H(μ, T, g) = k * T / (μ * g)
@@ -789,11 +825,11 @@ end
 # ╟─fccd3615-7726-45ac-8d5d-c4f1fc4d5425
 # ╠═cc5d072f-c4a8-4e4e-8e61-be21931026b1
 # ╠═9de3a7bc-29c0-455c-8b9a-f5d2031838ab
+# ╠═58a87832-d4fe-4dee-86e2-394c75222088
 # ╠═5c7a8b0a-02f0-465f-bd81-04dc1b76b875
 # ╠═86a99042-bb9b-43e6-87ae-d76f88b10533
 # ╠═92fbb7d7-9782-44d4-b1b7-6db89d78a032
 # ╠═e8a13c3b-819a-490e-a967-e2da54ca6617
-# ╠═47eeee9f-57c0-4d16-8dc2-67d2cecb6a93
 # ╠═d3f2eace-6272-4281-95fd-4b931c2ae332
 # ╟─97c9f1ae-21da-4f99-94ff-a8adaabf30bb
 # ╠═2584860a-8e24-49f7-a7d5-4c99c8deda8e
@@ -805,6 +841,9 @@ end
 # ╠═7898ea90-4863-4beb-995e-7a251235aa88
 # ╠═0128ada1-ca70-4c74-8d23-0704a6ed2f77
 # ╠═463341ab-318d-402f-9545-b44cf19a75ea
+# ╠═bdc13e42-b250-4e32-a0ce-228a69b855aa
+# ╠═808c3bb1-4215-46aa-87fb-80a51cc44485
+# ╠═fede3db9-ff7f-4966-b76b-c9953e7e3de2
 # ╠═d6598eab-33b3-4873-b6fe-b16c6d5c37d7
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
 # ╠═542c59fd-782f-4e15-ab6c-a450bf4714ba
@@ -844,7 +883,7 @@ end
 # ╠═f07ad06b-81d2-454f-988f-a7ae1713eac4
 # ╠═2776646e-47e7-4b9e-ab91-4035bc6df99f
 # ╠═c7960066-cc33-480c-807b-c56ead4262bf
-# ╠═abaee9cc-9841-4b6b-ad33-2093c27422c8
+# ╠═cff3a9c4-2a9f-4769-b309-f215bfff27f7
 # ╠═1e587a84-ed43-4fac-81cf-134a4f3d65d5
 # ╠═c1e63cf3-7f30-4858-bdd6-125d2a99529f
 # ╟─683a8d85-b9a8-4eab-8a4b-e2b57d0783c0
