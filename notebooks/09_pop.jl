@@ -57,13 +57,13 @@ We start by drawing our sample from the list of known exoplanets on the [NASA Ex
 # ╔═╡ f396cda3-f535-4ad9-b771-7ccbd45c54f3
 df_exoarchive = let
 		columns = [
+		"hostname",
 		"pl_name",
 		"tic_id",
 		"ra",
 		"dec",
-		"hostname",
-		"pl_rade",
-		"pl_eqt",
+		# "pl_rade",
+		# "pl_eqt",
 	]
 	url = "https://exoplanetarchive.ipac.caltech.edu/TAP"
 	#cond = "tran_flag+=1+and+pl_eqt+<+1000+and+pl_rade+<+4"
@@ -79,32 +79,59 @@ df_exoarchive = let
 end
 
 # ╔═╡ 2f9012dc-880d-4d02-9e0d-faaf6cd30766
-df_exoarchive_HJ = @chain df_exoarchive begin
-	@subset (1_000.0 .≤ :pl_eqt) .& (10.0 .≤ :pl_rade)
-	@select :pl_name :TIC :ra :dec
-end
+# df_exoarchive_HJ = @chain df_exoarchive begin
+# 	@subset (1_000.0 .≤ :pl_eqt) .& (10.0 .≤ :pl_rade)
+# 	@select :pl_name :TIC :ra :dec
+# end
 
 # ╔═╡ fccd3615-7726-45ac-8d5d-c4f1fc4d5425
 @mdx """
 !!! note
-	We only use the eqt and rade as an approximate cut-off, we go back re-compute these with the updated stellar params from TICv8 later
+	~~~We only use the eqt and rade as an approximate cut-off~~~, we go back re-compute these with the updated stellar params from TICv8 later
 """
 
 # ╔═╡ cc5d072f-c4a8-4e4e-8e61-be21931026b1
-CSV.write("data/pop/exoarchive_HJ_coords.txt", df_exoarchive_HJ[:, [:ra, :dec]];
+# CSV.write("data/pop/exoarchive_HJ_coords.txt", df_exoarchive_HJ[:, [:ra, :dec]];
+# 	delim = '\t',
+# 	header = false,
+# )
+
+# ╔═╡ 0d629db3-7370-406f-989b-7a2caca020dc
+CSV.write("data/pop/exoarchive_coords.txt", df_exoarchive[:, [:ra, :dec]];
 	delim = '\t',
 	header = false,
 )
 
 # ╔═╡ 9de3a7bc-29c0-455c-8b9a-f5d2031838ab
-df_exoachive_TICv8_HJ = let
-	df = CSV.read("data/pop/exoarchive_TICv8_HJ.txt", DataFrame;
+# df_exoachive_TICv8_HJ = let
+# 	df = CSV.read("data/pop/exoarchive_TICv8_HJ.txt", DataFrame;
+# 		comment = "#",
+# 		delim = ' ',
+# 		ignorerepeated = true,
+# 	)
+# 	@select! df begin
+# 		:TIC
+# 		:Rₛ = :Rstar .± :Rstar_err
+# 		:Mₛ = :Mstar .± :M_star_err
+# 		:ρₛ = :rho_star .± :rho_star_err
+# 		:T_eff = :Teff .± :Teff_err
+# 	end
+# 	#@transform! df :Mₛ = @. :ρₛ * :Rₛ^3 # Already in solar units
+# end
+
+# ╔═╡ 380d05a4-35e9-4db4-b35a-b03de9e695ee
+df_exoarchive_TICv8 = let
+	df = CSV.read("data/pop/exoarchive_TICv8.txt", DataFrame;
 		comment = "#",
 		delim = ' ',
 		ignorerepeated = true,
 	)
+	
+	df = leftjoin(df_exoarchive, df, on=:TIC) |> dropmissing
+	
 	@select! df begin
 		:TIC
+		:pl_name
 		:Rₛ = :Rstar .± :Rstar_err
 		:Mₛ = :Mstar .± :M_star_err
 		:ρₛ = :rho_star .± :rho_star_err
@@ -113,15 +140,11 @@ df_exoachive_TICv8_HJ = let
 	#@transform! df :Mₛ = @. :ρₛ * :Rₛ^3 # Already in solar units
 end
 
-# ╔═╡ 58a87832-d4fe-4dee-86e2-394c75222088
-CSV.read("data/pop/exoarchive_TICv8_HJ.txt", DataFrame;
-	comment = "#",
-	delim = ' ',
-	ignorerepeated = true,
-)
+# ╔═╡ bf6a0c6a-eade-420a-99ee-6d8c7480aaac
+df_exoarchive
 
-# ╔═╡ 5c7a8b0a-02f0-465f-bd81-04dc1b76b875
-df_HJ = leftjoin(df_exoachive_TICv8_HJ, df_exoarchive_HJ, on=:TIC)
+# ╔═╡ fbed6625-0b71-4a53-b2f6-2b47653094e1
+df_exoarchive_TICv8
 
 # ╔═╡ 86a99042-bb9b-43e6-87ae-d76f88b10533
 df_ps_all = let
@@ -171,7 +194,7 @@ df_ps_all = let
 end
 
 # ╔═╡ 92fbb7d7-9782-44d4-b1b7-6db89d78a032
-df_ps = leftjoin(df_HJ, df_ps_all, on=:TIC)
+df_ps = leftjoin(df_exoachive_TICv8, df_ps_all, on=:TIC)
 
 # ╔═╡ e8a13c3b-819a-490e-a967-e2da54ca6617
 # for df in groupby(df_ps_all, :pl_name)
@@ -208,6 +231,12 @@ df_ps = leftjoin(df_HJ, df_ps_all, on=:TIC)
 * inclination
 * transit depth
 """
+
+# ╔═╡ fede3db9-ff7f-4966-b76b-c9953e7e3de2
+let
+	df = df_HJ_complete
+	df[occursin.("HAT-P-1", df.pl_name), :]
+end
 
 # ╔═╡ d6598eab-33b3-4873-b6fe-b16c6d5c37d7
 max_m(p, pu, pd) = p ± mean(skipmissing((pu, abs(pd))))
@@ -262,7 +291,7 @@ end
 df_orb = DataFrame(; TIC=TICS, r=rs, P_d=Ps, i_deg=is)
 
 # ╔═╡ 0128ada1-ca70-4c74-8d23-0704a6ed2f77
-nrow.((df_HJ, df_K, df_orb))
+nrow.((df_exoachive_TICv8, df_K, df_orb))
 
 # ╔═╡ 4d1a7740-24c7-4cec-b788-a386bc25f836
 @mdx """
@@ -271,6 +300,11 @@ We next compute the relevant quantities for estimating atmospheric observability
 
 # ╔═╡ 542c59fd-782f-4e15-ab6c-a450bf4714ba
 compute_Mₚ(K, i, P, Mₛ) = (K/sin(i)) * cbrt(P / (2.0π*G)) * Mₛ^(2//3)
+
+# ╔═╡ 64e896bd-5213-4f93-8e4c-e506010e27dc
+let
+	K, i, P = df_HJ_complete[1, [:K_mps, :i_deg, :P_d]]
+end
 
 # ╔═╡ c7eabcc6-5139-448d-abdb-ec752788bd59
 strip_u(u) = x -> ustrip(u, x)
@@ -471,8 +505,8 @@ end
 compute_gₚ(Mₚ, RₚRₛ, Rₛ) = G * Mₚ / (RₚRₛ^2 * Rₛ^2)
 
 # ╔═╡ 463341ab-318d-402f-9545-b44cf19a75ea
-df_HJ_complete = let
-	df = leftjoin(leftjoin(df_orb, df_K; on=:TIC), df_HJ;
+df_complete = let
+	df = leftjoin(leftjoin(df_K, df_orb; on=:TIC), df_exoachive_TICv8;
 		on = :TIC
 	) |> dropmissing
 	@transform! df begin
@@ -487,22 +521,8 @@ df_HJ_complete = let
 	end
 end
 
-# ╔═╡ bdc13e42-b250-4e32-a0ce-228a69b855aa
-names(df_HJ_complete)
-
-# ╔═╡ fede3db9-ff7f-4966-b76b-c9953e7e3de2
-let
-	df = df_HJ_complete
-	df[occursin.("WASP-43", df.pl_name), :]
-end
-
-# ╔═╡ 64e896bd-5213-4f93-8e4c-e506010e27dc
-let
-	K, i, P = df_HJ_complete[1, [:K_mps, :i_deg, :P_d]]
-end
-
-# ╔═╡ 808c3bb1-4215-46aa-87fb-80a51cc44485
-compute_gₚ(2u"Msun", 0.001, 1u"Rsun") |> u"m/s^2" |> ustrip
+# ╔═╡ a9bbac33-fbcd-45b6-9a15-850d0407a800
+setdiff(df_wakeford.pl_name, df_complete.pl_name)
 
 # ╔═╡ 1e587a84-ed43-4fac-81cf-134a4f3d65d5
 compute_H(μ, T, g) = k * T / (μ * g)
@@ -822,11 +842,13 @@ end
 # ╟─6b06701b-05e2-4284-a308-e9edeb65a648
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
 # ╠═2f9012dc-880d-4d02-9e0d-faaf6cd30766
-# ╟─fccd3615-7726-45ac-8d5d-c4f1fc4d5425
+# ╠═fccd3615-7726-45ac-8d5d-c4f1fc4d5425
 # ╠═cc5d072f-c4a8-4e4e-8e61-be21931026b1
+# ╠═0d629db3-7370-406f-989b-7a2caca020dc
 # ╠═9de3a7bc-29c0-455c-8b9a-f5d2031838ab
-# ╠═58a87832-d4fe-4dee-86e2-394c75222088
-# ╠═5c7a8b0a-02f0-465f-bd81-04dc1b76b875
+# ╠═380d05a4-35e9-4db4-b35a-b03de9e695ee
+# ╠═bf6a0c6a-eade-420a-99ee-6d8c7480aaac
+# ╠═fbed6625-0b71-4a53-b2f6-2b47653094e1
 # ╠═86a99042-bb9b-43e6-87ae-d76f88b10533
 # ╠═92fbb7d7-9782-44d4-b1b7-6db89d78a032
 # ╠═e8a13c3b-819a-490e-a967-e2da54ca6617
@@ -841,8 +863,7 @@ end
 # ╠═7898ea90-4863-4beb-995e-7a251235aa88
 # ╠═0128ada1-ca70-4c74-8d23-0704a6ed2f77
 # ╠═463341ab-318d-402f-9545-b44cf19a75ea
-# ╠═bdc13e42-b250-4e32-a0ce-228a69b855aa
-# ╠═808c3bb1-4215-46aa-87fb-80a51cc44485
+# ╠═a9bbac33-fbcd-45b6-9a15-850d0407a800
 # ╠═fede3db9-ff7f-4966-b76b-c9953e7e3de2
 # ╠═d6598eab-33b3-4873-b6fe-b16c6d5c37d7
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
