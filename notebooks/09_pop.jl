@@ -181,6 +181,9 @@ end
 df_ps = leftjoin(df_ps_all, df_exoarchive_TICv8, on=[:TIC, :pl_name];
 makeunique=true)# |> dropmissing
 
+# ╔═╡ 64aa96d2-12ba-4a3e-a1b2-1d60e3f468be
+df_ps[df_ps.pl_name .== "WASP-43 b", :]
+
 # ╔═╡ 97c9f1ae-21da-4f99-94ff-a8adaabf30bb
 @mdx """
 ## Radial velocity (RV params)
@@ -304,12 +307,15 @@ df_orb = DataFrame(
 	pl_ratror = [rs; rs_wakeford],
 	pl_orbper = [Ps; Ps_wakeford],
 	pl_orbincl = [i_degs; i_deg_wakeford],
-	pl_refnames = [pl_refnames_orb; pl_refnames_wakeford],
-	st_refnames = [st_refnames_orb; st_refnames_wakeford],
+	pl_refnames_orb = [pl_refnames_orb; pl_refnames_wakeford],
+	st_refnames_orb = [st_refnames_orb; st_refnames_wakeford],
 )
 
 # ╔═╡ 0f939597-807b-4381-8461-09c7b9bdf3b1
 occursin_df(df, s) = df[occursin.(s, df.pl_name), :]
+
+# ╔═╡ 7df7c1cc-8dd3-4da5-a614-aa35312534f1
+occursin_df(df_K, "WASP-43")
 
 # ╔═╡ d6598eab-33b3-4873-b6fe-b16c6d5c37d7
 max_m(p, pu, pd) = p ± mean(skipmissing((pu, abs(pd))))
@@ -338,6 +344,29 @@ compute_Tₚ(Tₛ, aRₛ; α=0.0) = Tₛ * (1.0 - α)^(1//4) * (0.5/aRₛ)^(1//2
 @mdx """
 ## Split 'em up
 """
+
+# ╔═╡ e99f8f02-e008-4f8e-b6ea-0519532ea93a
+extract_url(s) = split(split(s, " ")[3], "href=")[end]
+
+# ╔═╡ d5736ee2-d8c8-4717-8dca-140e015f5ed0
+s = "Sada &amp; Ram&oacute;n-Fox" #df_HGHJ.pl_refnames_orb[end]
+
+# ╔═╡ 361c6906-a1fd-4149-9e4a-2b8f2fede909
+hs = HTML(s)
+
+# ╔═╡ 918a4667-2d7f-4f61-84f1-c03cb726c9f1
+open("data/pop/output.txt", "w") do out
+    redirect_stdout(out) do
+        println(HTML(s))
+    end
+end
+
+# ╔═╡ dd328a8f-5e22-4b60-af20-69327859c5d7
+function extract_author(s)
+	x = split(split(s, "target=ref>")[end], "</a>")[begin]
+	#x = replace(x, "&" => raw"\&")
+	#x = replace(x, "&amp;" => raw"\&")
+end
 
 # ╔═╡ c7eabcc6-5139-448d-abdb-ec752788bd59
 strip_u(u) = x -> ustrip(u, x)
@@ -481,7 +510,7 @@ df_complete = let
 end
 
 # ╔═╡ 9d7c6dff-9662-4752-8b0f-cd30357d2d85
-occursin_df(df_complete, "WASP-43")[:, [:st_rad, :pl_eqt, :pl_massj]]
+dfw = occursin_df(df_complete, "WASP-43")#[:, [:st_rad, :pl_eqt, :pl_massj]]
 
 # ╔═╡ 373e3a8c-39f8-4656-9fcb-e0fc21cce353
 df_all = @chain df_complete begin
@@ -506,16 +535,20 @@ df_HGHJ = @chain df_complete begin
 		:pl_g = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
 		:pl_g_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
 		:TSMR = value.(:TSMR)
-		:pl_refnames
-		:st_refnames
+		:pl_refnames_K
+		:pl_refnames_orb
+	end
+	@rtransform begin
+		:pl_refnames_K = "\\url{$(extract_url(:pl_refnames_K))}"
+		:pl_refnames_orb = "\\url{$(extract_url(:pl_refnames_orb))}"
 	end
 end
 
+# ╔═╡ 11adf40a-79e6-4e5a-b0e5-5ccd9f87ed2e
+df_HGHJ.pl_refnames_orb[end] |> PlutoUI.Text
+
 # ╔═╡ 157a44f4-6191-4407-98a4-3c8c43817a65
 df_HGHJ_no_H2OJ = filter(x -> x.pl_name ∈ ["HAT-P-23 b", "WASP-50 b"], df_HGHJ)
-
-# ╔═╡ 94a5f868-d043-4c1f-831c-17ebabd3df6c
-latextabular(df_HGHJ, latex=false, fmt="%.2f") |> PlutoUI.Text
 
 # ╔═╡ b3ae27e9-2564-4f4c-8c51-5a40b2705ecf
 df_HGHJ_paper = @chain df_complete begin
@@ -523,13 +556,20 @@ df_HGHJ_paper = @chain df_complete begin
 	sort(:TSMR, rev=true) # To stack smaller circles on top in Figure
 	@select begin
 		:pl_name
-		:pl_eqt
-		:pl_g = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
-		:TSMR = value.(:TSMR)
-		:pl_refnames
-		:st_refnames
+		:pl_eqt = ustrip.(u"K", :pl_eqt)
+		:pl_g = ustrip.(u"m/s^2", :pl_g_SI)
+		:TSMR = @. round(value(:TSMR), digits=2)
+		:pl_refnames_K
+		:pl_refnames_orb
+	end
+	@rtransform begin
+		:pl_refnames_K = "\\href{$(extract_url(:pl_refnames_K))}{Klink}"
+		:pl_refnames_orb = "\\href{$(extract_url(:pl_refnames_orb))}{orblink}"
 	end
 end
+
+# ╔═╡ 893c4a44-f9f6-4185-bd1e-26095339bddc
+latextabular(df_HGHJ_paper, latex=false) |> PlutoUI.Text
 
 # ╔═╡ d6449d05-ee95-4bda-8636-37c71e422944
 df_wakeford = let
@@ -754,10 +794,12 @@ end
 # ╠═f8b4def8-a46f-4cbc-83c0-ff44a39c1571
 # ╠═86a99042-bb9b-43e6-87ae-d76f88b10533
 # ╠═92fbb7d7-9782-44d4-b1b7-6db89d78a032
+# ╠═64aa96d2-12ba-4a3e-a1b2-1d60e3f468be
 # ╟─97c9f1ae-21da-4f99-94ff-a8adaabf30bb
 # ╠═2584860a-8e24-49f7-a7d5-4c99c8deda8e
 # ╠═759b0ca7-ade4-4929-afa5-51e0ab133a5b
 # ╠═2ae250e2-cc4d-4824-9795-a8bc0a4b469b
+# ╠═7df7c1cc-8dd3-4da5-a614-aa35312534f1
 # ╟─3ed05d01-b489-46d6-bcd4-9028d756ab35
 # ╠═0aa8aaf2-5343-4b6e-a47b-cf0fc8d27643
 # ╠═0c793036-d7c6-4a56-9ef6-f58b02e6530c
@@ -778,7 +820,14 @@ end
 # ╠═47831596-0483-4420-a071-832183b1c3bb
 # ╠═373e3a8c-39f8-4656-9fcb-e0fc21cce353
 # ╠═998af70c-d784-4791-9261-a6dcbec8c824
+# ╠═11adf40a-79e6-4e5a-b0e5-5ccd9f87ed2e
+# ╠═e99f8f02-e008-4f8e-b6ea-0519532ea93a
+# ╠═d5736ee2-d8c8-4717-8dca-140e015f5ed0
+# ╠═361c6906-a1fd-4149-9e4a-2b8f2fede909
+# ╠═918a4667-2d7f-4f61-84f1-c03cb726c9f1
+# ╠═dd328a8f-5e22-4b60-af20-69327859c5d7
 # ╠═b3ae27e9-2564-4f4c-8c51-5a40b2705ecf
+# ╠═893c4a44-f9f6-4185-bd1e-26095339bddc
 # ╠═4e6c0113-255f-46fb-84ad-f8f30b79a219
 # ╠═d6449d05-ee95-4bda-8636-37c71e422944
 # ╠═c7eabcc6-5139-448d-abdb-ec752788bd59
@@ -790,7 +839,6 @@ end
 # ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d
-# ╠═94a5f868-d043-4c1f-831c-17ebabd3df6c
 # ╟─18094afc-b77f-4cae-a30c-2691d34125d8
 # ╠═958453c3-7993-4620-ab7f-e7ad79781dd5
 # ╠═f07ad06b-81d2-454f-988f-a7ae1713eac4
