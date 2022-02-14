@@ -94,34 +94,11 @@ end
 	~~~We only use the eqt and rade as an approximate cut-off~~~, we go back re-compute these with the updated stellar params from TICv8 later
 """
 
-# ╔═╡ cc5d072f-c4a8-4e4e-8e61-be21931026b1
-# CSV.write("data/pop/exoarchive_HJ_coords.txt", df_exoarchive_HJ[:, [:ra, :dec]];
-# 	delim = '\t',
-# 	header = false,
-# )
-
 # ╔═╡ 0d629db3-7370-406f-989b-7a2caca020dc
 CSV.write("data/pop/exoarchive_coords.txt", df_exoarchive[:, [:ra, :dec]];
 	delim = '\t',
 	header = false,
 )
-
-# ╔═╡ 9de3a7bc-29c0-455c-8b9a-f5d2031838ab
-# df_exoachive_TICv8_HJ = let
-# 	df = CSV.read("data/pop/exoarchive_TICv8_HJ.txt", DataFrame;
-# 		comment = "#",
-# 		delim = ' ',
-# 		ignorerepeated = true,
-# 	)
-# 	@select! df begin
-# 		:TIC
-# 		:Rₛ = :Rstar .± :Rstar_err
-# 		:Mₛ = :Mstar .± :M_star_err
-# 		:ρₛ = :rho_star .± :rho_star_err
-# 		:T_eff = :Teff .± :Teff_err
-# 	end
-# 	#@transform! df :Mₛ = @. :ρₛ * :Rₛ^3 # Already in solar units
-# end
 
 # ╔═╡ f8b4def8-a46f-4cbc-83c0-ff44a39c1571
 ρ_sun = inv((4/3)*π)
@@ -204,25 +181,6 @@ end
 df_ps = leftjoin(df_ps_all, df_exoarchive_TICv8, on=[:TIC, :pl_name];
 makeunique=true)# |> dropmissing
 
-# ╔═╡ e8a13c3b-819a-490e-a967-e2da54ca6617
-# for df in groupby(df_ps_all, :pl_name)
-# 	df_rv = @chain df begin
-# 		@subset :pl_pubdate .== maximum(:pl_pubdate)
-# 		@select :pl_name :pl_rvamp :pl_rvamperr1 :pl_rvamperr2 :pl_refname
-# 	end
-# 	K, K_err = max_m(df_rv.pl_rvamp[1], df_rv.pl_rvamperr1[1], df_rv.pl_rvamperr2[1])
-# 	# @aside begin
-# 	# 	@subset _.pl_pubdate .== maximum(_.pl_pubdate)
-# 	# end
-# 	#@select :pl_name #:pl_rvamp :pl_rvamperr1 :pl_rvamperr2 :pl_refname
-# 	# 	end
-# 	# 	K, K_err = max_m(
-# 	# 		df_rv.pl_rvamp[1], df_rv.pl_rvamperr1[1], df_rv.pl_rvamperr2[1]
-# 	# 	)
-# 	# end
-# 	#@combine :K = K
-# end
-
 # ╔═╡ 97c9f1ae-21da-4f99-94ff-a8adaabf30bb
 @mdx """
 ## Radial velocity (RV params)
@@ -232,29 +190,31 @@ makeunique=true)# |> dropmissing
 # ╔═╡ 2584860a-8e24-49f7-a7d5-4c99c8deda8e
 function extract_K(df₀)
 	df = @subset df₀ :pl_pubdate .== maximum(:pl_pubdate)
-	return df.pl_rvamp[1]u"m/s"
+	return df.pl_rvamp[1]u"m/s", df.pl_refname[1], df.st_refname[1]
 	#return max_m(df.pl_rvamp[1], df.pl_rvamperr1[1], df.pl_rvamperr2[1])
 end
 
 # ╔═╡ 759b0ca7-ade4-4929-afa5-51e0ab133a5b
 begin
-	pl_names_K = String[]
+	pl_names_K, pl_refnames_K, st_refnames_K = String[], String[], String[]
 	K_mps = []
-	for df ∈ groupby(dropmissing(df_ps, [:pl_rvamp, :pl_refname, :pl_pubdate]), :pl_name;
-	sort = true,
+	for df ∈ groupby(dropmissing(df_ps, [:pl_rvamp, :pl_refname, :pl_pubdate]), 		:pl_name;
+		sort = true,
 	)
 	# for df ∈ groupby(dropmissing(df_ps, [:pl_rvamp, :pl_rvamperr1, :pl_rvamperr2, :pl_refname, :pl_pubdate]), :pl_name;
 	# sort = true,
 	# )
-		K = extract_K(df)
+		K, pl_refname_K, st_refname_K = extract_K(df)
 		push!(pl_names_K, df.pl_name[1])
 		push!(K_mps, K)
+		push!(pl_refnames_K, pl_refname_K)
+		push!(st_refnames_K, st_refname_K)
 	end
 end
 
 # ╔═╡ 2ae250e2-cc4d-4824-9795-a8bc0a4b469b
 # Fixed params
-df_K = DataFrame(; pl_name=pl_names_K, pl_rvamp=K_mps)
+df_K = DataFrame(; pl_name=pl_names_K, pl_rvamp=K_mps, pl_refnames_K, st_refnames_K)
 
 # ╔═╡ 3ed05d01-b489-46d6-bcd4-9028d756ab35
 @mdx """
@@ -268,7 +228,8 @@ df_K = DataFrame(; pl_name=pl_names_K, pl_rvamp=K_mps)
 function extract_orb_params(df₀)
 	df = @subset df₀ :pl_pubdate .== maximum(:pl_pubdate)
 	
-	return df.pl_ratror[1], df.pl_orbper[1]u"d", df.pl_orbincl[1]u"°"
+	return (df.pl_ratror[1], df.pl_orbper[1]u"d", df.pl_orbincl[1]u"°",
+		df.pl_refname[1], df.st_refname[1])
 	# return (
 	# 	max_m(df.pl_ratror[1], df.pl_ratrorerr1[1], df.pl_ratrorerr2[1]),
 	# 	max_m(df.pl_orbper[1], df.pl_orbpererr1[1], df.pl_orbpererr2[1]),
@@ -281,12 +242,13 @@ function extract_orb_params_wakeford(df₀)
 	df = @subset df₀ :pl_pubdate .== maximum(:pl_pubdate)
 	δ = df.pl_trandep[1]
 	r = sqrt(δ)
-	return r, df.pl_orbper[1]u"d", df.pl_orbincl[1]u"°"
+	return r, df.pl_orbper[1]u"d", df.pl_orbincl[1]u"°", df.pl_refname[1], df.st_refname[1]
 end
 
 # ╔═╡ 2d63caf3-dd64-483d-8c85-5085d7aad2ac
 begin
 	pl_names_orb, rs, Ps, i_degs = String[], Float64[], [], []
+	pl_refnames_orb, st_refnames_orb = String[], String[]
 	
 	for df ∈ groupby(dropmissing(df_ps,
 		[:pl_ratror, :pl_orbper, :pl_orbincl, :pl_pubdate]), :TIC;
@@ -295,17 +257,20 @@ begin
 	# for df ∈ groupby(dropmissing(df_ps, [:pl_ratror, :pl_ratrorerr1, :pl_orbper, :pl_orbpererr1, :pl_orbincl, :pl_orbinclerr1, :pl_pubdate]), :TIC;
 	# sort = true,
 	# )
-		r, P, i_deg = extract_orb_params(df)
+		r, P, i_deg, pl_refname_orb, st_refname_orb = extract_orb_params(df)
 		push!(pl_names_orb, df.pl_name[1])
 		push!(rs, r)
 		push!(Ps, P)
 		push!(i_degs, i_deg)
+		push!(pl_refnames_orb, pl_refname_orb)
+		push!(st_refnames_orb, st_refname_orb)
 	end
 end
 
 # ╔═╡ f306bc5a-5597-4a52-b6e3-364a4230367d
 function wakeford_orb(df_ps)
-	pl_names_orb, rs, Ps, i_degs = String[], Float64[], [], []
+	pl_names, rs, Ps, i_degs = String[], Float64[], [], []
+	pl_refnames, st_refnames = String[], String[]
 	
 	for df ∈ groupby(dropmissing(df_ps,
 		[:pl_trandep, :pl_orbper, :pl_orbincl, :pl_pubdate]), :TIC;
@@ -316,19 +281,21 @@ function wakeford_orb(df_ps)
 			"WASP-69 b", "WASP-76 b",
 			"WASP-79 b", "WASP-101 b"
 		]
-			r, P, i_deg = extract_orb_params_wakeford(df)
-			push!(pl_names_orb, df.pl_name[1])
+			r, P, i_deg, pl_refname, st_refname = extract_orb_params_wakeford(df)
+			push!(pl_names, df.pl_name[1])
 			push!(rs, r)
 			push!(Ps, P)
 			push!(i_degs, i_deg)
+			push!(pl_refnames, pl_refname)
+			push!(st_refnames, st_refname)
 		end
 	end
 
-	return pl_names_orb, rs, Ps, i_degs
+	return pl_names, rs, Ps, i_degs, pl_refnames, st_refnames
 end
 
 # ╔═╡ af31c3ab-c459-46fd-ba5c-c0c469da5091
-pl_names_orb_wakeford, rs_wakeford, Ps_wakeford, i_deg_wakeford = wakeford_orb(df_ps)
+pl_names_orb_wakeford, rs_wakeford, Ps_wakeford, i_deg_wakeford, pl_refnames_wakeford, st_refnames_wakeford = wakeford_orb(df_ps)
 
 # ╔═╡ 7898ea90-4863-4beb-995e-7a251235aa88
 # Fixed params
@@ -336,7 +303,9 @@ df_orb = DataFrame(
 	pl_name = [pl_names_orb; pl_names_orb_wakeford],
 	pl_ratror = [rs; rs_wakeford],
 	pl_orbper = [Ps; Ps_wakeford],
-	pl_orbincl = [i_degs; i_deg_wakeford]
+	pl_orbincl = [i_degs; i_deg_wakeford],
+	pl_refnames = [pl_refnames_orb; pl_refnames_wakeford],
+	st_refnames = [st_refnames_orb; st_refnames_wakeford],
 )
 
 # ╔═╡ 0f939597-807b-4381-8461-09c7b9bdf3b1
@@ -391,18 +360,6 @@ df_H2OJ = CSV.read("data/pop/H2O_J_data.csv", DataFrame;
 !!! note
 	Inspired from [warm-worlds](https://github.com/nespinoza/warm-worlds)
 """
-
-# ╔═╡ 53c4fd02-7a48-47a1-9341-ede3e8d497f7
-y = @chain df_HGHJs_all begin
-	@select :pl_name :pl_eqt :g_SI :TSMR
-	#first(10)
-end
-
-# ╔═╡ 94a5f868-d043-4c1f-831c-17ebabd3df6c
-latextabular(y, latex=false, fmt="%.2f") |> PlutoUI.Text
-
-# ╔═╡ 18e6c65f-b999-41d6-81d2-7398bc05ab47
-@with_terminal PrettyTables.pretty_table(y, nosubheader=true)
 
 # ╔═╡ 18094afc-b77f-4cae-a30c-2691d34125d8
 @mdx """
@@ -529,7 +486,7 @@ occursin_df(df_complete, "WASP-43")[:, [:st_rad, :pl_eqt, :pl_massj]]
 # ╔═╡ 373e3a8c-39f8-4656-9fcb-e0fc21cce353
 df_all = @chain df_complete begin
 	@select begin
-		:pl_name = :pl_name
+		:pl_name
 		:pl_eqt = @. value(:pl_eqt) |> strip_u(u"K")
 		:pl_eqt_err = @. uncertainty(:pl_eqt) |> strip_u(u"K")
 		:pl_g = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
@@ -541,22 +498,38 @@ end
 # ╔═╡ 998af70c-d784-4791-9261-a6dcbec8c824
 df_HGHJ = @chain df_complete begin
 	@rsubset (1.0 ≤ :TSMR) & (20.0u"m/s^2" ≤ :pl_g_SI) & (0.89u"Rjup" ≤ :pl_radj)
-	sort!(:TSMR, rev=true) # To stack smaller circles on top in Figure
+	sort(:TSMR, rev=true) # To stack smaller circles on top in Figure
 	@select begin
-		:pl_name = :pl_name
+		:pl_name
 		:pl_eqt = @. value(:pl_eqt) |> strip_u(u"K")
 		:pl_eqt_err = @. uncertainty(:pl_eqt) |> strip_u(u"K")
 		:pl_g = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
 		:pl_g_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
 		:TSMR = value.(:TSMR)
+		:pl_refnames
+		:st_refnames
 	end
 end
 
 # ╔═╡ 157a44f4-6191-4407-98a4-3c8c43817a65
 df_HGHJ_no_H2OJ = filter(x -> x.pl_name ∈ ["HAT-P-23 b", "WASP-50 b"], df_HGHJ)
 
-# ╔═╡ aed1fac3-39d7-4065-90de-ebd0f5bfac84
-names(df_complete)
+# ╔═╡ 94a5f868-d043-4c1f-831c-17ebabd3df6c
+latextabular(df_HGHJ, latex=false, fmt="%.2f") |> PlutoUI.Text
+
+# ╔═╡ b3ae27e9-2564-4f4c-8c51-5a40b2705ecf
+df_HGHJ_paper = @chain df_complete begin
+	@rsubset (1.0 ≤ :TSMR) & (20.0u"m/s^2" ≤ :pl_g_SI) & (0.89u"Rjup" ≤ :pl_radj)
+	sort(:TSMR, rev=true) # To stack smaller circles on top in Figure
+	@select begin
+		:pl_name
+		:pl_eqt
+		:pl_g = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
+		:TSMR = value.(:TSMR)
+		:pl_refnames
+		:st_refnames
+	end
+end
 
 # ╔═╡ d6449d05-ee95-4bda-8636-37c71e422944
 df_wakeford = let
@@ -677,7 +650,7 @@ let
 	hl = hlines!(ax, 20, color=:darkgrey, linestyle=:dash)
 	translate!(hl, 0, 0, -1) # Place behind plot markers
 
-    # savefig(fg, "$(FIG_DIR)/t_vs_g.pdf")
+    savefig(fg, "$(FIG_DIR)/t_vs_g.pdf")
 
 	fg
 end
@@ -763,7 +736,7 @@ let
 		orientation = :horizontal,
 	)
 
-	#savefig(fg, "$(FIG_DIR)/hg_pop.pdf")
+	savefig(fg, "$(FIG_DIR)/hg_pop.pdf")
 	
 	fg
 end
@@ -776,14 +749,11 @@ end
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
 # ╠═2f9012dc-880d-4d02-9e0d-faaf6cd30766
 # ╠═fccd3615-7726-45ac-8d5d-c4f1fc4d5425
-# ╠═cc5d072f-c4a8-4e4e-8e61-be21931026b1
 # ╠═0d629db3-7370-406f-989b-7a2caca020dc
-# ╠═9de3a7bc-29c0-455c-8b9a-f5d2031838ab
 # ╠═380d05a4-35e9-4db4-b35a-b03de9e695ee
 # ╠═f8b4def8-a46f-4cbc-83c0-ff44a39c1571
 # ╠═86a99042-bb9b-43e6-87ae-d76f88b10533
 # ╠═92fbb7d7-9782-44d4-b1b7-6db89d78a032
-# ╠═e8a13c3b-819a-490e-a967-e2da54ca6617
 # ╟─97c9f1ae-21da-4f99-94ff-a8adaabf30bb
 # ╠═2584860a-8e24-49f7-a7d5-4c99c8deda8e
 # ╠═759b0ca7-ade4-4929-afa5-51e0ab133a5b
@@ -808,7 +778,7 @@ end
 # ╠═47831596-0483-4420-a071-832183b1c3bb
 # ╠═373e3a8c-39f8-4656-9fcb-e0fc21cce353
 # ╠═998af70c-d784-4791-9261-a6dcbec8c824
-# ╠═aed1fac3-39d7-4065-90de-ebd0f5bfac84
+# ╠═b3ae27e9-2564-4f4c-8c51-5a40b2705ecf
 # ╠═4e6c0113-255f-46fb-84ad-f8f30b79a219
 # ╠═d6449d05-ee95-4bda-8636-37c71e422944
 # ╠═c7eabcc6-5139-448d-abdb-ec752788bd59
@@ -821,8 +791,6 @@ end
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d
 # ╠═94a5f868-d043-4c1f-831c-17ebabd3df6c
-# ╠═53c4fd02-7a48-47a1-9341-ede3e8d497f7
-# ╠═18e6c65f-b999-41d6-81d2-7398bc05ab47
 # ╟─18094afc-b77f-4cae-a30c-2691d34125d8
 # ╠═958453c3-7993-4620-ab7f-e7ad79781dd5
 # ╠═f07ad06b-81d2-454f-988f-a7ae1713eac4
