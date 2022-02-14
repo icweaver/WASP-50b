@@ -214,9 +214,6 @@ df_ps = leftjoin(df_ps_all, df_exoarchive_TICv8, on=[:TIC, :pl_name])# |> dropmi
 # 	#@combine :K = K
 # end
 
-# ╔═╡ d3f2eace-6272-4281-95fd-4b931c2ae332
-ρ_sun = uconvert(u"g/cm^3", (1*u"Msun" / ((4/3) * π * u"Rsun"^3))) |> ustrip
-
 # ╔═╡ 97c9f1ae-21da-4f99-94ff-a8adaabf30bb
 @mdx """
 ## Radial velocity (RV params)
@@ -234,9 +231,12 @@ end
 begin
 	pl_names_K = []
 	K_mps = []
-	for df ∈ groupby(dropmissing(df_ps, [:pl_rvamp, :pl_rvamperr1, :pl_rvamperr2, :pl_refname, :pl_pubdate]), :pl_name;
+	for df ∈ groupby(dropmissing(df_ps, [:pl_rvamp, :pl_refname, :pl_pubdate]), :pl_name;
 	sort = true,
 	)
+	# for df ∈ groupby(dropmissing(df_ps, [:pl_rvamp, :pl_rvamperr1, :pl_rvamperr2, :pl_refname, :pl_pubdate]), :pl_name;
+	# sort = true,
+	# )
 		K = extract_K(df)
 		push!(pl_names_K, df.pl_name[1])
 		push!(K_mps, K)
@@ -258,6 +258,7 @@ df_K = DataFrame(; pl_name=pl_names_K, K_mps)
 # ╔═╡ 0aa8aaf2-5343-4b6e-a47b-cf0fc8d27643
 function extract_orb_params(df₀)
 	df = @subset df₀ :pl_pubdate .== maximum(:pl_pubdate)
+	
 	return df.pl_ratror[1], df.pl_orbper[1], df.pl_orbincl[1]
 	# return (
 	# 	max_m(df.pl_ratror[1], df.pl_ratrorerr1[1], df.pl_ratrorerr2[1]),
@@ -266,34 +267,71 @@ function extract_orb_params(df₀)
 	# )
 end
 
+# ╔═╡ 0c793036-d7c6-4a56-9ef6-f58b02e6530c
+function extract_orb_params_wakeford(df₀)
+	df = @subset df₀ :pl_pubdate .== maximum(:pl_pubdate)
+	δ = df.pl_trandep[1]
+	r = sqrt(δ)
+	return r, df.pl_orbper[1], df.pl_orbincl[1]
+end
+
 # ╔═╡ 2d63caf3-dd64-483d-8c85-5085d7aad2ac
 begin
-	pl_names_orb, rs, Ps, is = String[], Float64[], Float64[], Float64[]
-	for df ∈ groupby(dropmissing(df_ps, [
-		:pl_ratror, #:pl_ratrorerr1,
-		:pl_orbper, #:pl_orbpererr1,
-		:pl_orbincl, #:pl_orbinclerr1,
-		:pl_pubdate
-	]), :pl_name;
-	sort = true,
+	pl_names_orb, rs, Ps, i_degs = String[], Float64[], Float64[], Float64[]
+	
+	for df ∈ groupby(dropmissing(df_ps,
+		[:pl_ratror, :pl_orbper, :pl_orbincl, :pl_pubdate]), :TIC;
+		sort = true,
 	)
-		r, P, i = extract_orb_params(df)
+	# for df ∈ groupby(dropmissing(df_ps, [:pl_ratror, :pl_ratrorerr1, :pl_orbper, :pl_orbpererr1, :pl_orbincl, :pl_orbinclerr1, :pl_pubdate]), :TIC;
+	# sort = true,
+	# )
+		r, P, i_deg = extract_orb_params(df)
 		push!(pl_names_orb, df.pl_name[1])
 		push!(rs, r)
 		push!(Ps, P)
-		push!(is, i)
+		push!(i_degs, i_deg)
 	end
 end
 
+# ╔═╡ f306bc5a-5597-4a52-b6e3-364a4230367d
+function wakeford_orb(df_ps)
+	pl_names_orb, rs, Ps, i_degs = String[], Float64[], Float64[], Float64[]
+	
+	for df ∈ groupby(dropmissing(df_ps,
+		[:pl_trandep, :pl_orbper, :pl_orbincl, :pl_pubdate]), :TIC;
+		sort = true,
+	)
+		if df.pl_name[1] ∈ [
+			"WASP-31 b", "WASP-63 b",
+			"WASP-69 b", "WASP-76 b",
+			"WASP-79 b", "WASP-101 b"
+		]
+			r, P, i_deg = extract_orb_params_wakeford(df)
+			push!(pl_names_orb, df.pl_name[1])
+			push!(rs, r)
+			push!(Ps, P)
+			push!(i_degs, i_deg)
+		end
+	end
+
+	return pl_names_orb, rs, Ps, i_degs
+end
+
+# ╔═╡ af31c3ab-c459-46fd-ba5c-c0c469da5091
+pl_names_orb_wakeford, rs_wakeford, Ps_wakeford, i_deg_wakeford = wakeford_orb(df_ps)
+
 # ╔═╡ 7898ea90-4863-4beb-995e-7a251235aa88
 # Fixed params
-df_orb = DataFrame(; pl_name=pl_names_orb, r=rs, P_d=Ps, i_deg=is)
+df_orb = DataFrame(
+	pl_name = [pl_names_orb; pl_names_orb_wakeford],
+	r = [rs; rs_wakeford],
+	P_d = [Ps; Ps_wakeford],
+	i_deg = [i_degs; i_deg_wakeford]
+)
 
 # ╔═╡ 0f939597-807b-4381-8461-09c7b9bdf3b1
 occursin_df(df, s) = df[occursin.(s, df.pl_name), :]
-
-# ╔═╡ 4e8ffccf-ca3e-4201-b2ad-702a174afd04
-occursin_df(df_ps, "WASP-31")
 
 # ╔═╡ d6598eab-33b3-4873-b6fe-b16c6d5c37d7
 max_m(p, pu, pd) = p ± mean(skipmissing((pu, abs(pd))))
@@ -306,10 +344,14 @@ We next compute the relevant quantities for estimating atmospheric observability
 # ╔═╡ 542c59fd-782f-4e15-ab6c-a450bf4714ba
 compute_Mₚ(K, i, P, Mₛ) = (K/sin(i)) * cbrt(P / (2.0π*G)) * Mₛ^(2//3)
 
-# ╔═╡ 64e896bd-5213-4f93-8e4c-e506010e27dc
-let
-	K, i, P = df_HJ_complete[1, [:K_mps, :i_deg, :P_d]]
-end
+# ╔═╡ 7a688b2e-64bb-4bc5-a799-4b267e5c30ad
+compute_aRₛ(ρₛ, P) = ((G * P^2 * ρₛ)/(3.0π))^(1//3)
+
+# ╔═╡ 763503a1-9c3b-4353-b396-96e62c48c2be
+compute_Tₚ(Tₛ, aRₛ; α=0.0) = Tₛ * (1.0 - α)^(1//4) * (0.5/aRₛ)^(1//2)
+
+# ╔═╡ 32bd97e4-e646-4702-98e3-17e980cf6754
+
 
 # ╔═╡ c7eabcc6-5139-448d-abdb-ec752788bd59
 strip_u(u) = x -> ustrip(u, x)
@@ -446,12 +488,6 @@ df_wakeford_ps = sort!(leftjoin(df_wakeford, df_ps_all, on=:pl_name), :pl_name;
 	lt = natural
 )
 
-# ╔═╡ aab7f672-a312-44d2-b8cc-937f877a662d
-10^2.78 / 100
-
-# ╔═╡ ad07751a-8334-4490-82b7-5cf5a1375aad
-10^4.33 / 100
-
 # ╔═╡ 7f956b36-ce65-4e4e-afa5-9b97b9e06954
 @mdx """
 ## HGHJ population
@@ -518,68 +554,33 @@ df_complete = let
 		:Mₚ_J = @. compute_Mₚ(
 			:K_mps*u"m/s", :i_deg*u"°", :P_d*u"d", :Mₛ*u"Msun"
 		) |> u"Mjup" |> ustrip
+		:Rₚ_J = @. (:r * :Rₛ*u"Rsun") |> u"Rjup" |> ustrip
 	end
 	@transform! df begin
 		:gₚ_SI = @. compute_gₚ(
 			:Mₚ_J*u"Mjup", :r, :Rₛ*u"Rsun"
 		) |> u"m/s^2" |> ustrip
 	end
-	@select! df :TIC :pl_name :Rₛ :T_eff :ρₛ :Mₛ :K_mps :r :P_d :i_deg :Mₚ_J :gₚ_SI
+	@select!(df,
+		:TIC, :pl_name,
+		:Rₛ, :T_eff, :ρₛ, :Mₛ,
+		:K_mps,
+		:r, :P_d, :i_deg,
+		:Mₚ_J, :Rₚ_J, :gₚ_SI,
+	)
 end
 
-# ╔═╡ a9bbac33-fbcd-45b6-9a15-850d0407a800
-@with_terminal println(setdiff(df_wakeford.pl_name, df_complete.pl_name))
+# ╔═╡ 1a0b9ba0-837e-4d16-b43a-8a731c8fe84d
+compute_aRₛ.(df_complete.ρₛ, df_complete.P_d)
 
 # ╔═╡ 1e587a84-ed43-4fac-81cf-134a4f3d65d5
 compute_H(μ, T, g) = k * T / (μ * g)
-
-# ╔═╡ 7336f748-5a5a-476e-80d0-cb6200aefeff
-_df = @chain df_all begin
-	dropmissing([:pl_rade, :pl_bmasse, :pl_eqt, :pl_orbsmax, :st_teff, :sy_jmag, :tic_id, :pl_ratror, :st_rad,
-	:pl_bmasseerr1, :pl_bmasseerr2, :st_raderr1, :pl_eqterr1, :pl_eqterr2])
-	@aside begin
-		Mₚ_err_max = maximum.(
-			skipmissing.(eachrow(abs.(_[:, [:pl_bmasseerr1, :pl_bmasseerr2]]))))
-		Mₚ = _.pl_bmasse .± Mₚ_err_max
-		Rₚ_err_max = maximum.(
-			skipmissing.(eachrow(abs.(_[:, [:pl_radeerr1, :pl_radeerr2]]))))
-		Rₚ = _.pl_rade .± Rₚ_err_max
-		Rₛ_err_max = maximum.(
-			skipmissing.(eachrow(abs.(_[:, [:st_raderr1, :st_raderr2]]))))
-		Rₛ = _.st_rad .± Rₛ_err_max
-		RₚRₛ_err_max = maximum.(
-			skipmissing.(eachrow(abs.(_[:, [:pl_ratrorerr1, :pl_ratrorerr2]]))))
-		RₚRₛ = _.pl_ratror .± RₚRₛ_err_max
-		g_SI_m = @. get_gₚ(Mₚ*u"Mearth", RₚRₛ, Rₛ*u"Rsun") |> strip_u(u"m/s^2")
-		T_eq_err_max = maximum.(
-			skipmissing.(eachrow(abs.(_[:, [:pl_eqterr1, :pl_eqterr2]]))))
-		T_eq_m = _.pl_eqt .± T_eq_err_max
-	end
-	@transform begin
-		:pl_eqt = @. compute_Teq(
-			:st_teff*u"K", :st_rad*u"Rsun", :pl_orbsmax*u"AU"; α=0.1
-		) |> strip_u(u"K")
-		:g_SI = Measurements.value.(g_SI_m)
-		:g_SI_err = Measurements.uncertainty.(g_SI_m)
-		:Teq_K = Measurements.value.(T_eq_m)
-		:Teq_K_err = Measurements.uncertainty.(T_eq_m)
-	end
-	@transform begin
-		:H_km = @. compute_H(
-			2.0*u"u", :pl_eqt*u"K", :g_SI*u"m/s^2"
-		) |> strip_u(u"km")
-
-		:TSM = @. compute_TSM(
-			:pl_rade, :pl_eqt, :pl_bmasse, :st_rad, :sy_jmag
-		)
-	end
-end
 
 # ╔═╡ c1e63cf3-7f30-4858-bdd6-125d2a99529f
 compute_ΔD(H, Rₚ, Rₛ) = 2.0 * H * Rₚ/Rₛ^2
 
 # ╔═╡ 56ad4c87-069b-4815-955b-7a8d7d012031
-df = @chain _df begin
+df = @chain df_complete begin
 	@aside begin
 		targ_idx = _.pl_name .== "HAT-P-23 b"
 		TSM_target = _.TSM[targ_idx][1]
@@ -855,25 +856,27 @@ end
 # ╠═380d05a4-35e9-4db4-b35a-b03de9e695ee
 # ╠═86a99042-bb9b-43e6-87ae-d76f88b10533
 # ╠═92fbb7d7-9782-44d4-b1b7-6db89d78a032
-# ╠═4e8ffccf-ca3e-4201-b2ad-702a174afd04
 # ╠═e8a13c3b-819a-490e-a967-e2da54ca6617
-# ╠═d3f2eace-6272-4281-95fd-4b931c2ae332
 # ╟─97c9f1ae-21da-4f99-94ff-a8adaabf30bb
 # ╠═2584860a-8e24-49f7-a7d5-4c99c8deda8e
 # ╠═759b0ca7-ade4-4929-afa5-51e0ab133a5b
 # ╠═2ae250e2-cc4d-4824-9795-a8bc0a4b469b
 # ╟─3ed05d01-b489-46d6-bcd4-9028d756ab35
 # ╠═0aa8aaf2-5343-4b6e-a47b-cf0fc8d27643
-# ╠═a9bbac33-fbcd-45b6-9a15-850d0407a800
+# ╠═0c793036-d7c6-4a56-9ef6-f58b02e6530c
 # ╠═2d63caf3-dd64-483d-8c85-5085d7aad2ac
+# ╠═f306bc5a-5597-4a52-b6e3-364a4230367d
+# ╠═af31c3ab-c459-46fd-ba5c-c0c469da5091
 # ╠═7898ea90-4863-4beb-995e-7a251235aa88
 # ╠═463341ab-318d-402f-9545-b44cf19a75ea
 # ╠═0f939597-807b-4381-8461-09c7b9bdf3b1
 # ╠═d6598eab-33b3-4873-b6fe-b16c6d5c37d7
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
 # ╠═542c59fd-782f-4e15-ab6c-a450bf4714ba
-# ╠═64e896bd-5213-4f93-8e4c-e506010e27dc
-# ╠═7336f748-5a5a-476e-80d0-cb6200aefeff
+# ╠═7a688b2e-64bb-4bc5-a799-4b267e5c30ad
+# ╠═1a0b9ba0-837e-4d16-b43a-8a731c8fe84d
+# ╠═763503a1-9c3b-4353-b396-96e62c48c2be
+# ╠═32bd97e4-e646-4702-98e3-17e980cf6754
 # ╠═56ad4c87-069b-4815-955b-7a8d7d012031
 # ╟─c7eabcc6-5139-448d-abdb-ec752788bd59
 # ╟─31c05377-2ed4-4ad6-910f-5dedddcbf6dc
@@ -890,8 +893,6 @@ end
 # ╠═84a9837c-552c-4982-a55c-8d268e463758
 # ╠═8a43e9a3-f9a1-4f15-a914-2b7b4f4bf3cd
 # ╠═ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
-# ╠═aab7f672-a312-44d2-b8cc-937f877a662d
-# ╠═ad07751a-8334-4490-82b7-5cf5a1375aad
 # ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
 # ╠═3a4112a5-f211-4160-a6e8-688d04751a42
 # ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
