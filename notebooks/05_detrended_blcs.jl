@@ -119,7 +119,6 @@ begin
 		N_bins = length(fpaths)
 		det_BLC_fluxes = Matrix{Float64}(undef, N_time, N_bins)
 		det_BLC_models = copy(det_BLC_fluxes)
-
 		# Populate each matrix
 		for (fpath, lc, model) in zip(
 			fpaths, eachcol(det_BLC_fluxes), eachcol(det_BLC_models)

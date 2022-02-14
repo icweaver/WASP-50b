@@ -60,7 +60,7 @@ First let's load up all of the data, including the white-light transit depths fr
 @bind DATA_DIR Select(glob("$(BASE_DIR)/out_*/WASP50"))
 
 # ╔═╡ 1decb49e-a875-412c-938f-74b4fa0e2e85
-maxmeasure(x, x_u, x_d) = x ± max(x_u, x_d)
+maxmeasure(x, x_u, x_d) = x ± mean((x_u, x_d))
 
 # ╔═╡ 1e8524c4-a732-4e2f-80a9-b5e7548ef2b2
 function name(fpath, dates_to_names)
@@ -125,9 +125,9 @@ df = cubes["Transit 3 (IMACS)"]["tspec"]
 
 # ╔═╡ e58ec082-d654-44e3-bcd4-906fc34171c8
 @mdx """
-## Combine spectra 🌈
+## Combined spectra 🌈
 
-We will step through the process to create the following figure:
+We next step through the process to produce the following figure:
 """
 
 # ╔═╡ 4b8497f7-d285-4632-98e3-0699d284f291
@@ -145,9 +145,6 @@ df_common_0 = innerjoin(
 	on = :wav,
 	makeunique = true,
 );
-
-# ╔═╡ 59cc9c0a-332a-4f32-9f22-824f4c8f81b3
-df_common_0
 
 # ╔═╡ acde40fd-8ed4-4175-9a52-13ed91dc5495
 @mdx """
@@ -252,9 +249,6 @@ end
 df_tspecs = sort(vcat(df_common, df_extra), :Wcen)
 #df_tspecs = df_common
 
-# ╔═╡ dc2d133f-6ff4-4df4-8a43-efa4e629f01f
-df_tspecs
-
 # ╔═╡ 64f608b9-76df-402e-801c-006dc3096f94
 latextabular(df_tspecs, latex=false) |> PlutoUI.Text
 
@@ -340,9 +334,6 @@ end
 
 # ╔═╡ 940ad41b-910c-40a8-8752-e68e13ff4a1f
 latextabular(df_IMACS, latex=false) |> PlutoUI.Text
-
-# ╔═╡ 094bd22d-8e42-440f-a78c-3a2787f380ea
-df_LDSS3
 
 # ╔═╡ f37d9e45-575c-40d9-8f26-31bd6cc6d145
 avg_prec_IMACS = getproperty.(df_IMACS[!, :Combined], :err) |> median
@@ -699,7 +690,7 @@ gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 # ╟─e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 # ╠═209dae9c-4c14-4a02-bec9-36407bf1426f
 # ╟─0c752bd5-5232-4e82-b519-5ca23fff8a52
-# ╟─c53be9cf-7722-4b43-928a-33e7b0463330
+# ╠═c53be9cf-7722-4b43-928a-33e7b0463330
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
 # ╠═96a24af1-1c91-45a9-a8f2-b4761f7f5cba
 # ╠═1decb49e-a875-412c-938f-74b4fa0e2e85
@@ -709,12 +700,10 @@ gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 # ╠═7b6d3a33-cb3b-4776-86f6-3af1663b9e49
 # ╟─e58ec082-d654-44e3-bcd4-906fc34171c8
 # ╠═cafc773a-ee51-4bd2-b766-182ad728e253
-# ╠═dc2d133f-6ff4-4df4-8a43-efa4e629f01f
 # ╠═4b8497f7-d285-4632-98e3-0699d284f291
 # ╠═8c077881-fc5f-4fad-8497-1cb6106c6ed5
 # ╟─11066667-9da2-4b36-b784-c3515c04a659
 # ╠═cb1b277b-aa92-44de-91ce-88122bc34bb9
-# ╠═59cc9c0a-332a-4f32-9f22-824f4c8f81b3
 # ╟─acde40fd-8ed4-4175-9a52-13ed91dc5495
 # ╠═461097e9-a687-4ef2-a5b4-8bf4d9e1c98f
 # ╠═4b9cfc02-5e18-422d-b18e-6301a659561a
@@ -735,7 +724,6 @@ gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 # ╠═1a6067ca-645a-448b-815f-6a2966548ca6
 # ╠═b555e372-2292-4f0e-b511-88b92588ad14
 # ╠═940ad41b-910c-40a8-8752-e68e13ff4a1f
-# ╠═094bd22d-8e42-440f-a78c-3a2787f380ea
 # ╠═f37d9e45-575c-40d9-8f26-31bd6cc6d145
 # ╠═b6fa6c00-14cf-47af-9593-c70514373db5
 # ╠═3af0d3b0-c698-4845-a74e-c7186b03a721

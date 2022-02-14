@@ -245,8 +245,8 @@ where ``x`` is a sample from the posterior distribution for the given parameter,
 
 # ╔═╡ 706f1fb6-2895-48f6-a315-842fbf35da18
 function scale_samples(samples, param, BMA)
-	m = @subset(BMA, :Parameter .== param)[!, "Combined"][1]
-	Δx = (samples .- m.val) ./ m.err
+	m_BMA = @subset(BMA, :Parameter .== param)[!, "Combined"][1]
+	Δx = (samples .- m_BMA.val) ./ m_BMA.err
 	return Δx
 end
 
@@ -319,6 +319,13 @@ end
 function plot_x!(ax, x; h=1, errorbar_kwargs=(), scatter_kwargs=())
 	errorbars!(ax, [x.val], [h], [x.err], [x.err], direction=:x; errorbar_kwargs...)
 	scatter!(ax, [x.val], [h]; scatter_kwargs...)
+end
+
+# ╔═╡ 181dd60f-62b2-4d8e-beab-6b6e5c15a0c2
+function scale_samples2(samples, param, BMA)
+	m_BMA = @subset(BMA, :Parameter .== param)[!, "Combined"][1]
+	Δx = (samples .- m_BMA.val) #./ m_BMA.err
+	return Δx
 end
 
 # ╔═╡ 3225ad37-6264-48b8-b1fc-c6f0136f8beb
@@ -408,9 +415,11 @@ end
 # ╔═╡ de0a4468-56aa-4748-80a0-6c9ab6b8579e
 BMA_matrix = let
 	x = hcat((
-	summary[!, "Value"] .± maximum((summary[!, "SigmaUp"], summary[!, "SigmaDown"]))
+	summary[!, "Value"] .± mean((summary[!, "SigmaUp"], summary[!, "SigmaDown"]))
 	for summary in summary_tables
 	)...) |> x-> hcat(x, weightedmean2.(eachrow(x)))
+	#x[2, :] .-= 2.45e6
+	x
 end;
 
 # ╔═╡ 19fcaa15-6f01-46a6-8225-4b5cafd89cc1
@@ -421,9 +430,6 @@ BMA = DataFrame(
 
 # ╔═╡ c7a179a3-9966-452d-b430-a28b2f004bc5
 latextabular(BMA, latex=false) |> PlutoUI.Text
-
-# ╔═╡ ef097f90-4ae1-43e5-b035-71652c6ad1a3
-BMA
 
 # ╔═╡ 25dd0c88-089b-406b-ac0f-6f21c57fe986
 @with_terminal begin
@@ -448,6 +454,15 @@ begin
 		)
 	end
 end
+
+# ╔═╡ 3fa98a7d-ed82-4826-b720-f5eb6e6154e4
+ts = pyconvert(Vector, cubes["Transit 1 (IMACS)"]["samples"]["t0"])
+
+# ╔═╡ 7e4255e6-6287-45eb-9ed8-46a733a47c42
+(mean(ts) - BMA_matrix[2, 5].val) / BMA_matrix[2, 5].err
+
+# ╔═╡ 90538670-f0f6-4a0d-b3bd-3392cc020ec8
+(std(ts)) / (10*BMA_matrix[2, 5].err)
 
 # ╔═╡ 1f7b883c-0192-45bd-a206-2a9fde1409ca
 begin
@@ -743,7 +758,6 @@ end
 # ╟─b28bb1b6-c148-41c4-9f94-0833e365cad4
 # ╟─30b84501-fdcd-4d83-b929-ff354de69a17
 # ╠═c7a179a3-9966-452d-b430-a28b2f004bc5
-# ╠═ef097f90-4ae1-43e5-b035-71652c6ad1a3
 # ╠═19fcaa15-6f01-46a6-8225-4b5cafd89cc1
 # ╠═de0a4468-56aa-4748-80a0-6c9ab6b8579e
 # ╠═bbc14e57-57fe-4811-91d4-d07b102cfa5d
@@ -758,6 +772,9 @@ end
 # ╟─e452d2b1-1010-4ce3-8d32-9e9f1d0dfa0b
 # ╠═56d0de38-5639-4196-aafe-79a9ab933980
 # ╠═706f1fb6-2895-48f6-a315-842fbf35da18
+# ╠═3fa98a7d-ed82-4826-b720-f5eb6e6154e4
+# ╠═7e4255e6-6287-45eb-9ed8-46a733a47c42
+# ╠═90538670-f0f6-4a0d-b3bd-3392cc020ec8
 # ╠═d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
 # ╠═8c9428a9-f2ad-4329-97a3-97ffa6b40f28
 # ╠═2cbc6ddb-210e-41e8-b745-5c41eba4e778
@@ -767,6 +784,7 @@ end
 # ╠═18c90ed4-2f07-493f-95b2-e308cd7a03a9
 # ╠═f47944d8-4501-47c7-a852-d5e2f90e9204
 # ╠═7fdd0cb7-7af3-4ca1-8939-9d9b7d6e9527
+# ╠═181dd60f-62b2-4d8e-beab-6b6e5c15a0c2
 # ╠═266b5871-22e5-4b4a-80b1-468a9ddd9193
 # ╠═3225ad37-6264-48b8-b1fc-c6f0136f8beb
 # ╠═8f795cda-b905-4c89-ade5-05e35b10d4b3
