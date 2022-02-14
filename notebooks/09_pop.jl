@@ -22,6 +22,9 @@ begin
 	using Measurements
 end
 
+# ╔═╡ 4e6c0113-255f-46fb-84ad-f8f30b79a219
+using Measurements: value, uncertainty
+
 # ╔═╡ c4375025-2691-40e0-b6ca-cd0472b916cd
 @mdx """
 As of this writing, the planetary parameters reported in the archive have not all been updated to be self-consistent with the latest TICv8 stellar measurements taken, so we will cross-reference the targets from the archive and compute them here.
@@ -528,8 +531,16 @@ occursin_df(df_complete, "WASP-43")[:, [:st_rad, :pl_eqt, :pl_massj]]
 
 # ╔═╡ 998af70c-d784-4791-9261-a6dcbec8c824
 df_HGHJs = @chain df_complete begin
-	@rsubset (1.0 ≤ :TSMR) & (20.0 ≤ :gₚ_SI) & (0.89 ≤ :Rₚ_J)
+	@rsubset (1.0 ≤ :TSMR) & (20.0u"m/s^2" ≤ :pl_g_SI) & (0.89u"Rjup" ≤ :pl_radj)
 	sort!(:TSMR, rev=true) # To stack smaller circles on top in Figure
+	@select begin
+		:Name = :pl_name
+		:T_eq = @. value(:pl_eqt) |> strip_u(u"K")
+		:T_eq_err = @. uncertainty(:pl_eqt) |> strip_u(u"K")
+		:g_p = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
+		:g_p_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
+		:TSMR = value.(:TSMR)
+	end
 end
 
 # ╔═╡ 8d519cad-8da6-409e-b486-2bc9a6008e0f
@@ -537,18 +548,27 @@ function label_text!(ax, targ;
 	al_x=:center, al_y=:bottom, df=df_HGHJs, offset=nothing
 )
 	targg = split(targ, " (")[1]
-	x, y = val.(Ref(df), Ref(targg), [:pl_eqt, :g_SI])
+	x, y = val.(Ref(df), Ref(targg), [:T_eq, :g_p])
 	text!(ax, targ, position=(x, y), align=(al_x, al_y), offset=offset)
 end
+
+# ╔═╡ aed1fac3-39d7-4065-90de-ebd0f5bfac84
+names(df_complete)
 
 # ╔═╡ d6449d05-ee95-4bda-8636-37c71e422944
 df_wakeford = let
 	df = leftjoin(df_H2OJ, df_complete, on=:pl_name)
-	@select df :pl_name
+	@select df begin
+		:pl_name = :pl_name
+		:T_eq = @. value(:pl_eqt) |> strip_u(u"K")
+		:T_eq_err = @. uncertainty(:pl_eqt) |> strip_u(u"K")
+		:g_p = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
+		:g_p_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
+		:H2OJ
+		:H2OJ_unc
+		:TSMR = value.(:TSMR)
+	end
 end
-
-# ╔═╡ 12f8e13e-a124-4302-94bc-0ccdf9230b91
-names(df_wakeford)
 
 # ╔═╡ 683a8d85-b9a8-4eab-8a4b-e2b57d0783c0
 @mdx """
@@ -612,8 +632,8 @@ end
 # ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
 let
 	p = mapping(
-		:Tₚ => "Equilibrium temperature (K)",
-		:gₚ_SI => "Surface gravity (m/s²)",
+		:T_eq => "Equilibrium temperature (K)",
+		:g_p => "Surface gravity (m/s²)",
 	) *
 	(
 		#data(df) * visual(color=(:darkgrey, 0.25)) +
@@ -638,12 +658,12 @@ let
 	)
 	ax = fg.grid[1].axis
 	
-	# label_text!(ax, "WASP-43 b (Weaver+ 2020)", al_x=:left, offset=(10, 0))
-	# label_text!(ax, "HAT-P-23 b (Weaver+ 2021)", al_x=:left, offset=(0, 8))
-	# label_text!(ax, "WASP-50 b (this work)", al_x=:right, offset=(8, 8))
-	# label_text!(ax, "HD 189733 b (Sing+ 2016.)", al_x=:left, offset=(0, 8))
-	# hl = hlines!(ax, 20, color=:darkgrey, linestyle=:dash)
-	# translate!(hl, 0, 0, -1) # Place behind plot markers
+	label_text!(ax, "WASP-43 b (Weaver+ 2020)", al_x=:left, offset=(10, 0))
+	label_text!(ax, "HAT-P-23 b (Weaver+ 2021)", al_x=:left, offset=(0, 8))
+	label_text!(ax, "WASP-50 b (this work)", al_x=:right, offset=(8, 8))
+	label_text!(ax, "HD 189733 b (Sing+ 2016.)", al_x=:left, offset=(0, 8))
+	hl = hlines!(ax, 20, color=:darkgrey, linestyle=:dash)
+	translate!(hl, 0, 0, -1) # Place behind plot markers
 
     # savefig(fg, "$(FIG_DIR)/t_vs_g.pdf")
 
@@ -775,13 +795,14 @@ end
 # ╠═763503a1-9c3b-4353-b396-96e62c48c2be
 # ╠═47831596-0483-4420-a071-832183b1c3bb
 # ╠═998af70c-d784-4791-9261-a6dcbec8c824
+# ╠═aed1fac3-39d7-4065-90de-ebd0f5bfac84
+# ╠═4e6c0113-255f-46fb-84ad-f8f30b79a219
 # ╠═d6449d05-ee95-4bda-8636-37c71e422944
 # ╠═c7eabcc6-5139-448d-abdb-ec752788bd59
 # ╠═e0365154-d6c8-4db2-bb85-bf2536a3aa74
 # ╠═05d65745-6972-41fe-8308-e5c97c85692b
 # ╠═ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
 # ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
-# ╠═12f8e13e-a124-4302-94bc-0ccdf9230b91
 # ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d
