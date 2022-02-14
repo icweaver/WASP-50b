@@ -382,27 +382,15 @@ end
 get_gₚ(Mₚ, RₚRₛ, Rₛ) = G * Mₚ / (RₚRₛ^2 * Rₛ^2)
 
 # ╔═╡ ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
-df_H2OJ = let
-	df = CSV.read("data/pop/H2O_J_data.csv", DataFrame;
-		stripwhitespace = true,
-	)
-
-	#df.g_SI = @. 10^df.logg / 100
-
-	#rename!(df, :T => :pl_eqt)
-
-	sort!(df, lt=natural)
-end
+df_H2OJ = CSV.read("data/pop/H2O_J_data.csv", DataFrame;
+	stripwhitespace = true,
+)
 
 # ╔═╡ 0f9262ef-b774-45bc-bdab-46860779683d
 @mdx """
 !!! note
 	Inspired from [warm-worlds](https://github.com/nespinoza/warm-worlds)
 """
-
-# ╔═╡ 32c0b1c9-0e99-4c43-a473-7122af2e36ab
-sort(df_HGHJs_all, :pl_name)#[df_HGHJs_all.pl_name .== "WASP-140 b", :]
-# check for WASP-95 b
 
 # ╔═╡ 53c4fd02-7a48-47a1-9341-ede3e8d497f7
 y = @chain df_HGHJs_all begin
@@ -427,6 +415,15 @@ latextabular(y, latex=false, fmt="%.2f") |> PlutoUI.Text
 
 # ╔═╡ 958453c3-7993-4620-ab7f-e7ad79781dd5
 val(df, name, col) = df[df.pl_name .== name, col][1]
+
+# ╔═╡ 8d519cad-8da6-409e-b486-2bc9a6008e0f
+function label_text!(ax, df, s;
+	al_x=:center, al_y=:bottom, offset=nothing
+)
+	targ = split(s, " (")[1]
+	x, y = val.(Ref(df), Ref(targ), [:pl_eqt, :pl_g])
+	text!(ax, s, position=(x, y), align=(al_x, al_y), offset=offset)
+end
 
 # ╔═╡ f07ad06b-81d2-454f-988f-a7ae1713eac4
 function annotate_text!(ax, t, p1, p2, l, lm; align=(:center, :center))
@@ -529,28 +526,34 @@ end
 # ╔═╡ 9d7c6dff-9662-4752-8b0f-cd30357d2d85
 occursin_df(df_complete, "WASP-43")[:, [:st_rad, :pl_eqt, :pl_massj]]
 
-# ╔═╡ 998af70c-d784-4791-9261-a6dcbec8c824
-df_HGHJs = @chain df_complete begin
-	@rsubset (1.0 ≤ :TSMR) & (20.0u"m/s^2" ≤ :pl_g_SI) & (0.89u"Rjup" ≤ :pl_radj)
-	sort!(:TSMR, rev=true) # To stack smaller circles on top in Figure
+# ╔═╡ 373e3a8c-39f8-4656-9fcb-e0fc21cce353
+df_all = @chain df_complete begin
 	@select begin
-		:Name = :pl_name
-		:T_eq = @. value(:pl_eqt) |> strip_u(u"K")
-		:T_eq_err = @. uncertainty(:pl_eqt) |> strip_u(u"K")
-		:g_p = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
-		:g_p_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
+		:pl_name = :pl_name
+		:pl_eqt = @. value(:pl_eqt) |> strip_u(u"K")
+		:pl_eqt_err = @. uncertainty(:pl_eqt) |> strip_u(u"K")
+		:pl_g = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
+		:pl_g_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
 		:TSMR = value.(:TSMR)
 	end
 end
 
-# ╔═╡ 8d519cad-8da6-409e-b486-2bc9a6008e0f
-function label_text!(ax, targ;
-	al_x=:center, al_y=:bottom, df=df_HGHJs, offset=nothing
-)
-	targg = split(targ, " (")[1]
-	x, y = val.(Ref(df), Ref(targg), [:T_eq, :g_p])
-	text!(ax, targ, position=(x, y), align=(al_x, al_y), offset=offset)
+# ╔═╡ 998af70c-d784-4791-9261-a6dcbec8c824
+df_HGHJ = @chain df_complete begin
+	@rsubset (1.0 ≤ :TSMR) & (20.0u"m/s^2" ≤ :pl_g_SI) & (0.89u"Rjup" ≤ :pl_radj)
+	sort!(:TSMR, rev=true) # To stack smaller circles on top in Figure
+	@select begin
+		:pl_name = :pl_name
+		:pl_eqt = @. value(:pl_eqt) |> strip_u(u"K")
+		:pl_eqt_err = @. uncertainty(:pl_eqt) |> strip_u(u"K")
+		:pl_g = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
+		:pl_g_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
+		:TSMR = value.(:TSMR)
+	end
 end
+
+# ╔═╡ 157a44f4-6191-4407-98a4-3c8c43817a65
+df_HGHJ_no_H2OJ = filter(x -> x.pl_name ∈ ["HAT-P-23 b", "WASP-50 b"], df_HGHJ)
 
 # ╔═╡ aed1fac3-39d7-4065-90de-ebd0f5bfac84
 names(df_complete)
@@ -560,10 +563,10 @@ df_wakeford = let
 	df = leftjoin(df_H2OJ, df_complete, on=:pl_name)
 	@select df begin
 		:pl_name = :pl_name
-		:T_eq = @. value(:pl_eqt) |> strip_u(u"K")
-		:T_eq_err = @. uncertainty(:pl_eqt) |> strip_u(u"K")
-		:g_p = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
-		:g_p_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
+		:pl_eqt = @. value(:pl_eqt) |> strip_u(u"K")
+		:pl_eqt_err = @. uncertainty(:pl_eqt) |> strip_u(u"K")
+		:pl_g = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
+		:pl_g_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
 		:H2OJ
 		:H2OJ_unc
 		:TSMR = value.(:TSMR)
@@ -612,12 +615,12 @@ begin
 				rightspinecolor = :darkgrey,
 			),
 			Label = (
-				textsize = 24,
+				textsize = 20,
 				font = AlgebraOfGraphics.firasans("Medium"),
 			),
 			Lines = (linewidth=3,),
 			Scatter = (linewidth=10,),
-			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=24),
+			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=20),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
 			figure_padding = (0, 1.5, 0, 0.0),
 			fontsize = 24,
@@ -632,19 +635,19 @@ end
 # ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
 let
 	p = mapping(
-		:T_eq => "Equilibrium temperature (K)",
-		:g_p => "Surface gravity (m/s²)",
+		:pl_eqt => "Equilibrium temperature (K)",
+		:pl_g => "Surface gravity (m/s²)",
 	) *
 	(
-		#data(df) * visual(color=(:darkgrey, 0.25)) +
+		data(df_all) * visual(color=(:darkgrey, 0.25))
 		
-		data(df_wakeford)
+		+ data(df_wakeford)
 			* mapping(color=:H2OJ => "H₂O - J")
 			* visual(
 				marker=:rect, markersize=20, strokewidth=1, colormap=:cividis
 			) #+
 		
-		#data(df_tspecs) * visual(marker='□', markersize=20)
+		+ data(df_HGHJ_no_H2OJ) * visual(marker='□', markersize=20)
 	) #+
 	# data(df_T_vs_g) * mapping(:T_K, :g_SI, :T_K_err) * visual(Errorbars, direction=:x) +
 	# data(df_T_vs_g) * mapping(:T_K, :g_SI, :g_SI_err) * visual(Errorbars, direction=:y)
@@ -658,10 +661,19 @@ let
 	)
 	ax = fg.grid[1].axis
 	
-	label_text!(ax, "WASP-43 b (Weaver+ 2020)", al_x=:left, offset=(10, 0))
-	label_text!(ax, "HAT-P-23 b (Weaver+ 2021)", al_x=:left, offset=(0, 8))
-	label_text!(ax, "WASP-50 b (this work)", al_x=:right, offset=(8, 8))
-	label_text!(ax, "HD 189733 b (Sing+ 2016.)", al_x=:left, offset=(0, 8))
+	label_text!(ax, df_wakeford, "WASP-43 b (Weaver+ 2020)";
+		al_x=:left, offset=(10, 0)
+	)
+
+	label_text!(ax, df_wakeford, "HD 189733 b (Sing+ 2016)";
+		al_x=:left, offset=(0, 8)
+	)
+	label_text!(ax, df_HGHJ_no_H2OJ, "HAT-P-23 b (Weaver+ 2021)";
+		al_x=:left, offset=(0, 8)
+	)
+	label_text!(ax, df_HGHJ_no_H2OJ, "WASP-50 b (this work)";
+		al_x=:right, offset=(8, 8)
+	)
 	hl = hlines!(ax, 20, color=:darkgrey, linestyle=:dash)
 	translate!(hl, 0, 0, -1) # Place behind plot markers
 
@@ -677,11 +689,11 @@ let
 	markersize_factor = 14.0
 	m = mapping(
 		:pl_eqt => "Equilibrium temperature (K)",
-		:g_SI => "Surface gravity (m/s²)",
+		:pl_g => "Surface gravity (m/s²)",
 		#color = :ΔD_ppm => "ΔD (ppm)",
 		markersize = :TSMR => (x -> markersize_factor*x),
 	)
-	p = m * data(df_HGHJs_all) * visual(colormap=:viridis, marker='○')
+	p = m * data(df_HGHJ) * visual(colormap=:viridis, marker='○')
 
 	fg = draw(p;
 		axis = (; limits=((0, 3_400), (-1, 55)), yticks=0:10:50),
@@ -694,7 +706,7 @@ let
 	translate!(hl, 0, 0, -1) # Place behind plot markers
 
 	# Annotate HGHJs with tspec observations
-	HP23x, HP23y = val.(Ref(df_HGHJs), Ref("HAT-P-23 b"), [:pl_eqt, :g_SI])
+	HP23x, HP23y = val.(Ref(df_HGHJ), Ref("HAT-P-23 b"), [:pl_eqt, :pl_g])
 	annotate_text!(
 		ax,
 		"HAT-P-23b",
@@ -704,27 +716,27 @@ let
 		0.1;
 		align = (:center, :baseline),
 	)
-	W43x, W43y = val.(Ref(df_HGHJs), Ref("WASP-43 b"), [:pl_eqt, :g_SI])
+	W43x, W43y = val.(Ref(df_HGHJ), Ref("WASP-43 b"), [:pl_eqt, :pl_g])
 	annotate_text!(
 		ax,
 		"WASP-43b",
-		(W43x[1], W43y[1]) .- (300, 0),
+		(W43x[1], W43y[1]) .- (300, -2),
 		(W43x[1], W43y[1]),
 		0.0,
 		0.0;
 		align = (:center, :top),
 	)
-	W50x, W50y = val.(Ref(df_HGHJs), Ref("WASP-50 b"), [:pl_eqt, :g_SI])
+	W50x, W50y = val.(Ref(df_HGHJ), Ref("WASP-50 b"), [:pl_eqt, :pl_g])
 	annotate_text!(
 		ax,
 		"WASP-50b",
-		(W50x[1], W50y[1]) .- (400, -5),
+		(W50x[1], W50y[1]) .- (200, -2.5),
 		(W50x[1], W50y[1]),
 		0.5,
 		0.1;
 		align = (:center, :baseline),
 	)
-	hdx, hdy = val.(Ref(df_HGHJs), Ref("HD 189733 b"), [:pl_eqt, :g_SI])
+	hdx, hdy = val.(Ref(df_HGHJ), Ref("HD 189733 b"), [:pl_eqt, :pl_g])
 	annotate_text!(
 		ax,
 		"HD 189733 b",
@@ -751,7 +763,7 @@ let
 		orientation = :horizontal,
 	)
 
-	savefig(fg, "$(FIG_DIR)/hg_pop.pdf")
+	#savefig(fg, "$(FIG_DIR)/hg_pop.pdf")
 	
 	fg
 end
@@ -794,6 +806,7 @@ end
 # ╠═ee3990d1-91b6-4c47-bba1-d016c75476da
 # ╠═763503a1-9c3b-4353-b396-96e62c48c2be
 # ╠═47831596-0483-4420-a071-832183b1c3bb
+# ╠═373e3a8c-39f8-4656-9fcb-e0fc21cce353
 # ╠═998af70c-d784-4791-9261-a6dcbec8c824
 # ╠═aed1fac3-39d7-4065-90de-ebd0f5bfac84
 # ╠═4e6c0113-255f-46fb-84ad-f8f30b79a219
@@ -802,12 +815,12 @@ end
 # ╠═e0365154-d6c8-4db2-bb85-bf2536a3aa74
 # ╠═05d65745-6972-41fe-8308-e5c97c85692b
 # ╠═ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
+# ╠═157a44f4-6191-4407-98a4-3c8c43817a65
 # ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
 # ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d
 # ╠═94a5f868-d043-4c1f-831c-17ebabd3df6c
-# ╠═32c0b1c9-0e99-4c43-a473-7122af2e36ab
 # ╠═53c4fd02-7a48-47a1-9341-ede3e8d497f7
 # ╠═18e6c65f-b999-41d6-81d2-7398bc05ab47
 # ╟─18094afc-b77f-4cae-a30c-2691d34125d8
