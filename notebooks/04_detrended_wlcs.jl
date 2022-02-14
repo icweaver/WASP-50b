@@ -372,11 +372,11 @@ end;
 load_data(fpath_sample, fpath_model, fpath_result; allow_pickle=true) = Dict(
 	"samples" => load_pickle(fpath_sample),
 	"models" => load_npz(fpath_model, allow_pickle=allow_pickle),
-	"results" => CSV.File(
-		fpath_result,
+	"results" => CSV.read(fpath_result, DataFrame;
 		comment = "#",
 		normalizenames = true,
-	) |> DataFrame
+		stripwhitespace = true,
+	)
 )
 
 # ╔═╡ 2191791b-df62-4f1b-88bf-060cc47896b2

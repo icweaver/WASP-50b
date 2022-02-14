@@ -101,22 +101,15 @@ begin
 			normalizenames = true,
 		)
 
-		# Add wav bins for external instruments (not saved in pkl)
-		if occursin("LDSS3", dirpath)
-			wbins = readdlm("$(dirpath)/wbins.dat", comments=true)
-			cubes[transit]["tspec"][:, [:Wav_d, :Wav_u]] .= wbins
-		end
-
 		# Compute transmission spectra specific values
 		df.wav = mean([df.Wav_u, df.Wav_d])
 		df.δ = maxmeasure.(df.Depth_ppm_, df.Depthup_ppm_, df.DepthDown_ppm_)
 
 		# Extract WLC information
-		df_WLC = CSV.read(
-			"$(dirpath)/white-light/results.dat",
-			DataFrame,
+		df_WLC = CSV.read("$(dirpath)/white-light/results.dat", DataFrame;
 			comment = "#",
 			normalizenames = true,
+			stripwhitespace = true,
 		)
 		symbol, p, p_u, p_d = eachcol(
 			@subset(df_WLC, :Variable .== "p")
@@ -126,6 +119,9 @@ begin
 
 	cubes = sort(cubes)
 end
+
+# ╔═╡ 96a24af1-1c91-45a9-a8f2-b4761f7f5cba
+df = cubes["Transit 3 (IMACS)"]["tspec"]
 
 # ╔═╡ e58ec082-d654-44e3-bcd4-906fc34171c8
 @mdx """
@@ -364,9 +360,6 @@ avg_prec_LDSS3 = getproperty.(df_LDSS3[!, :Combined], :err) |> median
 wbins_LDSS3 = df_LDSS3[:, [:Wlow, :Wup]]
 wbins_LDSS3_odd = wbins_LDSS3[begin:2:end, :]
 end;
-
-# ╔═╡ 86b55627-556d-4bda-b042-16dad98f021d
-avg_prec_T2_IMACS = getproperty.(df_IMACS[!, "Transit 2 (IMACS)"], :err) |> median
 
 # ╔═╡ 943844ce-a78b-403d-8bae-341216308392
 df_IMACS |> dropmissing#[!, "Transit 2 (IMACS)"]
@@ -613,7 +606,7 @@ begin
 	else
 		ax = Axis(fig[1, 1]; limits=(4_600, 9_800, 15_500, 22_500))
 		# Overplot lines
-		#vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
+		vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
 		vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
 		hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
 		hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
@@ -708,6 +701,7 @@ gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 # ╟─0c752bd5-5232-4e82-b519-5ca23fff8a52
 # ╟─c53be9cf-7722-4b43-928a-33e7b0463330
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
+# ╠═96a24af1-1c91-45a9-a8f2-b4761f7f5cba
 # ╠═1decb49e-a875-412c-938f-74b4fa0e2e85
 # ╠═1e8524c4-a732-4e2f-80a9-b5e7548ef2b2
 # ╠═b8abb240-65d6-4358-bd95-955be047371a
@@ -748,7 +742,6 @@ gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 # ╟─27811c9d-1ee5-49ca-bf09-04dc75dd66be
 # ╠═8644fa54-0407-4494-aef4-eb497a86c35d
 # ╠═b971503b-bfef-4ca7-98ad-b5940bbda10f
-# ╠═86b55627-556d-4bda-b042-16dad98f021d
 # ╠═943844ce-a78b-403d-8bae-341216308392
 # ╠═ef04759d-6a2d-488b-ae3b-6595c35dd70a
 # ╟─146a2be7-1c08-4d7c-802f-41f65aeae0d5

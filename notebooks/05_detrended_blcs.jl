@@ -106,11 +106,11 @@ begin
 
 		# WLC BMA t₀
 		t₀ = let
-			df_BMA_WLC = CSV.File(
-			"$(dirpath_WLC)/results.dat",
-			comment = "#",
-			normalizenames=true,
-			) |> DataFrame
+			df_BMA_WLC = CSV.read("$(dirpath_WLC)/results.dat", DataFrame;
+				comment = "#",
+				normalizenames = true,
+				stripwhitespace = true,
+			)
 			df_BMA_WLC[findfirst(==("t0"), df_BMA_WLC.Variable), :].Value
 		end
 
@@ -140,9 +140,8 @@ begin
 			"fluxes" => det_BLC_fluxes,
 			"models" => det_BLC_models,
 			"t₀" => t₀,
-			"wbins" => readdlm("$(dirname(dirpath_WLC))/wbins.dat", comments=true),
-			"tspec" => CSV.File(
-				"$(dirname(dirpath_WLC))/transpec.csv",
+			"tspec" => CSV.read(
+				"$(dirname(dirpath_WLC))/transpec.csv", DataFrame;
 				normalizenames = true,
 			)
 		)
@@ -219,7 +218,7 @@ begin
 end
 
 # ╔═╡ bec88974-b150-4f53-9497-ddec4883ae17
-function plot_BLCs(transit, datas, models, wbins, errs; offset=0.3)
+function plot_BLCs(transit, datas, models, errs, wbins; offset=0.3)
 	fig = Figure(resolution=FIG_LARGE)
 	median_prec = round(Int, median(errs))
 	ax_left = Axis(fig[1, 1], title = "Detrended BLCs")
@@ -251,6 +250,7 @@ function plot_BLCs(transit, datas, models, wbins, errs; offset=0.3)
 		
 		scatter!(ax_right, baseline + resid, markersize=5, color=color)
 		lines!(ax_right, baseline, linewidth=3, color=0.75*color)
+		@show wbins
 		text!(ax_label, "$(wbin[1]) - $(wbin[2]) Å, $(err) ppm";
 			position = (0, baseline[1]),
 			textsize = 16,
@@ -279,14 +279,15 @@ begin
 	blc_plots = Dict()
 	for transit in cubes.keys
 		tspec = cubes[transit]["tspec"]
-		errs = maximum([tspec.Depthup_ppm_ tspec.DepthDown_ppm_], dims=2)
+		wbins = tspec[:, [:Wav_d, :Wav_u]]
+		errs = mean([tspec.Depthup_ppm_ tspec.DepthDown_ppm_], dims=2)
 		
 		p = plot_BLCs(
 			transit,
 			cubes[transit]["fluxes"],
 			cubes[transit]["models"],
-			cubes[transit]["wbins"],
 			round.(Int, errs),
+			wbins,
 		)
 		blc_plots[transit] = p
 	end
