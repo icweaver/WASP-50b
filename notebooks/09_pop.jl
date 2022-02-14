@@ -62,6 +62,7 @@ df_exoarchive = let
 		"tic_id",
 		"ra",
 		"dec",
+		"sy_jmag",
 		# "pl_rade",
 		# "pl_eqt",
 	]
@@ -119,6 +120,9 @@ CSV.write("data/pop/exoarchive_coords.txt", df_exoarchive[:, [:ra, :dec]];
 # 	#@transform! df :Mₛ = @. :ρₛ * :Rₛ^3 # Already in solar units
 # end
 
+# ╔═╡ f8b4def8-a46f-4cbc-83c0-ff44a39c1571
+ρ_sun = inv((4/3)*π)
+
 # ╔═╡ 380d05a4-35e9-4db4-b35a-b03de9e695ee
 df_exoarchive_TICv8 = let
 	df = CSV.read("data/pop/exoarchive_TICv8.txt", DataFrame;
@@ -132,10 +136,11 @@ df_exoarchive_TICv8 = let
 	@select! df begin
 		:TIC
 		:pl_name
-		:Rₛ = :Rstar .± :Rstar_err
-		:Mₛ = :Mstar .± :M_star_err
-		:ρₛ = :rho_star .± :rho_star_err
-		:T_eff = :Teff .± :Teff_err
+		:st_rad = (:Rstar .± :Rstar_err)u"Rsun"
+		:st_mass = (:Mstar .± :M_star_err)u"Msun"
+		:st_dens_solar = ρ_sun .* (:rho_star .± :rho_star_err)u"Msun/Rsun^3"
+		:st_teff = (:Teff .± :Teff_err)u"K"
+		:sy_jmag
 	end
 	#@transform! df :Mₛ = @. :ρₛ * :Rₛ^3 # Already in solar units
 end
@@ -193,7 +198,8 @@ df_ps_all = let
 end
 
 # ╔═╡ 92fbb7d7-9782-44d4-b1b7-6db89d78a032
-df_ps = leftjoin(df_ps_all, df_exoarchive_TICv8, on=[:TIC, :pl_name])# |> dropmissing
+df_ps = leftjoin(df_ps_all, df_exoarchive_TICv8, on=[:TIC, :pl_name];
+makeunique=true)# |> dropmissing
 
 # ╔═╡ e8a13c3b-819a-490e-a967-e2da54ca6617
 # for df in groupby(df_ps_all, :pl_name)
@@ -223,13 +229,13 @@ df_ps = leftjoin(df_ps_all, df_exoarchive_TICv8, on=[:TIC, :pl_name])# |> dropmi
 # ╔═╡ 2584860a-8e24-49f7-a7d5-4c99c8deda8e
 function extract_K(df₀)
 	df = @subset df₀ :pl_pubdate .== maximum(:pl_pubdate)
-	return df.pl_rvamp[1]
+	return df.pl_rvamp[1]u"m/s"
 	#return max_m(df.pl_rvamp[1], df.pl_rvamperr1[1], df.pl_rvamperr2[1])
 end
 
 # ╔═╡ 759b0ca7-ade4-4929-afa5-51e0ab133a5b
 begin
-	pl_names_K = []
+	pl_names_K = String[]
 	K_mps = []
 	for df ∈ groupby(dropmissing(df_ps, [:pl_rvamp, :pl_refname, :pl_pubdate]), :pl_name;
 	sort = true,
@@ -245,7 +251,7 @@ end
 
 # ╔═╡ 2ae250e2-cc4d-4824-9795-a8bc0a4b469b
 # Fixed params
-df_K = DataFrame(; pl_name=pl_names_K, K_mps)
+df_K = DataFrame(; pl_name=pl_names_K, pl_rvamp=K_mps)
 
 # ╔═╡ 3ed05d01-b489-46d6-bcd4-9028d756ab35
 @mdx """
@@ -259,7 +265,7 @@ df_K = DataFrame(; pl_name=pl_names_K, K_mps)
 function extract_orb_params(df₀)
 	df = @subset df₀ :pl_pubdate .== maximum(:pl_pubdate)
 	
-	return df.pl_ratror[1], df.pl_orbper[1], df.pl_orbincl[1]
+	return df.pl_ratror[1], df.pl_orbper[1]u"d", df.pl_orbincl[1]u"°"
 	# return (
 	# 	max_m(df.pl_ratror[1], df.pl_ratrorerr1[1], df.pl_ratrorerr2[1]),
 	# 	max_m(df.pl_orbper[1], df.pl_orbpererr1[1], df.pl_orbpererr2[1]),
@@ -272,12 +278,12 @@ function extract_orb_params_wakeford(df₀)
 	df = @subset df₀ :pl_pubdate .== maximum(:pl_pubdate)
 	δ = df.pl_trandep[1]
 	r = sqrt(δ)
-	return r, df.pl_orbper[1], df.pl_orbincl[1]
+	return r, df.pl_orbper[1]u"d", df.pl_orbincl[1]u"°"
 end
 
 # ╔═╡ 2d63caf3-dd64-483d-8c85-5085d7aad2ac
 begin
-	pl_names_orb, rs, Ps, i_degs = String[], Float64[], Float64[], Float64[]
+	pl_names_orb, rs, Ps, i_degs = String[], Float64[], [], []
 	
 	for df ∈ groupby(dropmissing(df_ps,
 		[:pl_ratror, :pl_orbper, :pl_orbincl, :pl_pubdate]), :TIC;
@@ -296,7 +302,7 @@ end
 
 # ╔═╡ f306bc5a-5597-4a52-b6e3-364a4230367d
 function wakeford_orb(df_ps)
-	pl_names_orb, rs, Ps, i_degs = String[], Float64[], Float64[], Float64[]
+	pl_names_orb, rs, Ps, i_degs = String[], Float64[], [], []
 	
 	for df ∈ groupby(dropmissing(df_ps,
 		[:pl_trandep, :pl_orbper, :pl_orbincl, :pl_pubdate]), :TIC;
@@ -325,9 +331,9 @@ pl_names_orb_wakeford, rs_wakeford, Ps_wakeford, i_deg_wakeford = wakeford_orb(d
 # Fixed params
 df_orb = DataFrame(
 	pl_name = [pl_names_orb; pl_names_orb_wakeford],
-	r = [rs; rs_wakeford],
-	P_d = [Ps; Ps_wakeford],
-	i_deg = [i_degs; i_deg_wakeford]
+	pl_ratror = [rs; rs_wakeford],
+	pl_orbper = [Ps; Ps_wakeford],
+	pl_orbincl = [i_degs; i_deg_wakeford]
 )
 
 # ╔═╡ 0f939597-807b-4381-8461-09c7b9bdf3b1
@@ -342,16 +348,24 @@ We next compute the relevant quantities for estimating atmospheric observability
 """
 
 # ╔═╡ 542c59fd-782f-4e15-ab6c-a450bf4714ba
-compute_Mₚ(K, i, P, Mₛ) = (K/sin(i)) * cbrt(P / (2.0π*G)) * Mₛ^(2//3)
+compute_Mₚ(K, i, P, Mₛ) = (K/sin(i)) * cbrt(P / (2.0π*G)) * cbrt(Mₛ^2)
 
 # ╔═╡ 7a688b2e-64bb-4bc5-a799-4b267e5c30ad
-compute_aRₛ(ρₛ, P) = ((G * P^2 * ρₛ)/(3.0π))^(1//3)
+compute_aRₛ(ρₛ, P) = cbrt((G * P^2 * ρₛ)/(3.0π))
+
+# ╔═╡ 29603a24-316b-4d01-9605-6d49424fc7ff
+compute_aRₛ(2.1070418u"g/cm^3", 0.813475u"d") |> NoUnits
+
+# ╔═╡ ee3990d1-91b6-4c47-bba1-d016c75476da
+compute_aRₛ(1.4945u"Msun/Rsun^3", 0.813475u"d") |> u"Msun/Msun"
 
 # ╔═╡ 763503a1-9c3b-4353-b396-96e62c48c2be
 compute_Tₚ(Tₛ, aRₛ; α=0.0) = Tₛ * (1.0 - α)^(1//4) * (0.5/aRₛ)^(1//2)
 
-# ╔═╡ 32bd97e4-e646-4702-98e3-17e980cf6754
-
+# ╔═╡ 47831596-0483-4420-a071-832183b1c3bb
+@mdx """
+## Split 'em up
+"""
 
 # ╔═╡ c7eabcc6-5139-448d-abdb-ec752788bd59
 strip_u(u) = x -> ustrip(u, x)
@@ -361,117 +375,11 @@ function compute_Teq(T, R, a; α)
 	T * (1.0 - α)^0.25 * sqrt(0.5 * R / a)
 end
 
-# ╔═╡ 9aed232f-ec74-4ec6-9ae7-06b90539833b
-# begin
-# 	df = @chain df_all begin
-# 		dropmissing([:pl_rade, :pl_eqt, :pl_bmasse, :st_rad, :sy_jmag, :pl_trandep])
-# 		@aside g_SI = let
-# 			g = compute_g.(_.pl_bmasse*u"Mearth", _.pl_rade*u"Rearth")
-# 			ustrip.(u"m/s^2", g)
-# 		end
-# 		@aside H_km = let
-# 			H = compute_H.(2.0*u"u", _.pl_eqt*u"K", g_SI*u"m/s^2")
-# 			ustrip.(u"km", H)
-# 		end
-# 		@transform begin
-# 			:g_SI = g_SI
-# 			:H_km = H_km
-# 			:TSM = compute_TSM.(
-# 				:pl_rade, :pl_eqt, :pl_bmasse, :st_rad, :sy_jmag
-# 			)
-# 		end
-# 		@transform :TSMR = :TSM ./ :TSM[:pl_name .== "HAT-P-23 b"][1]
-# 	end
-# end
-
-# ╔═╡ b5c0dbc8-d700-473e-9f00-d89a319f6432
-@mdx """
-## Targets with published transmission spectra
-
-!!! warning "TODO"
-	Update [list](https://stellarplanet.org/science/exoplanet-transmission-spectra)
-"""
-
-# ╔═╡ b4c7316d-d198-4449-ad45-66397fd1a9a5
-tspec_targs = [
-	# "GJ 436 b",
-	# "GJ 1214 b",
-	# "GJ 3470 b",
-	# "HAT-P-1 b",
-	# "HAT-P-11 b",
-	# "HAT-P-12 b",
-	"HAT-P-23 b",
-	# "HAT-P-26 b",
-	# "HAT-P-32 b",
-	# "HAT-P-38 b",
-	# "HAT-P-41 b",
-	# "HD 97658 b",
-	# "HD 189733 b",
-	# "HD 209458 b",
-	# "K2-18 b",
-	# "KELT-11 b",
-	# "Kepler-51 b",
-	# "Kepler-51 d",
-	# "TRAPPIST-1 b",
-	# "TRAPPIST-1 c",
-	# "TRAPPIST-1 d",
-	# "TRAPPIST-1 e",
-	# "TRAPPIST-1 f",
-	# "TRAPPIST-1 g",
-	# "WASP-6 b",
-	# "WASP-12 b",
-	# "WASP-17 b",
-	# "WASP-19 b",
-	# "WASP-21 b",
-	# "WASP-31 b",
-	# "WASP-39 b",
-	#"WASP-43 b",
-	"WASP-50 b",
-	# "WASP-52 b",
-	# "WASP-62 b",
-	# "WASP-63 b",
-	# "WASP-67 b",
-	# "WASP-76 b",
-	# "WASP-79 b",
-	# "WASP-101 b",
-	# "WASP-107 b",
-	# "WASP-121 b",
-	# "WASP-127 b",
-	# "XO-1 b",
-]
-
 # ╔═╡ 05d65745-6972-41fe-8308-e5c97c85692b
 get_gₚ(Mₚ, RₚRₛ, Rₛ) = G * Mₚ / (RₚRₛ^2 * Rₛ^2)
 
-# ╔═╡ 32449eeb-a772-423c-bd52-fd6b3b8e2bba
-df_T_vs_g = let
-	df = DataFrame(
-		pl_name = ["HAT-P-23 b", "HD 189733 b", "WASP-43 b", "WASP-50 b"],
-		RₚRₛ = [0.11616±0.00081, 0.1504±0.0039, 0.1588±0.0040, 0.1390±0.0006],
-		Rₛ   = [1.089±0.028,     0.765±0.019,   0.6506±0.0054, 0.843±0.031  ]u"Rsun",
-		Mₚ   = [2.07±0.12,       1.166±0.052,   1.998±0.079,   1.4688±0.0920]u"Mjup",
-		Rₚ   = [1.224±0.037,     1.119±0.038,   1.006±0.017,   1.166±0.043  ]u"Rjup",
-		Teq  = [1951±30,         1209±11,       1426.7±8.5,    1394.84±32.70],
-	)
-	@chain df begin
-		@aside g_SI_m = @. get_gₚ(_.Mₚ, _.RₚRₛ, _.Rₛ) .|> u"m/s^2"
-		@transform! begin
-			:g_SI = Measurements.value.(g_SI_m) |> ustrip
-			:g_SI_err = Measurements.uncertainty.(g_SI_m) |> ustrip
-			:T_K = Measurements.value.(:Teq)
-			:T_K_err = Measurements.uncertainty.(:Teq)
-		end
-	end
-end
-
-# ╔═╡ 31ecaea8-8fe4-49d1-b7ab-11988981b7c9
-@with_terminal PrettyTables.pretty_table(df_T_vs_g, nosubheader=true)
-
-# ╔═╡ 84a9837c-552c-4982-a55c-8d268e463758
-df_T_vs_g[df_T_vs_g.pl_name .== "HAT-P-23 b", :].Mₚ[1] |> u"Mearth"
-
 # ╔═╡ ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
-df_wakeford = let
+df_H2OJ = let
 	df = CSV.read("data/pop/H2O_J_data.csv", DataFrame;
 		stripwhitespace = true,
 	)
@@ -483,21 +391,27 @@ df_wakeford = let
 	sort!(df, lt=natural)
 end
 
-# ╔═╡ d0e6c6d7-c53f-449f-b49d-de2c22971bb7
-df_wakeford_ps = sort!(leftjoin(df_wakeford, df_ps_all, on=:pl_name), :pl_name;
-	lt = natural
-)
-
-# ╔═╡ 7f956b36-ce65-4e4e-afa5-9b97b9e06954
-@mdx """
-## HGHJ population
-"""
-
 # ╔═╡ 0f9262ef-b774-45bc-bdab-46860779683d
 @mdx """
 !!! note
 	Inspired from [warm-worlds](https://github.com/nespinoza/warm-worlds)
 """
+
+# ╔═╡ 32c0b1c9-0e99-4c43-a473-7122af2e36ab
+sort(df_HGHJs_all, :pl_name)#[df_HGHJs_all.pl_name .== "WASP-140 b", :]
+# check for WASP-95 b
+
+# ╔═╡ 53c4fd02-7a48-47a1-9341-ede3e8d497f7
+y = @chain df_HGHJs_all begin
+	@select :pl_name :pl_eqt :g_SI :TSMR
+	#first(10)
+end
+
+# ╔═╡ 94a5f868-d043-4c1f-831c-17ebabd3df6c
+latextabular(y, latex=false, fmt="%.2f") |> PlutoUI.Text
+
+# ╔═╡ 18e6c65f-b999-41d6-81d2-7398bc05ab47
+@with_terminal PrettyTables.pretty_table(y, nosubheader=true)
 
 # ╔═╡ 18094afc-b77f-4cae-a30c-2691d34125d8
 @mdx """
@@ -536,7 +450,7 @@ function compute_scale_factor(Rp)
 end
 
 # ╔═╡ c7960066-cc33-480c-807b-c56ead4262bf
-# compute TSM, assuming M, R in Earth units, T in Kelvin
+# Compute TSM, assuming Mp, Rp in Earth units, Teq in K, Rₛ in solar units
 function compute_TSM(Rp, Teq, Mp, Rs, J; denom=1.0)
 	f = compute_scale_factor(Rp)
 	return f * (Rp^3 * Teq / (Mp * Rs^2)) * 10.0^(-J/5.0) / denom
@@ -545,91 +459,78 @@ end
 # ╔═╡ cff3a9c4-2a9f-4769-b309-f215bfff27f7
 compute_gₚ(Mₚ, RₚRₛ, Rₛ) = G * Mₚ / (RₚRₛ^2 * Rₛ^2)
 
-# ╔═╡ 463341ab-318d-402f-9545-b44cf19a75ea
-df_complete = let
-	df = leftjoin(leftjoin(df_K, df_orb; on=:pl_name), df_exoarchive_TICv8;
-		on = :pl_name
-	) |> dropmissing!
-	@transform! df begin
-		:Mₚ_J = @. compute_Mₚ(
-			:K_mps*u"m/s", :i_deg*u"°", :P_d*u"d", :Mₛ*u"Msun"
-		) |> u"Mjup" |> ustrip
-		:Rₚ_J = @. (:r * :Rₛ*u"Rsun") |> u"Rjup" |> ustrip
-	end
-	@transform! df begin
-		:gₚ_SI = @. compute_gₚ(
-			:Mₚ_J*u"Mjup", :r, :Rₛ*u"Rsun"
-		) |> u"m/s^2" |> ustrip
-	end
-	@select!(df,
-		:TIC, :pl_name,
-		:Rₛ, :T_eff, :ρₛ, :Mₛ,
-		:K_mps,
-		:r, :P_d, :i_deg,
-		:Mₚ_J, :Rₚ_J, :gₚ_SI,
-	)
-end
-
-# ╔═╡ 1a0b9ba0-837e-4d16-b43a-8a731c8fe84d
-compute_aRₛ.(df_complete.ρₛ, df_complete.P_d)
-
 # ╔═╡ 1e587a84-ed43-4fac-81cf-134a4f3d65d5
 compute_H(μ, T, g) = k * T / (μ * g)
 
 # ╔═╡ c1e63cf3-7f30-4858-bdd6-125d2a99529f
 compute_ΔD(H, Rₚ, Rₛ) = 2.0 * H * Rₚ/Rₛ^2
 
-# ╔═╡ 56ad4c87-069b-4815-955b-7a8d7d012031
-df = @chain df_complete begin
-	@aside begin
-		targ_idx = _.pl_name .== "HAT-P-23 b"
-		TSM_target = _.TSM[targ_idx][1]
+# ╔═╡ 463341ab-318d-402f-9545-b44cf19a75ea
+df_complete = let
+	df = leftjoin(leftjoin(df_K, df_orb; on=:pl_name), df_exoarchive_TICv8;
+		on = :pl_name
+	) |> dropmissing!
+	@transform! df begin
+		:pl_massj = @. compute_Mₚ(
+			:pl_rvamp, :pl_orbincl, :pl_orbper, :st_mass
+		) |> u"Mjup"
+		:pl_radj = @. (:pl_ratror * :st_rad) |> u"Rjup"
+		:pl_ratdor = @. compute_aRₛ(:st_dens_solar, :pl_orbper) |> NoUnits
 	end
-	@transform begin
-		:TSMR = :TSM / TSM_target
+	@transform! df begin
+		:pl_g_SI = @. compute_gₚ(
+			:pl_massj, :pl_ratror, :st_rad
+		) |> u"m/s^2"
+		:pl_eqt = @. compute_Tₚ(:st_teff, :pl_ratdor)
+	end
+	@transform! df begin
+		:pl_H_km = @. compute_H(
+			2.0*u"u", :pl_eqt, :pl_g_SI
+		) |> u"km"
 
-		:ΔD_ppm = compute_ΔD(
-			:H_km*u"km", :pl_rade*u"Rearth", :st_rad*u"Rsun"
-		) |> x -> uconvert(NoUnits, x) * 5.0 * 1e6
+		# Assumes Mp, Rp in Earth units, Teq in K, Rₛ in solar units
+		:TSM = @. compute_TSM(
+			:pl_radj |> strip_u(u"Rearth"),
+			:pl_eqt |> strip_u(u"K"),
+			:pl_massj |> strip_u(u"Mearth"),
+			:st_rad |> strip_u(u"Rsun"),
+			:sy_jmag
+		)
 	end
-	@aside ΔD_ppm_targ = _.ΔD_ppm[targ_idx][1]
-	@transform begin
-		:ΔDR_ppm = :ΔD_ppm / ΔD_ppm_targ
+	@chain df begin
+		@aside begin
+			targ_idx = _.pl_name .== "HAT-P-23 b"
+			TSM_target = _.TSM[targ_idx][1]
+		end
+		@transform! begin
+			:TSMR = :TSM / TSM_target
+	
+			:ΔD_ppm = @. compute_ΔD(
+				:pl_H_km, :pl_radj, :st_rad
+			) * 5.0 * 1e6 |> NoUnits
+		end
+		@aside ΔD_ppm_targ = _.ΔD_ppm[targ_idx][1]
+		@transform! begin
+			:ΔDR_ppm = :ΔD_ppm / ΔD_ppm_targ
+		end
 	end
+	# @select!(df,
+	# 	:TIC, :pl_name,
+	# 	:Rₛ, :T_eff, :ρₛ, :Mₛ,
+	# 	:K_mps,
+	# 	:r, :aRₛ, :P_d, :i_deg,
+	# 	:Mₚ_J, :Rₚ_J, :Tₚ, :gₚ_SI,
+	# )
 end
 
-# ╔═╡ 31c05377-2ed4-4ad6-910f-5dedddcbf6dc
-@mdx """
-With this list of $(nrow(df)) transiting exoplanets, we now select the subset of HGHJs.
+# ╔═╡ 9d7c6dff-9662-4752-8b0f-cd30357d2d85
+occursin_df(df_complete, "WASP-43")[:, [:st_rad, :pl_eqt, :pl_massj]]
 
-!!! warning "TODO"
-	Double check constraints
-"""
-
-# ╔═╡ 0f118d0e-0eb6-4517-8378-9623337f73ca
-df_tspecs = @subset df :pl_name ∈ tspec_targs
-
-# ╔═╡ 8a43e9a3-f9a1-4f15-a914-2b7b4f4bf3cd
-df[df.pl_name .== "HAT-P-23 b", :]
-
-# ╔═╡ 3a4112a5-f211-4160-a6e8-688d04751a42
-names(df)
-
-# ╔═╡ c98c5618-4bac-4322-b4c3-c76181f47889
-df_HGHJs_all = @chain df begin
-	@subset (1.0 .≤ :TSMR) .&
-	(20.0 .≤ :g_SI) .&
-	(1_000.0 .≤ :pl_eqt) .&
-	(10.0 .≤ :pl_rade)
-	sort(:TSMR, rev=true) # To stack smaller circles on top in Figure
+# ╔═╡ 998af70c-d784-4791-9261-a6dcbec8c824
+df_HGHJs = @chain df_complete begin
+	@rsubset (1.0 ≤ :TSMR) & (20.0 ≤ :gₚ_SI) & (0.89 ≤ :Rₚ_J)
+	sort!(:TSMR, rev=true) # To stack smaller circles on top in Figure
 end
-
-# ╔═╡ d62b5506-1411-49f2-afe3-d4aec70641a1
-df_HGHJs = @subset(
-	df_HGHJs_all, :pl_name .∈ Ref(
-		["HAT-P-23 b", "WASP-43 b", "WASP-50 b", "HD 189733 b"]
-	)
-)
 
 # ╔═╡ 8d519cad-8da6-409e-b486-2bc9a6008e0f
 function label_text!(ax, targ;
@@ -640,21 +541,14 @@ function label_text!(ax, targ;
 	text!(ax, targ, position=(x, y), align=(al_x, al_y), offset=offset)
 end
 
-# ╔═╡ 32c0b1c9-0e99-4c43-a473-7122af2e36ab
-sort(df_HGHJs_all, :pl_name)#[df_HGHJs_all.pl_name .== "WASP-140 b", :]
-# check for WASP-95 b
-
-# ╔═╡ 53c4fd02-7a48-47a1-9341-ede3e8d497f7
-y = @chain df_HGHJs_all begin
-	@select :pl_name :pl_eqt :g_SI :TSMR
-	#first(10)
+# ╔═╡ d6449d05-ee95-4bda-8636-37c71e422944
+df_wakeford = let
+	df = leftjoin(df_H2OJ, df_complete, on=:pl_name)
+	@select df :pl_name
 end
 
-# ╔═╡ 94a5f868-d043-4c1f-831c-17ebabd3df6c
-latextabular(y, latex=false, fmt="%.2f") |> PlutoUI.Text
-
-# ╔═╡ 18e6c65f-b999-41d6-81d2-7398bc05ab47
-@with_terminal PrettyTables.pretty_table(y, nosubheader=true)
+# ╔═╡ 12f8e13e-a124-4302-94bc-0ccdf9230b91
+names(df_wakeford)
 
 # ╔═╡ 683a8d85-b9a8-4eab-8a4b-e2b57d0783c0
 @mdx """
@@ -718,19 +612,19 @@ end
 # ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
 let
 	p = mapping(
-		:pl_eqt => "Equilibrium temperature (K)",
-		:g_SI => "Surface gravity (m/s²)",
+		:Tₚ => "Equilibrium temperature (K)",
+		:gₚ_SI => "Surface gravity (m/s²)",
 	) *
 	(
-		data(df) * visual(color=(:darkgrey, 0.25)) +
+		#data(df) * visual(color=(:darkgrey, 0.25)) +
 		
 		data(df_wakeford)
 			* mapping(color=:H2OJ => "H₂O - J")
 			* visual(
 				marker=:rect, markersize=20, strokewidth=1, colormap=:cividis
-			) +
+			) #+
 		
-		data(df_tspecs) * visual(marker='□', markersize=20)
+		#data(df_tspecs) * visual(marker='□', markersize=20)
 	) #+
 	# data(df_T_vs_g) * mapping(:T_K, :g_SI, :T_K_err) * visual(Errorbars, direction=:x) +
 	# data(df_T_vs_g) * mapping(:T_K, :g_SI, :g_SI_err) * visual(Errorbars, direction=:y)
@@ -744,14 +638,14 @@ let
 	)
 	ax = fg.grid[1].axis
 	
-	label_text!(ax, "WASP-43 b (Weaver+ 2020)", al_x=:left, offset=(10, 0))
-	label_text!(ax, "HAT-P-23 b (Weaver+ 2021)", al_x=:left, offset=(0, 8))
-	label_text!(ax, "WASP-50 b (this work)", al_x=:right, offset=(8, 8))
-	label_text!(ax, "HD 189733 b (Sing+ 2016.)", al_x=:left, offset=(0, 8))
-	hl = hlines!(ax, 20, color=:darkgrey, linestyle=:dash)
-	translate!(hl, 0, 0, -1) # Place behind plot markers
+	# label_text!(ax, "WASP-43 b (Weaver+ 2020)", al_x=:left, offset=(10, 0))
+	# label_text!(ax, "HAT-P-23 b (Weaver+ 2021)", al_x=:left, offset=(0, 8))
+	# label_text!(ax, "WASP-50 b (this work)", al_x=:right, offset=(8, 8))
+	# label_text!(ax, "HD 189733 b (Sing+ 2016.)", al_x=:left, offset=(0, 8))
+	# hl = hlines!(ax, 20, color=:darkgrey, linestyle=:dash)
+	# translate!(hl, 0, 0, -1) # Place behind plot markers
 
-    savefig(fg, "$(FIG_DIR)/t_vs_g.pdf")
+    # savefig(fg, "$(FIG_DIR)/t_vs_g.pdf")
 
 	fg
 end
@@ -854,6 +748,7 @@ end
 # ╠═0d629db3-7370-406f-989b-7a2caca020dc
 # ╠═9de3a7bc-29c0-455c-8b9a-f5d2031838ab
 # ╠═380d05a4-35e9-4db4-b35a-b03de9e695ee
+# ╠═f8b4def8-a46f-4cbc-83c0-ff44a39c1571
 # ╠═86a99042-bb9b-43e6-87ae-d76f88b10533
 # ╠═92fbb7d7-9782-44d4-b1b7-6db89d78a032
 # ╠═e8a13c3b-819a-490e-a967-e2da54ca6617
@@ -869,35 +764,25 @@ end
 # ╠═af31c3ab-c459-46fd-ba5c-c0c469da5091
 # ╠═7898ea90-4863-4beb-995e-7a251235aa88
 # ╠═463341ab-318d-402f-9545-b44cf19a75ea
+# ╠═9d7c6dff-9662-4752-8b0f-cd30357d2d85
 # ╠═0f939597-807b-4381-8461-09c7b9bdf3b1
 # ╠═d6598eab-33b3-4873-b6fe-b16c6d5c37d7
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
 # ╠═542c59fd-782f-4e15-ab6c-a450bf4714ba
 # ╠═7a688b2e-64bb-4bc5-a799-4b267e5c30ad
-# ╠═1a0b9ba0-837e-4d16-b43a-8a731c8fe84d
+# ╠═29603a24-316b-4d01-9605-6d49424fc7ff
+# ╠═ee3990d1-91b6-4c47-bba1-d016c75476da
 # ╠═763503a1-9c3b-4353-b396-96e62c48c2be
-# ╠═32bd97e4-e646-4702-98e3-17e980cf6754
-# ╠═56ad4c87-069b-4815-955b-7a8d7d012031
-# ╟─c7eabcc6-5139-448d-abdb-ec752788bd59
-# ╟─31c05377-2ed4-4ad6-910f-5dedddcbf6dc
-# ╠═d62b5506-1411-49f2-afe3-d4aec70641a1
+# ╠═47831596-0483-4420-a071-832183b1c3bb
+# ╠═998af70c-d784-4791-9261-a6dcbec8c824
+# ╠═d6449d05-ee95-4bda-8636-37c71e422944
+# ╠═c7eabcc6-5139-448d-abdb-ec752788bd59
 # ╠═e0365154-d6c8-4db2-bb85-bf2536a3aa74
-# ╠═9aed232f-ec74-4ec6-9ae7-06b90539833b
-# ╟─b5c0dbc8-d700-473e-9f00-d89a319f6432
-# ╠═d0e6c6d7-c53f-449f-b49d-de2c22971bb7
-# ╠═b4c7316d-d198-4449-ad45-66397fd1a9a5
-# ╠═0f118d0e-0eb6-4517-8378-9623337f73ca
 # ╠═05d65745-6972-41fe-8308-e5c97c85692b
-# ╠═32449eeb-a772-423c-bd52-fd6b3b8e2bba
-# ╠═31ecaea8-8fe4-49d1-b7ab-11988981b7c9
-# ╠═84a9837c-552c-4982-a55c-8d268e463758
-# ╠═8a43e9a3-f9a1-4f15-a914-2b7b4f4bf3cd
 # ╠═ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
 # ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
-# ╠═3a4112a5-f211-4160-a6e8-688d04751a42
+# ╠═12f8e13e-a124-4302-94bc-0ccdf9230b91
 # ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
-# ╟─7f956b36-ce65-4e4e-afa5-9b97b9e06954
-# ╠═c98c5618-4bac-4322-b4c3-c76181f47889
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d
 # ╠═94a5f868-d043-4c1f-831c-17ebabd3df6c
