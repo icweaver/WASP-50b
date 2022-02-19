@@ -49,7 +49,7 @@ In this notebook we will examine the stellar spectra, white-light, and wavelengt
 
 # ╔═╡ 0d766fde-8e6f-4a88-94df-49747d7c03fa
 begin
-	const DATA_DIR = "data/reduced_data/IMACS"
+	const DATA_DIR = "data/reduced_data/IMACS/box"
 	const FIG_DIR = "figures/reduced_data"
 	TableOfContents()
 end
@@ -85,8 +85,11 @@ transits = merge(
 	),
 )
 
+# ╔═╡ be765f9b-b29e-424f-94d9-d8457cd59922
+parts = split(fname_suff, "_") 
+
 # ╔═╡ 02b9e4ee-f18a-434b-b462-b7b0a09250b9
-FPATH_LC
+split(fname_suff, "_")
 
 # ╔═╡ e774a20f-2d58-486a-ab71-6bde678b26f8
 @mdx """
@@ -304,6 +307,9 @@ LC_cNames = pyconvert(Vector, LC["cNames"])
 # ╔═╡ f519626c-a3e8-4390-b3af-40b7beb665ed
 LC_oLC = pyconvert(Vector, LC["oLC"])
 
+# ╔═╡ 2ffcddab-156b-472d-ba57-5beea5c7cc0a
+LC["oLC"]
+
 # ╔═╡ 9a9b688c-94f0-4944-a9b2-21702073e0c7
 LC_cLC = pyconvert(Matrix, LC["cLC"])
 
@@ -331,9 +337,6 @@ begin
 	use_comps_idxs = get_idx.(use_comps, Ref(cNames))
 	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
 end;
-
-# ╔═╡ 22b57aad-e886-4d36-bab8-baef5f3fabe6
-f_div_WLC_norm
 
 # ╔═╡ 3ca393d6-01c0-4f77-88ff-7c4f6388670e
 begin
@@ -562,9 +565,6 @@ end
 # ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
 wbins = pyconvert(Matrix, np.array(LC["wbins"]));
 
-# ╔═╡ 0c09ac81-6b04-44f4-98ef-785b02f1a8fe
-wbins
-
 # ╔═╡ 40269026-a833-4dd8-bb22-7d26f35163e9
 wbins_odd = @view wbins[begin:2:end, :] # Selects alternating bins to highlight
 
@@ -646,15 +646,15 @@ blc_plots[cName]
 # ╟─ee24f7df-c4db-4065-afe9-10be80cbcd6b
 # ╠═0d766fde-8e6f-4a88-94df-49747d7c03fa
 # ╟─9d180c21-e634-4a1e-8430-bdd089262f66
-# ╟─28d18f7f-2e41-4771-9f27-342bbda847dd
+# ╠═28d18f7f-2e41-4771-9f27-342bbda847dd
 # ╟─bd2cdf33-0c41-4948-82ab-9a28929f72b3
 # ╠═3959e46c-87c9-4566-8ab1-f437323f0a9f
-# ╟─32b9a326-ddc8-4557-bcf5-9dcc54ed83e5
+# ╠═32b9a326-ddc8-4557-bcf5-9dcc54ed83e5
+# ╠═be765f9b-b29e-424f-94d9-d8457cd59922
 # ╠═02b9e4ee-f18a-434b-b462-b7b0a09250b9
 # ╠═dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
 # ╠═cb1c4a44-09a8-4fff-8703-2d37647148f0
 # ╟─e774a20f-2d58-486a-ab71-6bde678b26f8
-# ╠═0c09ac81-6b04-44f4-98ef-785b02f1a8fe
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
 # ╠═65cc9f56-1e9e-446c-82db-10dcd6334ce3
 # ╠═e4e9899c-68c3-4bc4-aadd-7c5d3446e57d
@@ -674,6 +674,7 @@ blc_plots[cName]
 # ╠═06bbca64-c99f-429b-b1ad-f40f32e0deac
 # ╠═bcda2043-f8c7-46bc-a5d4-b6f1f0883e9e
 # ╠═f519626c-a3e8-4390-b3af-40b7beb665ed
+# ╠═2ffcddab-156b-472d-ba57-5beea5c7cc0a
 # ╠═9a9b688c-94f0-4944-a9b2-21702073e0c7
 # ╠═18d58341-0173-4eb1-9f01-cfa893088613
 # ╟─941cd721-07d8-4a8f-9d75-42854e6e8edb
@@ -683,7 +684,6 @@ blc_plots[cName]
 # ╠═169197fe-983d-420b-8c56-353a65b28ddc
 # ╟─4bad8b5c-e8b9-4ceb-97f4-41b4401d4f63
 # ╠═4e4cb513-1e88-4414-aa4d-a14d934874ce
-# ╠═22b57aad-e886-4d36-bab8-baef5f3fabe6
 # ╠═a4517d69-76e6-462a-9449-b31d80e34a8f
 # ╠═ad5b07e5-75d0-4e03-a5d6-9ce4f1efd949
 # ╟─0adc81ea-8678-42c2-a8b6-45fe4d26f4c4

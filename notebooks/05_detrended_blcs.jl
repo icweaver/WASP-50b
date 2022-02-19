@@ -104,14 +104,15 @@ begin
 		# TODO, track this down
 		#deleteat!(fpaths, findfirst(s -> occursin("wbin11", s), fpaths))
 
-		# WLC BMA t₀
-		t₀ = let
+		# WLC BMA t₀ and P
+		t₀, P = let
 			df_BMA_WLC = CSV.read("$(dirpath_WLC)/results.dat", DataFrame;
 				comment = "#",
 				normalizenames = true,
 				stripwhitespace = true,
 			)
-			df_BMA_WLC[findfirst(==("t0"), df_BMA_WLC.Variable), :].Value
+			(df_BMA_WLC[findfirst(==("t0"), df_BMA_WLC.Variable), :].Value,
+			df_BMA_WLC[findfirst(==("P"), df_BMA_WLC.Variable), :].Value)
 		end
 
 		# Pre-allocate matrices to hold detrended data and models in each bin
@@ -120,17 +121,18 @@ begin
 		det_BLC_fluxes = Matrix{Float64}(undef, N_time, N_bins)
 		det_BLC_models = copy(det_BLC_fluxes)
 		# Populate each matrix
+		times = []
 		for (fpath, lc, model) in zip(
 			fpaths, eachcol(det_BLC_fluxes), eachcol(det_BLC_models)
 		)
 			df = CSV.read(fpath, DataFrame;
 				header=["Time", "DetFlux", "DetFluxErr", "Model"],
 				comment = "#",
-				select=[:DetFlux, :Model],
 			)
 			#@show fpath nrow(df)
 			lc .= df.DetFlux
 			model .= df.Model
+			push!(times, df.Time)
 		end
 
 		# Save
@@ -138,7 +140,9 @@ begin
 		cubes[transit] = Dict(
 			"fluxes" => det_BLC_fluxes,
 			"models" => det_BLC_models,
+			"t" => times[begin],
 			"t₀" => t₀,
+			"P" => P,
 			"tspec" => CSV.read(
 				"$(dirname(dirpath_WLC))/transpec.csv", DataFrame;
 				normalizenames = true,
@@ -156,6 +160,14 @@ end
 
 # ╔═╡ a5acf744-dfe7-4088-885b-9142af8f0d8f
 @bind transit Select(cubes.keys)
+
+# ╔═╡ ff8fb667-fcaf-4c2d-b5c9-16252bcfeade
+# Computes orbital phase
+function compute_ϕ(t, t₀, P)
+	phase = ((t - t₀) / P) % 1.0
+    phase ≥ 0.5 && (phase -= 1.0)
+	return phase
+end
 
 # ╔═╡ 1dd4968e-959a-4f6e-a0e2-9fe9b8ecdd74
 @mdx """
@@ -217,15 +229,13 @@ begin
 end
 
 # ╔═╡ bec88974-b150-4f53-9497-ddec4883ae17
-function plot_BLCs(transit, datas, models, errs, wbins; offset=0.3)
+function plot_BLCs(transit, phase, datas, models, errs, wbins; offset=0.3)
 	fig = Figure(resolution=FIG_LARGE)
 	median_prec = round(Int, median(errs))
 	ax_left = Axis(fig[1, 1], title = "Detrended BLCs")
 	ax_right = Axis(fig[1, 2], title = "Residuals")
 	ax_label = Axis(fig[1, 3], title = "Median precision: $(median_prec) ppm")
 	axs = reshape(copy(fig.content), 1, 3)
-	#ylims!(ax_label, (1.05, 1.15))
-	linkaxes!(axs...)
 	
 	# Color palette
 	N_bins = size(datas, 2)
@@ -244,17 +254,17 @@ function plot_BLCs(transit, datas, models, errs, wbins; offset=0.3)
 			eachrow(wbins),
 			errs,
 		)	
-		scatter!(ax_left, data, strokewidth=0, markersize=5, color=color)
-		lines!(ax_left, model, linewidth=3, color=0.75*color)
+		scatter!(ax_left, phase, data, strokewidth=0, markersize=5, color=color)
+		lines!(ax_left, phase, model, linewidth=3, color=0.75*color)
 		
-		scatter!(ax_right, baseline + resid, markersize=5, color=color)
-		lines!(ax_right, baseline, linewidth=3, color=0.75*color)
-		@show wbins
+		scatter!(ax_right, phase, baseline + resid, markersize=5, color=color)
+		lines!(ax_right, phase, baseline, linewidth=3, color=0.75*color)
+		
 		text!(ax_label, "$(wbin[1]) - $(wbin[2]) Å, $(err) ppm";
-			position = (0, baseline[1]),
+			position = (-0.06, baseline[1]),
 			textsize = 16,
 			align = (:left, :center),
-			offset = (-10, 2),
+			#offset = (-10, 2),
 			color = 0.75*color,
 		)
 	end
@@ -262,7 +272,9 @@ function plot_BLCs(transit, datas, models, errs, wbins; offset=0.3)
 	hideydecorations!.(axs[:, 2:3], grid=false)
 	hidespines!(axs[end])
 	hidedecorations!(axs[end])
+	xlims!(ax_left, -0.065, 0.065)
 	ylims!(ax_left, 0.95, 1.34)
+	linkaxes!(axs...)
 	
 	Label(fig[1:2, 0], "Relative flux + offset", rotation=π/2)
 	Label(fig[end, 2:3], "Index")
@@ -276,15 +288,18 @@ end
 # ╔═╡ df1a160c-22ff-4c5e-a71f-b903d8a23ef1
 begin
 	blc_plots = Dict()
-	for transit in cubes.keys
-		tspec = cubes[transit]["tspec"]
+	for (transit, cube) ∈ cubes
+		tspec = cube["tspec"]
 		wbins = tspec[:, [:Wav_d, :Wav_u]]
 		errs = mean([tspec.Depthup_ppm_ tspec.DepthDown_ppm_], dims=2)
+		t, t₀, P = get.(Ref(cube), ["t", "t₀", "P"], nothing)
+		phase = compute_ϕ.(t, t₀, P)
 		
 		p = plot_BLCs(
 			transit,
-			cubes[transit]["fluxes"],
-			cubes[transit]["models"],
+			phase,
+			cube["fluxes"],
+			cube["models"],
 			round.(Int, errs),
 			wbins,
 		)
@@ -310,6 +325,7 @@ blc_plots[transit]
 # ╟─a5acf744-dfe7-4088-885b-9142af8f0d8f
 # ╟─cb2a3117-03be-42f4-adf6-c23a42252ddf
 # ╠═bec88974-b150-4f53-9497-ddec4883ae17
+# ╠═ff8fb667-fcaf-4c2d-b5c9-16252bcfeade
 # ╟─1dd4968e-959a-4f6e-a0e2-9fe9b8ecdd74
 # ╟─c59e2697-d2a3-4bdb-ba64-059246697c1c
 # ╠═0af97a94-cb08-40e2-8011-11c8696684fa

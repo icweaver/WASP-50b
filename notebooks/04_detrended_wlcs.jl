@@ -121,7 +121,7 @@ val(df, v) = @subset(df, :Variable .== v)[1, "Value"]
 
 # ╔═╡ d43ec3eb-1d5e-4a63-b5e8-8dcbeb57ae7c
 # Computes orbital phase
-function ϕ(t, t₀, P)
+function compute_ϕ(t, t₀, P)
 	phase = ((t - t₀) / P) % 1.0
     phase ≥ 0.5 && (phase -= 1.0)
 	return phase
@@ -271,6 +271,9 @@ const PARAMS = OrderedDict(
 	"q1" => "u",
 );
 
+# ╔═╡ 869ee4e5-6061-48ac-a147-694c02392280
+PARAMS
+
 # ╔═╡ 6fcd1377-8364-45a3-9ff6-89d61df1ef42
 # Number of levels `n` to show in contour plots
 compute_levels(A, n) = reverse(
@@ -355,6 +358,12 @@ function savefig(fig, fpath)
     save(fpath, fig, pt_per_unit=1)
 	@info "Saved to: $(fpath)"
 end
+
+# ╔═╡ b373b230-131b-42e4-8335-f35fce844dce
+@py import matplotlib.pyplot as plt
+
+# ╔═╡ bcb1a985-5274-4dc6-93ec-f488c5203c86
+@py import numpy as np
 
 # ╔═╡ db539901-f0b0-4692-a8d2-6c72dff41196
 begin
@@ -455,15 +464,6 @@ begin
 	end
 end
 
-# ╔═╡ 3fa98a7d-ed82-4826-b720-f5eb6e6154e4
-ts = pyconvert(Vector, cubes["Transit 1 (IMACS)"]["samples"]["t0"])
-
-# ╔═╡ 7e4255e6-6287-45eb-9ed8-46a733a47c42
-(mean(ts) - BMA_matrix[2, 5].val) / BMA_matrix[2, 5].err
-
-# ╔═╡ 90538670-f0f6-4a0d-b3bd-3392cc020ec8
-(std(ts)) / (10*BMA_matrix[2, 5].err)
-
 # ╔═╡ 1f7b883c-0192-45bd-a206-2a9fde1409ca
 begin
 	##############
@@ -518,14 +518,14 @@ function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 
 	t₀ = val(cube["results"], "t0")
 	P = val(cube["results"], "P")
-	t = ϕ.(pyconvert(Vector, cube["models"]["t"]), t₀, P)
-	t_interp = ϕ.(pyconvert(Vector, cube["models"]["t_interp"]), t₀, P)
+	t = compute_ϕ.(pyconvert(Vector, cube["models"]["t"]), t₀, P)
+	t_interp = compute_ϕ.(pyconvert(Vector, cube["models"]["t_interp"]), t₀, P)
 	LC_det = pyconvert(Vector, cube["models"]["LC_det"])
 	LC_det_err = pyconvert(Vector, cube["models"]["LC_det_err"])
 	LC_transit_model = pyconvert(Vector, cube["models"]["LC_transit_model"])
 	LC_det_model_interp = pyconvert(Vector, cube["models"]["LC_det_model_interp"])
 	resids = LC_det - LC_transit_model
-	resids_σ = round(Int, std(resids) * 1e6)
+	resids_σ = round(std(resids) * 1e6, digits=5)
 	resids .*= 1e6
 
 	color = COLORS[i]
@@ -566,12 +566,12 @@ let
 	xlims = -0.065, 0.065
 	ax_top_kwargs = (
 		ylabel = "Relative flux",
-		#limits = (xlims..., 0.975, 1.005),
+		limits = (xlims..., 0.975, 1.005),
 	)
 	ax_bottom_kwargs = (
 		xlabel = "Phase",
 		ylabel = "Residuals (ppm)",
-		#limits=(xlims..., -3000, 3000),
+		limits=(xlims..., -3000, 3000),
 	)
 	for (i, (transit, cube)) ∈ enumerate(cubes)
 		g_idxs = grid[i]
@@ -743,7 +743,7 @@ end
 # ╟─506eeeb2-e56d-436b-91b8-605e52201563
 # ╠═25d1284c-7260-4f3a-916a-b2814d2606af
 # ╟─782806a6-efd2-45a9-b898-788a276c282b
-# ╟─a8d91138-73e7-4382-a032-37daec54a9c0
+# ╠═a8d91138-73e7-4382-a032-37daec54a9c0
 # ╠═2191791b-df62-4f1b-88bf-060cc47896b2
 # ╠═f539e06d-a1b5-413a-b90e-91cb0bbd5a4c
 # ╠═e873f9c6-fd1a-4227-9df1-70c626e4a0a1
@@ -772,10 +772,8 @@ end
 # ╟─e452d2b1-1010-4ce3-8d32-9e9f1d0dfa0b
 # ╠═56d0de38-5639-4196-aafe-79a9ab933980
 # ╠═706f1fb6-2895-48f6-a315-842fbf35da18
-# ╠═3fa98a7d-ed82-4826-b720-f5eb6e6154e4
-# ╠═7e4255e6-6287-45eb-9ed8-46a733a47c42
-# ╠═90538670-f0f6-4a0d-b3bd-3392cc020ec8
 # ╠═d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
+# ╠═869ee4e5-6061-48ac-a147-694c02392280
 # ╠═8c9428a9-f2ad-4329-97a3-97ffa6b40f28
 # ╠═2cbc6ddb-210e-41e8-b745-5c41eba4e778
 # ╠═ed935d16-ddce-4334-a880-005732b38936
@@ -790,6 +788,8 @@ end
 # ╠═8f795cda-b905-4c89-ade5-05e35b10d4b3
 # ╟─30ae3744-0e7e-4c16-b91a-91eb518fba5b
 # ╠═bf9c0b95-fe17-425d-8904-8298f7e5451c
+# ╠═b373b230-131b-42e4-8335-f35fce844dce
+# ╠═bcb1a985-5274-4dc6-93ec-f488c5203c86
 # ╠═db539901-f0b0-4692-a8d2-6c72dff41196
 # ╠═1f7b883c-0192-45bd-a206-2a9fde1409ca
 # ╠═5939e2a3-8407-4579-8274-e3891acbabb1
