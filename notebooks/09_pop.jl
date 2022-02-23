@@ -105,6 +105,15 @@ md"""
 After performing the cross-match on this site, we save the final list of exoplanets with updated stellar parameters to use in the rest of our analysis:
 """
 
+# ╔═╡ 11873b78-54c4-452c-a61e-750c467e3d26
+md"""
+!!! warning
+	As seen above, roughly half of the known transiting exoplanets do not have uncertainties reported for their stellar parameters in the TICv8. To keep our potential list of HGHJs as conservative as possible, we restrict the pool to just those targets that have a reported uncertainty.
+"""
+
+# ╔═╡ f8b4def8-a46f-4cbc-83c0-ff44a39c1571
+ρ_sun = inv((4/3)*π) # Conversion factor from solar units
+
 # ╔═╡ 380d05a4-35e9-4db4-b35a-b03de9e695ee
 df_exoarchive_TICv8 = let
 	df0 = CSV.read("data/pop/exoarchive_TICv8.txt", DataFrame;
@@ -117,56 +126,28 @@ df_exoarchive_TICv8 = let
 	df = @chain df0 begin
 		groupby(:TIC)
 		combine(_) do sdf
-			sorted = sort(sdf, :r)
+			sorted = sort(sdf, :_r)
 			first(sorted)
 		end
 	end
 		
-	leftjoin!(df_exoarchive, df, on=:TIC) #|> dropmissing!
+	df = leftjoin(df_exoarchive, df, on=:TIC) |> dropmissing!
 	
-	# @select! df begin
-	# 	:TIC
-	# 	:pl_name
-	# 	:st_rad = (:Rstar .± :Rstar_err)u"Rsun"
-	# 	:st_mass = (:Mstar .± :M_star_err)u"Msun"
-	# 	:st_dens_solar = ρ_sun .* (:rho_star .± :rho_star_err)u"Msun/Rsun^3"
-	# 	:st_teff = (:Teff .± :Teff_err)u"K"
-	# 	:sy_jmag
-	# end
+	@select! df begin
+		:TIC
+		:pl_name
+		:st_rad = (:Rstar .± :Rstar_err)u"Rsun"
+		:st_mass = (:Mstar .± :M_star_err)u"Msun"
+		:st_dens_solar = ρ_sun .* (:rho_star .± :rho_star_err)u"Msun/Rsun^3"
+		:st_teff = (:Teff .± :Teff_err)u"K"
+		:sy_jmag
+	end
 	# #@transform! df :Mₛ = @. :ρₛ * :Rₛ^3 # Already in solar units
 end
 
-# ╔═╡ ca7aed42-37f1-4048-8c05-2a3658b4db61
-df = CSV.read("data/pop/yee.txt", DataFrame;
-	comment = "#",
-	delim = ' ',
-	ignorerepeated = true,
-) 
-
-# ╔═╡ bc80eddf-3b44-47d1-872b-89595a6f1f66
-df_exoarchive[df_exoarchive.TIC .== 138213510, :]
-
-# ╔═╡ 7f6a799d-991f-42f0-8205-63d403823b57
-df[df.TIC .== 138213510, :]
-
-# ╔═╡ 539175c7-eb39-4df1-ac1d-c3ea0c312666
-dfyee = @chain df begin
-	groupby(:TIC)
-	combine(_) do sdf
-		sorted = sort(sdf, :r)
-		first(sorted)
-	end
-end
-
-# ╔═╡ 92ea2770-a96e-4f61-a453-d5bdeaff2923
-groupby(df_exoarchive, :TIC)
-
-# ╔═╡ f8b4def8-a46f-4cbc-83c0-ff44a39c1571
-ρ_sun = inv((4/3)*π) # Conversion factor from solar units
-
 # ╔═╡ 617fc32d-3c68-4553-94c7-b7445e1d5496
 md"""
-With this list of know transiting exoplanets with updated stellar parameters from GAIA DR2, we now combine the corresponding planetary orbital parameters from all known studies on the NASA exoplanet archive:
+With this list of know transiting exoplanets with updated stellar parameters from GAIA DR2, we download and combine the corresponding planetary orbital parameters from all known studies on the NASA exoplanet archive:
 """
 
 # ╔═╡ 86a99042-bb9b-43e6-87ae-d76f88b10533
@@ -225,10 +206,15 @@ end
 df_ps = leftjoin(df_ps_all, df_exoarchive_TICv8, on=[:TIC, :pl_name];
 makeunique=true)# |> dropmissing
 
+# ╔═╡ 67e34c21-f60e-40a1-a10c-920816faadb8
+md"""
+We now set out to select the most up to date RV and transit parameters from each study.
+"""
+
 # ╔═╡ 97c9f1ae-21da-4f99-94ff-a8adaabf30bb
 @mdx """
-## Radial velocity (RV params)
-* K
+## Radial velocity parameters
+Starting with the RV params, we only need the most up to date semi-amplitude (K), which we select below for each planet:
 """
 
 # ╔═╡ 2584860a-8e24-49f7-a7d5-4c99c8deda8e
@@ -262,7 +248,8 @@ df_K = DataFrame(; pl_name=pl_names_K, pl_rvamp=K_mps, pl_refnames_K, st_refname
 
 # ╔═╡ 3ed05d01-b489-46d6-bcd4-9028d756ab35
 @mdx """
-## Transit params
+## Oribital parameters
+We repeat the same procedure to select the following orbital parameters:
 * period
 * inclination
 * transit depth
@@ -354,9 +341,6 @@ df_orb = DataFrame(
 
 # ╔═╡ 0f939597-807b-4381-8461-09c7b9bdf3b1
 occursin_df(df, s) = df[occursin.(s, df.pl_name), :]
-
-# ╔═╡ 7df7c1cc-8dd3-4da5-a614-aa35312534f1
-occursin_df(df_K, "WASP-43")
 
 # ╔═╡ d6598eab-33b3-4873-b6fe-b16c6d5c37d7
 max_m(p, pu, pd) = p ± mean(skipmissing((pu, abs(pd))))
@@ -549,9 +533,6 @@ df_complete = let
 	# 	:Mₚ_J, :Rₚ_J, :Tₚ, :gₚ_SI,
 	# )
 end
-
-# ╔═╡ 9d7c6dff-9662-4752-8b0f-cd30357d2d85
-dfw = occursin_df(df_complete, "WASP-43")#[:, [:st_rad, :pl_eqt, :pl_massj]]
 
 # ╔═╡ 373e3a8c-39f8-4656-9fcb-e0fc21cce353
 df_all = @chain df_complete begin
@@ -832,20 +813,16 @@ end
 # ╟─0d629db3-7370-406f-989b-7a2caca020dc
 # ╟─3932694b-ef0c-4a41-bcae-f9749f432d88
 # ╠═380d05a4-35e9-4db4-b35a-b03de9e695ee
-# ╠═ca7aed42-37f1-4048-8c05-2a3658b4db61
-# ╠═bc80eddf-3b44-47d1-872b-89595a6f1f66
-# ╠═7f6a799d-991f-42f0-8205-63d403823b57
-# ╠═539175c7-eb39-4df1-ac1d-c3ea0c312666
-# ╠═92ea2770-a96e-4f61-a453-d5bdeaff2923
+# ╟─11873b78-54c4-452c-a61e-750c467e3d26
 # ╠═f8b4def8-a46f-4cbc-83c0-ff44a39c1571
 # ╟─617fc32d-3c68-4553-94c7-b7445e1d5496
 # ╠═86a99042-bb9b-43e6-87ae-d76f88b10533
 # ╠═92fbb7d7-9782-44d4-b1b7-6db89d78a032
+# ╟─67e34c21-f60e-40a1-a10c-920816faadb8
 # ╟─97c9f1ae-21da-4f99-94ff-a8adaabf30bb
 # ╠═2584860a-8e24-49f7-a7d5-4c99c8deda8e
 # ╠═759b0ca7-ade4-4929-afa5-51e0ab133a5b
 # ╠═2ae250e2-cc4d-4824-9795-a8bc0a4b469b
-# ╠═7df7c1cc-8dd3-4da5-a614-aa35312534f1
 # ╟─3ed05d01-b489-46d6-bcd4-9028d756ab35
 # ╠═0aa8aaf2-5343-4b6e-a47b-cf0fc8d27643
 # ╠═0c793036-d7c6-4a56-9ef6-f58b02e6530c
@@ -854,7 +831,6 @@ end
 # ╠═af31c3ab-c459-46fd-ba5c-c0c469da5091
 # ╠═7898ea90-4863-4beb-995e-7a251235aa88
 # ╠═463341ab-318d-402f-9545-b44cf19a75ea
-# ╠═9d7c6dff-9662-4752-8b0f-cd30357d2d85
 # ╠═0f939597-807b-4381-8461-09c7b9bdf3b1
 # ╠═d6598eab-33b3-4873-b6fe-b16c6d5c37d7
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
@@ -863,7 +839,7 @@ end
 # ╠═29603a24-316b-4d01-9605-6d49424fc7ff
 # ╠═ee3990d1-91b6-4c47-bba1-d016c75476da
 # ╠═763503a1-9c3b-4353-b396-96e62c48c2be
-# ╠═47831596-0483-4420-a071-832183b1c3bb
+# ╟─47831596-0483-4420-a071-832183b1c3bb
 # ╠═373e3a8c-39f8-4656-9fcb-e0fc21cce353
 # ╠═998af70c-d784-4791-9261-a6dcbec8c824
 # ╠═11adf40a-79e6-4e5a-b0e5-5ccd9f87ed2e
