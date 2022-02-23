@@ -105,30 +105,64 @@ md"""
 After performing the cross-match on this site, we save the final list of exoplanets with updated stellar parameters to use in the rest of our analysis:
 """
 
-# ╔═╡ f8b4def8-a46f-4cbc-83c0-ff44a39c1571
-ρ_sun = inv((4/3)*π) # Conversion factor from solar units
-
 # ╔═╡ 380d05a4-35e9-4db4-b35a-b03de9e695ee
 df_exoarchive_TICv8 = let
-	df = CSV.read("data/pop/exoarchive_TICv8.txt", DataFrame;
+	df0 = CSV.read("data/pop/exoarchive_TICv8.txt", DataFrame;
 		comment = "#",
 		delim = ' ',
 		ignorerepeated = true,
 	)
-	
-	df = leftjoin(df_exoarchive, df, on=:TIC) |> dropmissing! |> unique!
-	
-	@select! df begin
-		:TIC
-		:pl_name
-		:st_rad = (:Rstar .± :Rstar_err)u"Rsun"
-		:st_mass = (:Mstar .± :M_star_err)u"Msun"
-		:st_dens_solar = ρ_sun .* (:rho_star .± :rho_star_err)u"Msun/Rsun^3"
-		:st_teff = (:Teff .± :Teff_err)u"K"
-		:sy_jmag
+
+	# Remove duplicates from aperture search
+	df = @chain df0 begin
+		groupby(:TIC)
+		combine(_) do sdf
+			sorted = sort(sdf, :r)
+			first(sorted)
+		end
 	end
-	#@transform! df :Mₛ = @. :ρₛ * :Rₛ^3 # Already in solar units
+		
+	leftjoin!(df_exoarchive, df, on=:TIC) #|> dropmissing!
+	
+	# @select! df begin
+	# 	:TIC
+	# 	:pl_name
+	# 	:st_rad = (:Rstar .± :Rstar_err)u"Rsun"
+	# 	:st_mass = (:Mstar .± :M_star_err)u"Msun"
+	# 	:st_dens_solar = ρ_sun .* (:rho_star .± :rho_star_err)u"Msun/Rsun^3"
+	# 	:st_teff = (:Teff .± :Teff_err)u"K"
+	# 	:sy_jmag
+	# end
+	# #@transform! df :Mₛ = @. :ρₛ * :Rₛ^3 # Already in solar units
 end
+
+# ╔═╡ ca7aed42-37f1-4048-8c05-2a3658b4db61
+df = CSV.read("data/pop/yee.txt", DataFrame;
+	comment = "#",
+	delim = ' ',
+	ignorerepeated = true,
+) 
+
+# ╔═╡ bc80eddf-3b44-47d1-872b-89595a6f1f66
+df_exoarchive[df_exoarchive.TIC .== 138213510, :]
+
+# ╔═╡ 7f6a799d-991f-42f0-8205-63d403823b57
+df[df.TIC .== 138213510, :]
+
+# ╔═╡ 539175c7-eb39-4df1-ac1d-c3ea0c312666
+dfyee = @chain df begin
+	groupby(:TIC)
+	combine(_) do sdf
+		sorted = sort(sdf, :r)
+		first(sorted)
+	end
+end
+
+# ╔═╡ 92ea2770-a96e-4f61-a453-d5bdeaff2923
+groupby(df_exoarchive, :TIC)
+
+# ╔═╡ f8b4def8-a46f-4cbc-83c0-ff44a39c1571
+ρ_sun = inv((4/3)*π) # Conversion factor from solar units
 
 # ╔═╡ 617fc32d-3c68-4553-94c7-b7445e1d5496
 md"""
@@ -798,6 +832,11 @@ end
 # ╟─0d629db3-7370-406f-989b-7a2caca020dc
 # ╟─3932694b-ef0c-4a41-bcae-f9749f432d88
 # ╠═380d05a4-35e9-4db4-b35a-b03de9e695ee
+# ╠═ca7aed42-37f1-4048-8c05-2a3658b4db61
+# ╠═bc80eddf-3b44-47d1-872b-89595a6f1f66
+# ╠═7f6a799d-991f-42f0-8205-63d403823b57
+# ╠═539175c7-eb39-4df1-ac1d-c3ea0c312666
+# ╠═92ea2770-a96e-4f61-a453-d5bdeaff2923
 # ╠═f8b4def8-a46f-4cbc-83c0-ff44a39c1571
 # ╟─617fc32d-3c68-4553-94c7-b7445e1d5496
 # ╠═86a99042-bb9b-43e6-87ae-d76f88b10533
