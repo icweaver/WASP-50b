@@ -20,10 +20,8 @@ begin
 	using Latexify
 	using Statistics
 	using Measurements
+	using Measurements: value, uncertainty
 end
-
-# ╔═╡ 4e6c0113-255f-46fb-84ad-f8f30b79a219
-using Measurements: value, uncertainty
 
 # ╔═╡ 7493bb13-ee41-4798-99f6-dc1df97bd624
 begin
@@ -370,28 +368,8 @@ compute_Tₚ(Tₛ, aRₛ; α=0.0) = Tₛ * (1.0 - α)^(1//4) * (0.5/aRₛ)^(1//2
 ## Split 'em up
 """
 
-# ╔═╡ e99f8f02-e008-4f8e-b6ea-0519532ea93a
-extract_url(s) = split(split(s, " ")[3], "href=")[end]
+# ╔═╡ 4e6c0113-255f-46fb-84ad-f8f30b79a219
 
-# ╔═╡ d5736ee2-d8c8-4717-8dca-140e015f5ed0
-s = "Sada &amp; Ram&oacute;n-Fox" #df_HGHJ.pl_refnames_orb[end]
-
-# ╔═╡ 361c6906-a1fd-4149-9e4a-2b8f2fede909
-hs = HTML(s)
-
-# ╔═╡ 918a4667-2d7f-4f61-84f1-c03cb726c9f1
-open("data/pop/output.txt", "w") do out
-    redirect_stdout(out) do
-        println(HTML(s))
-    end
-end
-
-# ╔═╡ dd328a8f-5e22-4b60-af20-69327859c5d7
-function extract_author(s)
-	x = split(split(s, "target=ref>")[end], "</a>")[begin]
-	#x = replace(x, "&" => raw"\&")
-	#x = replace(x, "&amp;" => raw"\&")
-end
 
 # ╔═╡ c7eabcc6-5139-448d-abdb-ec752788bd59
 strip_u(u) = x -> ustrip(u, x)
@@ -560,14 +538,11 @@ df_HGHJ = @chain df_complete begin
 		:pl_refnames_K
 		:pl_refnames_orb
 	end
-	@rtransform begin
-		:pl_refnames_K = "\\url{$(extract_url(:pl_refnames_K))}"
-		:pl_refnames_orb = "\\url{$(extract_url(:pl_refnames_orb))}"
-	end
+	# @rtransform begin
+	# 	:pl_refnames_K = "\\url{$(extract_url(:pl_refnames_K))}"
+	# 	:pl_refnames_orb = "\\url{$(extract_url(:pl_refnames_orb))}"
+	# end
 end
-
-# ╔═╡ 11adf40a-79e6-4e5a-b0e5-5ccd9f87ed2e
-df_HGHJ.pl_refnames_orb[end] |> PlutoUI.Text
 
 # ╔═╡ 157a44f4-6191-4407-98a4-3c8c43817a65
 df_HGHJ_no_H2OJ = filter(x -> x.pl_name ∈ ["HAT-P-23 b", "WASP-50 b"], df_HGHJ)
@@ -584,10 +559,10 @@ df_HGHJ_paper = @chain df_complete begin
 		:pl_refnames_K
 		:pl_refnames_orb
 	end
-	@rtransform begin
-		:pl_refnames_K = "\\href{$(extract_url(:pl_refnames_K))}{Klink}"
-		:pl_refnames_orb = "\\href{$(extract_url(:pl_refnames_orb))}{orblink}"
-	end
+	# @rtransform begin
+	# 	:pl_refnames_K = "\\href{$(extract_url(:pl_refnames_K))}{Klink}"
+	# 	:pl_refnames_orb = "\\href{$(extract_url(:pl_refnames_orb))}{orblink}"
+	# end
 end
 
 # ╔═╡ 893c4a44-f9f6-4185-bd1e-26095339bddc
@@ -842,12 +817,6 @@ end
 # ╟─47831596-0483-4420-a071-832183b1c3bb
 # ╠═373e3a8c-39f8-4656-9fcb-e0fc21cce353
 # ╠═998af70c-d784-4791-9261-a6dcbec8c824
-# ╠═11adf40a-79e6-4e5a-b0e5-5ccd9f87ed2e
-# ╠═e99f8f02-e008-4f8e-b6ea-0519532ea93a
-# ╠═d5736ee2-d8c8-4717-8dca-140e015f5ed0
-# ╠═361c6906-a1fd-4149-9e4a-2b8f2fede909
-# ╠═918a4667-2d7f-4f61-84f1-c03cb726c9f1
-# ╠═dd328a8f-5e22-4b60-af20-69327859c5d7
 # ╠═b3ae27e9-2564-4f4c-8c51-5a40b2705ecf
 # ╠═893c4a44-f9f6-4185-bd1e-26095339bddc
 # ╠═4e6c0113-255f-46fb-84ad-f8f30b79a219
