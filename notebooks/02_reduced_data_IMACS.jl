@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.0
+# v0.18.1
 
 using Markdown
 using InteractiveUtils
@@ -49,7 +49,7 @@ In this notebook we will examine the stellar spectra, white-light, and wavelengt
 
 # ╔═╡ 0d766fde-8e6f-4a88-94df-49747d7c03fa
 begin
-	const DATA_DIR = "data/reduced_data/IMACS/box"
+	const DATA_DIR = "data/reduced_data/IMACS/nofixpix"
 	const FIG_DIR = "figures/reduced_data"
 	TableOfContents()
 end
@@ -322,16 +322,6 @@ begin
 	f_div_WLC_norm = f_div_WLC ./ median(f_div_WLC, dims=1)
 end
 
-# ╔═╡ df46d106-f186-4900-9d3f-b711bc803707
-@with_terminal begin
-	use_comps_idxs = get_idx.(use_comps, Ref(cNames))
-	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
-	# Because python
-	println(bad_idxs .- 1)
-	println(use_comps_idxs .- 1)
-	println(length(bad_idxs))
-end
-
 # ╔═╡ 4e4cb513-1e88-4414-aa4d-a14d934874ce
 begin
 	use_comps_idxs = get_idx.(use_comps, Ref(cNames))
@@ -354,6 +344,17 @@ begin
 	end
 	baselines = ones(ntimes, nbins) .+ offs # Reference baselines
 end;
+
+# ╔═╡ df46d106-f186-4900-9d3f-b711bc803707
+@with_terminal begin
+	use_comps_idxs = get_idx.(use_comps, Ref(cNames))
+	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
+	# Because python
+	println(bad_idxs .- 1)
+	println(use_comps_idxs .- 1)
+	println(length(bad_idxs))
+	println(size(f_norm_w, 1) - length(bad_idxs))
+end
 
 # ╔═╡ a8d1c3e6-c020-495f-a443-07203b7dcd50
 begin
@@ -696,7 +697,7 @@ blc_plots[cName]
 # ╟─793c4d08-e2ee-4c9d-b7a0-11eaaddba895
 # ╠═c2c326df-1474-4b06-b183-668f0d6502aa
 # ╟─eeb3da97-72d5-4317-acb9-d28637a06d67
-# ╟─06bbb3e4-9b30-43bd-941f-e357acaa80fc
+# ╠═06bbb3e4-9b30-43bd-941f-e357acaa80fc
 # ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
 # ╠═a8d1c3e6-c020-495f-a443-07203b7dcd50
 # ╠═a6ec8699-475b-4a86-ab0b-d65b85de2c2d

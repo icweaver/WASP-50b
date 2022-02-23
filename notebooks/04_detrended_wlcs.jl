@@ -609,7 +609,7 @@ let
 			xticklabelrotation = π/4,
 			xticks = LinearTicks(3),
 			yticks = LinearTicks(3),
-			limits = ((-10, 10), (-10, 10)),
+			limits = ((-15, 15), (-15, 15)),
 		)
 		# Hide upper triangle
 		j > i && (hidedecorations!(ax); hidespines!(ax))

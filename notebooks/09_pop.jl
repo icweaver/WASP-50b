@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.0
+# v0.18.1
 
 using Markdown
 using InteractiveUtils
@@ -25,11 +25,6 @@ end
 # ╔═╡ 4e6c0113-255f-46fb-84ad-f8f30b79a219
 using Measurements: value, uncertainty
 
-# ╔═╡ c4375025-2691-40e0-b6ca-cd0472b916cd
-@mdx """
-As of this writing, the planetary parameters reported in the archive have not all been updated to be self-consistent with the latest TICv8 stellar measurements taken, so we will cross-reference the targets from the archive and compute them here.
-"""
-
 # ╔═╡ 7493bb13-ee41-4798-99f6-dc1df97bd624
 begin
 	const DATA_DIR = "data/pop"
@@ -43,6 +38,8 @@ end
 
 In this notebook we will explore possible targets in the high-gravity hot-Jupiter (HGHJ) parameter space (Tₚ ∼ 1000 K, g ∼ 30 m/s²) that are amenable to follow-up atmopsheric characterization.
 
+As of this writing, the planetary parameters reported in the [NASA exoplanet archive](https://exoplanetarchive.ipac.caltech.edu/) have not all been updated to be self-consistent with the GAIA DR2 revised stellar parameters [(TICv8)](https://vizier.u-strasbg.fr/viz-bin/VizieR?-source=IV/38) cataloged by [Stassun et. al. (2019)](https://ui.adsabs.harvard.edu/abs/2019AJ....158..138S/abstract), so we will cross-reference the targets between each archive and compute the updated planetary and orbital parameters here.
+
 !!! note "Data download"
 	```
 	rclone sync -P drive_ACCESS:papers/WASP-50b/$(DATA_DIR) $(DATA_DIR)
@@ -52,9 +49,9 @@ In this notebook we will explore possible targets in the high-gravity hot-Jupite
 
 # ╔═╡ 6b06701b-05e2-4284-a308-e9edeb65a648
 @mdx """
-## Data sample
+## Data sample 📋
 
-We start by drawing our sample from the list of known exoplanets on the [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/docs/TAP/usingTAP.html):
+We start by downloading the coordinates of the known exoplanets via the NASA Exoplanet Archive's [TAP service](https://exoplanetarchive.ipac.caltech.edu/docs/TAP/usingTAP.html):
 """
 
 # ╔═╡ f396cda3-f535-4ad9-b771-7ccbd45c54f3
@@ -82,26 +79,34 @@ df_exoarchive = let
 	end
 end
 
-# ╔═╡ 2f9012dc-880d-4d02-9e0d-faaf6cd30766
-# df_exoarchive_HJ = @chain df_exoarchive begin
-# 	@subset (1_000.0 .≤ :pl_eqt) .& (10.0 .≤ :pl_rade)
-# 	@select :pl_name :TIC :ra :dec
-# end
-
-# ╔═╡ fccd3615-7726-45ac-8d5d-c4f1fc4d5425
-@mdx """
+# ╔═╡ f1b44ddc-dc80-495c-8854-5681dbe9b415
+md"""
 !!! note
-	~~~We only use the eqt and rade as an approximate cut-off~~~, we go back re-compute these with the updated stellar params from TICv8 later
+	We also download additional information, such as TIC ID and J-band magnitude to aid in our HGHJ categorization later. 
+"""
+
+# ╔═╡ db97b969-7960-4ee3-abb6-a97fa657502c
+md"""
+We save the list of RA/Dec coordinates to cross-reference with the TICv8 stellar parameters on [Vizier](https://vizier.u-strasbg.fr/viz-bin/VizieR?-source=IV/38):
 """
 
 # ╔═╡ 0d629db3-7370-406f-989b-7a2caca020dc
-CSV.write("data/pop/exoarchive_coords.txt", df_exoarchive[:, [:ra, :dec]];
-	delim = '\t',
-	header = false,
-)
+let
+	fpath = "data/pop/exoarchive_coords.txt"
+	CSV.write(fpath, df_exoarchive[:, [:ra, :dec]];
+		delim = '\t',
+		header = false,
+	)
+	@info "Saved to: $(fpath)"
+end
+
+# ╔═╡ 3932694b-ef0c-4a41-bcae-f9749f432d88
+md"""
+After performing the cross-match on this site, we save the final list of exoplanets with updated stellar parameters to use in the rest of our analysis:
+"""
 
 # ╔═╡ f8b4def8-a46f-4cbc-83c0-ff44a39c1571
-ρ_sun = inv((4/3)*π)
+ρ_sun = inv((4/3)*π) # Conversion factor from solar units
 
 # ╔═╡ 380d05a4-35e9-4db4-b35a-b03de9e695ee
 df_exoarchive_TICv8 = let
@@ -124,6 +129,11 @@ df_exoarchive_TICv8 = let
 	end
 	#@transform! df :Mₛ = @. :ρₛ * :Rₛ^3 # Already in solar units
 end
+
+# ╔═╡ 617fc32d-3c68-4553-94c7-b7445e1d5496
+md"""
+With this list of know transiting exoplanets with updated stellar parameters from GAIA DR2, we now combine the corresponding planetary orbital parameters from all known studies on the NASA exoplanet archive:
+"""
 
 # ╔═╡ 86a99042-bb9b-43e6-87ae-d76f88b10533
 df_ps_all = let
@@ -180,9 +190,6 @@ end
 # ╔═╡ 92fbb7d7-9782-44d4-b1b7-6db89d78a032
 df_ps = leftjoin(df_ps_all, df_exoarchive_TICv8, on=[:TIC, :pl_name];
 makeunique=true)# |> dropmissing
-
-# ╔═╡ 64aa96d2-12ba-4a3e-a1b2-1d60e3f468be
-df_ps[df_ps.pl_name .== "WASP-43 b", :]
 
 # ╔═╡ 97c9f1ae-21da-4f99-94ff-a8adaabf30bb
 @mdx """
@@ -783,18 +790,18 @@ end
 
 # ╔═╡ Cell order:
 # ╟─cd13d7f3-0ea3-4631-afd9-5f3e359000e6
-# ╟─c4375025-2691-40e0-b6ca-cd0472b916cd
 # ╠═7493bb13-ee41-4798-99f6-dc1df97bd624
 # ╟─6b06701b-05e2-4284-a308-e9edeb65a648
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
-# ╠═2f9012dc-880d-4d02-9e0d-faaf6cd30766
-# ╠═fccd3615-7726-45ac-8d5d-c4f1fc4d5425
-# ╠═0d629db3-7370-406f-989b-7a2caca020dc
+# ╟─f1b44ddc-dc80-495c-8854-5681dbe9b415
+# ╟─db97b969-7960-4ee3-abb6-a97fa657502c
+# ╟─0d629db3-7370-406f-989b-7a2caca020dc
+# ╟─3932694b-ef0c-4a41-bcae-f9749f432d88
 # ╠═380d05a4-35e9-4db4-b35a-b03de9e695ee
 # ╠═f8b4def8-a46f-4cbc-83c0-ff44a39c1571
+# ╟─617fc32d-3c68-4553-94c7-b7445e1d5496
 # ╠═86a99042-bb9b-43e6-87ae-d76f88b10533
 # ╠═92fbb7d7-9782-44d4-b1b7-6db89d78a032
-# ╠═64aa96d2-12ba-4a3e-a1b2-1d60e3f468be
 # ╟─97c9f1ae-21da-4f99-94ff-a8adaabf30bb
 # ╠═2584860a-8e24-49f7-a7d5-4c99c8deda8e
 # ╠═759b0ca7-ade4-4929-afa5-51e0ab133a5b

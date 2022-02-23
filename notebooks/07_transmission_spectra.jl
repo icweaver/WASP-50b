@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.0
+# v0.18.1
 
 using Markdown
 using InteractiveUtils
@@ -346,6 +346,56 @@ avg_prec_LDSS3 = getproperty.(df_LDSS3[!, :Combined], :err) |> median
 ## A closer look at Transit 2 🔎
 """
 
+# ╔═╡ 8644fa54-0407-4494-aef4-eb497a86c35d
+let
+	fig = Figure(resolution=(1200, 400))
+
+	ax = Axis(
+		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
+		limits = (nothing, nothing, 15_500, 22_500),
+		grid = (linewidth=(0, 0),),
+	)
+
+	/pool/sao_access/iweaver/GPTransmissionSpectra/WASP50/w50_131219_IMACS.pkl# Overplot lines
+	vspan!(ax, wbins_LDSS3_odd[:, 1], wbins_LDSS3_odd[:, 2], color=(:darkgrey, 0.25))
+	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
+	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
+	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
+	mean_wlc_depth.val - mean_wlc_depth.err), linestyle=:dash, color=:grey)
+
+	# Transit 2
+	transit = "Transit 2 (IMACS)"
+	plot_tspec!(ax, df_IMACS, transit;
+		nudge = -25.0,
+		kwargs_errorbars = (whiskerwidth=10.0, linewidth=3.0),
+		kwargs_scatter = (color=Cycled(2), strokewidth=3.0, markersize=16.0),
+		label = transit,
+	)
+	transit = "Transit 2 (LDSS3C)"
+	plot_tspec!(ax, df_LDSS3, transit;
+		nudge = 25.0,
+		kwargs_errorbars = (whiskerwidth=10.0, linewidth=3.0),
+		kwargs_scatter = (color=Cycled(3), strokewidth=3.0, markersize=16.0),
+		label = transit,
+	)
+
+	# text!(ax, "Average precision (IMACS): $(round(avg_prec_IMACS, digits=2)) ppm";
+	# 	position = (4700, 16500),
+	# 	align = (:left, :center),
+	# )
+	# text!(ax, "Average precision (LDSS3C): $(round(avg_prec_LDSS3, digits=2))  ppm";
+	# 	position = (4700, 16000),
+	# 	align = (:left, :center),
+	# )
+
+	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
+	
+	suf = basename(dirname(DATA_DIR))
+	savefig(fig, "$(FIG_DIR)/tspec_transit_2_$(suf).png")
+	
+	fig
+end
+
 # ╔═╡ b971503b-bfef-4ca7-98ad-b5940bbda10f
 @views begin
 wbins_LDSS3 = df_LDSS3[:, [:Wlow, :Wup]]
@@ -426,56 +476,6 @@ function savefig(fig, fpath)
 	@info "Saved to: $(fpath)"
 end
 
-# ╔═╡ 8644fa54-0407-4494-aef4-eb497a86c35d
-let
-	fig = Figure(resolution=(1200, 400))
-
-	ax = Axis(
-		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
-		limits = (nothing, nothing, 15_500, 22_500),
-		grid = (linewidth=(0, 0),),
-	)
-
-	# Overplot lines
-	vspan!(ax, wbins_LDSS3_odd[:, 1], wbins_LDSS3_odd[:, 2], color=(:darkgrey, 0.25))
-	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
-	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
-	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
-	mean_wlc_depth.val - mean_wlc_depth.err), linestyle=:dash, color=:grey)
-
-	# Transit 2
-	transit = "Transit 2 (IMACS)"
-	plot_tspec!(ax, df_IMACS, transit;
-		nudge = -25.0,
-		kwargs_errorbars = (whiskerwidth=10.0, linewidth=3.0),
-		kwargs_scatter = (color=Cycled(2), strokewidth=3.0, markersize=16.0),
-		label = transit,
-	)
-	transit = "Transit 2 (LDSS3C)"
-	plot_tspec!(ax, df_LDSS3, transit;
-		nudge = 25.0,
-		kwargs_errorbars = (whiskerwidth=10.0, linewidth=3.0),
-		kwargs_scatter = (color=Cycled(3), strokewidth=3.0, markersize=16.0),
-		label = transit,
-	)
-
-	# text!(ax, "Average precision (IMACS): $(round(avg_prec_IMACS, digits=2)) ppm";
-	# 	position = (4700, 16500),
-	# 	align = (:left, :center),
-	# )
-	# text!(ax, "Average precision (LDSS3C): $(round(avg_prec_LDSS3, digits=2))  ppm";
-	# 	position = (4700, 16000),
-	# 	align = (:left, :center),
-	# )
-
-	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
-	
-	suf = basename(dirname(DATA_DIR))
-	savefig(fig, "$(FIG_DIR)/tspec_transit_2_$(suf).png")
-	
-	fig
-end
-
 # ╔═╡ ef970c0c-d08a-4856-b10b-531bb5e7e53e
 begin
 	##############
@@ -551,7 +551,7 @@ function plot_tspecs!(ax; i=1, nudge_indiv=-50, nudge_comb=50, wbins=wbins_odd)
 			label = "Combined",
 	)
 
-	text!(ax, "Average precision: $(round(avg_prec, digits=2)) ppm";
+	text!(ax, "Average precision: $(round(avg_prec, digits=6)) ppm";
 		position = (4700, 16000),
 		align = (:left, :center),
 	)
