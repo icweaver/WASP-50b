@@ -75,6 +75,33 @@ fname_suff = let
 	occursin("species", FPATH_LC) ? (suff *= "_species") : suff
 end
 
+# ╔═╡ ca709b8a-fb46-40cd-a82b-b8fcd4e538cc
+idx_fixpix = [18, 31, 43, 75, 81, 87, 103, 106, 114, 117, 129, 136, 139, 140, 145, 146, 153, 154, 158, 159, 160, 161, 162, 164, 167, 169, 170, 172, 175, 179, 184, 188, 191, 197, 198, 200, 204, 206]
+
+# ╔═╡ 0ca8a089-c7b2-4dc6-a2cc-2dab36dbc035
+idx_box = [18, 31, 43, 75, 81, 87, 103, 106, 114, 117, 129, 136, 139, 140, 145, 146, 153, 154, 158, 159, 160, 161, 162, 164, 167, 169, 170, 172, 175, 179, 184, 188, 191, 197, 198, 200, 204, 206]
+
+# ╔═╡ 41a2b3ee-59ba-4c5a-828a-9cf67de5d345
+idx_fixpix == idx_box
+
+# ╔═╡ d220b74c-f4ae-4e3a-90d6-4f1ca5f0f3aa
+idx_nofixpix = [18, 22, 31, 43, 75, 81, 87, 106, 117, 120, 129, 137, 139, 140, 145, 146, 154, 158, 159, 160, 161, 162, 164, 167, 169, 170, 172, 175, 179, 184, 188, 191, 197, 198, 200, 201, 204, 206]
+
+# ╔═╡ 7996f96e-827b-40de-839e-d51038ac8bf8
+idx_test = [18, 22, 31, 43, 75, 81, 87, 106, 117, 120, 129, 137, 139, 140, 145, 146, 154, 158, 159, 160, 161, 162, 164, 167, 169, 170, 172, 175, 179, 184, 188, 191, 197, 198, 200, 201, 204, 206]
+
+# ╔═╡ 219622c9-de75-4e37-9ff7-7316318c0bf5
+idx_l = [18, 22, 31, 43, 75, 81, 87, 106, 117, 120, 129, 137, 139, 140, 145, 146, 154, 158, 159, 160, 161, 162, 164, 167, 169, 170, 172, 175, 179, 184, 188, 191, 197, 198, 200, 201, 204, 206]
+
+# ╔═╡ f4f056cd-1616-49f2-b173-0c50c89f7167
+idx_test == idx_nofixpix
+
+# ╔═╡ 87b27341-5465-4561-8e3b-6c1a83369ab2
+t3_fip = [14, 17, 18, 37, 40, 41, 42, 43, 44, 45, 48, 51, 53, 55, 56, 57, 58, 77, 88, 155, 162, 170, 181, 182, 211, 220, 246, 248, 259, 286, 288, 295, 296, 301, 305, 321]
+
+# ╔═╡ de861d86-8569-4205-b022-06b81b312234
+[14, 17, 18, 37, 40, 41, 42, 43, 44, 45, 48, 51, 53, 55, 56, 57, 58, 77, 88, 155, 162, 170, 181, 182, 211, 220, 246, 248, 259, 286, 288, 295, 296, 301, 305, 321] == t3_fip
+
 # ╔═╡ 32b9a326-ddc8-4557-bcf5-9dcc54ed83e5
 transits = merge(
 	Dict("IMACS_ut$(d)" => "Transit $(i) (IMACS)"
@@ -100,6 +127,9 @@ With the flux extracted for each object, we now plot the resulting stellar spect
 
 # ╔═╡ e4e9899c-68c3-4bc4-aadd-7c5d3446e57d
 #save_object("/home/mango/Desktop/hmmm.jld2", LC_spectra)
+
+# ╔═╡ 975f8daa-fba3-4b77-aa08-fa79ac12f903
+@py import numpy as np
 
 # ╔═╡ 6fd88483-d005-4186-8dd2-82cea767ce90
 med_std(A; dims=1) = (median(A, dims=dims), std(A, dims=dims)) .|> vec
@@ -184,6 +214,9 @@ get_idx(needle, haystack) = findfirst(==(needle), haystack)
 	We divide the target WLC by each comparison star to minimize common systematics (e.g., air mass, local refractive atmospheric effects), and to make the transit shape more apparent. This allows us to select good comparison stars for that particular night and which timeseries points to include in the rest of the analysis.
 """
 
+# ╔═╡ 6ae2ad17-3b40-4460-994b-3e906d531114
+
+
 # ╔═╡ ad5b07e5-75d0-4e03-a5d6-9ce4f1efd949
 function filt(f_div_wlc, window_width; func=median, border="reflect")
 	# Filtered light curves
@@ -207,6 +240,18 @@ function filt_idxs(f_div_wlc, window_width; ferr=0.002)
 	bad_idxs = ∪(findall.(>(ferr), eachcol(f_diff))...) |> sort;
 	use_idxs = deleteat!(collect(1:size(f_div_wlc, 1)), bad_idxs)
 	return f_filt, use_idxs, bad_idxs
+end
+
+# ╔═╡ 48fd6d3e-ac44-4365-8a16-2cc8ba4d94d3
+@bind wd PlutoUI.Slider(15:2:55; show_value=true)
+
+# ╔═╡ 7e0806b6-71a7-412c-b0c3-8e7043ea2722
+function filt_curve(x; window_width=15, n_σ=2.0)
+	x_med = mapwindow(median, x, window_width)
+	x_err = mapwindow(std, x, window_width)
+	x_diff = abs.(x - x_med)
+	bad_idxs = findall(x_diff .≥ (n_σ .* x_err))
+	return x_med, x_err, x_diff, bad_idxs
 end
 
 # ╔═╡ 0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
@@ -301,6 +346,15 @@ LC = load_pickle(FPATH_LC);
 # ╔═╡ 65cc9f56-1e9e-446c-82db-10dcd6334ce3
 LC_spectra = pyconvert(Dict{String, Array}, LC["spectra"]);
 
+# ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
+wbins = pyconvert(Matrix, np.array(LC["wbins"]));
+
+# ╔═╡ 40269026-a833-4dd8-bb22-7d26f35163e9
+wbins_odd = @view wbins[begin:2:end, :] # Selects alternating bins to highlight
+
+# ╔═╡ ca277dd2-351c-4b65-91cb-3b44ed40e0ba
+wbins_even = @view wbins[begin+1:2:end, :]
+
 # ╔═╡ bcda2043-f8c7-46bc-a5d4-b6f1f0883e9e
 LC_cNames = pyconvert(Vector, LC["cNames"])
 
@@ -325,7 +379,7 @@ end
 # ╔═╡ 4e4cb513-1e88-4414-aa4d-a14d934874ce
 begin
 	use_comps_idxs = get_idx.(use_comps, Ref(cNames))
-	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
+	#_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
 end;
 
 # ╔═╡ 3ca393d6-01c0-4f77-88ff-7c4f6388670e
@@ -348,7 +402,7 @@ end;
 # ╔═╡ df46d106-f186-4900-9d3f-b711bc803707
 @with_terminal begin
 	use_comps_idxs = get_idx.(use_comps, Ref(cNames))
-	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width)
+	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width; ferr=0.02)
 	# Because python
 	println(bad_idxs .- 1)
 	println(use_comps_idxs .- 1)
@@ -408,6 +462,53 @@ cName_color = OrderedDict(
 	cName => color
 	for (cName, color) ∈ zip(["WASP50"; cNames_global...], COLORS_SERIES)
 );
+
+# ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
+begin
+	# Larger font for two-column
+	fig = Figure(resolution=FIG_WIDE, fontsize=24)
+	ax = Axis(fig[1, 1];
+		xlabel = "Wavelength (Å)",
+		ylabel = "Relative flux",
+		xlabelsize = 24,
+		ylabelsize = 24,
+		limits = (4000, 11_000, 0.0, 2.8),
+		xticks = (4_500:1000:10_500),
+		yticks = 0:0.5:3.0,
+	)
+
+	wav = LC_spectra["wavelengths"]
+	norm = 40_000.0 #median(LC_spectra["WASP50"])
+	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
+	vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:black, 0.25))
+	specs = filter(p -> p.first != "wavelengths", LC_spectra)
+	
+	cube_path = "data/reduced_data/cubes/LC_spectra.jld2"
+	if ispath(cube_path)
+		cube = load("data/reduced_data/cubes/LC_spectra.jld2")
+	else
+		cube = OrderedDict()
+	end
+	cube_spectra = OrderedDict()
+	cube_spectra["wav"] = wav
+	cube_spectra["norm"] = [norm]
+	cube_spectra["wbins"] = wbins
+	cube_spectra["spec"] = OrderedDict()
+	for (i, (label, f)) in enumerate(sort(specs))
+		μ, σ = spec_plot!(ax, wav, f;
+			color=cName_color[label], norm, label
+		)
+		cube_spectra["spec"][label] = [μ, σ]
+	end
+	cube[fname_suff] = cube_spectra
+	
+	axislegend(transits[fname_suff], halign=:right, gridshalign=:right)
+
+	savefig(fig, "$(FIG_DIR)/extracted_spectra_$(fname_suff).pdf")
+	save(cube_path, sort(cube))
+
+	fig
+end
 
 # ╔═╡ ccabf5d2-5739-4284-a972-23c02a263a5c
 function plot_div_WLCS!(axs;
@@ -499,6 +600,27 @@ let
 	fig
 end
 
+# ╔═╡ 5a9ac01a-e06e-4ec2-9f8d-1a9f0dafc663
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1])
+
+	
+	x = f_div_WLC[:, 4]
+	t = 1:length(x)
+
+	x_med, x_err, x_diff, bad_idxs = filt_curve(x)
+	
+	#errorbars!(ax, t, x, x_err)
+	scatter!(ax, t, x)
+	lines!(ax, t, x_med; color=COLORS[2])
+	bad_idxs = findall(x_diff .≥ (2.0 .* x_err))
+	scatter!(ax, t[bad_idxs], x[bad_idxs]; marker='○', markersize=15, color=:red)
+
+	#xlims!(ax, 100, 350)
+	fig
+end
+
 # ╔═╡ c2c326df-1474-4b06-b183-668f0d6502aa
 function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 	fig = Figure(resolution=FIG_LARGE)
@@ -557,68 +679,6 @@ function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 	fig
 end
 
-# ╔═╡ a6ec8699-475b-4a86-ab0b-d65b85de2c2d
-@py begin
-	import numpy as np
-	import pickle
-end
-
-# ╔═╡ 6471fc66-47a5-455e-9611-c6fd9d56e9dc
-wbins = pyconvert(Matrix, np.array(LC["wbins"]));
-
-# ╔═╡ 40269026-a833-4dd8-bb22-7d26f35163e9
-wbins_odd = @view wbins[begin:2:end, :] # Selects alternating bins to highlight
-
-# ╔═╡ ca277dd2-351c-4b65-91cb-3b44ed40e0ba
-wbins_even = @view wbins[begin+1:2:end, :]
-
-# ╔═╡ 589239fb-319c-40c2-af16-19025e7b28a2
-begin
-	# Larger font for two-column
-	fig = Figure(resolution=FIG_WIDE, fontsize=24)
-	ax = Axis(fig[1, 1];
-		xlabel = "Wavelength (Å)",
-		ylabel = "Relative flux",
-		xlabelsize = 24,
-		ylabelsize = 24,
-		limits = (4000, 11_000, 0.0, 2.8),
-		xticks = (4_500:1000:10_500),
-		yticks = 0:0.5:3.0,
-	)
-
-	wav = LC_spectra["wavelengths"]
-	norm = 40_000.0 #median(LC_spectra["WASP50"])
-	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
-	vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:black, 0.25))
-	specs = filter(p -> p.first != "wavelengths", LC_spectra)
-	
-	cube_path = "data/reduced_data/cubes/LC_spectra.jld2"
-	if ispath(cube_path)
-		cube = load("data/reduced_data/cubes/LC_spectra.jld2")
-	else
-		cube = OrderedDict()
-	end
-	cube_spectra = OrderedDict()
-	cube_spectra["wav"] = wav
-	cube_spectra["norm"] = [norm]
-	cube_spectra["wbins"] = wbins
-	cube_spectra["spec"] = OrderedDict()
-	for (i, (label, f)) in enumerate(sort(specs))
-		μ, σ = spec_plot!(ax, wav, f;
-			color=cName_color[label], norm, label
-		)
-		cube_spectra["spec"][label] = [μ, σ]
-	end
-	cube[fname_suff] = cube_spectra
-	
-	axislegend(transits[fname_suff], halign=:right, gridshalign=:right)
-
-	savefig(fig, "$(FIG_DIR)/extracted_spectra_$(fname_suff).pdf")
-	save(cube_path, sort(cube))
-
-	fig
-end
-
 # ╔═╡ 7962e716-8b0e-4c58-9d14-f51bbf72d419
 begin
 	blc_plots = OrderedDict()
@@ -650,6 +710,15 @@ blc_plots[cName]
 # ╠═28d18f7f-2e41-4771-9f27-342bbda847dd
 # ╟─bd2cdf33-0c41-4948-82ab-9a28929f72b3
 # ╠═3959e46c-87c9-4566-8ab1-f437323f0a9f
+# ╠═ca709b8a-fb46-40cd-a82b-b8fcd4e538cc
+# ╠═0ca8a089-c7b2-4dc6-a2cc-2dab36dbc035
+# ╠═41a2b3ee-59ba-4c5a-828a-9cf67de5d345
+# ╠═d220b74c-f4ae-4e3a-90d6-4f1ca5f0f3aa
+# ╠═7996f96e-827b-40de-839e-d51038ac8bf8
+# ╠═219622c9-de75-4e37-9ff7-7316318c0bf5
+# ╠═f4f056cd-1616-49f2-b173-0c50c89f7167
+# ╠═87b27341-5465-4561-8e3b-6c1a83369ab2
+# ╠═de861d86-8569-4205-b022-06b81b312234
 # ╠═32b9a326-ddc8-4557-bcf5-9dcc54ed83e5
 # ╠═be765f9b-b29e-424f-94d9-d8457cd59922
 # ╠═02b9e4ee-f18a-434b-b462-b7b0a09250b9
@@ -659,6 +728,7 @@ blc_plots[cName]
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
 # ╠═65cc9f56-1e9e-446c-82db-10dcd6334ce3
 # ╠═e4e9899c-68c3-4bc4-aadd-7c5d3446e57d
+# ╠═975f8daa-fba3-4b77-aa08-fa79ac12f903
 # ╠═6471fc66-47a5-455e-9611-c6fd9d56e9dc
 # ╠═40269026-a833-4dd8-bb22-7d26f35163e9
 # ╠═ca277dd2-351c-4b65-91cb-3b44ed40e0ba
@@ -668,6 +738,7 @@ blc_plots[cName]
 # ╟─e3468c61-782b-4f55-a4a1-9d1883655d11
 # ╟─ab058d99-ce5f-4ed3-97bd-a62d2f258773
 # ╠═13523326-a5f2-480d-9961-d23cd51192b8
+# ╠═df46d106-f186-4900-9d3f-b711bc803707
 # ╠═7d90f304-8fc0-4b92-924c-bead3e1c0a8c
 # ╠═ccabf5d2-5739-4284-a972-23c02a263a5c
 # ╠═d6295509-14e1-4b24-8798-84bef7c96854
@@ -681,12 +752,15 @@ blc_plots[cName]
 # ╟─941cd721-07d8-4a8f-9d75-42854e6e8edb
 # ╠═4b763b58-862e-4c88-a7c9-fe0b1271c0b4
 # ╠═2df82761-b9fe-4d37-b57c-1eabb0ffa8dd
-# ╠═df46d106-f186-4900-9d3f-b711bc803707
 # ╠═169197fe-983d-420b-8c56-353a65b28ddc
 # ╟─4bad8b5c-e8b9-4ceb-97f4-41b4401d4f63
 # ╠═4e4cb513-1e88-4414-aa4d-a14d934874ce
 # ╠═a4517d69-76e6-462a-9449-b31d80e34a8f
+# ╠═6ae2ad17-3b40-4460-994b-3e906d531114
 # ╠═ad5b07e5-75d0-4e03-a5d6-9ce4f1efd949
+# ╠═5a9ac01a-e06e-4ec2-9f8d-1a9f0dafc663
+# ╠═48fd6d3e-ac44-4365-8a16-2cc8ba4d94d3
+# ╠═7e0806b6-71a7-412c-b0c3-8e7043ea2722
 # ╟─0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
 # ╠═e6e1ea18-216a-41ae-8a1a-590793fcb669
 # ╟─e98dee2e-a369-448e-bfe4-8fea0f318fa8
@@ -700,6 +774,5 @@ blc_plots[cName]
 # ╠═06bbb3e4-9b30-43bd-941f-e357acaa80fc
 # ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
 # ╠═a8d1c3e6-c020-495f-a443-07203b7dcd50
-# ╠═a6ec8699-475b-4a86-ab0b-d65b85de2c2d
 # ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23
 # ╠═9d78ea5e-e199-4509-9f74-100d1748c1c4

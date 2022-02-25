@@ -387,6 +387,9 @@ df_H2OJ = CSV.read("data/pop/H2O_J_data.csv", DataFrame;
 	stripwhitespace = true,
 )
 
+# ╔═╡ 5a3ce763-111c-44b4-b9ad-e03af5a2c767
+lines([1,2,3]); lines!([3,2,1]); current_figure()
+
 # ╔═╡ 0f9262ef-b774-45bc-bdab-46860779683d
 @mdx """
 !!! note
@@ -827,6 +830,7 @@ end
 # ╠═ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
 # ╠═157a44f4-6191-4407-98a4-3c8c43817a65
 # ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
+# ╠═5a3ce763-111c-44b4-b9ad-e03af5a2c767
 # ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d

@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.0
+# v0.18.1
 
 using Markdown
 using InteractiveUtils
@@ -71,17 +71,31 @@ function name(fpath, dates_to_names)
 	return dates_to_names[date_instr]
 end
 
+# ╔═╡ 415b0bb5-c02d-433c-bd8b-874326fc27bb
+function tname(dirpath)
+	if occursin("131219_IMACS", dirpath)
+		transit = "Transit 1 (IMACS)"
+	elseif occursin("150927_IMACS", dirpath)
+		transit = "Transit 2 (IMACS)"
+	elseif occursin("150927_LDSS3", dirpath)
+		transit = "Transit 2 (LDSS3C)"
+	elseif occursin("161211_IMACS", dirpath)
+		transit = "Transit 3 (IMACS)"
+	end
+	return transit
+end
+
 # ╔═╡ e72dba55-6a33-462f-aeac-5f62b25cb46a
-dates_to_names = Dict(
-	"131219_IMACS" => "Transit 1 (IMACS)",
-	"131219_sp_IMACS" => "Transit 1 (IMACS) sp",
-	"150927_IMACS" => "Transit 2 (IMACS)",
-	"150927_sp_IMACS" => "Transit 2 (IMACS) sp",
-	"150927_LDSS3_flat" => "Transit 2 (LDSS3C)",
-	"150927_sp_LDSS3_flat" => "Transit 2 (LDSS3C) sp",
-	"161211_IMACS" => "Transit 3 (IMACS)",
-	"161211_sp_IMACS" => "Transit 3 (IMACS) sp",
- )
+# dates_to_names = Dict(
+# 	"131219_IMACS" => "Transit 1 (IMACS)",
+# 	"131219_sp_IMACS" => "Transit 1 (IMACS) sp",
+# 	"150927_IMACS" => "Transit 2 (IMACS)",
+# 	"150927_sp_IMACS" => "Transit 2 (IMACS) sp",
+# 	"150927_LDSS3_flat" => "Transit 2 (LDSS3C)",
+# 	"150927_sp_LDSS3_flat" => "Transit 2 (LDSS3C) sp",
+# 	"161211_IMACS" => "Transit 3 (IMACS)",
+# 	"161211_sp_IMACS" => "Transit 3 (IMACS) sp",
+#  )
 
 # ╔═╡ 579e62da-7ffb-4639-bd73-3826ade1cfa2
 @mdx """
@@ -397,7 +411,7 @@ load_data(fpath_sample, fpath_model, fpath_result; allow_pickle=true) = Dict(
 
 # ╔═╡ 2191791b-df62-4f1b-88bf-060cc47896b2
 cubes = OrderedDict(
-	name(fpath_sample, dates_to_names) => load_data(
+	tname(fpath_sample) => load_data(
 		fpath_sample, fpath_model, fpath_result
 	)
 	for (fpath_sample, fpath_model, fpath_result) ∈ zip(
@@ -747,6 +761,7 @@ end
 # ╠═2191791b-df62-4f1b-88bf-060cc47896b2
 # ╠═f539e06d-a1b5-413a-b90e-91cb0bbd5a4c
 # ╠═e873f9c6-fd1a-4227-9df1-70c626e4a0a1
+# ╠═415b0bb5-c02d-433c-bd8b-874326fc27bb
 # ╠═e72dba55-6a33-462f-aeac-5f62b25cb46a
 # ╟─579e62da-7ffb-4639-bd73-3826ade1cfa2
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e

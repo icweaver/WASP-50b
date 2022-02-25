@@ -62,30 +62,25 @@ First let's load up all of the data, including the white-light transit depths fr
 # ╔═╡ 1decb49e-a875-412c-938f-74b4fa0e2e85
 maxmeasure(x, x_u, x_d) = x ± mean((x_u, x_d))
 
-# ╔═╡ 1e8524c4-a732-4e2f-80a9-b5e7548ef2b2
-function name(fpath, dates_to_names)
-	date_target = splitpath(split(fpath, "w50_")[2])[1]
-	return dates_to_names[date_target]
-end
-
 # ╔═╡ b8abb240-65d6-4358-bd95-955be047371a
 #fpath = "data/detrended/out_sp/WASP50/w50_131219_sp_IMACS/transpec.csv"
 
 # ╔═╡ 774c4ab2-ad34-4a0d-a523-7234ac3d98e5
 #fpath = "data/detrended/out_l/WASP50/w50_161211_IMACS/transpec.csv"
 
-# ╔═╡ 7b6d3a33-cb3b-4776-86f6-3af1663b9e49
-dates_to_names = OrderedDict(
-	"131219_IMACS" => "Transit 1 (IMACS)",
-	"150927_IMACS" => "Transit 2 (IMACS)",
-	"150927_LDSS3_flat" => "Transit 2 (LDSS3C)",
-	"161211_IMACS" => "Transit 3 (IMACS)",
-
-	"131219_sp_IMACS" => "Transit 1 (IMACS)",
-	"150927_sp_IMACS" => "Transit 2 (IMACS)",
-	"150927_sp_LDSS3_flat" => "Transit 2 (LDSS3C)",
-	"161211_sp_IMACS" => "Transit 3 (IMACS)",
- )
+# ╔═╡ 09d21338-91ef-4991-8e15-df33d720cb97
+function tname(dirpath)
+	if occursin("131219_IMACS", dirpath)
+		transit = "Transit 1 (IMACS)"
+	elseif occursin("150927_IMACS", dirpath)
+		transit = "Transit 2 (IMACS)"
+	elseif occursin("150927_LDSS3", dirpath)
+		transit = "Transit 2 (LDSS3C)"
+	elseif occursin("161211_IMACS", dirpath)
+		transit = "Transit 3 (IMACS)"
+	end
+	return transit
+end
 
 # ╔═╡ 5c4fcb25-9a26-43f1-838b-338b33fb9ee6
 begin
@@ -94,12 +89,21 @@ begin
 	for dirpath in sort(glob("$(DATA_DIR)/w50_*"))
 		# Read tspec file
 		fpath = "$(dirpath)/transpec.csv"
-		transit = name(fpath, dates_to_names)
+		transit = tname(dirpath)
 		cubes[transit] = OrderedDict()
 
 		df = cubes[transit]["tspec"] = CSV.read(fpath, DataFrame;
 			normalizenames = true,
 		)
+
+		# Add wbins for LDSS3C
+		if occursin("_sp_LDSS3", fpath)
+			df.Wav_d, df.Wav_u = eachcol(readdlm("data/detrended/wbins/w50_bins_species.dat"; comments=true))
+		end
+		if occursin("_LDSS3", fpath)
+			@show fpath, length(df.Wav_d)
+			df.Wav_d, df.Wav_u = eachcol(readdlm("data/detrended/wbins/w50_bins_LDSS3.dat"; comments=true))
+		end
 
 		# Compute transmission spectra specific values
 		df.wav = mean([df.Wav_u, df.Wav_d])
@@ -121,7 +125,7 @@ begin
 end
 
 # ╔═╡ 96a24af1-1c91-45a9-a8f2-b4761f7f5cba
-df = cubes["Transit 3 (IMACS)"]["tspec"]
+df = cubes["Transit 1 (IMACS)"]["tspec"]
 
 # ╔═╡ e58ec082-d654-44e3-bcd4-906fc34171c8
 @mdx """
@@ -346,56 +350,6 @@ avg_prec_LDSS3 = getproperty.(df_LDSS3[!, :Combined], :err) |> median
 ## A closer look at Transit 2 🔎
 """
 
-# ╔═╡ 8644fa54-0407-4494-aef4-eb497a86c35d
-let
-	fig = Figure(resolution=(1200, 400))
-
-	ax = Axis(
-		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
-		limits = (nothing, nothing, 15_500, 22_500),
-		grid = (linewidth=(0, 0),),
-	)
-
-	/pool/sao_access/iweaver/GPTransmissionSpectra/WASP50/w50_131219_IMACS.pkl# Overplot lines
-	vspan!(ax, wbins_LDSS3_odd[:, 1], wbins_LDSS3_odd[:, 2], color=(:darkgrey, 0.25))
-	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
-	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
-	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
-	mean_wlc_depth.val - mean_wlc_depth.err), linestyle=:dash, color=:grey)
-
-	# Transit 2
-	transit = "Transit 2 (IMACS)"
-	plot_tspec!(ax, df_IMACS, transit;
-		nudge = -25.0,
-		kwargs_errorbars = (whiskerwidth=10.0, linewidth=3.0),
-		kwargs_scatter = (color=Cycled(2), strokewidth=3.0, markersize=16.0),
-		label = transit,
-	)
-	transit = "Transit 2 (LDSS3C)"
-	plot_tspec!(ax, df_LDSS3, transit;
-		nudge = 25.0,
-		kwargs_errorbars = (whiskerwidth=10.0, linewidth=3.0),
-		kwargs_scatter = (color=Cycled(3), strokewidth=3.0, markersize=16.0),
-		label = transit,
-	)
-
-	# text!(ax, "Average precision (IMACS): $(round(avg_prec_IMACS, digits=2)) ppm";
-	# 	position = (4700, 16500),
-	# 	align = (:left, :center),
-	# )
-	# text!(ax, "Average precision (LDSS3C): $(round(avg_prec_LDSS3, digits=2))  ppm";
-	# 	position = (4700, 16000),
-	# 	align = (:left, :center),
-	# )
-
-	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
-	
-	suf = basename(dirname(DATA_DIR))
-	savefig(fig, "$(FIG_DIR)/tspec_transit_2_$(suf).png")
-	
-	fig
-end
-
 # ╔═╡ b971503b-bfef-4ca7-98ad-b5940bbda10f
 @views begin
 wbins_LDSS3 = df_LDSS3[:, [:Wlow, :Wup]]
@@ -474,6 +428,56 @@ function savefig(fig, fpath)
 	mkpath(dirname(fpath))
     save(fpath, fig)
 	@info "Saved to: $(fpath)"
+end
+
+# ╔═╡ 8644fa54-0407-4494-aef4-eb497a86c35d
+let
+	fig = Figure(resolution=(1200, 400))
+
+	ax = Axis(
+		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
+		limits = (nothing, nothing, 15_500, 22_500),
+		grid = (linewidth=(0, 0),),
+	)
+
+	# Overplot lines
+	vspan!(ax, wbins_LDSS3_odd[:, 1], wbins_LDSS3_odd[:, 2], color=(:darkgrey, 0.25))
+	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
+	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
+	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
+	mean_wlc_depth.val - mean_wlc_depth.err), linestyle=:dash, color=:grey)
+
+	# Transit 2
+	transit = "Transit 2 (IMACS)"
+	plot_tspec!(ax, df_IMACS, transit;
+		nudge = -25.0,
+		kwargs_errorbars = (whiskerwidth=10.0, linewidth=3.0),
+		kwargs_scatter = (color=Cycled(2), strokewidth=3.0, markersize=16.0),
+		label = transit,
+	)
+	transit = "Transit 2 (LDSS3C)"
+	plot_tspec!(ax, df_LDSS3, transit;
+		nudge = 25.0,
+		kwargs_errorbars = (whiskerwidth=10.0, linewidth=3.0),
+		kwargs_scatter = (color=Cycled(3), strokewidth=3.0, markersize=16.0),
+		label = transit,
+	)
+
+	# text!(ax, "Average precision (IMACS): $(round(avg_prec_IMACS, digits=2)) ppm";
+	# 	position = (4700, 16500),
+	# 	align = (:left, :center),
+	# )
+	# text!(ax, "Average precision (LDSS3C): $(round(avg_prec_LDSS3, digits=2))  ppm";
+	# 	position = (4700, 16000),
+	# 	align = (:left, :center),
+	# )
+
+	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
+	
+	suf = basename(dirname(DATA_DIR))
+	savefig(fig, "$(FIG_DIR)/tspec_transit_2_$(suf).png")
+	
+	fig
 end
 
 # ╔═╡ ef970c0c-d08a-4856-b10b-531bb5e7e53e
@@ -694,10 +698,9 @@ gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
 # ╠═96a24af1-1c91-45a9-a8f2-b4761f7f5cba
 # ╠═1decb49e-a875-412c-938f-74b4fa0e2e85
-# ╠═1e8524c4-a732-4e2f-80a9-b5e7548ef2b2
 # ╠═b8abb240-65d6-4358-bd95-955be047371a
 # ╠═774c4ab2-ad34-4a0d-a523-7234ac3d98e5
-# ╠═7b6d3a33-cb3b-4776-86f6-3af1663b9e49
+# ╠═09d21338-91ef-4991-8e15-df33d720cb97
 # ╟─e58ec082-d654-44e3-bcd4-906fc34171c8
 # ╠═cafc773a-ee51-4bd2-b766-182ad728e253
 # ╠═4b8497f7-d285-4632-98e3-0699d284f291
