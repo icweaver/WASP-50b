@@ -155,8 +155,23 @@ Next, we will extract the integrated white-light curves from these spectra, divi
 # ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
 @bind window_width PlutoUI.Slider(3:2:21, default=15, show_value=true)
 
+# ╔═╡ 1c3d187f-685d-4898-b99b-d35e2d216bfe
+yaa = rand(10)
+
+# ╔═╡ a4c6486f-dbf2-4f2b-88ea-adf8d22df7ff
+help_attributes(Scatter)
+
 # ╔═╡ 7d90f304-8fc0-4b92-924c-bead3e1c0a8c
 cNames_global = ("c06", "c13", "c15", "c18", "c20", "c21", "c23", "c28")
+
+# ╔═╡ 7e0806b6-71a7-412c-b0c3-8e7043ea2722
+function filt_curve(x; window_width=15, n_σ=2.0)
+	x_med = mapwindow(median, x, window_width)
+	x_err = mapwindow(std, x, window_width)
+	x_diff = abs.(x - x_med)
+	bad_idxs = findall(x_diff .≥ median(n_σ .* x_err))
+	return (; x_med, x_err, x_diff, bad_idxs)
+end
 
 # ╔═╡ d6295509-14e1-4b24-8798-84bef7c96854
 mid_transit_times = Dict(
@@ -214,9 +229,6 @@ get_idx(needle, haystack) = findfirst(==(needle), haystack)
 	We divide the target WLC by each comparison star to minimize common systematics (e.g., air mass, local refractive atmospheric effects), and to make the transit shape more apparent. This allows us to select good comparison stars for that particular night and which timeseries points to include in the rest of the analysis.
 """
 
-# ╔═╡ 6ae2ad17-3b40-4460-994b-3e906d531114
-
-
 # ╔═╡ ad5b07e5-75d0-4e03-a5d6-9ce4f1efd949
 function filt(f_div_wlc, window_width; func=median, border="reflect")
 	# Filtered light curves
@@ -236,22 +248,13 @@ end
 # Filter specified WLCs and return superset points
 function filt_idxs(f_div_wlc, window_width; ferr=0.002)
 	ntimes, ncomps = size(f_div_wlc)
+	
 	f_filt, f_diff, _ = filt(f_div_wlc, window_width)
+	
+	
 	bad_idxs = ∪(findall.(>(ferr), eachcol(f_diff))...) |> sort;
 	use_idxs = deleteat!(collect(1:size(f_div_wlc, 1)), bad_idxs)
 	return f_filt, use_idxs, bad_idxs
-end
-
-# ╔═╡ 48fd6d3e-ac44-4365-8a16-2cc8ba4d94d3
-@bind wd PlutoUI.Slider(15:2:55; show_value=true)
-
-# ╔═╡ 7e0806b6-71a7-412c-b0c3-8e7043ea2722
-function filt_curve(x; window_width=15, n_σ=2.0)
-	x_med = mapwindow(median, x, window_width)
-	x_err = mapwindow(std, x, window_width)
-	x_diff = abs.(x - x_med)
-	bad_idxs = findall(x_diff .≥ (n_σ .* x_err))
-	return x_med, x_err, x_diff, bad_idxs
 end
 
 # ╔═╡ 0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
@@ -402,7 +405,7 @@ end;
 # ╔═╡ df46d106-f186-4900-9d3f-b711bc803707
 @with_terminal begin
 	use_comps_idxs = get_idx.(use_comps, Ref(cNames))
-	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width; ferr=0.02)
+	_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm[:, use_comps_idxs], window_width; ferr=0.002)
 	# Because python
 	println(bad_idxs .- 1)
 	println(use_comps_idxs .- 1)
@@ -444,7 +447,7 @@ begin
 				font = AlgebraOfGraphics.firasans("Medium"),
 			),
 			Lines = (linewidth=3,),
-			Scatter = (linewidth=10,),
+			Scatter = (linewidth=10, strokewidth=0),
 			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=18),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
 			figure_padding = (0, 1.5, 0, 0),
@@ -506,6 +509,102 @@ begin
 
 	savefig(fig, "$(FIG_DIR)/extracted_spectra_$(fname_suff).pdf")
 	save(cube_path, sort(cube))
+
+	fig
+end
+
+# ╔═╡ 97ef8933-4ed6-457c-b393-0c33158fac88
+function plot_div_WLCS2!(axs, t_rel, f; window_width, cNames, n_σ)
+	use_comps = cNames[use_comps_idxs]
+
+	# Only apply filter to specified comp star divided WLCs
+	filt_curves = filt_curve.(
+		eachcol(f_div_WLC_norm[:, use_comps_idxs]);
+		window_width,
+		n_σ,
+	)
+	med_models = [x.x_med for x ∈ filt_curves]
+	bad_idxs = [x.bad_idxs for x ∈ filt_curves]
+	bad_idxs_common = ∪((x.bad_idxs for x ∈ filt_curves)...) |> sort
+
+	@show bad_idxs_common .- 1
+	@show length(bad_idxs_common)
+	
+	k = 1
+	color = :darkgrey
+	z = 1
+	for (i, cName) ∈ enumerate(cNames_global)
+		if (z ≤ ncomps) && cNames_global[i] == cNames[z]
+			# All points
+			if cName ∈ ("c06", "c15", "c21") # LDSS3C comps
+				c_text = COLORS[end]
+			else
+				c_text = :darkgrey
+			end
+			scatter!(axs[i], t_rel, f[:, z]; markersize=5, color)
+			text!(axs[i], "$(cName)";
+				position =(3, 0.98),
+				align = (:right, :center),
+				color = c_text,
+				textsize = 24,
+			)
+			# Used points
+			if cName ∈ use_comps
+				scatter!(axs[i], t_rel[bad_idxs[k]], f[bad_idxs[k], z];
+					marker = '⭘',
+					markersize = 20,
+					linewidth = 3.0,
+					color = COLORS_SERIES[4],
+				)
+				lines!(axs[i], t_rel, med_models[k];
+					color = COLORS[end-2],
+					linewidth = 2,
+				)
+				k += 1
+			end
+			z += 1 # So hacky
+		else
+			continue
+		end
+
+		#axislegend(axs[i])
+	end
+end
+
+# ╔═╡ 73540296-6c18-4fb5-931d-f8d2a6e6a9d3
+let
+	# Larger font for two-column
+	fig = Figure(resolution=FIG_WIDE, fontsize=24)
+
+	axs = [
+		Axis(
+			fig[i, j],
+			limits = (-2.5, 3.5, 0.975, 1.02),
+			xlabelsize = 24,
+			ylabelsize = 24,
+		)
+		for i ∈ 1:2, j ∈ 1:4
+	]
+	axs = reshape(copy(fig.content), 2, 4)
+
+	t_rel = compute_t_rel(LC["t"])
+	
+	plot_div_WLCS2!(axs, t_rel, f_div_WLC_norm; window_width, cNames, n_σ=3.0)
+
+	linkaxes!(axs...)
+	hidexdecorations!.(axs[begin:end-1, :], grid=false)
+	hideydecorations!.(axs[:, begin+1:end], grid=false)
+
+	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2, textsize=24)
+	fig[end+1, 2:end] = Label(fig, "Time from estimated mid-transit (hours)", textsize=24)
+
+	Label(fig[0, end], transits[fname_suff];
+		tellwidth = false,
+		halign = :right,
+		textsize = 24,
+	)
+
+	savefig(fig, "$(FIG_DIR)/div_wlcs_$(fname_suff).pdf")
 
 	fig
 end
@@ -600,27 +699,6 @@ let
 	fig
 end
 
-# ╔═╡ 5a9ac01a-e06e-4ec2-9f8d-1a9f0dafc663
-let
-	fig = Figure()
-	ax = Axis(fig[1, 1])
-
-	
-	x = f_div_WLC[:, 4]
-	t = 1:length(x)
-
-	x_med, x_err, x_diff, bad_idxs = filt_curve(x)
-	
-	#errorbars!(ax, t, x, x_err)
-	scatter!(ax, t, x)
-	lines!(ax, t, x_med; color=COLORS[2])
-	bad_idxs = findall(x_diff .≥ (2.0 .* x_err))
-	scatter!(ax, t[bad_idxs], x[bad_idxs]; marker='○', markersize=15, color=:red)
-
-	#xlims!(ax, 100, 350)
-	fig
-end
-
 # ╔═╡ c2c326df-1474-4b06-b183-668f0d6502aa
 function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 	fig = Figure(resolution=FIG_LARGE)
@@ -649,7 +727,7 @@ function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 			eachrow(wbins),
 			errs,
 		)
-		scatter!(ax_left, data, strokewidth=0, markersize=5, color=color)
+		scatter!(ax_left, data, markersize=5, color=color)
 		lines!(ax_left, model, linewidth=3, color=0.75*color)
 
 		scatter!(ax_right, baseline + resid, markersize=5, color=color)
@@ -736,11 +814,16 @@ blc_plots[cName]
 # ╠═6fd88483-d005-4186-8dd2-82cea767ce90
 # ╠═818282bb-03ed-49db-9c1c-c744dad47db8
 # ╟─e3468c61-782b-4f55-a4a1-9d1883655d11
-# ╟─ab058d99-ce5f-4ed3-97bd-a62d2f258773
 # ╠═13523326-a5f2-480d-9961-d23cd51192b8
+# ╟─ab058d99-ce5f-4ed3-97bd-a62d2f258773
+# ╠═73540296-6c18-4fb5-931d-f8d2a6e6a9d3
+# ╠═97ef8933-4ed6-457c-b393-0c33158fac88
+# ╠═1c3d187f-685d-4898-b99b-d35e2d216bfe
+# ╠═a4c6486f-dbf2-4f2b-88ea-adf8d22df7ff
 # ╠═df46d106-f186-4900-9d3f-b711bc803707
 # ╠═7d90f304-8fc0-4b92-924c-bead3e1c0a8c
 # ╠═ccabf5d2-5739-4284-a972-23c02a263a5c
+# ╠═7e0806b6-71a7-412c-b0c3-8e7043ea2722
 # ╠═d6295509-14e1-4b24-8798-84bef7c96854
 # ╠═96aa3546-4ba6-4ce1-bf5c-4a00e935f702
 # ╠═06bbca64-c99f-429b-b1ad-f40f32e0deac
@@ -756,11 +839,7 @@ blc_plots[cName]
 # ╟─4bad8b5c-e8b9-4ceb-97f4-41b4401d4f63
 # ╠═4e4cb513-1e88-4414-aa4d-a14d934874ce
 # ╠═a4517d69-76e6-462a-9449-b31d80e34a8f
-# ╠═6ae2ad17-3b40-4460-994b-3e906d531114
 # ╠═ad5b07e5-75d0-4e03-a5d6-9ce4f1efd949
-# ╠═5a9ac01a-e06e-4ec2-9f8d-1a9f0dafc663
-# ╠═48fd6d3e-ac44-4365-8a16-2cc8ba4d94d3
-# ╠═7e0806b6-71a7-412c-b0c3-8e7043ea2722
 # ╟─0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
 # ╠═e6e1ea18-216a-41ae-8a1a-590793fcb669
 # ╟─e98dee2e-a369-448e-bfe4-8fea0f318fa8
