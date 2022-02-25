@@ -49,7 +49,7 @@ In this notebook we will examine the stellar spectra, white-light, and wavelengt
 
 # ╔═╡ 0d766fde-8e6f-4a88-94df-49747d7c03fa
 begin
-	const DATA_DIR = "data/reduced_data/IMACS/nofixpix"
+	const DATA_DIR = "data/reduced_data/IMACS/test"
 	const FIG_DIR = "figures/reduced_data"
 	TableOfContents()
 end
@@ -166,8 +166,8 @@ cNames_global = ("c06", "c13", "c15", "c18", "c20", "c21", "c23", "c28")
 
 # ╔═╡ 7e0806b6-71a7-412c-b0c3-8e7043ea2722
 function filt_curve(x; window_width=15, n_σ=2.0)
-	x_med = mapwindow(median, x, window_width)
-	x_err = mapwindow(std, x, window_width)
+	x_med = mapwindow(median, x, window_width; border="reflect")
+	x_err = mapwindow(std, x, window_width; border="reflect")
 	x_diff = abs.(x - x_med)
 	bad_idxs = findall(x_diff .≥ median(n_σ .* x_err))
 	return (; x_med, x_err, x_diff, bad_idxs)

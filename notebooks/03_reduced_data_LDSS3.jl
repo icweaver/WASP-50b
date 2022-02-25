@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.0
+# v0.18.1
 
 using Markdown
 using InteractiveUtils
@@ -185,6 +185,12 @@ Next, we will extract the integrated white-light curves from these spectra. We i
 # ╔═╡ cb805821-5d2e-484c-93a5-10a897d2cfe7
 @bind window_width PlutoUI.Slider(3:2:21, default=15, show_value=true)
 
+# ╔═╡ ded63b4b-61b6-41b6-98d4-d13166bce76a
+@with_terminal begin
+	println(bad_idxs .- 1) # For Python
+	println(length(bad_idxs))
+end
+
 # ╔═╡ 83263daf-a902-4414-850b-aa6949752fbb
 cNames = obj_names.vals[2:4]
 
@@ -193,6 +199,15 @@ use_comps = cNames
 
 # ╔═╡ d386b581-a885-4461-9087-055269e77005
 cNames_global = ("c06", "c13", "c15", "c18", "c20", "c21", "c23", "c28")
+
+# ╔═╡ 274c809f-62f5-4470-a561-f005878e6fd2
+function filt_curve(x; window_width=15, n_σ=2.0)
+	x_med = mapwindow(median, x, window_width; border="reflect")
+	x_err = mapwindow(std, x, window_width; border="reflect")
+	x_diff = abs.(x - x_med)
+	bad_idxs = findall(x_diff .≥ median(n_σ .* x_err))
+	return (; x_med, x_err, x_diff, bad_idxs)
+end
 
 # ╔═╡ 31732bf1-8797-497f-8669-40519898255e
 mid_transit_times = Dict(
@@ -223,30 +238,84 @@ use_comps_idxs = get_idx.(use_comps, Ref(cNames))
 	We divide the target WLC by each comparison star to minimize common systematics (e.g., air mass, local refractive atmospheric effects), and to make the transit shape more apparent. This allows us to select good comparison stars for that particular night and which timeseries points to include in the rest of the analysis.
 """
 
-# ╔═╡ 89256633-3c12-4b94-b245-4fdda44d686c
-function filt(f_div_wlc, window_width; func=median, border="reflect")
-	# Filtered light curves
-	f_filt = mapslices(
-		x -> mapwindow(func, x, window_width, border=border),
-		f_div_wlc,
-		dims = 1,
-	)
+# ╔═╡ 0a6e66a1-4863-4429-af8d-227a1785e759
+# function plot_div_WLCS!(axs;
+# 	t_rel, f, window_width, cNames, use_comps_idxs, ferr=0.002
+# )
+# 	use_comps = cNames[use_comps_idxs]
 
-	# Residuals
-	Δf = f_div_wlc - f_filt
+# 	# Only apply filter to specified comp star divided WLCs
+# 	f_filt, use_idxs, bad_idxs = filt_idxs(
+# 		f[:, use_comps_idxs], window_width; ferr=ferr
+# 	)
+	
+# 	k = 1
+# 	c = :darkgrey
+# 	z = 1
+# 	for (i, cName) ∈ enumerate(cNames_global)
+# 		if (z ≤ ncomps) && cNames_global[i] == cNames[z]
+# 			# All points
+# 			if cName ∈ ("c06", "c15", "c21") # LDSS3C comps
+# 				c_text = COLORS[end]
+# 			else
+# 				c_text = :darkgrey
+# 			end
+# 			scatter!(axs[i], t_rel, f[:, z];
+# 				color = (c, 0.3),
+# 			)
+# 			text!(axs[i], "$(cName)";
+# 				position =(3, 0.98),
+# 				align = (:right, :center),
+# 				color = c_text,
+# 				textsize = 24,
+# 			)
+# 			# Used points
+# 			if cName ∈ use_comps
+# 				scatter!(axs[i], t_rel[use_idxs], f[use_idxs, z];
+# 					color = c,
+# 				)
+# 				lines!(axs[i], t_rel, f_filt[:, k];
+# 					color = COLORS[end-2],
+# 					linewidth = 2,
+# 				)
+# 				k += 1
+# 			end
+# 			z += 1 # So hacky
+# 		else
+# 			continue
+# 		end
 
-	return f_filt, abs.(Δf), Δf
-end
+# 		#axislegend(axs[i])
+# 	end
+# end
+
+# ╔═╡ 470514e7-0f08-44a3-8519-5d704ea6b8d4
+# _, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm, window_width);
 
 # ╔═╡ f80347e8-dc5a-4b0c-a6c0-db5c12eadcbb
-# Filter specified WLCs and return superset points
-function filt_idxs(f_div_wlc, window_width; ferr=0.002)
-	ntimes, ncomps = size(f_div_wlc)
-	f_filt, f_diff, _ = filt(f_div_wlc, window_width)
-	bad_idxs = ∪(findall.(>(ferr), eachcol(f_diff))...) |> sort;
-	use_idxs = deleteat!(collect(1:size(f_div_wlc, 1)), bad_idxs)
-	return f_filt, use_idxs, bad_idxs
-end
+# # Filter specified WLCs and return superset points
+# function filt_idxs(f_div_wlc, window_width; ferr=0.002)
+# 	ntimes, ncomps = size(f_div_wlc)
+# 	f_filt, f_diff, _ = filt(f_div_wlc, window_width)
+# 	bad_idxs = ∪(findall.(>(ferr), eachcol(f_diff))...) |> sort;
+# 	use_idxs = deleteat!(collect(1:size(f_div_wlc, 1)), bad_idxs)
+# 	return f_filt, use_idxs, bad_idxs
+# end
+
+# ╔═╡ 89256633-3c12-4b94-b245-4fdda44d686c
+# function filt(f_div_wlc, window_width; func=median, border="reflect")
+# 	# Filtered light curves
+# 	f_filt = mapslices(
+# 		x -> mapwindow(func, x, window_width, border=border),
+# 		f_div_wlc,
+# 		dims = 1,
+# 	)
+
+# 	# Residualsa
+# 	Δf = f_div_wlc - f_filt
+
+# 	return f_filt, abs.(Δf), Δf
+# end
 
 # ╔═╡ 97191c55-f673-46b4-82fd-147e7d150623
 @mdx """
@@ -442,23 +511,8 @@ begin
 	f_div_WLC_norm = f_div_wlc ./ median(f_div_wlc, dims=1)
 end
 
-# ╔═╡ 470514e7-0f08-44a3-8519-5d704ea6b8d4
-_, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm, window_width);
-
-# ╔═╡ ded63b4b-61b6-41b6-98d4-d13166bce76a
-@with_terminal begin
-	println(bad_idxs .- 1) # For Python
-end
-
 # ╔═╡ 3e7b0a0b-1ee9-4436-935e-c4ced50620ba
 size(f_div_WLC_norm, 1) - length(bad_idxs)
-
-# ╔═╡ bc54942e-38ef-4919-a3d4-28d5f4db8487
-comps = let
-	mag = -2.51 * log10.(f_comps_wlc)
-	mag .-= median(mag, dims=1)
-	mag[use_idxs, :]
-end
 
 # ╔═╡ c65c2298-e3a3-4666-be9d-73ee43d94847
 FWHM, Trace_Center, Sky_Flux = median_eparam.(
@@ -502,12 +556,6 @@ begin
 	baselines = ones(ntimes, nbins) .+ offs # Reference baselines
 end;
 
-# ╔═╡ 5110de9a-3721-4043-b8b7-493daacb4137
-target_binned_mags = mapslices(f_to_med_mag, oLCw, dims=1)[use_idxs, :]
-
-# ╔═╡ 53f5a645-93e0-499a-bb36-e4ff0153a63c
-comp_binned_mags = mapslices(f_to_med_mag, cLCw, dims=1)[use_idxs, :, :]
-
 # ╔═╡ 8bb36e39-ade4-4799-ab91-92caf38021b4
 PyDict{String, Vector}(LC["spectral"])
 
@@ -515,44 +563,6 @@ PyDict{String, Vector}(LC["spectral"])
 Times, Airmass = let
 	vals = PyTable(LC["temporal"].to_pandas())
 	vals["bjd"], vals["airmass"]
-end
-
-# ╔═╡ 354580e4-0aa9-496f-b024-665025a2eeda
-lc = let
-	med_mag = f_to_med_mag(f_target_wlc |> vec)
-	hcat(Times, med_mag, zeros(length(Times)))[use_idxs, :]
-end
-
-# ╔═╡ 898a390b-49f7-45f4-b1a1-b22922d69a29
-let
-    savepath = "$(tdir)/white-light"
-	rm(savepath, force=true, recursive=true)
-	mkpath(savepath)
-	f = "$(savepath)/lc.dat"
-	writedlm(f, lc, ",    ")
-	@info "Saved to $(f)"
-	f = "$(savepath)/comps.dat"
-	writedlm(f, comps, ",    ")
-	@info "Saved to $(f)"
-end
-
-# ╔═╡ 631c4d02-58cc-4c70-947f-22c8e8b11015
-let
-    savepath = "$(tdir)/wavelength"
-	rm(savepath, force=true, recursive=true)
-	for i in 1:nbins
-		save_path_w = "$(savepath)/wbin$(i-1)"
-		mkpath("$(save_path_w)")
-		lc_w = hcat(
-			Times[use_idxs], target_binned_mags[:, i], zeros(length(Times[use_idxs]))
-		)
-		f = "$(save_path_w)/lc.dat"
-		writedlm(f, lc_w, ",    ")
-		@info "Saved to $(f)"
-		f = "$(save_path_w)/comps.dat"
-		writedlm(f, comp_binned_mags[:, :, i], ",    ")
-		@info "Saved to $(f)"
-	end
 end
 
 # ╔═╡ 079c3915-33af-40db-a544-28453732c372
@@ -563,21 +573,6 @@ specshifts = load_npz(
 # ╔═╡ e4960d1a-8e33-478a-8100-d1838782938d
 Delta_Wav = pyconvert(Dict{String, Float64}, specshifts["shift"][target_name]) |>
 		sort |> values |> collect |> x -> convert(Vector{Float64}, x)
-
-# ╔═╡ e4388fba-64ef-4588-a1ed-283da2f52196
-df_eparams = DataFrame(
-	(;Times, Airmass, Delta_Wav, FWHM, Sky_Flux, Trace_Center)
-) |> df -> mapcols(col -> fmt_float.(col), df)[use_idxs, :]
-
-# ╔═╡ 2aba612a-7599-4a2d-9ff0-2fd398c2a0db
-let
-    savepath = template_dir(FPATH)
-	rm(savepath, force=true, recursive=true)
-	mkpath(savepath)
-	f = "$(tdir)/eparams.dat"
-	CSV.write(f, df_eparams, delim=",    ")
-	@info "Saved to $(f)"
-end
 
 # ╔═╡ c911cecd-0747-4cd1-826f-941f2f58091c
 begin
@@ -687,57 +682,6 @@ end
 # ╔═╡ 7208b284-4eb3-44e3-bd8c-206a31bb362b
 FIG_WIDE
 
-# ╔═╡ 0a6e66a1-4863-4429-af8d-227a1785e759
-function plot_div_WLCS!(axs;
-	t_rel, f, window_width, cNames, use_comps_idxs, ferr=0.002
-)
-	use_comps = cNames[use_comps_idxs]
-
-	# Only apply filter to specified comp star divided WLCs
-	f_filt, use_idxs, bad_idxs = filt_idxs(
-		f[:, use_comps_idxs], window_width; ferr=ferr
-	)
-	
-	k = 1
-	c = :darkgrey
-	z = 1
-	for (i, cName) ∈ enumerate(cNames_global)
-		if (z ≤ ncomps) && cNames_global[i] == cNames[z]
-			# All points
-			if cName ∈ ("c06", "c15", "c21") # LDSS3C comps
-				c_text = COLORS[end]
-			else
-				c_text = :darkgrey
-			end
-			scatter!(axs[i], t_rel, f[:, z];
-				color = (c, 0.3),
-			)
-			text!(axs[i], "$(cName)";
-				position =(3, 0.98),
-				align = (:right, :center),
-				color = c_text,
-				textsize = 24,
-			)
-			# Used points
-			if cName ∈ use_comps
-				scatter!(axs[i], t_rel[use_idxs], f[use_idxs, z];
-					color = c,
-				)
-				lines!(axs[i], t_rel, f_filt[:, k];
-					color = COLORS[end-2],
-					linewidth = 2,
-				)
-				k += 1
-			end
-			z += 1 # So hacky
-		else
-			continue
-		end
-
-		#axislegend(axs[i])
-	end
-end
-
 # ╔═╡ 1bb71101-adc8-4e9b-9354-d7411b131920
 let
 	# Larger font for two-column
@@ -775,6 +719,175 @@ let
 	savefig(fig, "$(FIG_DIR)/div_wlcs_$(fname_suff).pdf")
 
 	fig
+end
+
+# ╔═╡ cbcb7cb7-4ada-4c5b-94ae-b33b779d580f
+function plot_div_WLCS2!(axs, t_rel, f; window_width, cNames, n_σ)
+	use_comps = cNames[use_comps_idxs]
+
+	# Only apply filter to specified comp star divided WLCs
+	filt_curves = filt_curve.(
+		eachcol(f_div_WLC_norm[:, use_comps_idxs]);
+		window_width,
+		n_σ,
+	)
+	med_models = [x.x_med for x ∈ filt_curves]
+	bad_idxs = [x.bad_idxs for x ∈ filt_curves]
+	bad_idxs_common = ∪((x.bad_idxs for x ∈ filt_curves)...) |> sort
+
+	@show bad_idxs_common .- 1
+	@show length(bad_idxs_common)
+	
+	k = 1
+	color = :darkgrey
+	z = 1
+	for (i, cName) ∈ enumerate(cNames_global)
+		if (z ≤ ncomps) && cNames_global[i] == cNames[z]
+			# All points
+			if cName ∈ ("c06", "c15", "c21") # LDSS3C comps
+				c_text = COLORS[end]
+			else
+				c_text = :darkgrey
+			end
+			scatter!(axs[i], t_rel, f[:, z]; markersize=5, color)
+			text!(axs[i], "$(cName)";
+				position =(3, 0.98),
+				align = (:right, :center),
+				color = c_text,
+				textsize = 24,
+			)
+			# Used points
+			if cName ∈ use_comps
+				scatter!(axs[i], t_rel[bad_idxs[k]], f[bad_idxs[k], z];
+					marker = '⭘',
+					markersize = 20,
+					linewidth = 3.0,
+					color = COLORS_SERIES[4],
+				)
+				lines!(axs[i], t_rel, med_models[k];
+					color = COLORS[end-2],
+					linewidth = 2,
+				)
+				k += 1
+			end
+			z += 1 # So hacky
+		else
+			continue
+		end
+
+		#axislegend(axs[i])
+	end
+
+	return bad_idxs_common
+end
+
+# ╔═╡ 511ecd70-c5db-4257-8631-ef3ae1a2264c
+begin
+	# Larger font for two-column
+	fig = Figure(resolution=FIG_WIDE, fontsize=24)
+
+	axs = [
+		Axis(
+			fig[i, j],
+			limits = (-2.5, 3.5, 0.975, 1.02),
+			xlabelsize = 24,
+			ylabelsize = 24,
+		)
+		for i ∈ 1:2, j ∈ 1:4
+	]
+	axs = reshape(copy(fig.content), 2, 4)
+
+	t_rel = compute_t_rel(Times)
+	
+	bad_idxs_common = plot_div_WLCS2!(axs, t_rel, f_div_WLC_norm;
+		window_width, cNames, n_σ=3.0,
+	)
+
+	linkaxes!(axs...)
+	hidexdecorations!.(axs[begin:end-1, :], grid=false)
+	hideydecorations!.(axs[:, begin+1:end], grid=false)
+
+	fig[:, 0] = Label(fig, "Relative flux", rotation=π/2, textsize=24)
+	fig[end+1, 2:end] = Label(fig, "Time from estimated mid-transit (hours)", textsize=24)
+
+	Label(fig[0, end], "Transit 2 (LDSS3C)";
+		tellwidth = false,
+		halign = :right,
+		textsize = 24,
+	)
+
+	#savefig(fig, "$(FIG_DIR)/div_wlcs_$(fname_suff).pdf")
+
+	fig
+end
+
+# ╔═╡ bb186edb-bf2e-4984-9a35-d9f373d9d3d5
+use_idxs = deleteat!(collect(1:size(f_div_wlc, 1)), bad_idxs_common)
+
+# ╔═╡ e4388fba-64ef-4588-a1ed-283da2f52196
+df_eparams = DataFrame(
+	(;Times, Airmass, Delta_Wav, FWHM, Sky_Flux, Trace_Center)
+) |> df -> mapcols(col -> fmt_float.(col), df)[use_idxs, :]
+
+# ╔═╡ 2aba612a-7599-4a2d-9ff0-2fd398c2a0db
+let
+    savepath = template_dir(FPATH)
+	rm(savepath, force=true, recursive=true)
+	mkpath(savepath)
+	f = "$(tdir)/eparams.dat"
+	CSV.write(f, df_eparams, delim=",    ")
+	@info "Saved to $(f)"
+end
+
+# ╔═╡ 354580e4-0aa9-496f-b024-665025a2eeda
+lc = let
+	med_mag = f_to_med_mag(f_target_wlc |> vec)
+	hcat(Times, med_mag, zeros(length(Times)))[use_idxs, :]
+end
+
+# ╔═╡ bc54942e-38ef-4919-a3d4-28d5f4db8487
+comps = let
+	mag = -2.51 * log10.(f_comps_wlc)
+	mag .-= median(mag, dims=1)
+	mag[use_idxs, :]
+end
+
+# ╔═╡ 898a390b-49f7-45f4-b1a1-b22922d69a29
+let
+    savepath = "$(tdir)/white-light"
+	rm(savepath, force=true, recursive=true)
+	mkpath(savepath)
+	f = "$(savepath)/lc.dat"
+	writedlm(f, lc, ",    ")
+	@info "Saved to $(f)"
+	f = "$(savepath)/comps.dat"
+	writedlm(f, comps, ",    ")
+	@info "Saved to $(f)"
+end
+
+# ╔═╡ 5110de9a-3721-4043-b8b7-493daacb4137
+target_binned_mags = mapslices(f_to_med_mag, oLCw, dims=1)[use_idxs, :]
+
+# ╔═╡ 53f5a645-93e0-499a-bb36-e4ff0153a63c
+comp_binned_mags = mapslices(f_to_med_mag, cLCw, dims=1)[use_idxs, :, :]
+
+# ╔═╡ 631c4d02-58cc-4c70-947f-22c8e8b11015
+let
+    savepath = "$(tdir)/wavelength"
+	rm(savepath, force=true, recursive=true)
+	for i in 1:nbins
+		save_path_w = "$(savepath)/wbin$(i-1)"
+		mkpath("$(save_path_w)")
+		lc_w = hcat(
+			Times[use_idxs], target_binned_mags[:, i], zeros(length(Times[use_idxs]))
+		)
+		f = "$(save_path_w)/lc.dat"
+		writedlm(f, lc_w, ",    ")
+		@info "Saved to $(f)"
+		f = "$(save_path_w)/comps.dat"
+		writedlm(f, comp_binned_mags[:, :, i], ",    ")
+		@info "Saved to $(f)"
+	end
 end
 
 # ╔═╡ 2419e060-f5ab-441b-9ec2-51ce4e57e319
@@ -910,12 +1023,15 @@ blc_plots[cName]
 # ╠═7208b284-4eb3-44e3-bd8c-206a31bb362b
 # ╠═d386b581-a885-4461-9087-055269e77005
 # ╠═1bb71101-adc8-4e9b-9354-d7411b131920
+# ╠═511ecd70-c5db-4257-8631-ef3ae1a2264c
+# ╠═274c809f-62f5-4470-a561-f005878e6fd2
 # ╠═31732bf1-8797-497f-8669-40519898255e
 # ╠═a82de6b2-35a6-4f90-8b38-1e50ffb1c586
 # ╠═6ce2ec33-bc6c-4f13-9904-2321658f9407
 # ╠═9372c69a-0aad-4e6e-9ea3-e934fa09b758
 # ╟─d5c6d058-17c6-4cf0-97b8-d863b1529161
 # ╠═0a6e66a1-4863-4429-af8d-227a1785e759
+# ╠═cbcb7cb7-4ada-4c5b-94ae-b33b779d580f
 # ╠═470514e7-0f08-44a3-8519-5d704ea6b8d4
 # ╠═f80347e8-dc5a-4b0c-a6c0-db5c12eadcbb
 # ╠═89256633-3c12-4b94-b245-4fdda44d686c
@@ -934,6 +1050,7 @@ blc_plots[cName]
 # ╟─7fa35566-d327-4319-9ae9-17c4c9825e05
 # ╠═2419e060-f5ab-441b-9ec2-51ce4e57e319
 # ╟─af07dc54-eeb5-4fbe-8dd0-289dea97502a
+# ╠═bb186edb-bf2e-4984-9a35-d9f373d9d3d5
 # ╟─88cc640d-b58d-4cde-b793-6c66e74f6b3a
 # ╠═301ff07c-8dd5-403a-bae8-a4c38deeb331
 # ╠═c03cb527-d16d-47aa-ab63-6970f4ff0b1f
