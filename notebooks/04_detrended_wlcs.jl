@@ -332,6 +332,9 @@ end
 ## A closer look at Transit 2 🔎
 """
 
+# ╔═╡ f610b526-8333-4201-95f1-f01cb82e4281
+Pkg.status()
+
 # ╔═╡ 7fdd0cb7-7af3-4ca1-8939-9d9b7d6e9527
 function plot_x!(ax, x; h=1, errorbar_kwargs=(), scatter_kwargs=())
 	errorbars!(ax, [x.val], [h], [x.err], [x.err], direction=:x; errorbar_kwargs...)
@@ -795,6 +798,7 @@ end
 # ╠═6fcd1377-8364-45a3-9ff6-89d61df1ef42
 # ╟─807e913f-d8c3-41e9-acb3-4c024dedd67b
 # ╠═18c90ed4-2f07-493f-95b2-e308cd7a03a9
+# ╠═f610b526-8333-4201-95f1-f01cb82e4281
 # ╠═f47944d8-4501-47c7-a852-d5e2f90e9204
 # ╠═7fdd0cb7-7af3-4ca1-8939-9d9b7d6e9527
 # ╠═181dd60f-62b2-4d8e-beab-6b6e5c15a0c2

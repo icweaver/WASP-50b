@@ -206,6 +206,7 @@ function filt_curve(x; window_width=15, n_σ=2.0)
 	x_err = mapwindow(std, x, window_width; border="reflect")
 	x_diff = abs.(x - x_med)
 	bad_idxs = findall(x_diff .≥ median(n_σ .* x_err))
+	#bad_idxs = findall(x_diff .≥ 0.002)
 	return (; x_med, x_err, x_diff, bad_idxs)
 end
 
@@ -238,84 +239,33 @@ use_comps_idxs = get_idx.(use_comps, Ref(cNames))
 	We divide the target WLC by each comparison star to minimize common systematics (e.g., air mass, local refractive atmospheric effects), and to make the transit shape more apparent. This allows us to select good comparison stars for that particular night and which timeseries points to include in the rest of the analysis.
 """
 
-# ╔═╡ 0a6e66a1-4863-4429-af8d-227a1785e759
-# function plot_div_WLCS!(axs;
-# 	t_rel, f, window_width, cNames, use_comps_idxs, ferr=0.002
-# )
-# 	use_comps = cNames[use_comps_idxs]
-
-# 	# Only apply filter to specified comp star divided WLCs
-# 	f_filt, use_idxs, bad_idxs = filt_idxs(
-# 		f[:, use_comps_idxs], window_width; ferr=ferr
-# 	)
-	
-# 	k = 1
-# 	c = :darkgrey
-# 	z = 1
-# 	for (i, cName) ∈ enumerate(cNames_global)
-# 		if (z ≤ ncomps) && cNames_global[i] == cNames[z]
-# 			# All points
-# 			if cName ∈ ("c06", "c15", "c21") # LDSS3C comps
-# 				c_text = COLORS[end]
-# 			else
-# 				c_text = :darkgrey
-# 			end
-# 			scatter!(axs[i], t_rel, f[:, z];
-# 				color = (c, 0.3),
-# 			)
-# 			text!(axs[i], "$(cName)";
-# 				position =(3, 0.98),
-# 				align = (:right, :center),
-# 				color = c_text,
-# 				textsize = 24,
-# 			)
-# 			# Used points
-# 			if cName ∈ use_comps
-# 				scatter!(axs[i], t_rel[use_idxs], f[use_idxs, z];
-# 					color = c,
-# 				)
-# 				lines!(axs[i], t_rel, f_filt[:, k];
-# 					color = COLORS[end-2],
-# 					linewidth = 2,
-# 				)
-# 				k += 1
-# 			end
-# 			z += 1 # So hacky
-# 		else
-# 			continue
-# 		end
-
-# 		#axislegend(axs[i])
-# 	end
-# end
-
 # ╔═╡ 470514e7-0f08-44a3-8519-5d704ea6b8d4
 # _, use_idxs, bad_idxs = filt_idxs(f_div_WLC_norm, window_width);
 
-# ╔═╡ f80347e8-dc5a-4b0c-a6c0-db5c12eadcbb
-# # Filter specified WLCs and return superset points
-# function filt_idxs(f_div_wlc, window_width; ferr=0.002)
-# 	ntimes, ncomps = size(f_div_wlc)
-# 	f_filt, f_diff, _ = filt(f_div_wlc, window_width)
-# 	bad_idxs = ∪(findall.(>(ferr), eachcol(f_diff))...) |> sort;
-# 	use_idxs = deleteat!(collect(1:size(f_div_wlc, 1)), bad_idxs)
-# 	return f_filt, use_idxs, bad_idxs
-# end
-
 # ╔═╡ 89256633-3c12-4b94-b245-4fdda44d686c
-# function filt(f_div_wlc, window_width; func=median, border="reflect")
-# 	# Filtered light curves
-# 	f_filt = mapslices(
-# 		x -> mapwindow(func, x, window_width, border=border),
-# 		f_div_wlc,
-# 		dims = 1,
-# 	)
+function filt(f_div_wlc, window_width; func=median, border="reflect")
+	# Filtered light curves
+	f_filt = mapslices(
+		x -> mapwindow(func, x, window_width, border=border),
+		f_div_wlc,
+		dims = 1,
+	)
 
-# 	# Residualsa
-# 	Δf = f_div_wlc - f_filt
+	# Residualsa
+	Δf = f_div_wlc - f_filt
 
-# 	return f_filt, abs.(Δf), Δf
-# end
+	return f_filt, abs.(Δf), Δf
+end
+
+# ╔═╡ f80347e8-dc5a-4b0c-a6c0-db5c12eadcbb
+# Filter specified WLCs and return superset points
+function filt_idxs(f_div_wlc, window_width; ferr=0.002)
+	ntimes, ncomps = size(f_div_wlc)
+	f_filt, f_diff, _ = filt(f_div_wlc, window_width)
+	bad_idxs = ∪(findall.(>(ferr), eachcol(f_diff))...) |> sort;
+	use_idxs = deleteat!(collect(1:size(f_div_wlc, 1)), bad_idxs)
+	return f_filt, use_idxs, bad_idxs
+end
 
 # ╔═╡ 97191c55-f673-46b4-82fd-147e7d150623
 @mdx """
@@ -681,6 +631,57 @@ end
 
 # ╔═╡ 7208b284-4eb3-44e3-bd8c-206a31bb362b
 FIG_WIDE
+
+# ╔═╡ 0a6e66a1-4863-4429-af8d-227a1785e759
+function plot_div_WLCS!(axs;
+	t_rel, f, window_width, cNames, use_comps_idxs, ferr=0.002
+)
+	use_comps = cNames[use_comps_idxs]
+
+	# Only apply filter to specified comp star divided WLCs
+	f_filt, use_idxs, bad_idxs = filt_idxs(
+		f[:, use_comps_idxs], window_width; ferr=ferr
+	)
+	
+	k = 1
+	c = :darkgrey
+	z = 1
+	for (i, cName) ∈ enumerate(cNames_global)
+		if (z ≤ ncomps) && cNames_global[i] == cNames[z]
+			# All points
+			if cName ∈ ("c06", "c15", "c21") # LDSS3C comps
+				c_text = COLORS[end]
+			else
+				c_text = :darkgrey
+			end
+			scatter!(axs[i], t_rel, f[:, z];
+				color = (c, 0.3),
+			)
+			text!(axs[i], "$(cName)";
+				position =(3, 0.98),
+				align = (:right, :center),
+				color = c_text,
+				textsize = 24,
+			)
+			# Used points
+			if cName ∈ use_comps
+				scatter!(axs[i], t_rel[use_idxs], f[use_idxs, z];
+					color = c,
+				)
+				lines!(axs[i], t_rel, f_filt[:, k];
+					color = COLORS[end-2],
+					linewidth = 2,
+				)
+				k += 1
+			end
+			z += 1 # So hacky
+		else
+			continue
+		end
+
+		#axislegend(axs[i])
+	end
+end
 
 # ╔═╡ 1bb71101-adc8-4e9b-9354-d7411b131920
 let
