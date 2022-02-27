@@ -46,7 +46,7 @@ In this notebook we will examine the stellar spectra, white-light, and wavelengt
 
 # ╔═╡ 0d766fde-8e6f-4a88-94df-49747d7c03fa
 begin
-	const DATA_DIR = "data/reduced_data/IMACS/out_l"
+	const DATA_DIR = "data/reduced_data/IMACS/out_b"
 	const FIG_DIR = "figures/reduced_data"
 	TableOfContents()
 end
@@ -145,21 +145,23 @@ end
 Next, we will extract the integrated white-light curves from these spectra, divided by each comparison star:
 """
 
-# ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
-@bind window_width PlutoUI.Slider(3:2:21, default=15, show_value=true)
+# ╔═╡ 4b763b58-862e-4c88-a7c9-fe0b1271c0b4
+comps = Dict(
+	# Transit 1
+	"ut131219" => ["c15", "c18", "c21", "c23"],
+	#use_comps = ["c15", "c21"]
+
+	# Transit 2
+	"ut150927" => ["c15", "c18", "c21", "c23"],
+	#use_comps = ["c15", "c21"]
+
+	# Transit 3
+	"ut161211" => ["c06", "c13"],
+	#use_comps = ["c06", "c13"]
+)
 
 # ╔═╡ 7d90f304-8fc0-4b92-924c-bead3e1c0a8c
 cNames_global = ("c06", "c13", "c15", "c18", "c20", "c21", "c23", "c28")
-
-# ╔═╡ 7e0806b6-71a7-412c-b0c3-8e7043ea2722
-function filt_curve(x; window_width=15, n_σ=2.0)
-	x_med = mapwindow(median, x, window_width; border="reflect")
-	x_err = mapwindow(std, x, window_width; border="reflect")
-	x_diff = abs.(x - x_med)
-	#bad_idxs = findall(x_diff .≥ median(n_σ .* x_err))
-	bad_idxs = findall(x_diff .≥ 0.002)
-	return (; x_med, x_err, x_diff, bad_idxs)
-end
 
 # ╔═╡ d6295509-14e1-4b24-8798-84bef7c96854
 mid_transit_times = Dict(
@@ -182,6 +184,20 @@ function compute_t_rel(t_py)
 	return @. (t - t₀) * 24.0
 end
 
+# ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
+@bind window_width PlutoUI.Slider(3:2:21, default=15, show_value=true)
+
+# ╔═╡ 7e0806b6-71a7-412c-b0c3-8e7043ea2722
+function filt_curve(x; window_width=15, n_σ=2.0)
+	x_med = mapwindow(median, x, window_width; border="reflect")
+	x_err = mapwindow(std, x, window_width; border="reflect")
+	x_diff = x - x_med
+	x_diff_abs = abs.(x_diff)
+	#bad_idxs = findall(x_diff .≥ (n_σ .* median(x_err)))
+	bad_idxs = findall(x_diff_abs .≥ 0.002)
+	return (; x_med, x_err, x_diff, x_diff_abs, bad_idxs)
+end
+
 # ╔═╡ 941cd721-07d8-4a8f-9d75-42854e6e8edb
 @mdx """
 !!! note
@@ -189,21 +205,6 @@ end
 
 We next plot these light curves and identified outliers below:
 """
-
-# ╔═╡ 4b763b58-862e-4c88-a7c9-fe0b1271c0b4
-comps = Dict(
-	# Transit 1
-	"ut131219" => ["c15", "c18", "c21", "c23"],
-	#use_comps = ["c15", "c21"]
-
-	# Transit 2
-	"ut150927" => ["c15", "c18", "c21", "c23"],
-	#use_comps = ["c15", "c21"]
-
-	# Transit 3
-	"ut161211" => ["c06", "c13"],
-	#use_comps = ["c06", "c13"]
-)
 
 # ╔═╡ 2df82761-b9fe-4d37-b57c-1eabb0ffa8dd
 use_comps = comps[match(r"ut[0-9]{6}", fname_suff).match]
@@ -306,6 +307,9 @@ end;
 # ╔═╡ dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
 LC = load_pickle(FPATH_LC);
 
+# ╔═╡ 207a8e79-60f2-426d-866e-e8ddc1798a6c
+t_rel = compute_t_rel(LC["t"]);
+
 # ╔═╡ 65cc9f56-1e9e-446c-82db-10dcd6334ce3
 LC_spectra = pyconvert(Dict{String, Array}, LC["spectra"]);
 
@@ -322,13 +326,10 @@ wbins_even = @view wbins[begin+1:2:end, :]
 LC_cNames = pyconvert(Vector, LC["cNames"])
 
 # ╔═╡ f519626c-a3e8-4390-b3af-40b7beb665ed
-LC_oLC = pyconvert(Vector, LC["oLC"])
-
-# ╔═╡ 2ffcddab-156b-472d-ba57-5beea5c7cc0a
-LC["oLC"]
+LC_oLC = pyconvert(Vector, LC["oLC"]);
 
 # ╔═╡ 9a9b688c-94f0-4944-a9b2-21702073e0c7
-LC_cLC = pyconvert(Matrix, LC["cLC"])
+LC_cLC = pyconvert(Matrix, LC["cLC"]);
 
 # ╔═╡ 18d58341-0173-4eb1-9f01-cfa893088613
 begin
@@ -337,7 +338,7 @@ begin
 
 	f_div_WLC = LC_oLC ./ LC_cLC[:, sorted_cName_idxs]
 	f_div_WLC_norm = f_div_WLC ./ median(f_div_WLC, dims=1)
-end
+end;
 
 # ╔═╡ 08946377-0a2a-4cb8-94e6-de07b174f936
 use_comps_idxs = get_idx.(use_comps, Ref(cNames))
@@ -354,12 +355,13 @@ begin
 	med_models = [x.x_med for x ∈ filt_curves]
 	bad_idxs = [x.bad_idxs for x ∈ filt_curves]
 	bad_idxs_common = ∪((x.bad_idxs for x ∈ filt_curves)...) |> sort
+	use_idxs_common = deleteat!(collect(1:length(t_rel)), bad_idxs_common)
 end;
 
 # ╔═╡ 5e1eaa1b-5549-4856-af26-fbeddd96dcb6
 @with_terminal begin
-	@show bad_idxs_common .- 1
-	@show length(bad_idxs_common)
+	println(bad_idxs_common .- 1)
+	println(length(bad_idxs_common))
 end
 
 # ╔═╡ 3ca393d6-01c0-4f77-88ff-7c4f6388670e
@@ -526,9 +528,7 @@ let
 	]
 	axs = reshape(copy(fig.content), 2, 4)
 
-	t_rel = compute_t_rel(LC["t"])
-	
-	plot_div_WLCS!(axs, t_rel, f_div_WLC_norm; window_width, cNames, n_σ=3.0)
+	plot_div_WLCS!(axs, t_rel, f_div_WLC_norm; window_width, cNames, n_σ)
 
 	linkaxes!(axs...)
 	hidexdecorations!.(axs[begin:end-1, :], grid=false)
@@ -610,14 +610,16 @@ end
 begin
 	blc_plots = OrderedDict()
 	for comp_idx ∈ use_comps_idxs
-		datas = f_norm_w[:, comp_idx, :]
+		datas = f_norm_w[use_idxs_common, comp_idx, :]
 		cName = cNames[comp_idx]
-		f_med, _, f_diff = filt(datas, window_width)
+		filt_curves_i = filt_curve.(eachcol(datas); window_width, n_σ)
+		models = hcat([x.x_med for x ∈ filt_curves_i]...)
+		resids = hcat([x.x_diff for x ∈ filt_curves_i]...)
 		p = plot_BLCs(
-			datas[use_idxs, :],
-			f_med[use_idxs, :],
+			datas,
+			models,
 			wbins,
-			round.(Int, reshape(std(f_diff[use_idxs, : ], dims=1), :, 1) * 1e6),
+			round.(Int, reshape(std(resids, dims=1), :, 1) * 1e6),
 			cName,
 		)
 		blc_plots[cName] = p
@@ -643,6 +645,7 @@ blc_plots[cName]
 # ╠═be765f9b-b29e-424f-94d9-d8457cd59922
 # ╠═02b9e4ee-f18a-434b-b462-b7b0a09250b9
 # ╠═dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
+# ╠═207a8e79-60f2-426d-866e-e8ddc1798a6c
 # ╠═cb1c4a44-09a8-4fff-8703-2d37647148f0
 # ╟─e774a20f-2d58-486a-ab71-6bde678b26f8
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
@@ -655,25 +658,24 @@ blc_plots[cName]
 # ╠═6fd88483-d005-4186-8dd2-82cea767ce90
 # ╠═818282bb-03ed-49db-9c1c-c744dad47db8
 # ╟─e3468c61-782b-4f55-a4a1-9d1883655d11
+# ╠═4b763b58-862e-4c88-a7c9-fe0b1271c0b4
+# ╠═7d90f304-8fc0-4b92-924c-bead3e1c0a8c
+# ╠═d6295509-14e1-4b24-8798-84bef7c96854
+# ╠═96aa3546-4ba6-4ce1-bf5c-4a00e935f702
+# ╠═06bbca64-c99f-429b-b1ad-f40f32e0deac
 # ╟─ab058d99-ce5f-4ed3-97bd-a62d2f258773
 # ╠═73540296-6c18-4fb5-931d-f8d2a6e6a9d3
-# ╠═7d90f304-8fc0-4b92-924c-bead3e1c0a8c
 # ╠═f08dc24a-18db-4f7f-9132-f8d60a4af663
 # ╠═5e1eaa1b-5549-4856-af26-fbeddd96dcb6
 # ╠═97ef8933-4ed6-457c-b393-0c33158fac88
 # ╠═7e0806b6-71a7-412c-b0c3-8e7043ea2722
-# ╠═d6295509-14e1-4b24-8798-84bef7c96854
-# ╠═96aa3546-4ba6-4ce1-bf5c-4a00e935f702
-# ╠═06bbca64-c99f-429b-b1ad-f40f32e0deac
 # ╠═bcda2043-f8c7-46bc-a5d4-b6f1f0883e9e
 # ╠═f519626c-a3e8-4390-b3af-40b7beb665ed
-# ╠═2ffcddab-156b-472d-ba57-5beea5c7cc0a
 # ╠═9a9b688c-94f0-4944-a9b2-21702073e0c7
 # ╠═18d58341-0173-4eb1-9f01-cfa893088613
 # ╟─941cd721-07d8-4a8f-9d75-42854e6e8edb
 # ╠═2df82761-b9fe-4d37-b57c-1eabb0ffa8dd
 # ╠═08946377-0a2a-4cb8-94e6-de07b174f936
-# ╠═4b763b58-862e-4c88-a7c9-fe0b1271c0b4
 # ╠═169197fe-983d-420b-8c56-353a65b28ddc
 # ╟─4bad8b5c-e8b9-4ceb-97f4-41b4401d4f63
 # ╟─0adc81ea-8678-42c2-a8b6-45fe4d26f4c4
@@ -686,7 +688,7 @@ blc_plots[cName]
 # ╟─793c4d08-e2ee-4c9d-b7a0-11eaaddba895
 # ╠═c2c326df-1474-4b06-b183-668f0d6502aa
 # ╟─eeb3da97-72d5-4317-acb9-d28637a06d67
-# ╠═06bbb3e4-9b30-43bd-941f-e357acaa80fc
+# ╟─06bbb3e4-9b30-43bd-941f-e357acaa80fc
 # ╠═3653ee36-35a6-4e0a-8d46-4f8389381d45
 # ╠═a8d1c3e6-c020-495f-a443-07203b7dcd50
 # ╠═b1b0690a-a1eb-11eb-1590-396d92c80c23

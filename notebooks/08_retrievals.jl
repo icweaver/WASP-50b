@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.7
+# v0.18.1
 
 using Markdown
 using InteractiveUtils
@@ -228,7 +228,7 @@ begin
 		)
 
 		cube[sp][model_name]["retr_model_sampled"] = CSV.read(
-			"$(dirpath)/retr_model_sampled_Magellan_IMACS.txt", DataFrame;
+			"$(dirpath)/retr_model_sampled_IMACS+LDSS3C.txt", DataFrame;
 			header = [:wav, :flux],
 			comment = "#",
 		)

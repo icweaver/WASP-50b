@@ -382,7 +382,7 @@ Rₚ |> u"Rjup"
 Mₚ = 1.78u"Mjup"
 
 # ╔═╡ cb02a053-d048-43d9-950a-de3106019520
-function create_df(df; instrument="add instrument")
+function create_df(df; instrument="add_instrument")
 	@select df begin
 		:Wlow
 		:Wup
@@ -398,12 +398,12 @@ end
 let
 	f = "$(DATA_DIR)/tspec_w50_IMACS.csv"
 	CSV.write(f,
-		create_df(df_IMACS, instrument="Magellan/IMACS")
+		create_df(df_IMACS; instrument="Magellan/IMACS")
 	)
 	@info "Saved to $(f)"
 	f = "$(DATA_DIR)/tspec_w50_LDSS3.csv"
 	CSV.write(f,
-		create_df(df_LDSS3, instrument="Clay/LDSS3C")
+		create_df(df_LDSS3; instrument="Clay/LDSS3C")
 	)
 	@info "Saved to $(f)"
 end
@@ -411,10 +411,10 @@ end
 # ╔═╡ 5718672b-1bc6-4676-8703-5fc06b83f0f9
 let
 	f = "$(DATA_DIR)/tspec_w50_all.csv"
-	CSV.write(f, create_df(df_tspecs))
+	CSV.write(f, create_df(df_tspecs; instrument="IMACS+LDSS3C"))
 	@info "Saved to $(f)"
 	f = "$(DATA_DIR)/tspec_w50.csv"
-	CSV.write(f, create_df(df_common))
+	CSV.write(f, create_df(df_common; instrument="IMACS+LDSS3C"))
 	@info "Saved to $(f)"
 end
 
