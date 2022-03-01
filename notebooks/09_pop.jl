@@ -23,6 +23,9 @@ begin
 	using Measurements: value, uncertainty
 end
 
+# ╔═╡ 37f534d2-5f10-44a0-b332-b0004ac9028e
+using PrettyTables
+
 # ╔═╡ 7493bb13-ee41-4798-99f6-dc1df97bd624
 begin
 	const DATA_DIR = "data/pop"
@@ -533,8 +536,8 @@ df_HGHJ = @chain df_complete begin
 		:pl_g_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
 		:TSMR = value.(:TSMR)
 		:ΔD_ppm = @. value(:ΔD_ppm)
-		:pl_refnames_K
-		:pl_refnames_orb
+		# :pl_refnames_K = HTML.(:pl_refnames_K)
+		# :pl_refnames_orb = HTML.(:pl_refnames_orb)
 	end
 	# @rtransform begin
 	# 	:pl_refnames_K = "\\url{$(extract_url(:pl_refnames_K))}"
@@ -555,8 +558,8 @@ df_HGHJ_paper = @chain df_complete begin
 		:pl_g = ustrip.(u"m/s^2", :pl_g_SI)
 		:ΔD_ppm
 		:TSMR = @. round(value(:TSMR), digits=2)
-		:pl_refnames_K
-		:pl_refnames_orb
+		#:pl_refnames_K
+		#:pl_refnames_orb
 	end
 	# @rtransform begin
 	# 	:pl_refnames_K = "\\href{$(extract_url(:pl_refnames_K))}{Klink}"
@@ -564,8 +567,20 @@ df_HGHJ_paper = @chain df_complete begin
 	# end
 end
 
+# ╔═╡ b544082d-d093-462d-b98a-39e68468efe5
+df_HGHJ_paper
+
 # ╔═╡ 893c4a44-f9f6-4185-bd1e-26095339bddc
 latextabular(df_HGHJ_paper, latex=false) |> PlutoUI.Text
+
+# ╔═╡ 00fe5763-64d6-4f95-84db-24a55b7d98b0
+df = df_HGHJ_paper[end, [begin, end]]
+
+# ╔═╡ d19fadc0-392e-40a6-9967-3f0e5d1cc643
+@with_terminal(println(df))
+
+# ╔═╡ 58c5ebbc-54c2-456d-b868-c302280ca800
+pretty_table(df_HGHJ_paper; backend=:latex)
 
 # ╔═╡ d6449d05-ee95-4bda-8636-37c71e422944
 df_wakeford = let
@@ -817,7 +832,12 @@ end
 # ╠═373e3a8c-39f8-4656-9fcb-e0fc21cce353
 # ╠═998af70c-d784-4791-9261-a6dcbec8c824
 # ╠═b3ae27e9-2564-4f4c-8c51-5a40b2705ecf
+# ╠═b544082d-d093-462d-b98a-39e68468efe5
 # ╠═893c4a44-f9f6-4185-bd1e-26095339bddc
+# ╠═00fe5763-64d6-4f95-84db-24a55b7d98b0
+# ╠═d19fadc0-392e-40a6-9967-3f0e5d1cc643
+# ╠═58c5ebbc-54c2-456d-b868-c302280ca800
+# ╠═37f534d2-5f10-44a0-b332-b0004ac9028e
 # ╠═d6449d05-ee95-4bda-8636-37c71e422944
 # ╠═c7eabcc6-5139-448d-abdb-ec752788bd59
 # ╠═e0365154-d6c8-4db2-bb85-bf2536a3aa74
