@@ -368,9 +368,6 @@ compute_Tₚ(Tₛ, aRₛ; α=0.0) = Tₛ * (1.0 - α)^(1//4) * (0.5/aRₛ)^(1//2
 ## Split 'em up
 """
 
-# ╔═╡ 4e6c0113-255f-46fb-84ad-f8f30b79a219
-
-
 # ╔═╡ c7eabcc6-5139-448d-abdb-ec752788bd59
 strip_u(u) = x -> ustrip(u, x)
 
@@ -386,9 +383,6 @@ get_gₚ(Mₚ, RₚRₛ, Rₛ) = G * Mₚ / (RₚRₛ^2 * Rₛ^2)
 df_H2OJ = CSV.read("data/pop/H2O_J_data.csv", DataFrame;
 	stripwhitespace = true,
 )
-
-# ╔═╡ 5a3ce763-111c-44b4-b9ad-e03af5a2c767
-lines([1,2,3]); lines!([3,2,1]); current_figure()
 
 # ╔═╡ 0f9262ef-b774-45bc-bdab-46860779683d
 @mdx """
@@ -538,6 +532,7 @@ df_HGHJ = @chain df_complete begin
 		:pl_g = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
 		:pl_g_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
 		:TSMR = value.(:TSMR)
+		:ΔD_ppm = @. value(:ΔD_ppm)
 		:pl_refnames_K
 		:pl_refnames_orb
 	end
@@ -558,6 +553,7 @@ df_HGHJ_paper = @chain df_complete begin
 		:pl_name
 		:pl_eqt = ustrip.(u"K", :pl_eqt)
 		:pl_g = ustrip.(u"m/s^2", :pl_g_SI)
+		:ΔD_ppm
 		:TSMR = @. round(value(:TSMR), digits=2)
 		:pl_refnames_K
 		:pl_refnames_orb
@@ -699,14 +695,14 @@ end
 # TODO: Place latitude constraints
 let
 	# Phase plot
-	markersize_factor = 14.0
+	markersize_factor = 10.0
 	m = mapping(
 		:pl_eqt => "Equilibrium temperature (K)",
 		:pl_g => "Surface gravity (m/s²)",
-		#color = :ΔD_ppm => "ΔD (ppm)",
+		color = :ΔD_ppm => "ΔD (ppm)",
 		markersize = :TSMR => (x -> markersize_factor*x),
 	)
-	p = m * data(df_HGHJ) * visual(colormap=:viridis, marker='○')
+	p = m * data(df_HGHJ) * visual(colormap=:viridis, marker='⬤')
 
 	fg = draw(p;
 		axis = (; limits=((0, 3_400), (-1, 55)), yticks=0:10:50),
@@ -746,7 +742,7 @@ let
 		(W50x[1], W50y[1]) .- (200, -2.5),
 		(W50x[1], W50y[1]),
 		0.5,
-		0.1;
+		0.2;
 		align = (:center, :baseline),
 	)
 	hdx, hdy = val.(Ref(df_HGHJ), Ref("HD 189733 b"), [:pl_eqt, :pl_g])
@@ -764,7 +760,7 @@ let
 	tsmrs = [14, 4, 1]
 	axislegend(
 		ax,
-		[MarkerElement(marker='○', markersize=markersize_factor*ms) for ms ∈ tsmrs],
+		[MarkerElement(marker='◯', markersize=markersize_factor*ms) for ms ∈ tsmrs],
 		["$tsmr" for tsmr ∈ tsmrs],
 		"TSMR",
 		position = :cb,
@@ -822,7 +818,6 @@ end
 # ╠═998af70c-d784-4791-9261-a6dcbec8c824
 # ╠═b3ae27e9-2564-4f4c-8c51-5a40b2705ecf
 # ╠═893c4a44-f9f6-4185-bd1e-26095339bddc
-# ╠═4e6c0113-255f-46fb-84ad-f8f30b79a219
 # ╠═d6449d05-ee95-4bda-8636-37c71e422944
 # ╠═c7eabcc6-5139-448d-abdb-ec752788bd59
 # ╠═e0365154-d6c8-4db2-bb85-bf2536a3aa74
@@ -830,7 +825,6 @@ end
 # ╠═ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
 # ╠═157a44f4-6191-4407-98a4-3c8c43817a65
 # ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
-# ╠═5a3ce763-111c-44b4-b9ad-e03af5a2c767
 # ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d

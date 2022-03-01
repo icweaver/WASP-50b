@@ -84,7 +84,6 @@ transits = merge(
 
 # ╔═╡ 3e2df199-d524-4fa9-8b13-2ddc88acd5d2
 function tname(dirpath)
-	@info dirpath
 	if occursin("131219_IMACS", dirpath)
 		transit = "Transit 1 (IMACS)"
 	elseif occursin("131219_sp_IMACS", dirpath)
@@ -108,17 +107,16 @@ end
 # ╔═╡ ffbc6cc0-e11b-44b4-a6f8-7d61cd7aa1d2
 TRANSIT = tname(FPATH_LC)
 
-# ╔═╡ be765f9b-b29e-424f-94d9-d8457cd59922
-parts = split(fname_suff, "_") 
-
-# ╔═╡ 02b9e4ee-f18a-434b-b462-b7b0a09250b9
-split(fname_suff, "_")
-
 # ╔═╡ e774a20f-2d58-486a-ab71-6bde678b26f8
 @mdx """
 ## Stellar spectra ⭐
 
 With the flux extracted for each object, we now plot the resulting stellar spectra:
+"""
+
+# ╔═╡ 1ec12aa5-64b7-4c9a-8ca2-38eef5419cc7
+md"""
+Below are the data products we used to produce the plot above:
 """
 
 # ╔═╡ 975f8daa-fba3-4b77-aa08-fa79ac12f903
@@ -142,10 +140,16 @@ end
 @mdx """
 ## White-light curves 🌅
 
-Next, we will extract the integrated white-light curves from these spectra, divided by each comparison star:
+Next, we will extract the integrated white-light curves from these spectra, divided by each comparison star. The outlying points are median filtered out based on the window width given below:
+"""
+
+# ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
+md"""
+Window width: $(@bind window_width PlutoUI.Slider(3:2:21, default=15, show_value=true))
 """
 
 # ╔═╡ 4b763b58-862e-4c88-a7c9-fe0b1271c0b4
+# Comparison stars used for each night
 comps = Dict(
 	# Transit 1
 	"ut131219" => ["c15", "c18", "c21", "c23"],
@@ -161,6 +165,7 @@ comps = Dict(
 )
 
 # ╔═╡ 7d90f304-8fc0-4b92-924c-bead3e1c0a8c
+# Comparison stars across all nights
 cNames_global = ("c06", "c13", "c15", "c18", "c20", "c21", "c23", "c28")
 
 # ╔═╡ d6295509-14e1-4b24-8798-84bef7c96854
@@ -184,10 +189,8 @@ function compute_t_rel(t_py)
 	return @. (t - t₀) * 24.0
 end
 
-# ╔═╡ ab058d99-ce5f-4ed3-97bd-a62d2f258773
-@bind window_width PlutoUI.Slider(3:2:21, default=15, show_value=true)
-
 # ╔═╡ 7e0806b6-71a7-412c-b0c3-8e7043ea2722
+# Median filter routine
 function filt_curve(x; window_width=15, n_σ=2.0)
 	x_med = mapwindow(median, x, window_width; border="reflect")
 	x_err = mapwindow(std, x, window_width; border="reflect")
@@ -345,7 +348,7 @@ use_comps_idxs = get_idx.(use_comps, Ref(cNames))
 
 # ╔═╡ f08dc24a-18db-4f7f-9132-f8d60a4af663
 begin
-	n_σ = 2.0
+	n_σ = 2.0 # Number of "sigma" to median filter by
 	# Only apply filter to specified comp star divided WLCs
 	filt_curves = filt_curve.(
 		eachcol(f_div_WLC_norm[:, use_comps_idxs]);
@@ -482,7 +485,7 @@ function plot_div_WLCS!(axs, t_rel, f; window_width, cNames, n_σ)
 			else
 				c_text = :darkgrey
 			end
-			scatter!(axs[i], t_rel, f[:, z]; markersize=5, color)
+			scatter!(axs[i], t_rel, f[:, z]; markersize=5, color=(color, 0.25))
 			text!(axs[i], "$(cName)";
 				position =(3, 0.98),
 				align = (:right, :center),
@@ -491,11 +494,15 @@ function plot_div_WLCS!(axs, t_rel, f; window_width, cNames, n_σ)
 			)
 			# Used points
 			if cName ∈ use_comps
-				scatter!(axs[i], t_rel[bad_idxs[k]], f[bad_idxs[k], z];
-					marker = '⭘',
-					markersize = 20,
-					linewidth = 3.0,
-					color = COLORS_SERIES[4],
+				# scatter!(axs[i], t_rel[bad_idxs[k]], f[bad_idxs[k], z];
+				# 	marker = '⭘',
+				# 	markersize = 20,
+				# 	linewidth = 3.0,
+				# 	color = COLORS_SERIES[4],
+				# )
+				scatter!(axs[i], t_rel[use_idxs_common], f[use_idxs_common, z]; 
+					markersize = 5,
+					color,
 				)
 				lines!(axs[i], t_rel, med_models[k];
 					color = COLORS[end-2],
@@ -549,7 +556,7 @@ let
 end
 
 # ╔═╡ c2c326df-1474-4b06-b183-668f0d6502aa
-function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
+function plot_BLCs(t, datas, models, wbins, errs, comp_name; offset=0.3)
 	fig = Figure(resolution=FIG_LARGE)
 	median_prec = round(Int, median(errs))
 
@@ -576,19 +583,19 @@ function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 			eachrow(wbins),
 			errs,
 		)
-		scatter!(ax_left, data, markersize=5, color=color)
-		lines!(ax_left, model, linewidth=3, color=0.75*color)
+		scatter!(ax_left, t, data, markersize=5, color=color)
+		lines!(ax_left, t, model, linewidth=3, color=0.75*color)
 
-		scatter!(ax_right, baseline + resid, markersize=5, color=color)
-		lines!(ax_right, baseline, linewidth=3, color=0.75*color)
+		scatter!(ax_right, t, baseline + resid, markersize=5, color=color)
+		lines!(ax_right, t, baseline, linewidth=3, color=0.75*color)
 
-		scatter!(ax_right, baseline + resid, markersize=5, color=color)
-		lines!(ax_right, baseline, linewidth=3, color=0.75*color)
+		scatter!(ax_right, t, baseline + resid, markersize=5, color=color)
+		lines!(ax_right, t, baseline, linewidth=3, color=0.75*color)
 		text!(ax_label, "$(wbin[1]) - $(wbin[2]) Å, $(err) ppm";
-			position = (0, baseline[1]),
+			position = (-1.5, baseline[1]),
 			textsize = 16,
 			align = (:left, :center),
-			offset = (-10, 2),
+			offset = (0, 2),
 			color = 0.75*color,
 		)
 	end
@@ -599,7 +606,7 @@ function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 	ylims!(ax_left, 0.95, 1.34)
 
 	fig[1:2, 0] = Label(fig, "Relative flux + offset", rotation=π/2)
-	fig[end, 2:3] = Label(fig, "Index")
+	fig[end, 2:3] = Label(fig, "Time from estimated mid-transit (hours)")
 
 	savefig(fig, "$(FIG_DIR)/div_blcs_$(fname_suff)_$(comp_name).pdf")
 
@@ -610,12 +617,14 @@ end
 begin
 	blc_plots = OrderedDict()
 	for comp_idx ∈ use_comps_idxs
+		t = t_rel[use_idxs_common]
 		datas = f_norm_w[use_idxs_common, comp_idx, :]
 		cName = cNames[comp_idx]
 		filt_curves_i = filt_curve.(eachcol(datas); window_width, n_σ)
 		models = hcat([x.x_med for x ∈ filt_curves_i]...)
 		resids = hcat([x.x_diff for x ∈ filt_curves_i]...)
 		p = plot_BLCs(
+			t,
 			datas,
 			models,
 			wbins,
@@ -636,35 +645,34 @@ blc_plots[cName]
 # ╟─ee24f7df-c4db-4065-afe9-10be80cbcd6b
 # ╠═0d766fde-8e6f-4a88-94df-49747d7c03fa
 # ╟─9d180c21-e634-4a1e-8430-bdd089262f66
-# ╠═28d18f7f-2e41-4771-9f27-342bbda847dd
-# ╠═bd2cdf33-0c41-4948-82ab-9a28929f72b3
-# ╠═3959e46c-87c9-4566-8ab1-f437323f0a9f
-# ╠═32b9a326-ddc8-4557-bcf5-9dcc54ed83e5
-# ╠═ffbc6cc0-e11b-44b4-a6f8-7d61cd7aa1d2
-# ╠═3e2df199-d524-4fa9-8b13-2ddc88acd5d2
-# ╠═be765f9b-b29e-424f-94d9-d8457cd59922
-# ╠═02b9e4ee-f18a-434b-b462-b7b0a09250b9
+# ╟─28d18f7f-2e41-4771-9f27-342bbda847dd
+# ╟─bd2cdf33-0c41-4948-82ab-9a28929f72b3
+# ╟─3959e46c-87c9-4566-8ab1-f437323f0a9f
+# ╟─32b9a326-ddc8-4557-bcf5-9dcc54ed83e5
+# ╟─ffbc6cc0-e11b-44b4-a6f8-7d61cd7aa1d2
+# ╟─3e2df199-d524-4fa9-8b13-2ddc88acd5d2
 # ╠═dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
 # ╠═207a8e79-60f2-426d-866e-e8ddc1798a6c
 # ╠═cb1c4a44-09a8-4fff-8703-2d37647148f0
 # ╟─e774a20f-2d58-486a-ab71-6bde678b26f8
 # ╠═589239fb-319c-40c2-af16-19025e7b28a2
+# ╟─1ec12aa5-64b7-4c9a-8ca2-38eef5419cc7
 # ╠═65cc9f56-1e9e-446c-82db-10dcd6334ce3
-# ╠═975f8daa-fba3-4b77-aa08-fa79ac12f903
 # ╠═6471fc66-47a5-455e-9611-c6fd9d56e9dc
+# ╠═975f8daa-fba3-4b77-aa08-fa79ac12f903
 # ╠═40269026-a833-4dd8-bb22-7d26f35163e9
 # ╠═ca277dd2-351c-4b65-91cb-3b44ed40e0ba
 # ╠═1f8f5bd0-20c8-4a52-9dac-4ceba18fcc06
 # ╠═6fd88483-d005-4186-8dd2-82cea767ce90
 # ╠═818282bb-03ed-49db-9c1c-c744dad47db8
 # ╟─e3468c61-782b-4f55-a4a1-9d1883655d11
+# ╟─ab058d99-ce5f-4ed3-97bd-a62d2f258773
+# ╠═73540296-6c18-4fb5-931d-f8d2a6e6a9d3
 # ╠═4b763b58-862e-4c88-a7c9-fe0b1271c0b4
 # ╠═7d90f304-8fc0-4b92-924c-bead3e1c0a8c
 # ╠═d6295509-14e1-4b24-8798-84bef7c96854
 # ╠═96aa3546-4ba6-4ce1-bf5c-4a00e935f702
 # ╠═06bbca64-c99f-429b-b1ad-f40f32e0deac
-# ╟─ab058d99-ce5f-4ed3-97bd-a62d2f258773
-# ╠═73540296-6c18-4fb5-931d-f8d2a6e6a9d3
 # ╠═f08dc24a-18db-4f7f-9132-f8d60a4af663
 # ╠═5e1eaa1b-5549-4856-af26-fbeddd96dcb6
 # ╠═97ef8933-4ed6-457c-b393-0c33158fac88

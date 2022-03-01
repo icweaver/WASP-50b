@@ -59,6 +59,9 @@ First let's load up all of the data, including the white-light transit depths fr
 # ╔═╡ c53be9cf-7722-4b43-928a-33e7b0463330
 @bind DATA_DIR Select(glob("$(BASE_DIR)/out_*/WASP50"))
 
+# ╔═╡ 96a24af1-1c91-45a9-a8f2-b4761f7f5cba
+# df = cubes["Transit 1 (IMACS) sp"]["tspec"]
+
 # ╔═╡ 1decb49e-a875-412c-938f-74b4fa0e2e85
 maxmeasure(x, x_u, x_d) = x ± mean((x_u, x_d))
 
@@ -70,13 +73,22 @@ maxmeasure(x, x_u, x_d) = x ± mean((x_u, x_d))
 
 # ╔═╡ 09d21338-91ef-4991-8e15-df33d720cb97
 function tname(dirpath)
+	@info dirpath
 	if occursin("131219_IMACS", dirpath)
+		transit = "Transit 1 (IMACS)"
+	elseif occursin("131219_sp_IMACS", dirpath)
 		transit = "Transit 1 (IMACS)"
 	elseif occursin("150927_IMACS", dirpath)
 		transit = "Transit 2 (IMACS)"
+	elseif occursin("150927_sp_IMACS", dirpath)
+		transit = "Transit 2 (IMACS)"
 	elseif occursin("150927_LDSS3", dirpath)
 		transit = "Transit 2 (LDSS3C)"
+	elseif occursin("150927_sp_LDSS3", dirpath)
+		transit = "Transit 2 (LDSS3C)"
 	elseif occursin("161211_IMACS", dirpath)
+		transit = "Transit 3 (IMACS)"
+	elseif occursin("161211_sp_IMACS", dirpath)
 		transit = "Transit 3 (IMACS)"
 	end
 	return transit
@@ -89,6 +101,7 @@ begin
 	for dirpath in sort(glob("$(DATA_DIR)/w50_*"))
 		# Read tspec file
 		fpath = "$(dirpath)/transpec.csv"
+		@show dirpath
 		transit = tname(dirpath)
 		cubes[transit] = OrderedDict()
 
@@ -97,11 +110,10 @@ begin
 		)
 
 		# Add wbins for LDSS3C
+		@show fpath
 		if occursin("_sp_LDSS3", fpath)
 			df.Wav_d, df.Wav_u = eachcol(readdlm("data/detrended/wbins/w50_bins_species.dat"; comments=true))
-		end
-		if occursin("_LDSS3", fpath)
-			@show fpath, length(df.Wav_d)
+		elseif occursin("_LDSS3", fpath)
 			df.Wav_d, df.Wav_u = eachcol(readdlm("data/detrended/wbins/w50_bins_LDSS3.dat"; comments=true))
 		end
 
@@ -123,9 +135,6 @@ begin
 
 	cubes = sort(cubes)
 end
-
-# ╔═╡ 96a24af1-1c91-45a9-a8f2-b4761f7f5cba
-df = cubes["Transit 1 (IMACS)"]["tspec"]
 
 # ╔═╡ e58ec082-d654-44e3-bcd4-906fc34171c8
 @mdx """
@@ -154,6 +163,9 @@ df_common_0 = innerjoin(
 @mdx """
 Conversely, we also store which points in the spectrum are not common between all nights. `Transit 2 (LDSS3C)` encompasses the spectra from all other nights, so we `antijoin` relative to this dataset:
 """
+
+# ╔═╡ 51357cde-d3da-4377-8ae0-10e81a9c5c8d
+occursin("_sp", DATA_DIR)
 
 # ╔═╡ 461097e9-a687-4ef2-a5b4-8bf4d9e1c98f
 dfs_unique = (
@@ -426,7 +438,7 @@ end
 # ╔═╡ e9b22d93-1994-4c31-a951-1ab00dc4c102
 function savefig(fig, fpath)
 	mkpath(dirname(fpath))
-    save(fpath, fig)
+    save(fpath, fig, pt_per_unit=1)
 	@info "Saved to: $(fpath)"
 end
 
@@ -611,7 +623,7 @@ begin
 	end
 	
 	suf = basename(dirname(DATA_DIR))
-	savefig(fig, "$(FIG_DIR)/tspec_$(suf).png")
+	savefig(fig, "$(FIG_DIR)/tspec_$(suf).pdf")
 	fig
 end
 
@@ -708,6 +720,7 @@ gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 # ╟─11066667-9da2-4b36-b784-c3515c04a659
 # ╠═cb1b277b-aa92-44de-91ce-88122bc34bb9
 # ╟─acde40fd-8ed4-4175-9a52-13ed91dc5495
+# ╠═51357cde-d3da-4377-8ae0-10e81a9c5c8d
 # ╠═461097e9-a687-4ef2-a5b4-8bf4d9e1c98f
 # ╠═4b9cfc02-5e18-422d-b18e-6301a659561a
 # ╠═45acc116-e585-4ddf-943d-128db7736921
@@ -744,7 +757,7 @@ gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 # ╠═eaed62d7-5733-44b8-bd98-8b0fc4a18fe5
 # ╠═cb02a053-d048-43d9-950a-de3106019520
 # ╟─f8a86915-f7d8-4462-980e-7b8124b13a3f
-# ╟─e9b22d93-1994-4c31-a951-1ab00dc4c102
+# ╠═e9b22d93-1994-4c31-a951-1ab00dc4c102
 # ╠═ef970c0c-d08a-4856-b10b-531bb5e7e53e
 # ╠═6cb26c91-8a7c-4bd3-8978-d0c23105863c
 # ╠═e917bd8d-7f4a-44e4-9eb9-84199dd061f5

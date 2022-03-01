@@ -85,18 +85,6 @@ function tname(dirpath)
 	return transit
 end
 
-# ╔═╡ e72dba55-6a33-462f-aeac-5f62b25cb46a
-# dates_to_names = Dict(
-# 	"131219_IMACS" => "Transit 1 (IMACS)",
-# 	"131219_sp_IMACS" => "Transit 1 (IMACS) sp",
-# 	"150927_IMACS" => "Transit 2 (IMACS)",
-# 	"150927_sp_IMACS" => "Transit 2 (IMACS) sp",
-# 	"150927_LDSS3_flat" => "Transit 2 (LDSS3C)",
-# 	"150927_sp_LDSS3_flat" => "Transit 2 (LDSS3C) sp",
-# 	"161211_IMACS" => "Transit 3 (IMACS)",
-# 	"161211_sp_IMACS" => "Transit 3 (IMACS) sp",
-#  )
-
 # ╔═╡ 579e62da-7ffb-4639-bd73-3826ade1cfa2
 @mdx """
 The data cube is organized by night as follows:
@@ -260,6 +248,7 @@ where ``x`` is a sample from the posterior distribution for the given parameter,
 # ╔═╡ 706f1fb6-2895-48f6-a315-842fbf35da18
 function scale_samples(samples, param, BMA)
 	m_BMA = @subset(BMA, :Parameter .== param)[!, "Combined"][1]
+	#param == "t₀" && (samples .-= 2.45e6)
 	Δx = (samples .- m_BMA.val) ./ m_BMA.err
 	return Δx
 end
@@ -455,7 +444,7 @@ BMA = DataFrame(
 );
 
 # ╔═╡ c7a179a3-9966-452d-b430-a28b2f004bc5
-latextabular(BMA, latex=false) |> PlutoUI.Text
+latextabular(BMA; latex=false) |> PlutoUI.Text
 
 # ╔═╡ 25dd0c88-089b-406b-ac0f-6f21c57fe986
 @with_terminal begin
@@ -542,7 +531,8 @@ function plot_lc!(gl, i, transit, cube; ax_top_kwargs=(), ax_bottom_kwargs=())
 	LC_transit_model = pyconvert(Vector, cube["models"]["LC_transit_model"])
 	LC_det_model_interp = pyconvert(Vector, cube["models"]["LC_det_model_interp"])
 	resids = LC_det - LC_transit_model
-	resids_σ = round(std(resids) * 1e6, digits=5)
+	#resids_σ = round(std(resids) * 1e6, digits=5)
+	resids_σ = round(Int, std(resids) * 1e6)
 	resids .*= 1e6
 
 	color = COLORS[i]
@@ -580,13 +570,13 @@ let
 	fig = Figure(resolution=FIG_LARGE)
 	
 	grid = CartesianIndices((2, 2))
-	xlims = -0.065, 0.065
+	xlims = -0.04, 0.065
 	ax_top_kwargs = (
 		ylabel = "Relative flux",
 		limits = (xlims..., 0.975, 1.005),
 	)
 	ax_bottom_kwargs = (
-		xlabel = "Phase",
+		#xlabel = "Phase",
 		ylabel = "Residuals (ppm)",
 		limits=(xlims..., -3000, 3000),
 	)
@@ -596,12 +586,17 @@ let
 		plot_lc!(gl, i, transit, cube; ax_top_kwargs, ax_bottom_kwargs)
 	end
 	
-	axs = reshape(fig.content, 4, 2)
+	axs = reshape(copy(fig.content), 4, 2)
 	linkxaxes!(axs...)
 	linkyaxes!.(axs[1, 1], axs[3, 1], axs[1, 2], axs[3, 2])
 	linkyaxes!.(axs[2, 1], axs[4, 1], axs[2, 2], axs[4, 2])
 	hidexdecorations!.(axs[2, :])
 	hideydecorations!.(axs[:, 2])
+
+	Label(fig[end+1, 1:2], "Phase";
+		# tellwidth = false,
+		# color = COLORS[2],
+	)
 
 	if occursin("sp", DATA_DIR)
 		savefig(fig, "$(FIG_DIR)/detrended_wlcs_sp.pdf")
@@ -732,14 +727,12 @@ let
 		halign = :left,
 		tellwidth = false,
 		color = COLORS[2],
-		font = AlgebraOfGraphics.firasans("Medium"),
 	)
 	# so hack much rush
 	Label(fig[1, 1], " "^35 * "Transit 2 (LDSS3C)";
 		halign = :left,
 		tellwidth = false,
 		color = COLORS[3],
-		font = AlgebraOfGraphics.firasans("Medium"),
 	)
 
 	hideydecorations!(ax, label=false)
@@ -765,7 +758,6 @@ end
 # ╠═f539e06d-a1b5-413a-b90e-91cb0bbd5a4c
 # ╠═e873f9c6-fd1a-4227-9df1-70c626e4a0a1
 # ╠═415b0bb5-c02d-433c-bd8b-874326fc27bb
-# ╠═e72dba55-6a33-462f-aeac-5f62b25cb46a
 # ╟─579e62da-7ffb-4639-bd73-3826ade1cfa2
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
 # ╟─ae82d3c1-3912-4a5e-85f5-6383af42291e

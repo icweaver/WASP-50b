@@ -31,9 +31,6 @@ begin
 	using PythonCall
 end
 
-# ╔═╡ 501b0cd4-117c-4b6d-a2a1-e26580f7c008
-using JLD2
-
 # ╔═╡ 34ef4580-bb95-11eb-34c1-25893217f422
 @mdx """
 # Reduced data -- LDSS3C
@@ -86,9 +83,6 @@ Each cube (`LC`) can be selected from the following drop-down menu, and will be 
 # ╔═╡ 48713a10-6ba7-4de5-a147-85a9cb136dd8
 @bind FPATH Select(glob("$(DATA_DIR)/ut150927_*/LCs_*.npy"))
 
-# ╔═╡ f420e100-b713-4e2b-9805-c9c9051b76f3
-DATA_DIR
-
 # ╔═╡ 698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 @mdx """
 We next define the mapping between the standard aperture names defined in `stellar` and the target/comparison star names used:
@@ -112,9 +106,6 @@ obj_names = OrderedDict(
 
 	**Add to paper:** "This research has made use of the VizieR catalogue access tool, CDS, Strasbourg, France (DOI: 10.26093/cds/vizier). The original description of the VizieR service was published in A&AS 143, 23"
 """
-
-# ╔═╡ 742fc721-523e-46a3-8b2b-2e3905488c4e
-obj_names["aperture_324_803"]
 
 # ╔═╡ a687fa5d-1d98-4cb4-ae5d-978594d205dd
 @mdx """
@@ -685,31 +676,16 @@ let
 	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:black, 0.25))
 	vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:darkgrey, 0.25))
 	
-	cube_path = "data/reduced_data/cubes/LC_spectra.jld2"
-	if ispath(cube_path)
-		cube = load("data/reduced_data/cubes/LC_spectra.jld2")
-	else
-		cube = OrderedDict()
-	end
-	cube_spectra = OrderedDict()
-	cube_spectra["wav"] = wav
-	cube_spectra["norm"] = [norm]
-	cube_spectra["wbins"] = wbins
-	cube_spectra["spec"] = OrderedDict()
 	for (i, (label, f)) in enumerate(zip(labels, fluxes))
 		μ, σ = spec_plot!(ax, wav, f;
 			color = cName_color[label],
 			norm,
 			label,
 		)
-		cube_spectra["spec"][label] = [μ, σ]
 	end
-	cube[fname_suff] = cube_spectra
-
 	axislegend("Transit 2 (LDSS3C)", halign=:right, gridshalign=:right)
 
 	savefig(fig, "$(FIG_DIR)/extracted_spectra_$(fname_suff).pdf")
-	save(cube_path, sort(cube))
 
 	fig
 end
@@ -730,7 +706,7 @@ function plot_div_WLCS!(axs, t_rel, f; window_width, cNames, n_σ)
 			else
 				c_text = :darkgrey
 			end
-			scatter!(axs[i], t_rel, f[:, z]; markersize=5, color)
+			scatter!(axs[i], t_rel, f[:, z]; markersize=5, color=(color, 0.25))
 			text!(axs[i], "$(cName)";
 				position =(3, 0.98),
 				align = (:right, :center),
@@ -739,11 +715,15 @@ function plot_div_WLCS!(axs, t_rel, f; window_width, cNames, n_σ)
 			)
 			# Used points
 			if cName ∈ use_comps
-				scatter!(axs[i], t_rel[bad_idxs[k]], f[bad_idxs[k], z];
-					marker = '⭘',
-					markersize = 20,
-					linewidth = 3.0,
-					color = COLORS_SERIES[4],
+				# scatter!(axs[i], t_rel[bad_idxs[k]], f[bad_idxs[k], z];
+				# 	marker = '⭘',
+				# 	markersize = 20,
+				# 	linewidth = 3.0,
+				# 	color = COLORS_SERIES[4],
+				# )
+				scatter!(axs[i], t_rel[use_idxs_common], f[use_idxs_common, z];
+					markersize = 5,
+					color,
 				)
 				lines!(axs[i], t_rel, med_models[k];
 					color = COLORS[end-2],
@@ -799,7 +779,7 @@ let
 end
 
 # ╔═╡ 2419e060-f5ab-441b-9ec2-51ce4e57e319
-function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
+function plot_BLCs(t, datas, models, wbins, errs, comp_name; offset=0.3)
 	fig = Figure(resolution=FIG_LARGE)
 	median_prec = round(Int, median(errs))
 
@@ -826,19 +806,19 @@ function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 			eachrow(wbins),
 			errs,
 		)
-		scatter!(ax_left, data, strokewidth=0, markersize=5, color=color)
-		lines!(ax_left, model, linewidth=3, color=0.75*color)
+		scatter!(ax_left, t, data, strokewidth=0, markersize=5, color=color)
+		lines!(ax_left, t, model, linewidth=3, color=0.75*color)
 
-		scatter!(ax_right, baseline + resid, markersize=5, color=color)
-		lines!(ax_right, baseline, linewidth=3, color=0.75*color)
+		scatter!(ax_right, t, baseline + resid, markersize=5, color=color)
+		lines!(ax_right, t, baseline, linewidth=3, color=0.75*color)
 
-		scatter!(ax_right, baseline + resid, markersize=5, color=color)
-		lines!(ax_right, baseline, linewidth=3, color=0.75*color)
+		scatter!(ax_right, t, baseline + resid, markersize=5, color=color)
+		lines!(ax_right, t, baseline, linewidth=3, color=0.75*color)
 		text!(ax_label, "$(wbin[1]) - $(wbin[2]) Å, $(err) ppm";
-			position = (0, baseline[1]),
+			position = (-1.5, baseline[1]),
 			textsize = 16,
 			align = (:left, :center),
-			offset = (-10, 2),
+			offset = (0, 2),
 			color = 0.75*color,
 		)
 	end
@@ -849,7 +829,7 @@ function plot_BLCs(datas, models, wbins, errs, comp_name; offset=0.3)
 	ylims!(ax_left, 0.95, 1.34)
 
 	fig[1:2, 0] = Label(fig, "Relative flux + offset", rotation=π/2)
-	fig[end, 2:3] = Label(fig, "Index")
+	fig[end, 2:3] = Label(fig, "Time from estimated mid-transit (hours)")
 
 	savefig(fig, "$(FIG_DIR)/div_blcs_$(fname_suff)_$(comp_name).pdf")
 
@@ -860,10 +840,12 @@ end
 begin
 	blc_plots = OrderedDict()
 	for comp_idx ∈ use_comps_idxs
+		t = t_rel[use_idxs_common]
 		datas = f_norm_w[:, comp_idx, :]
 		cName = cNames[comp_idx]
 		f_med, _, f_diff = filt(datas, window_width)
 		p = plot_BLCs(
+			t,
 			datas[use_idxs, :],
 			f_med[use_idxs, :],
 			wbins,
@@ -890,12 +872,10 @@ blc_plots[cName]
 # ╠═e1294e56-8103-443b-80e9-118cac36750f
 # ╟─a8e3b170-3fc2-4d12-b117-07bd37d27710
 # ╟─48713a10-6ba7-4de5-a147-85a9cb136dd8
-# ╠═f420e100-b713-4e2b-9805-c9c9051b76f3
 # ╠═01e27cf6-0a1b-4741-828a-ef8bf7037ae9
 # ╟─698ae5b0-7cd3-4055-a13e-e9aa3704ca12
 # ╠═d8236985-9a36-4357-ac78-7eb39dd0f080
 # ╟─b4f4e65b-bd50-4ee2-945f-7c130db21fdf
-# ╠═742fc721-523e-46a3-8b2b-2e3905488c4e
 # ╟─a687fa5d-1d98-4cb4-ae5d-978594d205dd
 # ╠═9341c427-642a-4782-925a-6e07b91277a0
 # ╠═51563b2d-6d0b-4f20-a82e-36b58c3bca8f
@@ -980,8 +960,7 @@ blc_plots[cName]
 # ╠═631c4d02-58cc-4c70-947f-22c8e8b11015
 # ╠═123d0c63-f05a-4a7d-be16-6a3b9abac044
 # ╟─f788835c-8e81-4afe-805e-4caf2d5e5d5b
-# ╟─36c1aa6d-cde9-4ff0-b55c-13f43e94256d
+# ╠═36c1aa6d-cde9-4ff0-b55c-13f43e94256d
 # ╠═2d34e125-548e-41bb-a530-ba212c0ca17c
 # ╠═c911cecd-0747-4cd1-826f-941f2f58091c
 # ╠═f883b759-65fc-466e-9c8f-e4f941def935
-# ╠═501b0cd4-117c-4b6d-a2a1-e26580f7c008

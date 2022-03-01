@@ -342,7 +342,7 @@ let
 		visual(BarPlot)
 	
 	fg = draw(plt;
-		axis = (; limits=(nothing, nothing, 0, 3.5)),
+		axis = (; limits=(nothing, nothing, 0, 2.0)),
 		legend = (
 			position = :top,
 			nbanks = 2,
@@ -354,14 +354,14 @@ let
 		figure = (; resolution=FIG_WIDE),
 	)
 	
-	Label(fg.figure[2, 1], fname_suff;
-		halign = :right,
-		valign = :top,
-		tellwidth = false,
-		tellheight = false,
-		padding = (0, 30, 0, 20),
-		#textsize = 26,
-	)
+	# Label(fg.figure[2, 1], fname_suff;
+	# 	halign = :right,
+	# 	valign = :top,
+	# 	tellwidth = false,
+	# 	tellheight = false,
+	# 	padding = (0, 30, 0, 20),
+	# 	#textsize = 26,
+	# )
 	
 	savefig(fg.figure, "$(FIG_DIR)/evidences_$(fname_suff).png")
 
@@ -377,7 +377,7 @@ let
 		ylabel = "Transit depth (ppm)",
 		#limits = (0.3, 1.1, 17_500, 21_000),
 		#limits = (4_600, 9_800, 15_500, 22_500),
-		limits = (4_600, 9_800, 17_500, 21_500)
+		limits = (4_600, 9_800, 17_000, 22_000)
 	)
 
 	plot_retrieval!(ax, cube, "Na_TiO", "spot", color=COLORS[2])
@@ -396,7 +396,7 @@ let
 			label = "IMACS",
 		)
 	else
-		plot_instr!(ax, "retr_Magellan_IMACS.txt";
+		plot_instr!(ax, "retr_IMACS+LDSS3C.txt";
 			color = :white,
 			label = "IMACS + LDSS3C",
 		)

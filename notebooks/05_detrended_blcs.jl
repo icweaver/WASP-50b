@@ -137,6 +137,7 @@ begin
 
 		# Save
 		transit = name(dirpath, dates_to_names)
+		fpath = "$(dirname(dirpath_WLC))/transpec.csv"
 		cubes[transit] = Dict(
 			"fluxes" => det_BLC_fluxes,
 			"models" => det_BLC_models,
@@ -144,10 +145,17 @@ begin
 			"t₀" => t₀,
 			"P" => P,
 			"tspec" => CSV.read(
-				"$(dirname(dirpath_WLC))/transpec.csv", DataFrame;
+				fpath, DataFrame;
 				normalizenames = true,
 			)
 		)
+		# Add wbins for LDSS3C
+		df = cubes[transit]["tspec"]
+		if occursin("_sp_LDSS3", fpath)
+			df.Wav_d, df.Wav_u = eachcol(readdlm("data/detrended/wbins/w50_bins_species.dat"; comments=true))
+		elseif occursin("_LDSS3", fpath)
+			df.Wav_d, df.Wav_u = eachcol(readdlm("data/detrended/wbins/w50_bins_LDSS3.dat"; comments=true))
+		end
 	end
 
 	cubes = sort(cubes)
@@ -261,7 +269,7 @@ function plot_BLCs(transit, phase, datas, models, errs, wbins; offset=0.3)
 		lines!(ax_right, phase, baseline, linewidth=3, color=0.75*color)
 		
 		text!(ax_label, "$(wbin[1]) - $(wbin[2]) Å, $(err) ppm";
-			position = (-0.06, baseline[1]),
+			position = (-0.03, baseline[1]),
 			textsize = 16,
 			align = (:left, :center),
 			#offset = (-10, 2),
@@ -272,12 +280,12 @@ function plot_BLCs(transit, phase, datas, models, errs, wbins; offset=0.3)
 	hideydecorations!.(axs[:, 2:3], grid=false)
 	hidespines!(axs[end])
 	hidedecorations!(axs[end])
-	xlims!(ax_left, -0.065, 0.065)
+	xlims!(ax_left, -0.04, 0.065)
 	ylims!(ax_left, 0.95, 1.34)
 	linkaxes!(axs...)
 	
 	Label(fig[1:2, 0], "Relative flux + offset", rotation=π/2)
-	Label(fig[end, 2:3], "Index")
+	Label(fig[end, 2:3], "Phase")
 
 	f_suff = basename(dirname(DATA_DIR))
 	savefig(fig, "$(FIG_DIR)/detrended_blcs_$(transit)_$(f_suff).pdf")
