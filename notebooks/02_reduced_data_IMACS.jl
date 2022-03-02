@@ -40,7 +40,7 @@ In this notebook we will examine the stellar spectra, white-light, and wavelengt
 !!! tip "Data download"
 	
 	```
-	rclone sync -P ACCESS_box:WASP-50b/data/reduced_data data/reduced_data
+	rclone sync -P ACCESS_box:WASP-50b/data/reduced data/reduced
 	```
 	
 	* [Direct link](https://app.box.com/s/esq7gbpd7id98vzum1qub7twd4lba6zq)
@@ -129,7 +129,7 @@ Each cube (`LC`) and wavelength binning scheme can be selected from the followin
 # ╔═╡ 3959e46c-87c9-4566-8ab1-f437323f0a9f
 fname_suff = let
 	suff = "IMACS_" * basename(DIRPATH) * "_" * basename(DATA_DIR)
-	occursin("species", FPATH_LC) ? (suff *= "_species") : suff
+	occursin("sp", FPATH_LC) ? (suff *= "_species") : suff
 end
 
 # ╔═╡ 32b9a326-ddc8-4557-bcf5-9dcc54ed83e5
@@ -147,19 +147,19 @@ function tname(dirpath)
 	if occursin("131219_IMACS", dirpath)
 		transit = "Transit 1 (IMACS)"
 	elseif occursin("131219_sp_IMACS", dirpath)
-		transit = "Transit 1 (IMACS) sp"
+		transit = "Transit 1 (IMACS)"
 	elseif occursin("150927_IMACS", dirpath)
 		transit = "Transit 2 (IMACS)"
-	elseif occursin("150927_sp_ IMACS", dirpath)
-		transit = "Transit 2 (IMACS) sp"
+	elseif occursin("150927_sp_IMACS", dirpath)
+		transit = "Transit 2 (IMACS)"
 	elseif occursin("150927_LDSS3", dirpath)
 		transit = "Transit 2 (LDSS3C)"
 	elseif occursin("150927_sp_LDSS3", dirpath)
-		transit = "Transit 2 (LDSS3C) sp"
+		transit = "Transit 2 (LDSS3C)"
 	elseif occursin("161211_IMACS", dirpath)
 		transit = "Transit 3 (IMACS)"
 	elseif occursin("161211_sp_IMACS", dirpath)
-		transit = "Transit 3 (IMACS) sp"
+		transit = "Transit 3 (IMACS)"
 	end
 	return transit
 end
@@ -710,7 +710,7 @@ blc_plots[cName]
 # ╟─3959e46c-87c9-4566-8ab1-f437323f0a9f
 # ╟─32b9a326-ddc8-4557-bcf5-9dcc54ed83e5
 # ╟─ffbc6cc0-e11b-44b4-a6f8-7d61cd7aa1d2
-# ╟─3e2df199-d524-4fa9-8b13-2ddc88acd5d2
+# ╠═3e2df199-d524-4fa9-8b13-2ddc88acd5d2
 # ╠═dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
 # ╠═207a8e79-60f2-426d-866e-e8ddc1798a6c
 # ╠═cb1c4a44-09a8-4fff-8703-2d37647148f0

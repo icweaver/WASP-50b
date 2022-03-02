@@ -226,15 +226,19 @@ begin
 	##############
 	# PLOT CONFIGS
 	##############
-	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (800, 600)
-	const FIG_LARGE = (1_200, 1_000)
+	const FIG_TALL = 72 .* (6, 8)
+	const FIG_WIDE = 72 .* (12, 6)
+	const FIG_LARGE = 72 .* (12, 12)
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
-	const COLORS = let
-		pal = Makie.ColorSchemes.Paired_8 |> reverse
-		[pal[7:8] ; pal[5:6] ; pal[1:2]]
-	end
-	
+	const COLORS = parse.(Makie.Colors.Colorant,
+		[
+			"#66C2A5",  # Green
+			"#FDBF6F",  # Yellow
+			"#FF7F00",  # Orange
+			"#1F78B4",  # Blue
+		]
+	)
+
 	set_aog_theme!()
 	update_theme!(
 		Theme(
@@ -244,23 +248,23 @@ begin
 				topspinevisible = true,
 				rightspinevisible = true,
 				topspinecolor = :darkgrey,
-				rightspinecolor = :darkgrey
+				rightspinecolor = :darkgrey,
 			),
 			Label = (
 				textsize = 18,
-				padding = (0, 10, 0, 0),
-				font = AlgebraOfGraphics.firasans("Medium")
+				font = AlgebraOfGraphics.firasans("Medium"),
 			),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
-			Scatter = (linewidth=10,),
-			Text = (font = AlgebraOfGraphics.firasans("Medium"),),
+			Lines = (linewidth=3,),
+			Scatter = (linewidth=10, strokewidth=0),
+			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=18),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
+			figure_padding = (0, 1.5, 0, 0),
 			fontsize = 18,
 			rowgap = 5,
 			colgap = 5,
 		)
 	)
-	
+
 	COLORS
 end
 
@@ -297,7 +301,7 @@ let
 			ch,
 			coords = coords_IMACS,
 			stepsize,
-			hm_kwargs = (highclip=COLORS[2], colorrange=(0, 200)),
+			hm_kwargs = (highclip=:darkgrey, colorrange=(0, 200)),
 		)
 	end
 
@@ -329,7 +333,7 @@ let
 			ch = j,
 			coords = coords_LDSS3,
 			stepsize,
-			hm_kwargs = (highclip=COLORS[2], colorrange=(0, 200)),
+			hm_kwargs = (highclip=:darkgrey, colorrange=(0, 200)),
 		)
 		Label(fig[1, j], "c$(j)", tellwidth=false)
 		Label(fig[3, j], "c$(j)", tellwidth=false)

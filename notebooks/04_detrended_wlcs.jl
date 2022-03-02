@@ -35,13 +35,6 @@ end
 # ╔═╡ f3a8f6fb-023c-4077-8c73-7502e56eb607
 using StatsBase
 
-# ╔═╡ 25d1284c-7260-4f3a-916a-b2814d2606af
-begin
-	const BASE_DIR = "data/detrended"
-	const FIG_DIR = "figures/detrended"
-	TableOfContents()
-end
-
 # ╔═╡ 506eeeb2-e56d-436b-91b8-605e52201563
 @mdx """
 # Detrended white-light curves
@@ -54,6 +47,13 @@ In this notebook we will visualize the detrended white-light curves from IMACS a
 	```
 	* [Direct link](https://app.box.com/s/wr8tpof238cq8oj71ulaf69z9q0k7f9w)
 """
+
+# ╔═╡ 25d1284c-7260-4f3a-916a-b2814d2606af
+begin
+	const BASE_DIR = "data/detrended"
+	const FIG_DIR = "figures/detrended"
+	TableOfContents()
+end
 
 # ╔═╡ 782806a6-efd2-45a9-b898-788a276c282b
 @mdx """
@@ -139,6 +139,43 @@ end
 We summarize the Bayesian Model Averag (BMA) results for selected parameters for each night below, and average together each parameter from each night, weighted by its maximum uncertainty per night:
 """
 
+# ╔═╡ bbc14e57-57fe-4811-91d4-d07b102cfa5d
+@doc raw"""
+Given a collection of $N$ dependent observations $\boldsymbol x = [x_1, x_2, \dots, x_N]$, the biased-corrected weighted mean estimator $\hat x \equiv \mu^* \pm s_\mathrm{w}$ is given by:
+
+```math
+\begin{align}
+\mu^* &= \sum w_i x_i / \sum w_i\,, \\
+s_\mathrm{w} &= \sqrt{
+    \frac
+    {\sum w_i(x_i - \mu^*)^2}
+    {\sum w_i - \sum w_i^2 / \sum w_i}
+}\,,
+\end{align}
+```
+
+where $\sum$ is taken to be the sum over all indices $i$ for convenience, and $w_i$ is defined to be the inverse variance $w_i \equiv 1/\sigma_i^2$ for each measurement $x_i$. More [here](https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Reliability_weights).
+"""
+function weightedmean2(m; corrected=true)
+	if length(collect(m)) == 1
+		return collect(m)[1] # Convert back to Measurement from skipmissing wrapper
+	end
+	x = value.(m)
+	x_unc = uncertainty.(m)
+	w = @. inv(x_unc^2)
+	# Use AnalyticWeights for bias correction
+	a, b = mean_and_std(x, aweights(w); corrected)
+	return a ± b
+end
+
+# ╔═╡ 25dd0c88-089b-406b-ac0f-6f21c57fe986
+@with_terminal begin
+	map(enumerate(BMA_matrix[:, end])) do (i, x)
+		#println(x.val)
+		println(PARAMS.vals[i], ": ", round(x.val, digits=10))
+	end
+end
+
 # ╔═╡ 22c72eeb-8e32-4d7c-86c8-ab117735769e
 @mdx """
 The standard version we used to use gives relatively errorbars (thanks for bringing this to my attention during my TAC, Dave!) and is also particularly biased for small sample sizes. For these reasons, we have opted for the more sophisticated machinery of [reliability weighting](https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Reliability_weights) going forward.
@@ -186,35 +223,6 @@ end
 
 # ╔═╡ 47278372-b311-4ea7-bfa4-82b8f95c97fa
 import Measurements: value, uncertainty
-
-# ╔═╡ bbc14e57-57fe-4811-91d4-d07b102cfa5d
-@doc raw"""
-Given a collection of $N$ dependent observations $\boldsymbol x = [x_1, x_2, \dots, x_N]$, the biased-corrected weighted mean estimator $\hat x \equiv \mu^* \pm s_\mathrm{w}$ is given by:
-
-```math
-\begin{align}
-\mu^* &= \sum w_i x_i / \sum w_i\,, \\
-s_\mathrm{w} &= \sqrt{
-    \frac
-    {\sum w_i(x_i - \mu^*)^2}
-    {\sum w_i - \sum w_i^2 / \sum w_i}
-}\,,
-\end{align}
-```
-
-where $\sum$ is taken to be the sum over all indices $i$ for convenience, and $w_i$ is defined to be the inverse variance $w_i \equiv 1/\sigma_i^2$ for each measurement $x_i$. More [here](https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Reliability_weights).
-"""
-function weightedmean2(m; corrected=true)
-	if length(collect(m)) == 1
-		return collect(m)[1] # Convert back to Measurement from skipmissing wrapper
-	end
-	x = value.(m)
-	x_unc = uncertainty.(m)
-	w = @. inv(x_unc^2)
-	# Use AnalyticWeights for bias correction
-	a, b = mean_and_std(x, aweights(w); corrected)
-	return a ± b
-end
 
 # ╔═╡ 7cbadc33-5b32-4816-8092-09054c64073f
 function weightedmean3(m)
@@ -445,14 +453,6 @@ BMA = DataFrame(
 
 # ╔═╡ c7a179a3-9966-452d-b430-a28b2f004bc5
 latextabular(BMA; latex=false) |> PlutoUI.Text
-
-# ╔═╡ 25dd0c88-089b-406b-ac0f-6f21c57fe986
-@with_terminal begin
-	map(enumerate(BMA_matrix[:, end])) do (i, x)
-		#println(x.val)
-		println(PARAMS.vals[i], ": ", round(x.val, digits=10))
-	end
-end
 
 # ╔═╡ 56d0de38-5639-4196-aafe-79a9ab933980
 begin

@@ -46,8 +46,8 @@ In this notebook we will examine the stellar spectra, white-light, and wavelengt
 
 # ╔═╡ e1294e56-8103-443b-80e9-118cac36750f
 begin
-	const DATA_DIR = "data/reduced_data/LDSS3C"
-	const FIG_DIR = "figures/reduced_data"
+	const DATA_DIR = "data/reduced/LDSS3C"
+	const FIG_DIR = "figures/reduced"
 	TableOfContents()
 end
 
@@ -519,9 +519,6 @@ end;
 	println(length(bad_idxs_common))
 end
 
-# ╔═╡ 3e7b0a0b-1ee9-4436-935e-c4ced50620ba
-size(f_div_WLC_norm, 1) - length(bad_idxs)
-
 # ╔═╡ bb186edb-bf2e-4984-9a35-d9f373d9d3d5
 use_idxs = deleteat!(collect(1:size(f_div_wlc, 1)), bad_idxs_common)
 
@@ -634,7 +631,7 @@ begin
 				font = AlgebraOfGraphics.firasans("Medium"),
 			),
 			Lines = (linewidth=3,),
-			Scatter = (linewidth=10,),
+			Scatter = (linewidth=10, strokewidth=0),
 			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=18),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
 			figure_padding = (0, 1.5, 0, 0),
@@ -689,9 +686,6 @@ let
 
 	fig
 end
-
-# ╔═╡ 7208b284-4eb3-44e3-bd8c-206a31bb362b
-FIG_WIDE
 
 # ╔═╡ cbcb7cb7-4ada-4c5b-94ae-b33b779d580f
 function plot_div_WLCS!(axs, t_rel, f; window_width, cNames, n_σ)
@@ -907,8 +901,6 @@ blc_plots[cName]
 # ╠═cd10cbf3-22f4-46cd-8345-cec3d141e3ca
 # ╠═83263daf-a902-4414-850b-aa6949752fbb
 # ╠═4f71ba8d-bfa0-4adc-8d82-cd3bca8b6c14
-# ╠═3e7b0a0b-1ee9-4436-935e-c4ced50620ba
-# ╠═7208b284-4eb3-44e3-bd8c-206a31bb362b
 # ╠═d386b581-a885-4461-9087-055269e77005
 # ╠═1bb71101-adc8-4e9b-9354-d7411b131920
 # ╠═8225c739-f825-43d7-9fd5-064506c619b5
@@ -960,7 +952,7 @@ blc_plots[cName]
 # ╠═631c4d02-58cc-4c70-947f-22c8e8b11015
 # ╠═123d0c63-f05a-4a7d-be16-6a3b9abac044
 # ╟─f788835c-8e81-4afe-805e-4caf2d5e5d5b
-# ╠═36c1aa6d-cde9-4ff0-b55c-13f43e94256d
+# ╟─36c1aa6d-cde9-4ff0-b55c-13f43e94256d
 # ╠═2d34e125-548e-41bb-a530-ba212c0ca17c
 # ╠═c911cecd-0747-4cd1-826f-941f2f58091c
 # ╠═f883b759-65fc-466e-9c8f-e4f941def935
