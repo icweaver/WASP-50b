@@ -516,7 +516,7 @@ begin
 	# PLOT CONFIGS
 	##############
 	const FIG_TALL = 72 .* (6, 8)
-	const FIG_WIDE = 72 .* (8, 5)
+	const FIG_WIDE = 72 .* (12, 6)
 	const FIG_LARGE = 72 .* (12, 12)
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
@@ -547,7 +547,7 @@ begin
 			Scatter = (linewidth=10,),
 			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=18),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
-			figure_padding = 1.5,
+			figure_padding = (0, 1.5, 0, 0),
 			fontsize = 18,
 			rowgap = 5,
 			colgap = 5,

@@ -221,6 +221,13 @@ latextabular(df_wbins, latex=false) |> PlutoUI.Text
 ## Notebook setup 🔧
 """
 
+# ╔═╡ b44b6591-d57b-40bd-810c-a41386412b6c
+function savefig(fig, fpath)
+	mkpath(dirname(fpath))
+    save(fpath, fig, pt_per_unit=1)
+	@info "Saved to: $(fpath)"
+end
+
 # ╔═╡ db4a4cd8-c5e8-4124-935f-0666f6e73fe2
 begin
 	##############
@@ -268,16 +275,9 @@ begin
 	COLORS
 end
 
-# ╔═╡ b44b6591-d57b-40bd-810c-a41386412b6c
-function savefig(fig, fpath; save_kwargs=())
-	mkpath(dirname(fpath))
-    save(fpath, fig; save_kwargs...)
-	@info "Saved to: $(fpath)"
-end
-
 # ╔═╡ 3a6ab0c0-ba08-4151-9646-c19d45749b9f
 let
-	fig = Figure(resolution = FIG_WIDE)
+	fig = Figure(resolution = FIG_LARGE)
 	hm = nothing
 	stepsize = 1
 	grid = CartesianIndices((2, 4))
@@ -322,7 +322,7 @@ end
 
 # ╔═╡ 71ba9181-90e4-4d12-97c0-462b3f1df077
 let
-	fig = Figure(resolution = FIG_WIDE)
+	fig = Figure(resolution = FIG_LARGE)
 	stepsize = 1
 	hm = nothing
 	for j ∈ 1:2
@@ -384,6 +384,6 @@ end
 # ╠═f2ccf230-f2ac-43c2-b313-8821ef69a1e7
 # ╠═0d2476b1-2864-4bfc-ac37-f771aab77368
 # ╟─4480ae72-3bb2-4e17-99be-28afc756332a
-# ╠═db4a4cd8-c5e8-4124-935f-0666f6e73fe2
 # ╟─b44b6591-d57b-40bd-810c-a41386412b6c
+# ╠═db4a4cd8-c5e8-4124-935f-0666f6e73fe2
 # ╠═3433ed02-c27c-4fe5-bfda-a5108a58407c

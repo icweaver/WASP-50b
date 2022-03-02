@@ -29,6 +29,13 @@ begin
 	using Dates, NaturalSort
 end
 
+# ╔═╡ 6c6741b8-eeb1-4c1e-8d22-40d08df00ced
+begin
+	const BASE_DIR = "data/detrended"
+	const FIG_DIR = "figures/detrended"
+	TableOfContents()
+end
+
 # ╔═╡ ebef52bc-2acf-4cf8-aca7-90cd6684c061
 @mdx """
 # Detrended binned light curves
@@ -43,13 +50,6 @@ In this notebook we will plot the detrended binned light curves for all nights.
 	* [Direct link](https://app.box.com/s/wr8tpof238cq8oj71ulaf69z9q0k7f9w)
 """
 
-# ╔═╡ 6c6741b8-eeb1-4c1e-8d22-40d08df00ced
-begin
-	const BASE_DIR = "data/detrended"
-	const FIG_DIR = "figures/detrended"
-	TableOfContents()
-end
-
 # ╔═╡ 0158a760-1229-4089-bf90-7c7b2f1f548a
 @mdx """
 ## Load data ⬇️
@@ -60,18 +60,8 @@ First, let's load the relevant data needed for this notebook:
 # ╔═╡ 4b09c729-3395-4cee-bb69-bab59390845c
 @bind DATA_DIR Select(glob("$(BASE_DIR)/out_*/WASP50"))
 
-# ╔═╡ 3b2f1b26-075f-4578-90c2-8b3f64ffd8f6
-# df = let
-# 	fpath = "/home/mango/Desktop/detrended_lc.dat"
-# 	CSV.read(fpath, DataFrame;
-# 				header=["Time", "DetFlux", "DetFluxErr", "Model"],
-# 				comment = "#",
-# 				select=[:DetFlux, :Model],
-# 			)
-# end
-
-# ╔═╡ eed232c3-90cb-4b7a-a216-8c2934f12de8
-# scatter(df.DetFlux)
+# ╔═╡ 141a652d-0d43-4ebc-9a8c-ac43f31e7831
+fname_suff = (basename ∘ dirname)(DATA_DIR)
 
 # ╔═╡ 737c135a-7412-4b87-a718-642472d4bf4b
 function name(dirpath, dates_to_names)
@@ -185,7 +175,7 @@ end
 # ╔═╡ c59e2697-d2a3-4bdb-ba64-059246697c1c
 function savefig(fig, fpath)
 	mkpath(dirname(fpath))
-    save(fpath, fig)
+    save(fpath, fig, pt_per_unit=1)
 	@info "Saved to: $(fpath)"
 end
 
@@ -195,7 +185,7 @@ begin
 	# PLOT CONFIGS
 	##############
 	const FIG_TALL = 72 .* (6, 8)
-	const FIG_WIDE = 72 .* (8, 5)
+	const FIG_WIDE = 72 .* (12, 6)
 	const FIG_LARGE = 72 .* (12, 12)
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
@@ -226,7 +216,7 @@ begin
 			Scatter = (linewidth=10,),
 			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=18),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
-			figure_padding = 1.5,
+			figure_padding = (0, 1.5, 0, 0),
 			fontsize = 18,
 			rowgap = 5,
 			colgap = 5,
@@ -287,8 +277,7 @@ function plot_BLCs(transit, phase, datas, models, errs, wbins; offset=0.3)
 	Label(fig[1:2, 0], "Relative flux + offset", rotation=π/2)
 	Label(fig[end, 2:3], "Phase")
 
-	f_suff = basename(dirname(DATA_DIR))
-	savefig(fig, "$(FIG_DIR)/detrended_blcs_$(transit)_$(f_suff).pdf")
+	savefig(fig, "$(FIG_DIR)/detrended_blcs_$(transit)_$(fname_suff).pdf")
 	
 	fig
 end
@@ -324,8 +313,7 @@ blc_plots[transit]
 # ╟─0158a760-1229-4089-bf90-7c7b2f1f548a
 # ╟─4b09c729-3395-4cee-bb69-bab59390845c
 # ╠═100af59b-3a24-41d0-9cda-05592bd1778f
-# ╠═3b2f1b26-075f-4578-90c2-8b3f64ffd8f6
-# ╠═eed232c3-90cb-4b7a-a216-8c2934f12de8
+# ╠═141a652d-0d43-4ebc-9a8c-ac43f31e7831
 # ╠═737c135a-7412-4b87-a718-642472d4bf4b
 # ╠═f3e9100a-ec8e-425f-9081-e457ad9b1515
 # ╟─efb8ed46-1607-4c13-b1ba-e4ca37e59b98

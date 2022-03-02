@@ -191,7 +191,7 @@ end
 # ╔═╡ eab74923-a084-468c-9b0d-c2cc98a23913
 function savefig(fig, fpath)
 	mkpath(dirname(fpath))
-    save(fpath, fig)
+    save(fpath, fig, pt_per_unit=1)
 	@info "Saved to: $(fpath)"
 end
 
@@ -455,7 +455,7 @@ body.disable_ui main {
 # ╠═db524678-9ee2-4934-b1bb-6a2f13bf0fa6
 # ╠═cc011a66-37bd-4543-9a58-b11e1f785e52
 # ╟─1eff1230-2423-4ac3-8e9b-f4e7bcd0121b
-# ╟─eab74923-a084-468c-9b0d-c2cc98a23913
+# ╠═eab74923-a084-468c-9b0d-c2cc98a23913
 # ╠═44b3b8cd-4b83-4b27-a948-d1230489552f
 # ╠═e43f1834-73dd-4859-b847-f4c552561897
 # ╠═239a91a6-f68a-11eb-14fd-0ba8d08b08f9

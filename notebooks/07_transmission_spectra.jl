@@ -59,6 +59,9 @@ First let's load up all of the data, including the white-light transit depths fr
 # ╔═╡ c53be9cf-7722-4b43-928a-33e7b0463330
 @bind DATA_DIR Select(glob("$(BASE_DIR)/out_*/WASP50"))
 
+# ╔═╡ 288a19bf-77d1-43b8-b12d-05513190072a
+fname_suff = (basename ∘ dirname)(DATA_DIR)
+
 # ╔═╡ 96a24af1-1c91-45a9-a8f2-b4761f7f5cba
 # df = cubes["Transit 1 (IMACS) sp"]["tspec"]
 
@@ -73,7 +76,6 @@ maxmeasure(x, x_u, x_d) = x ± mean((x_u, x_d))
 
 # ╔═╡ 09d21338-91ef-4991-8e15-df33d720cb97
 function tname(dirpath)
-	@info dirpath
 	if occursin("131219_IMACS", dirpath)
 		transit = "Transit 1 (IMACS)"
 	elseif occursin("131219_sp_IMACS", dirpath)
@@ -101,7 +103,6 @@ begin
 	for dirpath in sort(glob("$(DATA_DIR)/w50_*"))
 		# Read tspec file
 		fpath = "$(dirpath)/transpec.csv"
-		@show dirpath
 		transit = tname(dirpath)
 		cubes[transit] = OrderedDict()
 
@@ -356,6 +357,20 @@ avg_prec_IMACS = getproperty.(df_IMACS[!, :Combined], :err) |> median
 # ╔═╡ b6fa6c00-14cf-47af-9593-c70514373db5
 avg_prec_LDSS3 = getproperty.(df_LDSS3[!, :Combined], :err) |> median
 
+# ╔═╡ 3af0d3b0-c698-4845-a74e-c7186b03a721
+let
+    #f = "$(DATA_DIR)/tspec_w50_IMACS.csv"
+	#CSV.write(f,
+	#	create_df(df_IMACS; instrument="Magellan/IMACS")
+	#)
+	#@info "Saved to $(f)"
+	#f = "$(DATA_DIR)/tspec_w50_LDSS3.csv"
+	#CSV.write(f,
+	#	create_df(df_LDSS3; instrument="Clay/LDSS3C")
+	#)
+	#@info "Saved to $(f)"
+end
+
 # ╔═╡ 27811c9d-1ee5-49ca-bf09-04dc75dd66be
 @mdx """
 ## A closer look at Transit 2 🔎
@@ -379,6 +394,16 @@ wbins_LDSS3
 
 Finally, we save the final combined transmission spectrum to file for our retrieval analysis, along with planet/star parameters computed from the WLC fits:
 """
+
+# ╔═╡ 5718672b-1bc6-4676-8703-5fc06b83f0f9
+let
+    #f = "$(DATA_DIR)/tspec_w50_all.csv"
+	#CSV.write(f, create_df(df_tspecs; instrument="IMACS+LDSS3C"))
+	#@info "Saved to $(f)"
+	#f = "$(DATA_DIR)/tspec_w50.csv"
+	#CSV.write(f, create_df(df_common; instrument="IMACS+LDSS3C"))
+	#@info "Saved to $(f)"
+end
 
 # ╔═╡ 9141dba4-4c11-404d-b18a-b22f3466caba
 Rₛ = 0.873u"Rsun"
@@ -405,30 +430,6 @@ function create_df(df; instrument="add_instrument")
 	end
 end
 
-# ╔═╡ 3af0d3b0-c698-4845-a74e-c7186b03a721
-let
-    #f = "$(DATA_DIR)/tspec_w50_IMACS.csv"
-	#CSV.write(f,
-	#	create_df(df_IMACS; instrument="Magellan/IMACS")
-	#)
-	#@info "Saved to $(f)"
-	#f = "$(DATA_DIR)/tspec_w50_LDSS3.csv"
-	#CSV.write(f,
-	#	create_df(df_LDSS3; instrument="Clay/LDSS3C")
-	#)
-	#@info "Saved to $(f)"
-end
-
-# ╔═╡ 5718672b-1bc6-4676-8703-5fc06b83f0f9
-let
-    #f = "$(DATA_DIR)/tspec_w50_all.csv"
-	#CSV.write(f, create_df(df_tspecs; instrument="IMACS+LDSS3C"))
-	#@info "Saved to $(f)"
-	#f = "$(DATA_DIR)/tspec_w50.csv"
-	#CSV.write(f, create_df(df_common; instrument="IMACS+LDSS3C"))
-	#@info "Saved to $(f)"
-end
-
 # ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
 @mdx """
 ## Notebook setup 🔧
@@ -452,7 +453,9 @@ let
 	)
 
 	# Overplot lines
-	vspan!(ax, wbins_LDSS3_odd[:, 1], wbins_LDSS3_odd[:, 2], color=(:darkgrey, 0.25))
+	#vspan!(ax, wbins_LDSS3_odd[:, 1], wbins_LDSS3_odd[:, 2], color=(:darkgrey, 0.25))
+	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
+	vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:black, 0.25))
 	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
 	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
 	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
@@ -496,9 +499,9 @@ begin
 	##############
 	# PLOT CONFIGS
 	##############
-	const FIG_TALL = (900, 1_200)
-	const FIG_WIDE = (800, 600)
-	const FIG_LARGE = (1_200, 1_000)
+	const FIG_TALL = 72 .* (6, 8)
+	const FIG_WIDE = 72 .* (12, 6)
+	const FIG_LARGE = 72 .* (12, 12)
 	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
@@ -508,7 +511,7 @@ begin
 			"#1F78B4",  # Blue
 		]
 	)
-	
+
 	set_aog_theme!()
 	update_theme!(
 		Theme(
@@ -518,25 +521,24 @@ begin
 				topspinevisible = true,
 				rightspinevisible = true,
 				topspinecolor = :darkgrey,
-				rightspinecolor = :darkgrey
+				rightspinecolor = :darkgrey,
 			),
 			Label = (
 				textsize = 18,
-				padding = (0, 10, 0, 0),
-				font = AlgebraOfGraphics.firasans("Medium")
+				font = AlgebraOfGraphics.firasans("Medium"),
 			),
-			Lines = (linewidth=3, cycle=Cycle([:color, :linestyle], covary=true)),
+			Lines = (linewidth=3,),
 			Scatter = (linewidth=10,),
-			Text = (font = AlgebraOfGraphics.firasans("Medium"),),
+			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=18),
 			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
+			figure_padding = (0, 1.5, 0, 0),
 			fontsize = 18,
 			rowgap = 5,
 			colgap = 5,
 		)
 	)
-	
-	COLORS
 
+	COLORS
 end
 
 # ╔═╡ 8c077881-fc5f-4fad-8497-1cb6106c6ed5
@@ -580,6 +582,17 @@ begin
 		ax_K = Axis(fig[1, 2], limits=(7_652, 7_712, nothing, nothing))
 		ax_Na8200 = Axis(fig[1, 3], limits=(8_069, 8_309, nothing, nothing))
 
+		# Overplot lines
+		for ax ∈ (ax_NaD, ax_K, ax_Na8200)
+			#vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
+			vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
+		vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:black, 0.25))
+			vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
+			hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
+			hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
+			mean_wlc_depth.val - mean_wlc_depth.err), linestyle=:dash, color=:grey)
+		end
+
 		elems = [
 			[MarkerElement(marker=:circle, markersize=20, color=COLORS[i])
 				for i in 1:4];
@@ -612,7 +625,9 @@ begin
 	else
 		ax = Axis(fig[1, 1]; limits=(4_600, 9_800, 15_500, 22_500))
 		# Overplot lines
+		#vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
 		vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
+		vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:black, 0.25))
 		vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
 		hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
 		hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
@@ -621,8 +636,7 @@ begin
 		axislegend(orientation=:horizontal, valign=:top, labelsize=16)
 	end
 	
-	suf = basename(dirname(DATA_DIR))
-	savefig(fig, "$(FIG_DIR)/tspec_$(suf).pdf")
+	savefig(fig, "$(FIG_DIR)/tspec_$(fname_suff).pdf")
 	fig
 end
 
@@ -637,7 +651,9 @@ let
 	)
 
 	# Overplot lines
+	#vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
 	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
+	vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:black, 0.25))
 	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
 	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
 	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
@@ -705,8 +721,9 @@ gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 # ╟─e8b8a0c9-0030-40f2-84e9-7fca3c5ef100
 # ╠═209dae9c-4c14-4a02-bec9-36407bf1426f
 # ╟─0c752bd5-5232-4e82-b519-5ca23fff8a52
-# ╠═c53be9cf-7722-4b43-928a-33e7b0463330
+# ╟─c53be9cf-7722-4b43-928a-33e7b0463330
 # ╠═5c4fcb25-9a26-43f1-838b-338b33fb9ee6
+# ╠═288a19bf-77d1-43b8-b12d-05513190072a
 # ╠═96a24af1-1c91-45a9-a8f2-b4761f7f5cba
 # ╠═1decb49e-a875-412c-938f-74b4fa0e2e85
 # ╠═b8abb240-65d6-4358-bd95-955be047371a

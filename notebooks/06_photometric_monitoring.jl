@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.0
+# v0.18.1
 
 using Markdown
 using InteractiveUtils
@@ -408,6 +408,12 @@ end
 # ╔═╡ 1955e266-eb55-46da-890b-08cc6fc7dfc4
 @py import matplotlib.pyplot as plt
 
+# ╔═╡ f73ee0a5-1b75-40bc-ba28-855601651fdc
+lc_binned = lcs_oot[1].bin(bins=200)
+
+# ╔═╡ 4884b82d-10cc-4cf1-a57f-02eb4c6478cc
+lcs_oot[1].bin(bins=200)
+
 # ╔═╡ 3128e57f-df4f-4811-b867-8a293d7d536d
 function compute_pgram_model(lc, P)
 	lc = to_PyPandas(lc)
@@ -725,6 +731,8 @@ body.disable_ui main {
 # ╠═1955e266-eb55-46da-890b-08cc6fc7dfc4
 # ╠═49bcddbe-d413-48ae-91d8-92bcebf40518
 # ╠═97ced6ba-ff74-46b4-90d5-18e7b2f1b903
+# ╠═f73ee0a5-1b75-40bc-ba28-855601651fdc
+# ╠═4884b82d-10cc-4cf1-a57f-02eb4c6478cc
 # ╠═3128e57f-df4f-4811-b867-8a293d7d536d
 # ╟─056281a2-4786-45eb-a9fa-57515153f66c
 # ╠═3a612743-7071-4d85-a48d-0a4b12facffc
@@ -742,7 +750,7 @@ body.disable_ui main {
 # ╟─18223d42-66d8-40d1-9d89-be8af46853e2
 # ╠═682c3732-e68f-4fdb-bd63-553223308364
 # ╟─ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd
-# ╠═79acbb60-803a-4047-b26d-1cf6262274a0
+# ╟─79acbb60-803a-4047-b26d-1cf6262274a0
 # ╠═9e2ce576-c9bd-11eb-0699-47af13e79589
 # ╠═55beac98-0929-4a55-91f7-cee7c781498c
 # ╟─01bfe0ad-3cb9-42f0-9d72-3deef3969d05
