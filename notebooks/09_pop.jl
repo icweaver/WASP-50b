@@ -26,6 +26,15 @@ end
 # ╔═╡ 37f534d2-5f10-44a0-b332-b0004ac9028e
 using PrettyTables
 
+# ╔═╡ 7480158a-04b7-45ee-9c2a-1bd28561579f
+HTML("Ram&oacute;n-Fox")
+
+# ╔═╡ b421b799-6d94-4e7d-985c-3633c6496173
+
+
+# ╔═╡ fffb1256-6d88-409e-8a09-39691f9c1d3a
+
+
 # ╔═╡ 7493bb13-ee41-4798-99f6-dc1df97bd624
 begin
 	const DATA_DIR = "data/pop"
@@ -371,6 +380,9 @@ compute_Tₚ(Tₛ, aRₛ; α=0.0) = Tₛ * (1.0 - α)^(1//4) * (0.5/aRₛ)^(1//2
 ## Split 'em up
 """
 
+# ╔═╡ db2756b4-7de2-436d-9e60-94fef1ed23eb
+println()
+
 # ╔═╡ c7eabcc6-5139-448d-abdb-ec752788bd59
 strip_u(u) = x -> ustrip(u, x)
 
@@ -576,11 +588,8 @@ latextabular(df_HGHJ_paper, latex=false) |> PlutoUI.Text
 # ╔═╡ 00fe5763-64d6-4f95-84db-24a55b7d98b0
 df = df_HGHJ_paper[end, [begin, end]]
 
-# ╔═╡ d19fadc0-392e-40a6-9967-3f0e5d1cc643
-@with_terminal(println(df))
-
 # ╔═╡ 58c5ebbc-54c2-456d-b868-c302280ca800
-pretty_table(df_HGHJ_paper; backend=:latex)
+pretty_table(df_HGHJ_paper[1:3, :]; backend=:html)
 
 # ╔═╡ d6449d05-ee95-4bda-8636-37c71e422944
 df_wakeford = let
@@ -794,6 +803,9 @@ end
 
 # ╔═╡ Cell order:
 # ╟─cd13d7f3-0ea3-4631-afd9-5f3e359000e6
+# ╠═7480158a-04b7-45ee-9c2a-1bd28561579f
+# ╠═b421b799-6d94-4e7d-985c-3633c6496173
+# ╠═fffb1256-6d88-409e-8a09-39691f9c1d3a
 # ╠═7493bb13-ee41-4798-99f6-dc1df97bd624
 # ╟─6b06701b-05e2-4284-a308-e9edeb65a648
 # ╠═f396cda3-f535-4ad9-b771-7ccbd45c54f3
@@ -835,9 +847,9 @@ end
 # ╠═b544082d-d093-462d-b98a-39e68468efe5
 # ╠═893c4a44-f9f6-4185-bd1e-26095339bddc
 # ╠═00fe5763-64d6-4f95-84db-24a55b7d98b0
-# ╠═d19fadc0-392e-40a6-9967-3f0e5d1cc643
 # ╠═58c5ebbc-54c2-456d-b868-c302280ca800
 # ╠═37f534d2-5f10-44a0-b332-b0004ac9028e
+# ╠═db2756b4-7de2-436d-9e60-94fef1ed23eb
 # ╠═d6449d05-ee95-4bda-8636-37c71e422944
 # ╠═c7eabcc6-5139-448d-abdb-ec752788bd59
 # ╠═e0365154-d6c8-4db2-bb85-bf2536a3aa74

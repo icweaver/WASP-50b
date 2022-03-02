@@ -38,16 +38,76 @@ end
 In this notebook we will examine the stellar spectra, white-light, and wavelength binned light curves from the raw flux extracted from IMACS.
 
 !!! tip "Data download"
+	
 	```
 	rclone sync -P ACCESS_box:WASP-50b/data/reduced_data data/reduced_data
 	```
+	
 	* [Direct link](https://app.box.com/s/esq7gbpd7id98vzum1qub7twd4lba6zq)
+
+	Outline:
+	```
+	reduced/
+	├── [4.0K]  IMACS/
+	│   └── [4.0K]  out_b/
+	│       ├── [4.0K]  ut131219/
+	│       │   └── [172M]  w50_131219_IMACS.pkl
+	│       ├── [4.0K]  ut150927/
+	│       │   └── [245M]  w50_150927_IMACS.pkl
+	│       └── [4.0K]  ut161211/
+	│           └── [199M]  w50_161211_IMACS.pkl
+	├── [4.0K]  LDSS3C/
+	│   ├── [3.2K]  catalog.tsv
+	│   ├── [246K]  genericfinderchart.pdf
+	│   ├── [4.0K]  LDSS3C_template/
+	│   │   └── [4.0K]  WASP50/
+	│   │       ├── [4.0K]  w50_150927_LDSS3_flat/
+	│   │       │   ├── [ 27K]  eparams.dat
+	│   │       │   ├── [4.0K]  wavelength/
+	│   │       │   │   ├── [4.0K]  wbin0/
+	│   │       │   │   │   ├── [ 17K]  comps.dat
+	│   │       │   │   │   └── [ 13K]  lc.dat
+	│   │       │   │   ├── [4.0K]  ⋅ ⋅ ⋅
+	│   │       │   │   └── [4.0K]  wbin19/
+	│   │       │   │       ├── [ 17K]  comps.dat
+	│   │       │   │       └── [ 13K]  lc.dat
+	│   │       │   └── [4.0K]  white-light/
+	│   │       │       ├── [ 17K]  comps.dat
+	│   │       │       └── [ 13K]  lc.dat
+	│   │       └── [4.0K]  w50_150927_sp_LDSS3_flat/
+	│   │           ├── [ 26K]  eparams.dat
+	│   │           ├── [4.0K]  wavelength/
+	│   │           │   ├── [4.0K]  wbin0/
+	│   │           │   │   ├── [ 17K]  comps.dat
+	│   │           │   │   └── [ 13K]  lc.dat
+	│   │           │   ├── [4.0K]  wbin1/
+	│   │           │   │   ├── [ 17K]  comps.dat
+	│   │           │   │   └── [ 13K]  lc.dat
+	│   │           │   ├── [4.0K]  ⋅ ⋅ ⋅
+	│   │           │   └── [4.0K]  wbin14/
+	│   │           │       ├── [ 17K]  comps.dat
+	│   │           │       └── [ 13K]  lc.dat
+	│   │           └── [4.0K]  white-light/
+	│   │               ├── [ 17K]  comps.dat
+	│   │               └── [ 13K]  lc.dat
+	│   ├── [ 104]  targets.tsv
+	│   ├── [4.0K]  ut150927_flat/
+	│   │   ├── [122M]  LCs_ut150927.npy
+	│   │   └── [412K]  specshifts.npy
+	│   ├── [ 53K]  wasp50ls_mask.jpeg
+	│   └── [1.1K]  wasp50ls.SMF
+	└── [4.0K]  wbins/
+	    ├── [ 288]  w50_bins.dat
+	    ├── [ 302]  w50_bins_LDSS3.dat
+	    ├── [ 225]  w50_bins_species.dat
+	    └── [ 344]  w50_bins_ut131219.dat
+	```
 """
 
 # ╔═╡ 0d766fde-8e6f-4a88-94df-49747d7c03fa
 begin
-	const DATA_DIR = "data/reduced_data/IMACS/out_b"
-	const FIG_DIR = "figures/reduced_data"
+	const DATA_DIR = "data/reduced/IMACS/out_b"
+	const FIG_DIR = "figures/reduced"
 	TableOfContents()
 end
 

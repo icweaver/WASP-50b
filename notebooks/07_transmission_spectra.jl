@@ -110,7 +110,6 @@ begin
 		)
 
 		# Add wbins for LDSS3C
-		@show fpath
 		if occursin("_sp_LDSS3", fpath)
 			df.Wav_d, df.Wav_u = eachcol(readdlm("data/detrended/wbins/w50_bins_species.dat"; comments=true))
 		elseif occursin("_LDSS3", fpath)

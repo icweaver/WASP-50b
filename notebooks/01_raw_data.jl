@@ -29,8 +29,8 @@ end
 
 # ╔═╡ d8019fa7-380d-4f40-9e08-420a32c34483
 begin
-	const DATA_DIR = "data/raw_data"
-	const FIG_DIR = "figures/raw_data"
+	const DATA_DIR = "data/raw"
+	const FIG_DIR = "figures/raw"
 	TableOfContents()
 end
 
@@ -47,6 +47,38 @@ For each fits files (1 per chip), we extract the region of each chip dedicated t
 	rclone sync -P ACCESS_box:WASP-50b/$(DATA_DIR) $(DATA_DIR)
 	```
 	* [Direct link](https://app.box.com/s/yfa96kreb67mjmvqretpsdr5s5u5xskr)
+
+	Outline:
+	```
+	raw/
+	├── [4.1k]  IMACS/
+	│   ├── [4.1k]  ut131219/
+	│   │   ├── [4.6M]  ift0026c1.fits
+	│   │   ├── [4.6M]  ⋅ ⋅ ⋅
+	│   │   ├── [4.6M]  ift0026c8.fits
+	│   │   └── [ 510]  WASP50.coords
+	│   ├── [4.1k]  ut150927/
+	│   │   ├── [4.6M]  ift0543c1.fits
+	│   │   ├── [4.6M]  ⋅ ⋅ ⋅
+	│   │   ├── [4.6M]  ift0543c8.fits
+	│   │   └── [ 413]  WASP50.coords
+	│   └── [4.1k]  ut161211/
+	│       ├── [4.6M]  ift0046c1.fits
+	│       ├── [4.6M]  ⋅ ⋅ ⋅
+	│       ├── [4.6M]  ift0046c8.fits
+	│       └── [ 391]  WASP50.coords
+	├── [4.1k]  LDSS3C/
+	│   └── [4.1k]  ut150927/
+	│       ├── [2.8M]  ccd0606c1.fits
+	│       ├── [2.8M]  ccd0606c2.fits
+	│       └── [1.6k]  LDSS3.150927e.txt
+	├── [3.2k]  wasp50s.SMF*
+	└── [4.1k]  wbins/
+	    ├── [ 326]  w50_bins.dat
+	    ├── [ 342]  w50_bins_LDSS3.dat
+	    ├── [ 247]  w50_bins_species.dat
+	    └── [ 390]  w50_bins_ut131219.dat
+	```
 """
 
 # ╔═╡ 90845d70-35d9-402d-8936-74936b069577
