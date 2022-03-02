@@ -38,10 +38,72 @@ end
 In this notebook we will examine the stellar spectra, white-light, and wavelength binned light curves from the raw flux extracted from LDSS3C.
 
 !!! tip "Data download"
+	
 	```
-	rclone sync -P ACCESS_box:WASP-50b/data/reduced_data data/reduced_data
+	rclone sync -P ACCESS_box:WASP-50b/data/reduced data/reduced
+	
 	```
+	
 	* [Direct link](https://app.box.com/s/esq7gbpd7id98vzum1qub7twd4lba6zq)
+
+	Outline:
+	
+	```
+	reduced/
+	├── [4.0K]  IMACS/
+	│   └── [4.0K]  out_b/
+	│       ├── [4.0K]  ut131219/
+	│       │   └── [172M]  w50_131219_IMACS.pkl
+	│       ├── [4.0K]  ut150927/
+	│       │   └── [245M]  w50_150927_IMACS.pkl
+	│       └── [4.0K]  ut161211/
+	│           └── [199M]  w50_161211_IMACS.pkl
+	├── [4.0K]  LDSS3C/
+	│   ├── [3.2K]  catalog.tsv
+	│   ├── [246K]  genericfinderchart.pdf
+	│   ├── [4.0K]  LDSS3C_template/
+	│   │   └── [4.0K]  WASP50/
+	│   │       ├── [4.0K]  w50_150927_LDSS3_flat/
+	│   │       │   ├── [ 27K]  eparams.dat
+	│   │       │   ├── [4.0K]  wavelength/
+	│   │       │   │   ├── [4.0K]  wbin0/
+	│   │       │   │   │   ├── [ 17K]  comps.dat
+	│   │       │   │   │   └── [ 13K]  lc.dat
+	│   │       │   │   ├── [4.0K]  ⋅ ⋅ ⋅
+	│   │       │   │   └── [4.0K]  wbin19/
+	│   │       │   │       ├── [ 17K]  comps.dat
+	│   │       │   │       └── [ 13K]  lc.dat
+	│   │       │   └── [4.0K]  white-light/
+	│   │       │       ├── [ 17K]  comps.dat
+	│   │       │       └── [ 13K]  lc.dat
+	│   │       └── [4.0K]  w50_150927_sp_LDSS3_flat/
+	│   │           ├── [ 26K]  eparams.dat
+	│   │           ├── [4.0K]  wavelength/
+	│   │           │   ├── [4.0K]  wbin0/
+	│   │           │   │   ├── [ 17K]  comps.dat
+	│   │           │   │   └── [ 13K]  lc.dat
+	│   │           │   ├── [4.0K]  wbin1/
+	│   │           │   │   ├── [ 17K]  comps.dat
+	│   │           │   │   └── [ 13K]  lc.dat
+	│   │           │   ├── [4.0K]  ⋅ ⋅ ⋅
+	│   │           │   └── [4.0K]  wbin14/
+	│   │           │       ├── [ 17K]  comps.dat
+	│   │           │       └── [ 13K]  lc.dat
+	│   │           └── [4.0K]  white-light/
+	│   │               ├── [ 17K]  comps.dat
+	│   │               └── [ 13K]  lc.dat
+	│   ├── [ 104]  targets.tsv
+	│   ├── [4.0K]  ut150927_flat/
+	│   │   ├── [122M]  LCs_ut150927.npy
+	│   │   └── [412K]  specshifts.npy
+	│   ├── [ 53K]  wasp50ls_mask.jpeg
+	│   └── [1.1K]  wasp50ls.SMF
+	└── [4.0K]  wbins/
+	    ├── [ 288]  w50_bins.dat
+	    ├── [ 302]  w50_bins_LDSS3.dat
+	    ├── [ 225]  w50_bins_species.dat
+	    └── [ 344]  w50_bins_ut131219.dat
+	```
 """
 
 # ╔═╡ e1294e56-8103-443b-80e9-118cac36750f
@@ -887,7 +949,7 @@ blc_plots[cName]
 # ╟─299dda0e-a214-45ca-9a68-947f60fcf404
 # ╟─9697e26b-b6d9-413b-869f-47bc2ab99919
 # ╟─db933939-b8df-48b2-b53e-1dbd7ec1b07c
-# ╟─25903146-2f23-4e54-bd7d-aed1025f2fa5
+# ╠═25903146-2f23-4e54-bd7d-aed1025f2fa5
 # ╠═1ec8c68f-4e76-4764-a520-320aebbefc27
 # ╠═45418bd3-74a3-4758-9fce-adddbeeec076
 # ╠═b9460e17-4034-4132-a57e-94721fa15d15

@@ -35,6 +35,13 @@ end
 # ╔═╡ f3a8f6fb-023c-4077-8c73-7502e56eb607
 using StatsBase
 
+# ╔═╡ 25d1284c-7260-4f3a-916a-b2814d2606af
+begin
+	const BASE_DIR = "data/detrended"
+	const FIG_DIR = "figures/detrended"
+	TableOfContents()
+end
+
 # ╔═╡ 506eeeb2-e56d-436b-91b8-605e52201563
 @mdx """
 # Detrended white-light curves
@@ -42,18 +49,46 @@ using StatsBase
 In this notebook we will visualize the detrended white-light curves from IMACS and LDSS3C. We used the average orbital and system parameters obtained from these detrended fits to place uniform constraints on our binned wavelength analysis.
 
 !!! tip "Data download"
+	
 	```
 	rclone sync -P ACCESS_box:WASP-50b/$(BASE_DIR) $(BASE_DIR)
 	```
-	* [Direct link](https://app.box.com/s/wr8tpof238cq8oj71ulaf69z9q0k7f9w)
-"""
 
-# ╔═╡ 25d1284c-7260-4f3a-916a-b2814d2606af
-begin
-	const BASE_DIR = "data/detrended"
-	const FIG_DIR = "figures/detrended"
-	TableOfContents()
-end
+	* [Direct link](https://app.box.com/s/wr8tpof238cq8oj71ulaf69z9q0k7f9w)
+
+	Outline:
+
+	```
+	detrended/
+	├── [4.0K]  out_b_sp/
+	├── [4.0K]  out_b/
+	│   └── [4.0K]  WASP50/
+	│       ├── [4.0K]  w50_131219_IMACS/
+	│       ├── [4.0K]  w50_150927_IMACS/
+	│       ├── [4.0K]  w50_150927_LDSS3_flat/
+	│       └── [4.0K]  w50_161211_IMACS/
+	│           ├── [ 17K]  eparams.dat
+	│           ├── [2.9K]  transpec.csv
+	│           ├── [4.0K]  wavelength/
+	│           │   ├── [1.8K]  wavelength_options_w50_161211_IMACS.py
+	│           │   ├── [4.0K]  wbin0/
+	│           │   ├── [4.0K]  wbin⋅ ⋅ ⋅/
+	│           └── [4.0K]  white-light/
+	│               ├── [1.6M]  BMA_posteriors.pkl
+	│               ├── [4.7K]  comps.dat
+	│               ├── [ 49K]  full_model_BMA.dat
+	│               ├── [6.4K]  lc.dat
+	│               ├── [4.0K]  PCA_1/
+	│               ├── [4.0K]  PCA_⋅ ⋅ ⋅/
+	│               ├── [1.3K]  results.dat
+	│               └── [1.9K]  wl_options_w50_161211_IMACS.py
+	└── [4.0K]  wbins/
+	    ├── [ 288]  w50_bins.dat
+	    ├── [ 302]  w50_bins_LDSS3.dat
+	    ├── [ 225]  w50_bins_species.dat
+	    └── [ 344]  w50_bins_ut131219.dat
+	```
+"""
 
 # ╔═╡ 782806a6-efd2-45a9-b898-788a276c282b
 @mdx """
@@ -65,21 +100,29 @@ First, let's load the relevant data needed for this notebook:
 # ╔═╡ a8d91138-73e7-4382-a032-37daec54a9c0
 @bind DATA_DIR Select(glob("$(BASE_DIR)/out_*/WASP50"))
 
-# ╔═╡ e873f9c6-fd1a-4227-9df1-70c626e4a0a1
-function name(fpath, dates_to_names)
-	date_instr = splitpath(split(glob(fpath)[1], "w50_")[2])[1]
-	return dates_to_names[date_instr]
-end
+# ╔═╡ ccfe9833-7e56-4d49-b8ca-14828e200f10
+glob("$(DATA_DIR)/w50*/white-light/BMA_WLC.npy")
+
+# ╔═╡ 0c5eff2e-71ce-4711-aae6-3f07ba04b5c0
+fname_suff = (basename ∘ dirname)(DATA_DIR)
 
 # ╔═╡ 415b0bb5-c02d-433c-bd8b-874326fc27bb
 function tname(dirpath)
 	if occursin("131219_IMACS", dirpath)
 		transit = "Transit 1 (IMACS)"
+	elseif occursin("131219_sp_IMACS", dirpath)
+		transit = "Transit 1 (IMACS)"
 	elseif occursin("150927_IMACS", dirpath)
+		transit = "Transit 2 (IMACS)"
+	elseif occursin("150927_sp_IMACS", dirpath)
 		transit = "Transit 2 (IMACS)"
 	elseif occursin("150927_LDSS3", dirpath)
 		transit = "Transit 2 (LDSS3C)"
+	elseif occursin("150927_sp_LDSS3", dirpath)
+		transit = "Transit 2 (LDSS3C)"
 	elseif occursin("161211_IMACS", dirpath)
+		transit = "Transit 3 (IMACS)"
+	elseif occursin("161211_sp_IMACS", dirpath)
 		transit = "Transit 3 (IMACS)"
 	end
 	return transit
@@ -139,43 +182,6 @@ end
 We summarize the Bayesian Model Averag (BMA) results for selected parameters for each night below, and average together each parameter from each night, weighted by its maximum uncertainty per night:
 """
 
-# ╔═╡ bbc14e57-57fe-4811-91d4-d07b102cfa5d
-@doc raw"""
-Given a collection of $N$ dependent observations $\boldsymbol x = [x_1, x_2, \dots, x_N]$, the biased-corrected weighted mean estimator $\hat x \equiv \mu^* \pm s_\mathrm{w}$ is given by:
-
-```math
-\begin{align}
-\mu^* &= \sum w_i x_i / \sum w_i\,, \\
-s_\mathrm{w} &= \sqrt{
-    \frac
-    {\sum w_i(x_i - \mu^*)^2}
-    {\sum w_i - \sum w_i^2 / \sum w_i}
-}\,,
-\end{align}
-```
-
-where $\sum$ is taken to be the sum over all indices $i$ for convenience, and $w_i$ is defined to be the inverse variance $w_i \equiv 1/\sigma_i^2$ for each measurement $x_i$. More [here](https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Reliability_weights).
-"""
-function weightedmean2(m; corrected=true)
-	if length(collect(m)) == 1
-		return collect(m)[1] # Convert back to Measurement from skipmissing wrapper
-	end
-	x = value.(m)
-	x_unc = uncertainty.(m)
-	w = @. inv(x_unc^2)
-	# Use AnalyticWeights for bias correction
-	a, b = mean_and_std(x, aweights(w); corrected)
-	return a ± b
-end
-
-# ╔═╡ 25dd0c88-089b-406b-ac0f-6f21c57fe986
-@with_terminal begin
-	map(enumerate(BMA_matrix[:, end])) do (i, x)
-		#println(x.val)
-		println(PARAMS.vals[i], ": ", round(x.val, digits=10))
-	end
-end
-
 # ╔═╡ 22c72eeb-8e32-4d7c-86c8-ab117735769e
 @mdx """
 The standard version we used to use gives relatively errorbars (thanks for bringing this to my attention during my TAC, Dave!) and is also particularly biased for small sample sizes. For these reasons, we have opted for the more sophisticated machinery of [reliability weighting](https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Reliability_weights) going forward.
@@ -223,6 +229,35 @@ end
 
 # ╔═╡ 47278372-b311-4ea7-bfa4-82b8f95c97fa
 import Measurements: value, uncertainty
+
+# ╔═╡ bbc14e57-57fe-4811-91d4-d07b102cfa5d
+@doc raw"""
+Given a collection of $N$ dependent observations $\boldsymbol x = [x_1, x_2, \dots, x_N]$, the biased-corrected weighted mean estimator $\hat x \equiv \mu^* \pm s_\mathrm{w}$ is given by:
+
+```math
+\begin{align}
+\mu^* &= \sum w_i x_i / \sum w_i\,, \\
+s_\mathrm{w} &= \sqrt{
+    \frac
+    {\sum w_i(x_i - \mu^*)^2}
+    {\sum w_i - \sum w_i^2 / \sum w_i}
+}\,,
+\end{align}
+```
+
+where $\sum$ is taken to be the sum over all indices $i$ for convenience, and $w_i$ is defined to be the inverse variance $w_i \equiv 1/\sigma_i^2$ for each measurement $x_i$. More [here](https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Reliability_weights).
+"""
+function weightedmean2(m; corrected=true)
+	if length(collect(m)) == 1
+		return collect(m)[1] # Convert back to Measurement from skipmissing wrapper
+	end
+	x = value.(m)
+	x_unc = uncertainty.(m)
+	w = @. inv(x_unc^2)
+	# Use AnalyticWeights for bias correction
+	a, b = mean_and_std(x, aweights(w); corrected)
+	return a ± b
+end
 
 # ╔═╡ 7cbadc33-5b32-4816-8092-09054c64073f
 function weightedmean3(m)
@@ -328,9 +363,6 @@ end
 @mdx """
 ## A closer look at Transit 2 🔎
 """
-
-# ╔═╡ f610b526-8333-4201-95f1-f01cb82e4281
-Pkg.status()
 
 # ╔═╡ 7fdd0cb7-7af3-4ca1-8939-9d9b7d6e9527
 function plot_x!(ax, x; h=1, errorbar_kwargs=(), scatter_kwargs=())
@@ -453,6 +485,14 @@ BMA = DataFrame(
 
 # ╔═╡ c7a179a3-9966-452d-b430-a28b2f004bc5
 latextabular(BMA; latex=false) |> PlutoUI.Text
+
+# ╔═╡ 25dd0c88-089b-406b-ac0f-6f21c57fe986
+@with_terminal begin
+	map(enumerate(BMA_matrix[:, end])) do (i, x)
+		#println(x.val)
+		println(PARAMS.vals[i], ": ", round(x.val, digits=10))
+	end
+end
 
 # ╔═╡ 56d0de38-5639-4196-aafe-79a9ab933980
 begin
@@ -598,11 +638,7 @@ let
 		# color = COLORS[2],
 	)
 
-	if occursin("sp", DATA_DIR)
-		savefig(fig, "$(FIG_DIR)/detrended_wlcs_sp.pdf")
-	else
-		savefig(fig, "$(FIG_DIR)/detrended_wlcs.pdf")
-	end
+	savefig(fig, "$(FIG_DIR)/detrended_wlcs_$(fname_suff).pdf")
 	
 	fig
 end
@@ -681,11 +717,7 @@ let
 		markerstrokewidth = 1,
 	)
 
-	if occursin("sp", DATA_DIR)
-		savefig(fig, "$(FIG_DIR)/detrended_wlcs_corner_sp.pdf")
-	else
-		savefig(fig, "$(FIG_DIR)/detrended_wlcs_corner.pdf")
-	end
+	savefig(fig, "$(FIG_DIR)/detrended_wlcs_corner_$(fname_suff).pdf")
 	
 	fig
 end
@@ -693,7 +725,6 @@ end
 # ╔═╡ f47944d8-4501-47c7-a852-d5e2f90e9204
 function plot_x_pairs!(ax, param, BMA; h1=1, h2=2, c1=COLORS[2], c2=COLORS[3], scale=true)
 	transit =  "Transit 2 (IMACS)"
-	occursin("sp", DATA_DIR) && (transit *= " sp")
 	x = get_x(param, transit, BMA; scale)
 	plot_x!(ax, x;
 		h = h1,
@@ -702,7 +733,6 @@ function plot_x_pairs!(ax, param, BMA; h1=1, h2=2, c1=COLORS[2], c2=COLORS[3], s
 	)
 
 	transit =  "Transit 2 (LDSS3C)"
-	occursin("sp", DATA_DIR) && (transit *= " sp")
 	x = get_x(param, transit, BMA; scale)
 	plot_x!(ax, x;
 		h = h2,
@@ -740,11 +770,7 @@ let
 	xlims!(ax, -4.8, 4.8)
 	ylims!(ax, 0.5, 8.5)
 
-	if occursin("sp", DATA_DIR)
-		savefig(fig, "$(FIG_DIR)/detrended_wlcs_params_comp_sp.pdf")
-	else
-		savefig(fig, "$(FIG_DIR)/detrended_wlcs_params_comp.pdf")
-	end
+	savefig(fig, "$(FIG_DIR)/detrended_wlcs_params_comp_$(fname_suff).pdf")
 		
 	fig
 end
@@ -753,10 +779,11 @@ end
 # ╟─506eeeb2-e56d-436b-91b8-605e52201563
 # ╠═25d1284c-7260-4f3a-916a-b2814d2606af
 # ╟─782806a6-efd2-45a9-b898-788a276c282b
-# ╠═a8d91138-73e7-4382-a032-37daec54a9c0
+# ╟─a8d91138-73e7-4382-a032-37daec54a9c0
 # ╠═2191791b-df62-4f1b-88bf-060cc47896b2
+# ╠═ccfe9833-7e56-4d49-b8ca-14828e200f10
 # ╠═f539e06d-a1b5-413a-b90e-91cb0bbd5a4c
-# ╠═e873f9c6-fd1a-4227-9df1-70c626e4a0a1
+# ╠═0c5eff2e-71ce-4711-aae6-3f07ba04b5c0
 # ╠═415b0bb5-c02d-433c-bd8b-874326fc27bb
 # ╟─579e62da-7ffb-4639-bd73-3826ade1cfa2
 # ╟─a8cf11e2-796e-45ff-bdc9-e273b927700e
@@ -790,7 +817,6 @@ end
 # ╠═6fcd1377-8364-45a3-9ff6-89d61df1ef42
 # ╟─807e913f-d8c3-41e9-acb3-4c024dedd67b
 # ╠═18c90ed4-2f07-493f-95b2-e308cd7a03a9
-# ╠═f610b526-8333-4201-95f1-f01cb82e4281
 # ╠═f47944d8-4501-47c7-a852-d5e2f90e9204
 # ╠═7fdd0cb7-7af3-4ca1-8939-9d9b7d6e9527
 # ╠═181dd60f-62b2-4d8e-beab-6b6e5c15a0c2

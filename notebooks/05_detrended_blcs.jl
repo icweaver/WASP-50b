@@ -29,13 +29,6 @@ begin
 	using Dates, NaturalSort
 end
 
-# ╔═╡ 6c6741b8-eeb1-4c1e-8d22-40d08df00ced
-begin
-	const BASE_DIR = "data/detrended"
-	const FIG_DIR = "figures/detrended"
-	TableOfContents()
-end
-
 # ╔═╡ ebef52bc-2acf-4cf8-aca7-90cd6684c061
 @mdx """
 # Detrended binned light curves
@@ -49,6 +42,13 @@ In this notebook we will plot the detrended binned light curves for all nights.
 
 	* [Direct link](https://app.box.com/s/wr8tpof238cq8oj71ulaf69z9q0k7f9w)
 """
+
+# ╔═╡ 6c6741b8-eeb1-4c1e-8d22-40d08df00ced
+begin
+	const BASE_DIR = "data/detrended"
+	const FIG_DIR = "figures/detrended"
+	TableOfContents()
+end
 
 # ╔═╡ 0158a760-1229-4089-bf90-7c7b2f1f548a
 @mdx """

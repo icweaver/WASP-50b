@@ -407,26 +407,26 @@ end
 
 # ╔═╡ 3af0d3b0-c698-4845-a74e-c7186b03a721
 let
-	f = "$(DATA_DIR)/tspec_w50_IMACS.csv"
-	CSV.write(f,
-		create_df(df_IMACS; instrument="Magellan/IMACS")
-	)
-	@info "Saved to $(f)"
-	f = "$(DATA_DIR)/tspec_w50_LDSS3.csv"
-	CSV.write(f,
-		create_df(df_LDSS3; instrument="Clay/LDSS3C")
-	)
-	@info "Saved to $(f)"
+    #f = "$(DATA_DIR)/tspec_w50_IMACS.csv"
+	#CSV.write(f,
+	#	create_df(df_IMACS; instrument="Magellan/IMACS")
+	#)
+	#@info "Saved to $(f)"
+	#f = "$(DATA_DIR)/tspec_w50_LDSS3.csv"
+	#CSV.write(f,
+	#	create_df(df_LDSS3; instrument="Clay/LDSS3C")
+	#)
+	#@info "Saved to $(f)"
 end
 
 # ╔═╡ 5718672b-1bc6-4676-8703-5fc06b83f0f9
 let
-	f = "$(DATA_DIR)/tspec_w50_all.csv"
-	CSV.write(f, create_df(df_tspecs; instrument="IMACS+LDSS3C"))
-	@info "Saved to $(f)"
-	f = "$(DATA_DIR)/tspec_w50.csv"
-	CSV.write(f, create_df(df_common; instrument="IMACS+LDSS3C"))
-	@info "Saved to $(f)"
+    #f = "$(DATA_DIR)/tspec_w50_all.csv"
+	#CSV.write(f, create_df(df_tspecs; instrument="IMACS+LDSS3C"))
+	#@info "Saved to $(f)"
+	#f = "$(DATA_DIR)/tspec_w50.csv"
+	#CSV.write(f, create_df(df_common; instrument="IMACS+LDSS3C"))
+	#@info "Saved to $(f)"
 end
 
 # ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
