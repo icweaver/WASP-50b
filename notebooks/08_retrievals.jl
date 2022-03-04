@@ -52,7 +52,7 @@ end
 @bind base_dir Select(glob("./data/retrievals/WASP50*"))
 
 # ╔═╡ d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
-fit_R0 = "fitR0"
+fit_R0 = "NofitR0"
 
 # ╔═╡ 8c6e3fd8-f6cb-4250-acb8-c17c00b1b2eb
 fname_suff = let
@@ -60,6 +60,11 @@ fname_suff = let
 	label = occursin("offs", b) ? "offs" : "no_offs"
 	label *= "_$(fit_R0)"
 end
+
+# ╔═╡ 2c12ec4d-1184-4755-8bd8-0d7cd59fa205
+md"""
+## Evidences
+"""
 
 # ╔═╡ 093156c7-9da7-4814-9260-5173f27fa497
 model_names = OrderedDict(
@@ -342,7 +347,7 @@ let
 		visual(BarPlot)
 	
 	fg = draw(plt;
-		axis = (; limits=(nothing, nothing, 0, 2.0)),
+		#axis = (; limits=(nothing, nothing, 0, 2.0)),
 		legend = (
 			position = :top,
 			nbanks = 2,
@@ -351,7 +356,7 @@ let
 			titlegap = 25,
 		),
 		palettes = (; color=COLORS),
-		figure = (; resolution=FIG_WIDE),
+		figure = (; resolution=(1000, 500)),
 	)
 	
 	# Label(fg.figure[2, 1], fname_suff;
@@ -363,27 +368,27 @@ let
 	# 	#textsize = 26,
 	# )
 	
-	savefig(fg.figure, "$(FIG_DIR)/evidences_$(fname_suff).png")
+	savefig(fg.figure, "$(FIG_DIR)/evidences_$(fname_suff).pdf")
 
 	fg
 end
 
 # ╔═╡ e801501c-a882-4f2d-bbc1-40028c1c91d8
 let
-	fig = Figure(resolution=(1_200, 400))
+	fig = Figure(resolution=(1000, 500))
 	ax = Axis(
 		fig[1, 1],
 		xlabel = "Wavelength (Å)",
 		ylabel = "Transit depth (ppm)",
 		#limits = (0.3, 1.1, 17_500, 21_000),
 		#limits = (4_600, 9_800, 15_500, 22_500),
-		limits = (4_600, 9_800, 17_000, 22_000)
+		limits = (4_600, 9_800, 15_500, 22_500)
 	)
 
-	plot_retrieval!(ax, cube, "Na_TiO", "spot", color=COLORS[2])
-	plot_retrieval!(ax, cube, "Na", "cloud", color=COLORS[3])
-	plot_retrieval!(ax, cube, "TiO", "haze", color=COLORS[5])
-	plot_retrieval!(ax, cube, "Na_TiO", "clear", color=COLORS[1], linewidth=6)
+	plot_retrieval!(ax, cube, "Na_K_TiO", "haze+spot"; color=COLORS[6])
+	plot_retrieval!(ax, cube, "Na", "cloud"; color=COLORS[3])
+	plot_retrieval!(ax, cube, "TiO", "haze"; color=COLORS[5])
+	plot_retrieval!(ax, cube, "CO", "clear"; color=COLORS[1], linewidth=6)
 	
 	fpath_suff = basename(base_dir)
 	if occursin("offs", fpath_suff)
@@ -406,7 +411,7 @@ let
 
 	axislegend(orientation=:horizontal)
 
-	savefig(fig, "$(FIG_DIR)/retr_$(fname_suff).png")
+	savefig(fig, "$(FIG_DIR)/retr_$(fname_suff).pdf")
 	
 	fig
 end
@@ -433,6 +438,8 @@ body.disable_ui main {
 # ╟─60dc161c-2aa2-4264-884d-6da3ead0e57b
 # ╠═d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
 # ╠═8c6e3fd8-f6cb-4250-acb8-c17c00b1b2eb
+# ╟─2c12ec4d-1184-4755-8bd8-0d7cd59fa205
+# ╠═df43608e-7026-45ae-b87b-d7e0b6cea89c
 # ╟─093156c7-9da7-4814-9260-5173f27fa497
 # ╠═0f65d095-09af-44d2-907b-c30e2c16b609
 # ╟─704fa634-eee0-4eef-aacf-f75f2b53f4d2
@@ -440,7 +447,6 @@ body.disable_ui main {
 # ╟─7b714c1e-2e3d-453f-a342-81df8283de5c
 # ╠═65b51ff6-0991-491f-8945-dd889ffe71dd
 # ╠═a0094689-a9d5-4810-baba-bd7a96c27839
-# ╠═df43608e-7026-45ae-b87b-d7e0b6cea89c
 # ╠═42e909b4-92eb-4ed7-a19c-6e54b21ae07c
 # ╠═83087c2e-852c-49c0-9195-c20e787b60e7
 # ╠═2d375a76-f06a-43bb-ba45-a944915288ff
@@ -455,7 +461,7 @@ body.disable_ui main {
 # ╠═db524678-9ee2-4934-b1bb-6a2f13bf0fa6
 # ╠═cc011a66-37bd-4543-9a58-b11e1f785e52
 # ╟─1eff1230-2423-4ac3-8e9b-f4e7bcd0121b
-# ╠═eab74923-a084-468c-9b0d-c2cc98a23913
+# ╟─eab74923-a084-468c-9b0d-c2cc98a23913
 # ╠═44b3b8cd-4b83-4b27-a948-d1230489552f
 # ╠═e43f1834-73dd-4859-b847-f4c552561897
 # ╠═239a91a6-f68a-11eb-14fd-0ba8d08b08f9

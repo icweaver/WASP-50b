@@ -317,9 +317,6 @@ const PARAMS = OrderedDict(
 	"q1" => "u",
 );
 
-# ╔═╡ 869ee4e5-6061-48ac-a147-694c02392280
-PARAMS
-
 # ╔═╡ 6fcd1377-8364-45a3-9ff6-89d61df1ef42
 # Number of levels `n` to show in contour plots
 compute_levels(A, n) = reverse(
@@ -648,7 +645,7 @@ let
 	n_params = length(PARAMS) # Number of fitted parameters
 	
 	# Create empty corner plot grid
-	fig = Figure(resolution=FIG_LARGE)
+	fig = Figure(resolution=FIG_LARGE, backgroundcolor=:transparent)
 	
 	for j in 1:n_params, i in 1:n_params
 		# Create subplot apply global settings
@@ -658,6 +655,7 @@ let
 			xticks = LinearTicks(3),
 			yticks = LinearTicks(3),
 			limits = ((-15, 15), (-15, 15)),
+			backgroundcolor = :transparent,
 		)
 		# Hide upper triangle
 		j > i && (hidedecorations!(ax); hidespines!(ax))
@@ -717,7 +715,8 @@ let
 		markerstrokewidth = 1,
 	)
 
-	savefig(fig, "$(FIG_DIR)/detrended_wlcs_corner_$(fname_suff).pdf")
+	#savefig(fig, "$(FIG_DIR)/detrended_wlcs_corner_$(fname_suff).pdf")
+	savefig(fig, "/home/mango/Desktop/detrended_wlcs_corner_$(fname_suff).png")
 	
 	fig
 end
@@ -810,7 +809,6 @@ end
 # ╠═56d0de38-5639-4196-aafe-79a9ab933980
 # ╠═706f1fb6-2895-48f6-a315-842fbf35da18
 # ╠═d5ff9b30-00dd-41d3-9adf-ff7905d71ae8
-# ╠═869ee4e5-6061-48ac-a147-694c02392280
 # ╠═8c9428a9-f2ad-4329-97a3-97ffa6b40f28
 # ╠═2cbc6ddb-210e-41e8-b745-5c41eba4e778
 # ╠═ed935d16-ddce-4334-a880-005732b38936

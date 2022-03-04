@@ -224,7 +224,7 @@ latextabular(df_wbins, latex=false) |> PlutoUI.Text
 # ╔═╡ b44b6591-d57b-40bd-810c-a41386412b6c
 function savefig(fig, fpath)
 	mkpath(dirname(fpath))
-    save(fpath, fig, pt_per_unit=1)
+    save(fpath, fig; pt_per_unit=1)
 	@info "Saved to: $(fpath)"
 end
 
@@ -303,7 +303,7 @@ let
 			stepsize,
 			hm_kwargs = (highclip=:darkgrey, colorrange=(0, 200)),
 		)
-	end
+    end
 
 	rowgap!(fig.layout, 0)
 	colgap!(fig.layout, 0)
@@ -315,7 +315,7 @@ let
 
 	Label(fig[0, end], transits[DATA_DIR_IMACS], tellwidth=false, halign=:right)
 	
-	savefig(fig, "$(FIG_DIR)/sci_IMACS_$(basename(DATA_DIR_IMACS)).png")
+    savefig(fig, "$(FIG_DIR)/sci_IMACS_$(basename(DATA_DIR_IMACS)).png")
 
 	fig
 end
@@ -350,9 +350,7 @@ let
 
 	Label(fig[0, end], "Transit 2 (LDSS3C)", tellwidth=false, halign=:right)
 	
-    savefig(fig, "$(FIG_DIR)/sci_LDSS3_$(basename(DATA_DIR_LDSS3)).png";
-		#save_kwargs = (px_per_unit=0.5,),
-	)
+    savefig(fig, "$(FIG_DIR)/sci_LDSS3_$(basename(DATA_DIR_LDSS3)).png")
 	
 	fig
 end
@@ -362,7 +360,7 @@ end
 # ╠═d8019fa7-380d-4f40-9e08-420a32c34483
 # ╟─90845d70-35d9-402d-8936-74936b069577
 # ╟─8b9581db-71c6-42b6-915b-bde307755bcd
-# ╟─3a6ab0c0-ba08-4151-9646-c19d45749b9f
+# ╠═3a6ab0c0-ba08-4151-9646-c19d45749b9f
 # ╟─c040905d-23bf-4484-8743-98d917db9c81
 # ╠═fb6e6221-8136-44e2-979b-ecbbd71f740d
 # ╟─0d42f6f9-d789-46a3-9e9a-381dbed2d5a5
@@ -374,7 +372,7 @@ end
 # ╠═bf8ef5a9-0806-44b4-907d-c95d6926dabb
 # ╟─06a834f0-8c90-4013-af34-725166970969
 # ╟─0e66d467-1098-46dc-8d06-36d488b14637
-# ╟─71ba9181-90e4-4d12-97c0-462b3f1df077
+# ╠═71ba9181-90e4-4d12-97c0-462b3f1df077
 # ╟─c6205ad9-4d3c-420a-a279-81731d83603b
 # ╠═5c6e6f7b-70e0-49a8-b064-60dcf1440223
 # ╠═c488270a-3126-4e38-a0c8-ee242115a3ea

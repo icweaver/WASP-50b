@@ -227,12 +227,13 @@ begin
 end
 
 # ╔═╡ bec88974-b150-4f53-9497-ddec4883ae17
-function plot_BLCs(transit, phase, datas, models, errs, wbins; offset=0.3)
-	fig = Figure(resolution=FIG_LARGE)
+function plot_BLCs(transit, phase, datas, models, errs, wbins; offset=0.3,
+backgroundcolor=:transparent)
+	fig = Figure(resolution=FIG_LARGE, backgroundcolor=:transparent)
 	median_prec = round(Int, median(errs))
-	ax_left = Axis(fig[1, 1], title = "Detrended BLCs")
-	ax_right = Axis(fig[1, 2], title = "Residuals")
-	ax_label = Axis(fig[1, 3], title = "Median precision: $(median_prec) ppm")
+	ax_left = Axis(fig[1, 1], title = "Detrended BLCs", backgroundcolor=:transparent)
+	ax_right = Axis(fig[1, 2], title = "Residuals", backgroundcolor=:transparent)
+	ax_label = Axis(fig[1, 3], title = "Median precision: $(median_prec) ppm", backgroundcolor=:transparent)
 	axs = reshape(copy(fig.content), 1, 3)
 	
 	# Color palette
@@ -277,7 +278,8 @@ function plot_BLCs(transit, phase, datas, models, errs, wbins; offset=0.3)
 	Label(fig[1:2, 0], "Relative flux + offset", rotation=π/2)
 	Label(fig[end, 2:3], "Phase")
 
-	savefig(fig, "$(FIG_DIR)/detrended_blcs_$(transit)_$(fname_suff).pdf")
+	#savefig(fig, "$(FIG_DIR)/detrended_blcs_$(transit)_$(fname_suff).pdf")
+	savefig(fig, "/home/mango/Desktop/detrended_blcs_$(transit)_$(fname_suff).png")
 	
 	fig
 end

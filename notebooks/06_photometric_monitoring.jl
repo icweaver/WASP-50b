@@ -193,6 +193,12 @@ end
 # ╔═╡ 708d54a5-95fd-4f15-9681-f6d8e7b9b05c
 all_srs = lk.search_lightcurve("WASP-50")
 
+# ╔═╡ 36981518-0ef9-426f-9830-27238fa803ae
+df = (; x=randn(100))
+
+# ╔═╡ 99d43be5-e4dc-47a3-b134-b6fae3454e10
+@which Hist
+
 # ╔═╡ dff46359-7aec-4fa1-bc7a-89785dfca0e8
 srs = lk.search_lightcurve("WASP-50", author=["SPOC"], exptime=120)
 
@@ -713,6 +719,8 @@ body.disable_ui main {
 # ╠═2952e971-bce5-4a1e-98eb-cb2d45c8c5a8
 # ╠═7c11e5b2-6046-4eaf-a4a1-683b8e7d9323
 # ╠═708d54a5-95fd-4f15-9681-f6d8e7b9b05c
+# ╠═36981518-0ef9-426f-9830-27238fa803ae
+# ╠═99d43be5-e4dc-47a3-b134-b6fae3454e10
 # ╟─34fcd73d-a49c-4597-8e63-cfe2495eee48
 # ╠═dff46359-7aec-4fa1-bc7a-89785dfca0e8
 # ╠═6e62b3cc-96ce-43fd-811b-4b2b102cfd61

@@ -545,8 +545,10 @@ df_HGHJ = @chain df_complete begin
 	# end
 end
 
-# ╔═╡ 157a44f4-6191-4407-98a4-3c8c43817a65
-df_HGHJ_no_H2OJ = filter(x -> x.pl_name ∈ ["HAT-P-23 b", "WASP-50 b"], df_HGHJ)
+# ╔═╡ 348e5532-5180-41b8-87d9-39dc5affe465
+df_HGHJ_no_H2OJ = filter(:pl_name => ∈(("HAT-P-23 b", "WASP-50 b")), df_HGHJ;
+	view = true
+)
 
 # ╔═╡ b3ae27e9-2564-4f4c-8c51-5a40b2705ecf
 df_HGHJ_paper = @chain df_complete begin
@@ -590,6 +592,9 @@ df_wakeford = let
 		:TSMR = value.(:TSMR)
 	end
 end
+
+# ╔═╡ c4d4d7b9-4885-423b-8969-1fb192fb1ec1
+df_wakeford
 
 # ╔═╡ 683a8d85-b9a8-4eab-8a4b-e2b57d0783c0
 @mdx """
@@ -652,7 +657,13 @@ end
 
 # ╔═╡ c0f576a7-908d-4f10-86e7-cadbb7c77c09
 let
-	p = mapping(
+	p = data(df_wakeford) * mapping(:pl_eqt, :pl_g, :pl_eqt_err) * visual(Errorbars, direction=:x) +
+	data(df_wakeford) * mapping(:pl_eqt, :pl_g, :pl_g_err) * visual(Errorbars, direction=:y) +
+
+	data(df_HGHJ_no_H2OJ) * mapping(:pl_eqt, :pl_g, :pl_eqt_err) * visual(Errorbars, direction=:x) +
+	data(df_HGHJ_no_H2OJ) * mapping(:pl_eqt, :pl_g, :pl_g_err) * visual(Errorbars, direction=:y) +
+	
+		mapping(
 		:pl_eqt => "Equilibrium temperature (K)",
 		:pl_g => "Surface gravity (m/s²)",
 	) *
@@ -666,31 +677,32 @@ let
 			) #+
 		
 		+ data(df_HGHJ_no_H2OJ) * visual(marker='□', markersize=20)
-	) #+
-	# data(df_T_vs_g) * mapping(:T_K, :g_SI, :T_K_err) * visual(Errorbars, direction=:x) +
-	# data(df_T_vs_g) * mapping(:T_K, :g_SI, :g_SI_err) * visual(Errorbars, direction=:y)
-	# data(df_tspecs) * mapping(:Teq_K, :g_SI, :Teq_K_err) * visual(Errorbars, direction=:x) +
-	# data(df_tspecs) * mapping(:Teq_K, :g_SI, :g_SI_err) * visual(Errorbars, direction=:y)
+	)
 	
 	fg = draw(p;
-		axis = (; limits=((0, 3_400), (-1, 55)), yticks=0:10:50),
+		axis = (;
+			limits = ((0, 3_400), (-1, 55)),
+			yticks = 0:10:50,
+			xlabel = "Equilibrium temperature (K)",
+			ylabel = "Surface gravity (m/s²)",
+		),
 		figure = (; resolution=FIG_LARGE),
 		colorbar = (; limits=(0, 2.3)),
 	)
 	ax = fg.grid[1].axis
 	
 	label_text!(ax, df_wakeford, "WASP-43 b (Weaver+ 2020)";
-		al_x=:left, offset=(10, 0)
+		al_x=:left, offset=(8, 0)
 	)
 
 	label_text!(ax, df_wakeford, "HD 189733 b (Sing+ 2016)";
-		al_x=:left, offset=(0, 8)
+		al_x=:left, offset=(8, -32)
 	)
 	label_text!(ax, df_HGHJ_no_H2OJ, "HAT-P-23 b (Weaver+ 2021)";
-		al_x=:left, offset=(0, 8)
+		al_x=:left, offset=(8, 8)
 	)
 	label_text!(ax, df_HGHJ_no_H2OJ, "WASP-50 b (this work)";
-		al_x=:right, offset=(8, 8)
+		al_x=:right, offset=(-8, 8)
 	)
 	hl = hlines!(ax, 20, color=:darkgrey, linestyle=:dash)
 	translate!(hl, 0, 0, -1) # Place behind plot markers
@@ -835,8 +847,9 @@ end
 # ╠═e0365154-d6c8-4db2-bb85-bf2536a3aa74
 # ╠═05d65745-6972-41fe-8308-e5c97c85692b
 # ╠═ddd8abbb-f057-4b60-bc1b-ee7f51aaa70a
-# ╠═157a44f4-6191-4407-98a4-3c8c43817a65
+# ╠═348e5532-5180-41b8-87d9-39dc5affe465
 # ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
+# ╠═c4d4d7b9-4885-423b-8969-1fb192fb1ec1
 # ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d

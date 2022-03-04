@@ -444,18 +444,18 @@ end
 
 # ╔═╡ 8644fa54-0407-4494-aef4-eb497a86c35d
 let
-	fig = Figure(resolution=(1200, 400))
+	fig = Figure(resolution=(1100, 400))
 
 	ax = Axis(
 		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
-		limits = (nothing, nothing, 15_500, 22_500),
+		limits = (4_700, 9_769, 15_500, 22_500),
 		grid = (linewidth=(0, 0),),
 	)
 
 	# Overplot lines
 	#vspan!(ax, wbins_LDSS3_odd[:, 1], wbins_LDSS3_odd[:, 2], color=(:darkgrey, 0.25))
 	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
-	vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:black, 0.25))
+	#vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:black, 0.25))
 	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
 	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
 	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
@@ -489,7 +489,7 @@ let
 	axislegend(orientation=:horizontal, valign=:top, labelsize=16)
 	
 	suf = basename(dirname(DATA_DIR))
-	savefig(fig, "$(FIG_DIR)/tspec_transit_2_$(suf).png")
+	savefig(fig, "$(FIG_DIR)/tspec_transit_2_$(suf).pdf")
 	
 	fig
 end
@@ -568,8 +568,8 @@ function plot_tspecs!(ax; i=1, nudge_indiv=-50, nudge_comb=50, wbins=wbins_odd)
 			label = "Combined",
 	)
 
-	text!(ax, "Average precision: $(round(avg_prec, digits=6)) ppm";
-		position = (4700, 16000),
+	text!(ax, "Average precision: $(round(Int, avg_prec)) ppm";
+		position = (4750, 16000),
 		align = (:left, :center),
 	)
 end
@@ -578,15 +578,24 @@ end
 begin
 	fig = Figure(resolution=(1100, 400))
 	if occursin("sp", DATA_DIR)
-		ax_NaD = Axis(fig[1, 1], limits=(5_755, 6_031, nothing, nothing))
-		ax_K = Axis(fig[1, 2], limits=(7_652, 7_712, nothing, nothing))
-		ax_Na8200 = Axis(fig[1, 3], limits=(8_069, 8_309, nothing, nothing))
+		ax_NaD = Axis(fig[1, 1];
+			limits = (5_755, 6_031, 15_500, 22_500),
+			xticks = LinearTicks(4),
+		)
+		ax_K = Axis(fig[1, 2];
+			limits = (7_652, 7_712, 15_500, 22_500),
+			xticks = LinearTicks(4),
+		)
+		ax_Na8200 = Axis(fig[1, 3];
+			limits = (8_069, 8_309, 15_500, 22_500),
+			xticks = LinearTicks(4),
+		)
 
 		# Overplot lines
 		for ax ∈ (ax_NaD, ax_K, ax_Na8200)
 			#vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
 			vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
-		vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:black, 0.25))
+			#vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:black, 0.25))
 			vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
 			hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
 			hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
@@ -623,11 +632,15 @@ begin
 		)
 		colgap!(fig.layout, 30)
 	else
-		ax = Axis(fig[1, 1]; limits=(4_600, 9_800, 15_500, 22_500))
+		ax = Axis(fig[1, 1];
+			limits = (4_700, 9_769, 15_500, 22_500),
+			xlabel = "Wavelength (Å)",
+			ylabel = "Transit depth (ppm)",
+		)
 		# Overplot lines
 		#vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
 		vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
-		vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:black, 0.25))
+		#vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:black, 0.25))
 		vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
 		hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
 		hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
@@ -642,18 +655,18 @@ end
 
 # ╔═╡ 72affb58-6f0c-4b76-9956-a027b57a0c8e
 let
-	fig = Figure(resolution=(1200, 400))
+	fig = Figure(resolution=(1100, 400))
 
 	ax = Axis(
 		fig[1, 1], xlabel="Wavelength (Å)", ylabel="Transit depth (ppm)",
-		limits = (4_600, 9_800, 15_500, 22_500),
+		limits = (4_700, 9_769, 15_500, 22_500),
 		grid = (linewidth=(0, 0),),
 	)
 
 	# Overplot lines
 	#vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
 	vspan!(ax, wbins_odd[:, 1], wbins_odd[:, 2], color=(:darkgrey, 0.25))
-	vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:black, 0.25))
+	#vspan!(ax, wbins_even[:, 1], wbins_even[:, 2], color=(:black, 0.25))
 	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
 	hlines!(ax, mean_wlc_depth.val, color=:grey, linewidth=3)
 	hlines!.(ax, (mean_wlc_depth.val + mean_wlc_depth.err,
@@ -773,7 +786,7 @@ gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 # ╠═eaed62d7-5733-44b8-bd98-8b0fc4a18fe5
 # ╠═cb02a053-d048-43d9-950a-de3106019520
 # ╟─f8a86915-f7d8-4462-980e-7b8124b13a3f
-# ╠═e9b22d93-1994-4c31-a951-1ab00dc4c102
+# ╟─e9b22d93-1994-4c31-a951-1ab00dc4c102
 # ╠═ef970c0c-d08a-4856-b10b-531bb5e7e53e
 # ╠═6cb26c91-8a7c-4bd3-8978-d0c23105863c
 # ╠═e917bd8d-7f4a-44e4-9eb9-84199dd061f5
