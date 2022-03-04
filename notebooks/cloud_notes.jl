@@ -13,6 +13,24 @@ begin
 	using MarkdownLiteral: @mdx
 end
 
+# ╔═╡ ff271b55-df63-4034-a1fc-721c7e3a8393
+@mdx """
+## $(D_2021)
+
+* Compiles transmission spectra from 23 warm exoplanets ($(Teq) < 1000 K) previously observed by HST to quantify the haziness of each exoplanet using a normalized water absorption feature ampltiude ($(A_H)).
+
+
+They searched for relationships between $(A_H) and other planetary and stellar parameters, and found the most statistically significant linear correlation with the following:
+	* log H (scale height)
+	* $(g)
+	* log ``\\rho_\mathrm p``.
+
+More specifically, they found that planets with less puffy atmopsheres (smaller ``H``), larger $(g), and larger ```` tended to be clearer.
+
+
+Their analystic models also show a tentatove trend between A_H and a combination of T_eq and g (A \sim log(T^(1/2)/g))
+"""
+
 # ╔═╡ 12ab0900-2bca-45da-a4b6-a317e67660fa
 md"""
 ## References
@@ -26,7 +44,11 @@ begin
 
 	g = "``g``"
 
+	rho_p = ""
+
 	Teq = "``T_\\mathrm{eq}``"
+
+	A_H = "``A_\\mathrm{H}``"
 	
 	AM_2001 = "[Ackerman & Marley 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...556..872A/abstract)"
 	
@@ -38,9 +60,13 @@ begin
 	
 	OO_2017 = "[Ohno & Okuzumi (2017)](https://ui.adsabs.harvard.edu/abs/2017ApJ...835..261O/abstract)"
 
+	P_2019 = "[Powell+ 2019](https://ui.adsabs.harvard.edu/abs/2019ApJ...887..170P/abstract)"
+
 	V_2020 = "[Venot+ 2020](https://ui.adsabs.harvard.edu/abs/2020ApJ...890..176V/abstract)"
 
 	GMA_2018 = "[Gao, Marley, & Ackerman (2018)](https://ui.adsabs.harvard.edu/abs/2018ApJ...855...86G/exportcitation)"
+
+	D_2021 = "[Dymont+ 2021](https://ui.adsabs.harvard.edu/abs/2021arXiv211206173D/abstract)"
 end;
 
 # ╔═╡ 3670f3a7-e01a-4a4f-bf96-4c5f5b3589ef
@@ -72,7 +98,7 @@ end;
 
 # ╔═╡ 8c986a14-93a6-4cc0-a378-59afacb7249b
 @mdx """
-## Powell et al. (2019)
+## $(P_2019)
 
 * This work uses a detailed microphysical loud model to determine the observability of inhomogenous cloud cover in hot Jupiters
 
@@ -98,8 +124,9 @@ TableOfContents()
 # ╔═╡ Cell order:
 # ╟─3670f3a7-e01a-4a4f-bf96-4c5f5b3589ef
 # ╟─9ea4de5d-c63b-4157-807c-b15d038b52fa
-# ╟─8c986a14-93a6-4cc0-a378-59afacb7249b
-# ╠═12ab0900-2bca-45da-a4b6-a317e67660fa
+# ╠═8c986a14-93a6-4cc0-a378-59afacb7249b
+# ╠═ff271b55-df63-4034-a1fc-721c7e3a8393
+# ╟─12ab0900-2bca-45da-a4b6-a317e67660fa
 # ╠═007a54e5-508f-4106-a87b-7c703f3c80a7
 # ╟─4e112c5e-6f49-4f04-9e85-8365a344e8b3
 # ╟─d51d16f0-9c03-11ec-3d03-c15ca2178c81
