@@ -13,6 +13,9 @@ begin
 	using MarkdownLiteral: @mdx
 end
 
+# ╔═╡ 462c83d4-50cd-42ad-bec2-8e6d8b5cdb5d
+using LaTeXStrings
+
 # ╔═╡ 66a55c41-2c1b-4688-850a-c53c681333e5
 md"""
 # Cloud notes ☁️
@@ -53,6 +56,19 @@ end;
 * Present a cloud model that takes the microphysics of condensation and coalescence into account, unlike the previous approach by $(AM_2001), which wraps these two processes into $(fsed) as a single free parameter.
 
 * They find that coalescence is driven by differential settling under gravity, which is essential for understanding the later stages of cloud formation, where the cloud particles grow to larger than 10 μm in radius $(R_1978).
+"""
+
+# ╔═╡ 670904f8-371a-41b3-a015-c80d0db5f33c
+md"""
+here is f: ``f_\mathrm{sed}``
+$(Markdown.parse(GMA_2018))
+"""
+
+# ╔═╡ b9a95b71-1031-4448-9bd5-8986683daecc
+@mdx """
+here is f: ``f_\\mathrm{sed}``
+
+$(GMA_2018)
 """
 
 # ╔═╡ 9ea4de5d-c63b-4157-807c-b15d038b52fa
@@ -139,7 +155,10 @@ TableOfContents()
 # ╔═╡ Cell order:
 # ╟─66a55c41-2c1b-4688-850a-c53c681333e5
 # ╟─3670f3a7-e01a-4a4f-bf96-4c5f5b3589ef
-# ╟─9ea4de5d-c63b-4157-807c-b15d038b52fa
+# ╠═670904f8-371a-41b3-a015-c80d0db5f33c
+# ╠═b9a95b71-1031-4448-9bd5-8986683daecc
+# ╠═462c83d4-50cd-42ad-bec2-8e6d8b5cdb5d
+# ╠═9ea4de5d-c63b-4157-807c-b15d038b52fa
 # ╟─8c986a14-93a6-4cc0-a378-59afacb7249b
 # ╟─ff271b55-df63-4034-a1fc-721c7e3a8393
 # ╟─a72ceede-a6c8-485c-a33a-50324c485339
