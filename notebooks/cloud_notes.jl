@@ -104,15 +104,15 @@ end;
 @mdx """
 ## $(D_2021)
 
-* Compiles transmission spectra from 23 warm exoplanets ($(Teq) 1000 K) previously observed by HST to quantify the haziness of each exoplanet using a normalized water absorption feature ampltiude ($(A_H)).
+* Compiles transmission spectra from 23 warm exoplanets ``(T_\\mathrm{eq} ≤ 1000\\ \\mathrm{K})`` previously observed by HST to quantify the haziness of each exoplanet using a normalized water absorption feature ampltiude ($(A_H))
 
 * They searched for relationships between $(A_H) and other planetary and stellar parameters, and found the most statistically significant linear correlation with the following:
 	
-	* log H (scale height)
+	* ``\\log H`` (scale height)
 	* $(g)
-	* log $(ρ_p).
+	* ``\\log \\rho_\\mathrm{p}``
 
-* More specifically, they found that planets with less puffy atmopsheres (smaller ``H``), larger $(g), and larger $(ρ_p) tended to be more clear.
+* More specifically, they found that planets with less puffy atmopsheres (smaller ``H``), larger $(g), and larger $(ρ_p) tended to be more clear
 
 
 * Their analystic models also show a tentative trend between $(A_H) and a combination of $(Teq) and $(g):
@@ -128,7 +128,7 @@ TableOfContents()
 # ╔═╡ Cell order:
 # ╟─3670f3a7-e01a-4a4f-bf96-4c5f5b3589ef
 # ╟─9ea4de5d-c63b-4157-807c-b15d038b52fa
-# ╠═8c986a14-93a6-4cc0-a378-59afacb7249b
+# ╟─8c986a14-93a6-4cc0-a378-59afacb7249b
 # ╠═ff271b55-df63-4034-a1fc-721c7e3a8393
 # ╟─12ab0900-2bca-45da-a4b6-a317e67660fa
 # ╠═007a54e5-508f-4106-a87b-7c703f3c80a7
