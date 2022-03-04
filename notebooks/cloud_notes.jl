@@ -13,24 +13,6 @@ begin
 	using MarkdownLiteral: @mdx
 end
 
-# ╔═╡ ff271b55-df63-4034-a1fc-721c7e3a8393
-@mdx """
-## $(D_2021)
-
-* Compiles transmission spectra from 23 warm exoplanets ($(Teq) < 1000 K) previously observed by HST to quantify the haziness of each exoplanet using a normalized water absorption feature ampltiude ($(A_H)).
-
-
-They searched for relationships between $(A_H) and other planetary and stellar parameters, and found the most statistically significant linear correlation with the following:
-	* log H (scale height)
-	* $(g)
-	* log ``\\rho_\mathrm p``.
-
-More specifically, they found that planets with less puffy atmopsheres (smaller ``H``), larger $(g), and larger ```` tended to be clearer.
-
-
-Their analystic models also show a tentatove trend between A_H and a combination of T_eq and g (A \sim log(T^(1/2)/g))
-"""
-
 # ╔═╡ 12ab0900-2bca-45da-a4b6-a317e67660fa
 md"""
 ## References
@@ -42,9 +24,9 @@ begin
 
 	Kzz = "``K_\\mathrm{zz}``"
 
-	g = "``g``"
+	g = "``g_\\mathrm{p}``"
 
-	rho_p = ""
+	ρ_p = "``\\rho_\\mathrm{p}``"
 
 	Teq = "``T_\\mathrm{eq}``"
 
@@ -116,6 +98,28 @@ end;
 
 
 * Also find a potentilly cloud-free spectral window from ∼5-9 μm where silicate cloud opacity is decreased
+"""
+
+# ╔═╡ ff271b55-df63-4034-a1fc-721c7e3a8393
+@mdx """
+## $(D_2021)
+
+* Compiles transmission spectra from 23 warm exoplanets ($(Teq) 1000 K) previously observed by HST to quantify the haziness of each exoplanet using a normalized water absorption feature ampltiude ($(A_H)).
+
+* They searched for relationships between $(A_H) and other planetary and stellar parameters, and found the most statistically significant linear correlation with the following:
+	
+	* log H (scale height)
+	* $(g)
+	* log $(ρ_p).
+
+* More specifically, they found that planets with less puffy atmopsheres (smaller ``H``), larger $(g), and larger $(ρ_p) tended to be more clear.
+
+
+* Their analystic models also show a tentative trend between $(A_H) and a combination of $(Teq) and $(g):
+
+```math
+A_\\mathrm H \\sim log(T^{1/2}/g)
+```
 """
 
 # ╔═╡ 4e112c5e-6f49-4f04-9e85-8365a344e8b3
