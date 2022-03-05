@@ -42,8 +42,8 @@ begin
 	P_2019 = "[Powell+ 2019](https://ui.adsabs.harvard.edu/abs/2019ApJ...887..170P/abstract)"
 	V_2020 = "[Venot+ 2020](https://ui.adsabs.harvard.edu/abs/2020ApJ...890..176V/abstract)"
 	GMA_2018 = "[Gao, Marley, & Ackerman (2018)](https://ui.adsabs.harvard.edu/abs/2018ApJ...855...86G/exportcitation)"
-	R_2021 = "[Rooney+ 2021](https://ui.adsabs.harvard.edu/abs/2022ApJ...925...33R/abstract)"
 	D_2021 = "[Dymont+ 2021](https://ui.adsabs.harvard.edu/abs/2021arXiv211206173D/abstract)"
+	R_2022 = "[Rooney+ 2022](https://ui.adsabs.harvard.edu/abs/2022ApJ...925...33R/abstract)"
 end;
 
 # ╔═╡ 3670f3a7-e01a-4a4f-bf96-4c5f5b3589ef
@@ -125,7 +125,7 @@ A_\\mathrm H \\sim log(T^{1/2}/g)
 # ╔═╡ a72ceede-a6c8-485c-a33a-50324c485339
 @mdx """
 ## Wrap-up
-### $(R_2021)
+### $(R_2022)
 
 !!! note
 	For an updated approach to the original $(fsed) formalization in $(AM_2001) that allows for non-constant $(fsed) that varies with altitude, and a comprehensive overview of other studies that have investigated the impact of temperature and gravity on cloud formation, we direct readers to this study and the references therein.
