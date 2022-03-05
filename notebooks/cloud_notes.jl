@@ -37,6 +37,8 @@ begin
 	AM_2001 = "[Ackerman & Marley 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...556..872A/abstract)"
 	R_1978 = "[Rossow (1978)](https://ui.adsabs.harvard.edu/abs/1978Icar...36....1R/abstract)"
 	WS_2015 = "[(Wakeford & Sing 2015)](https://ui.adsabs.harvard.edu/abs/2015A&A...573A.122W)"
+	Sing_2016 = "[Sing+ 2016](https://ui.adsabs.harvard.edu/#abs/2016Natur.529...59S)"
+	Stevenson_2016 = "[Stevenson 2016](https://ui.adsabs.harvard.edu/abs/2016ApJ...817L..16S)"
 	M_2017 = "[Morley+ 2017](https://ui.adsabs.harvard.edu/abs/2017ApJ...850..121M)"
 	OO_2017 = "[Ohno & Okuzumi (2017)](https://ui.adsabs.harvard.edu/abs/2017ApJ...835..261O/abstract)"
 	P_2019 = "[Powell+ 2019](https://ui.adsabs.harvard.edu/abs/2019ApJ...887..170P/abstract)"
@@ -101,7 +103,7 @@ the atmosphere where it quickly evaporates
 ## $(D_2021)
 
 * Compiles transmission spectra from 23 warm exoplanets ``(T_\\mathrm{eq} ≤ 1000\\ \\mathrm{K})`` previously observed by
-HST to quantify the haziness of each exoplanet using a normalized water absorption feature amplitude ($(A_H))
+HST to quantify the haziness of each exoplanet using a normalized water absorption feature amplitude ($(A_H)), a mddified version of the water amplitude metric presented by $(Sing_2016) and $(Stevenson_2016)
 
 * They searched for relationships between $(A_H) and other planetary and stellar parameters, and found the most statistically significant linear correlation with the following:
 	
@@ -144,6 +146,6 @@ TableOfContents()
 # ╟─ff271b55-df63-4034-a1fc-721c7e3a8393
 # ╟─a72ceede-a6c8-485c-a33a-50324c485339
 # ╟─12ab0900-2bca-45da-a4b6-a317e67660fa
-# ╠═007a54e5-508f-4106-a87b-7c703f3c80a7
+# ╟─007a54e5-508f-4106-a87b-7c703f3c80a7
 # ╟─4e112c5e-6f49-4f04-9e85-8365a344e8b3
 # ╟─d51d16f0-9c03-11ec-3d03-c15ca2178c81
