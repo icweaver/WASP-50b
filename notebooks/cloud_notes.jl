@@ -80,7 +80,7 @@ end;
 * This work uses a detailed microphysical cloud model to determine the observability of inhomogeneous cloud cover in hot Jupiters
 
 
-* Cloud formation is inhibited by gravitational settling because it causes cloud particle to fall to hotter regions of
+* Cloud formation is inhibited by gravitational settling because it causes cloud particles to fall to hotter regions of
 the atmosphere where it quickly evaporates
 
 
