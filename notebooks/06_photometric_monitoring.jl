@@ -29,6 +29,50 @@ begin
 	using CondaPkg
 	CondaPkg.add("lightkurve"); CondaPkg.resolve()
 	using PythonCall
+
+	##############
+	# PLOT CONFIGS
+	##############
+	const FIG_TALL = 72 .* (6, 8)
+	const FIG_WIDE = 72 .* (12, 6)
+	const FIG_LARGE = 72 .* (12, 12)
+	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS = parse.(Makie.Colors.Colorant,
+		[
+			"#66C2A5",  # Green
+			"#FDBF6F",  # Yellow
+			"#FF7F00",  # Orange
+			"#1F78B4",  # Blue
+		]
+	)
+
+	set_aog_theme!()
+	update_theme!(
+		Theme(
+			Axis = (
+				xlabelsize = 18,
+				ylabelsize = 18,
+				topspinevisible = true,
+				rightspinevisible = true,
+				topspinecolor = :darkgrey,
+				rightspinecolor = :darkgrey,
+			),
+			Label = (
+				textsize = 18,
+				font = AlgebraOfGraphics.firasans("Medium"),
+			),
+			Lines = (linewidth=3,),
+			Scatter = (linewidth=10,),
+			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=18),
+			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
+			figure_padding = (0, 1.5, 0, 0),
+			fontsize = 18,
+			rowgap = 5,
+			colgap = 5,
+		)
+	)
+
+	COLORS
 end
 
 # ╔═╡ 1797234e-6194-4fe5-945d-e7d91761ad7b
@@ -195,9 +239,6 @@ all_srs = lk.search_lightcurve("WASP-50")
 
 # ╔═╡ 36981518-0ef9-426f-9830-27238fa803ae
 df = (; x=randn(100))
-
-# ╔═╡ 99d43be5-e4dc-47a3-b134-b6fae3454e10
-@which Hist
 
 # ╔═╡ dff46359-7aec-4fa1-bc7a-89785dfca0e8
 srs = lk.search_lightcurve("WASP-50", author=["SPOC"], exptime=120)
@@ -459,6 +500,7 @@ end
 """
 
 # ╔═╡ 3a612743-7071-4d85-a48d-0a4b12facffc
+# Folded on P_maxs
 ΔLs = map(lcs_fit_folded) do lc
 	lc = to_PyPandas(lc)
 	minimum(lc.flux) / median(lc.flux)
@@ -477,6 +519,7 @@ f_sp(T_sp, ΔL, T₀=T₀) = (T₀^4 /  (T₀^4 - T_sp^4)) * (1 - ΔL)
 Ts = 10.0:10.0:5_000
 
 # ╔═╡ df370404-2f12-4925-8827-6198793ae842
+# P_maxs
 extrema(f_sp.(Ts, ΔLs[end], T₀))
 
 # ╔═╡ 8bd502e8-e67d-44be-8a60-d7ad2c147d70
@@ -511,13 +554,15 @@ end
 x = fold_and_bin(lcs_oot_comb)
 
 # ╔═╡ 2429035b-5b8e-45d5-9957-99ad772324af
+# Folded on P_lit (16.3 days)
 ΔLs2 = map(x[3]) do lc
 	lc = to_PyPandas(lc)
 	minimum(lc.flux) / median(lc.flux)
 end
 
 # ╔═╡ 377c1376-b81f-40e5-8ab3-22cc7d77d7a5
-extrema(f_sp.(Ts, ΔLs2[end], T₀)) .* 100
+# P_lit
+extrema(f_sp.(Ts, ΔLs2[end], T₀))
 
 # ╔═╡ 18223d42-66d8-40d1-9d89-be8af46853e2
 @mdx """
@@ -547,56 +592,9 @@ function savefig(fig, fpath)
 	@info "Saved to: $(fpath)"
 end
 
-# ╔═╡ 9e2ce576-c9bd-11eb-0699-47af13e79589
-begin
-	##############
-	# PLOT CONFIGS
-	##############
-	const FIG_TALL = 72 .* (6, 8)
-	const FIG_WIDE = 72 .* (12, 6)
-	const FIG_LARGE = 72 .* (12, 12)
-	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
-	const COLORS = parse.(Makie.Colors.Colorant,
-		[
-			"#66C2A5",  # Green
-			"#FDBF6F",  # Yellow
-			"#FF7F00",  # Orange
-			"#1F78B4",  # Blue
-		]
-	)
-
-	set_aog_theme!()
-	update_theme!(
-		Theme(
-			Axis = (
-				xlabelsize = 18,
-				ylabelsize = 18,
-				topspinevisible = true,
-				rightspinevisible = true,
-				topspinecolor = :darkgrey,
-				rightspinecolor = :darkgrey,
-			),
-			Label = (
-				textsize = 18,
-				font = AlgebraOfGraphics.firasans("Medium"),
-			),
-			Lines = (linewidth=3,),
-			Scatter = (linewidth=10,),
-			Text = (font = AlgebraOfGraphics.firasans("Regular"), textsize=18),
-			palette = (color=COLORS, patchcolor=[(c, 0.35) for c in COLORS]),
-			figure_padding = (0, 1.5, 0, 0),
-			fontsize = 18,
-			rowgap = 5,
-			colgap = 5,
-		)
-	)
-
-	COLORS
-end
-
 # ╔═╡ 94d05a5b-b05e-4407-bcd3-7d625680a262
 let
-	fig = Figure(resolution=FIG_WIDE, fontsize=24)
+	fig = Figure(resolution=FIG_LARGE, fontsize=24)
 
 	ax_window = Axis(fig[1, 1], xlabelsize = 24,
 		ylabelsize = 24,)
@@ -720,7 +718,6 @@ body.disable_ui main {
 # ╠═7c11e5b2-6046-4eaf-a4a1-683b8e7d9323
 # ╠═708d54a5-95fd-4f15-9681-f6d8e7b9b05c
 # ╠═36981518-0ef9-426f-9830-27238fa803ae
-# ╠═99d43be5-e4dc-47a3-b134-b6fae3454e10
 # ╟─34fcd73d-a49c-4597-8e63-cfe2495eee48
 # ╠═dff46359-7aec-4fa1-bc7a-89785dfca0e8
 # ╠═6e62b3cc-96ce-43fd-811b-4b2b102cfd61
@@ -759,6 +756,5 @@ body.disable_ui main {
 # ╠═682c3732-e68f-4fdb-bd63-553223308364
 # ╟─ded3b271-6b4e-4e68-b2f6-fa8cfd52c0bd
 # ╟─79acbb60-803a-4047-b26d-1cf6262274a0
-# ╠═9e2ce576-c9bd-11eb-0699-47af13e79589
 # ╠═55beac98-0929-4a55-91f7-cee7c781498c
 # ╟─01bfe0ad-3cb9-42f0-9d72-3deef3969d05

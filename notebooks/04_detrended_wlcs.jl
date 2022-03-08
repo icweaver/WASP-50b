@@ -645,7 +645,7 @@ let
 	n_params = length(PARAMS) # Number of fitted parameters
 	
 	# Create empty corner plot grid
-	fig = Figure(resolution=FIG_LARGE, backgroundcolor=:transparent)
+	fig = Figure(resolution=FIG_LARGE)
 	
 	for j in 1:n_params, i in 1:n_params
 		# Create subplot apply global settings
@@ -655,7 +655,7 @@ let
 			xticks = LinearTicks(3),
 			yticks = LinearTicks(3),
 			limits = ((-15, 15), (-15, 15)),
-			backgroundcolor = :transparent,
+			#backgroundcolor = :transparent,
 		)
 		# Hide upper triangle
 		j > i && (hidedecorations!(ax); hidespines!(ax))
@@ -743,7 +743,7 @@ end
 # ╔═╡ 18c90ed4-2f07-493f-95b2-e308cd7a03a9
 let
 	fig = Figure(resolution=FIG_TALL)
-	ax = Axis(fig[1, 1], xlabel="x", ylabel="Parameter")
+	ax = Axis(fig[1, 1], xlabel="x", ylabel="Parameter", xticks=LinearTicks(5))
 
 	for (i, param) in enumerate(reverse(BMA.Parameter))
 		i%2 != 0 && hspan!(ax, i-0.5, i+0.5, color=(:darkgrey, 0.25))
@@ -766,7 +766,7 @@ let
 
 	hideydecorations!(ax, label=false)
 
-	xlims!(ax, -4.8, 4.8)
+	xlims!(ax, -5, 5)
 	ylims!(ax, 0.5, 8.5)
 
 	savefig(fig, "$(FIG_DIR)/detrended_wlcs_params_comp_$(fname_suff).pdf")
