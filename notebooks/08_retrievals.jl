@@ -49,16 +49,17 @@ end
 """
 
 # ╔═╡ 60dc161c-2aa2-4264-884d-6da3ead0e57b
-@bind base_dir Select(glob("./data/retrievals/WASP50*"))
+@bind base_dir Select(glob("data/retrievals/WASP50*"))
 
 # ╔═╡ d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
-fit_R0 = "NofitR0"
+@bind fit_R0 Select(["NofitR0", "fitR0"])
 
-# ╔═╡ 8c6e3fd8-f6cb-4250-acb8-c17c00b1b2eb
+# ╔═╡ 589afac8-0ea5-4962-b52b-7f035e91cf44
 fname_suff = let
 	b = basename(base_dir)
 	label = occursin("offs", b) ? "offs" : "no_offs"
 	label *= "_$(fit_R0)"
+	label *= "_$(b)"
 end
 
 # ╔═╡ 2c12ec4d-1184-4755-8bd8-0d7cd59fa205
@@ -347,7 +348,7 @@ let
 		visual(BarPlot)
 	
 	fg = draw(plt;
-		#axis = (; limits=(nothing, nothing, 0, 2.0)),
+		axis = (; limits=(nothing, nothing, 0, 4.0)),
 		legend = (
 			position = :top,
 			nbanks = 2,
@@ -436,8 +437,8 @@ body.disable_ui main {
 # ╟─0132b4ab-0447-4546-b412-ec598b20d21d
 # ╠═a21aad0b-5998-420e-b437-d7ad262d0fe4
 # ╟─60dc161c-2aa2-4264-884d-6da3ead0e57b
-# ╠═d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
-# ╠═8c6e3fd8-f6cb-4250-acb8-c17c00b1b2eb
+# ╟─d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
+# ╠═589afac8-0ea5-4962-b52b-7f035e91cf44
 # ╟─2c12ec4d-1184-4755-8bd8-0d7cd59fa205
 # ╠═df43608e-7026-45ae-b87b-d7e0b6cea89c
 # ╟─093156c7-9da7-4814-9260-5173f27fa497
