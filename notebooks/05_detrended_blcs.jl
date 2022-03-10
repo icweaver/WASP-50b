@@ -151,6 +151,9 @@ begin
 	cubes = sort(cubes)
 end
 
+# ╔═╡ 03f34fcd-61e0-4996-8e9e-19c3e0bb1e88
+cubes["Transit_3_IMACS"]["t"][[begin, end]] .|> julian2datetime .|> (x -> round(x, Minute))
+
 # ╔═╡ efb8ed46-1607-4c13-b1ba-e4ca37e59b98
 @mdx """
 ## Plot 📊
@@ -227,13 +230,12 @@ begin
 end
 
 # ╔═╡ bec88974-b150-4f53-9497-ddec4883ae17
-function plot_BLCs(transit, phase, datas, models, errs, wbins; offset=0.3,
-backgroundcolor=:transparent)
-	fig = Figure(resolution=FIG_LARGE, backgroundcolor=:transparent)
+function plot_BLCs(transit, phase, datas, models, errs, wbins; offset=0.3)
+	fig = Figure(resolution=FIG_LARGE)
 	median_prec = round(Int, median(errs))
-	ax_left = Axis(fig[1, 1], title = "Detrended BLCs", backgroundcolor=:transparent)
-	ax_right = Axis(fig[1, 2], title = "Residuals", backgroundcolor=:transparent)
-	ax_label = Axis(fig[1, 3], title = "Median precision: $(median_prec) ppm", backgroundcolor=:transparent)
+	ax_left = Axis(fig[1, 1], title = "Detrended BLCs")
+	ax_right = Axis(fig[1, 2], title = "Residuals")
+	ax_label = Axis(fig[1, 3], title = "Median precision: $(median_prec) ppm")
 	axs = reshape(copy(fig.content), 1, 3)
 	
 	# Color palette
@@ -318,6 +320,7 @@ blc_plots[transit]
 # ╠═141a652d-0d43-4ebc-9a8c-ac43f31e7831
 # ╠═737c135a-7412-4b87-a718-642472d4bf4b
 # ╠═f3e9100a-ec8e-425f-9081-e457ad9b1515
+# ╠═03f34fcd-61e0-4996-8e9e-19c3e0bb1e88
 # ╟─efb8ed46-1607-4c13-b1ba-e4ca37e59b98
 # ╠═df1a160c-22ff-4c5e-a71f-b903d8a23ef1
 # ╟─a5acf744-dfe7-4088-885b-9142af8f0d8f

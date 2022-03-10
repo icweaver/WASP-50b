@@ -30,6 +30,9 @@ begin
 	using PythonCall
 end
 
+# ╔═╡ 54d69f6d-cac0-4909-84b0-01f42cb7a4b0
+1400 + 250
+
 # ╔═╡ a21aad0b-5998-420e-b437-d7ad262d0fe4
 begin
 	const DATA_DIR = "data/retrievals"
@@ -189,6 +192,11 @@ function plot_retrieval!(ax, cube, sp, model; color=:blue, linewidth=3)
 	retrieval!(ax, retr_model, retr_model_sampled; color, linewidth, label)
 end
 
+# ╔═╡ 0f23e0d6-177d-4bf6-9660-f2c376b3146b
+md"""
+## Posterior distributions
+"""
+
 # ╔═╡ 1eff1230-2423-4ac3-8e9b-f4e7bcd0121b
 @mdx """
 ## Notebook setup 🔧
@@ -291,6 +299,21 @@ end
 
 # ╔═╡ 54b5c81a-835a-461c-9dfd-2d938fac3bc4
 Dict(k => median(v) ± std(v) for (k, v) ∈ dists)
+
+# ╔═╡ 95f85651-ca70-4dd8-b82c-b531a966de90
+cube |> keys
+
+# ╔═╡ 41d8cd60-aacb-46c4-9344-29a8228f43cb
+cube["K"] |> keys
+
+# ╔═╡ 6ed6b481-4b84-485a-af2f-d2ecb943cd33
+samples = pyconvert(Dict{String, Vector}, cube["K"]["clear"]["retr"]["samples"])
+
+# ╔═╡ d3ec52e6-205e-4639-bd50-c9ef45e44f8e
+hist(samples["T"])
+
+# ╔═╡ b52a381b-438f-4224-b5f3-7e11db5cc045
+samples["Fhet"] |> median
 
 # ╔═╡ e43f1834-73dd-4859-b847-f4c552561897
 begin
@@ -434,6 +457,7 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
+# ╠═54d69f6d-cac0-4909-84b0-01f42cb7a4b0
 # ╟─0132b4ab-0447-4546-b412-ec598b20d21d
 # ╠═a21aad0b-5998-420e-b437-d7ad262d0fe4
 # ╟─60dc161c-2aa2-4264-884d-6da3ead0e57b
@@ -461,6 +485,12 @@ body.disable_ui main {
 # ╠═5569b57c-0585-4300-927b-5d089dde0f43
 # ╠═db524678-9ee2-4934-b1bb-6a2f13bf0fa6
 # ╠═cc011a66-37bd-4543-9a58-b11e1f785e52
+# ╟─0f23e0d6-177d-4bf6-9660-f2c376b3146b
+# ╠═95f85651-ca70-4dd8-b82c-b531a966de90
+# ╠═41d8cd60-aacb-46c4-9344-29a8228f43cb
+# ╠═6ed6b481-4b84-485a-af2f-d2ecb943cd33
+# ╠═d3ec52e6-205e-4639-bd50-c9ef45e44f8e
+# ╠═b52a381b-438f-4224-b5f3-7e11db5cc045
 # ╟─1eff1230-2423-4ac3-8e9b-f4e7bcd0121b
 # ╟─eab74923-a084-468c-9b0d-c2cc98a23913
 # ╠═44b3b8cd-4b83-4b27-a948-d1230489552f

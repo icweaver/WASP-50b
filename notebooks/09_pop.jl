@@ -23,15 +23,11 @@ begin
 	using Measurements: value, uncertainty
 end
 
+# ╔═╡ b87a9173-4925-4971-93a7-57eb6b43834b
+using JSON
+
 # ╔═╡ 37f534d2-5f10-44a0-b332-b0004ac9028e
 using PrettyTables
-
-# ╔═╡ 7493bb13-ee41-4798-99f6-dc1df97bd624
-begin
-	const DATA_DIR = "data/pop"
-	const FIG_DIR = "figures/pop"
-	TableOfContents()
-end
 
 # ╔═╡ cd13d7f3-0ea3-4631-afd9-5f3e359000e6
 @mdx """
@@ -47,6 +43,13 @@ As of this writing, the planetary parameters reported in the [NASA exoplanet arc
 	```
 	* [Direct link](https://app.box.com/s/p8crolyu1avcbpfv49n0iehcnp8ym72p)
 """
+
+# ╔═╡ 7493bb13-ee41-4798-99f6-dc1df97bd624
+begin
+	const DATA_DIR = "data/pop"
+	const FIG_DIR = "figures/pop"
+	TableOfContents()
+end
 
 # ╔═╡ 6b06701b-05e2-4284-a308-e9edeb65a648
 @mdx """
@@ -106,15 +109,6 @@ md"""
 After performing the cross-match on this site, we save the final list of exoplanets with updated stellar parameters to use in the rest of our analysis:
 """
 
-# ╔═╡ 11873b78-54c4-452c-a61e-750c467e3d26
-md"""
-!!! warning
-	As seen above, roughly half of the known transiting exoplanets do not have uncertainties reported for their stellar parameters in the TICv8. To keep our potential list of HGHJs as conservative as possible, we restrict the pool to just those targets that have a reported uncertainty.
-"""
-
-# ╔═╡ f8b4def8-a46f-4cbc-83c0-ff44a39c1571
-ρ_sun = inv((4/3)*π) # Conversion factor from solar units
-
 # ╔═╡ 380d05a4-35e9-4db4-b35a-b03de9e695ee
 df_exoarchive_TICv8 = let
 	df0 = CSV.read("data/pop/exoarchive_TICv8.txt", DataFrame;
@@ -145,6 +139,15 @@ df_exoarchive_TICv8 = let
 	end
 	# #@transform! df :Mₛ = @. :ρₛ * :Rₛ^3 # Already in solar units
 end
+
+# ╔═╡ 11873b78-54c4-452c-a61e-750c467e3d26
+md"""
+!!! warning
+	As seen above, roughly half of the known transiting exoplanets do not have uncertainties reported for their stellar parameters in the TICv8. To keep our potential list of HGHJs as conservative as possible, we restrict the pool to just those targets that have a reported uncertainty.
+"""
+
+# ╔═╡ f8b4def8-a46f-4cbc-83c0-ff44a39c1571
+ρ_sun = inv((4/3)*π) # Conversion factor from solar units
 
 # ╔═╡ 617fc32d-3c68-4553-94c7-b7445e1d5496
 md"""
@@ -340,6 +343,64 @@ df_orb = DataFrame(
 	st_refnames_orb = [st_refnames_orb; st_refnames_wakeford],
 )
 
+# ╔═╡ 463341ab-318d-402f-9545-b44cf19a75ea
+df_complete = let
+	df = leftjoin(leftjoin(df_K, df_orb; on=:pl_name), df_exoarchive_TICv8;
+		on = :pl_name
+	) |> dropmissing!
+	@transform! df begin
+		:pl_massj = @. compute_Mₚ(
+			:pl_rvamp, :pl_orbincl, :pl_orbper, :st_mass
+		) |> u"Mjup"
+		:pl_radj = @. (:pl_ratror * :st_rad) |> u"Rjup"
+		:pl_ratdor = @. compute_aRₛ(:st_dens_solar, :pl_orbper) |> NoUnits
+	end
+	@transform! df begin
+		:pl_g_SI = @. compute_gₚ(
+			:pl_massj, :pl_ratror, :st_rad
+		) |> u"m/s^2"
+		:pl_eqt = @. compute_Tₚ(:st_teff, :pl_ratdor)
+	end
+	@transform! df begin
+		:pl_H_km = @. compute_H(
+			2.0*u"u", :pl_eqt, :pl_g_SI
+		) |> u"km"
+
+		# Assumes Mp, Rp in Earth units, Teq in K, Rₛ in solar units
+		:TSM = @. compute_TSM(
+			:pl_radj |> strip_u(u"Rjup"),
+			:pl_eqt |> strip_u(u"K"),
+			:pl_massj |> strip_u(u"Mjup"),
+			:st_rad |> strip_u(u"Rsun"),
+			:sy_jmag
+		)
+	end
+	@chain df begin
+		@aside begin
+			targ_idx = _.pl_name .== "HAT-P-23 b"
+			TSM_target = _.TSM[targ_idx][1]
+		end
+		@transform! begin
+			:TSMR = :TSM / TSM_target
+	
+			:ΔD_ppm = @. compute_ΔD(
+				:pl_H_km, :pl_radj, :st_rad
+			) * 5.0 * 1e6 |> NoUnits
+		end
+		@aside ΔD_ppm_targ = _.ΔD_ppm[targ_idx][1]
+		@transform! begin
+			:ΔDR_ppm = :ΔD_ppm / ΔD_ppm_targ
+		end
+	end
+	# @select!(df,
+	# 	:TIC, :pl_name,
+	# 	:Rₛ, :T_eff, :ρₛ, :Mₛ,
+	# 	:K_mps,
+	# 	:r, :aRₛ, :P_d, :i_deg,
+	# 	:Mₚ_J, :Rₚ_J, :Tₚ, :gₚ_SI,
+	# )
+end
+
 # ╔═╡ 0f939597-807b-4381-8461-09c7b9bdf3b1
 occursin_df(df, s) = df[occursin.(s, df.pl_name), :]
 
@@ -371,6 +432,115 @@ compute_Tₚ(Tₛ, aRₛ; α=0.0) = Tₛ * (1.0 - α)^(1//4) * (0.5/aRₛ)^(1//2
 ## Split 'em up
 """
 
+# ╔═╡ 373e3a8c-39f8-4656-9fcb-e0fc21cce353
+df_all = @chain df_complete begin
+	@select begin
+		:pl_name
+		:pl_eqt = @. value(:pl_eqt) |> strip_u(u"K")
+		:pl_eqt_err = @. uncertainty(:pl_eqt) |> strip_u(u"K")
+		:pl_g = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
+		:pl_g_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
+		:TSMR = value.(:TSMR)
+	end
+end
+
+# ╔═╡ 998af70c-d784-4791-9261-a6dcbec8c824
+df_HGHJ = @chain df_complete begin
+	@rsubset (1.0 ≤ :TSMR) & (22.5u"m/s^2" ≤ :pl_g_SI) & (0.89u"Rjup" ≤ :pl_radj) & (:pl_eqt ≤ 2030u"K")
+	sort(:TSMR, rev=true) # To stack smaller circles on top in Figure
+	@select begin
+		:pl_name
+		:pl_eqt = @. value(:pl_eqt) |> strip_u(u"K")
+		:pl_eqt_err = @. uncertainty(:pl_eqt) |> strip_u(u"K")
+		:pl_g = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
+		:pl_g_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
+		:TSMR = value.(:TSMR)
+		:ΔD_ppm = @. value(:ΔD_ppm)
+		:pl_refnames_K
+		:pl_refnames_orb
+	end
+	# @rtransform begin
+	# 	:pl_refnames_K = "\\url{$(extract_url(:pl_refnames_K))}"
+	# 	:pl_refnames_orb = "\\url{$(extract_url(:pl_refnames_orb))}"
+	# end
+end
+
+# ╔═╡ b3ae27e9-2564-4f4c-8c51-5a40b2705ecf
+# Same as df_HGHJ but with ± measurements in each column instead of separate
+# And paper refs in latex format
+df_HGHJ_paper = @chain df_complete begin
+	@rsubset (1.0 ≤ :TSMR) & (22.5u"m/s^2" ≤ :pl_g_SI) & (0.89u"Rjup" ≤ :pl_radj) & (:pl_eqt ≤ 2030u"K")
+	sort(:TSMR, rev=true) # To stack smaller circles on top in Figure
+	@select begin
+		:pl_name
+		:st_rad =  ustrip.(u"Rsun", :st_rad)
+		:pl_massj = ustrip.(u"Mjup", :pl_massj)
+		:pl_radj = ustrip.(u"Rjup", :pl_radj)
+		:pl_H_km = ustrip.(u"km", :pl_H_km)
+		:sy_jmag
+		:pl_eqt = ustrip.(u"K", :pl_eqt)
+		:pl_g = ustrip.(u"m/s^2", :pl_g_SI)
+		:ΔD_ppm
+		:TSMR = @. round(value(:TSMR), digits=2)
+		#:pl_refnames_K
+		#:pl_refnames_orb
+		:K_cite = get_cite.(:pl_refnames_K)
+		:orb_cite = get_cite.(:pl_refnames_orb)
+		#:pl_refnames_K
+		#:pl_refnames_orb
+	end
+	# @rtransform begin
+	# 	:pl_refnames_K = "\\href{$(extract_url(:pl_refnames_K))}{Klink}"
+	# 	:pl_refnames_orb = "\\href{$(extract_url(:pl_refnames_orb))}{orblink}"
+	# end
+end
+
+# ╔═╡ 5141bbb4-726b-4161-b0ae-ddf747962de6
+get_url(s) = split(s, ('=', ' '))[5]
+
+# ╔═╡ d835f5bb-37cb-428b-b1a0-7255b1b2e29d
+get_bibcode(s) = split(s, '/')[end-1]
+
+# ╔═╡ 5a27ca82-1416-4fed-8f70-46ecd3c73ed6
+function get_cite(s)
+	bib_ref = (get_bibcode ∘ get_url).(s)
+	return "\\citet{$(bib_ref)}"
+end
+
+# ╔═╡ b544082d-d093-462d-b98a-39e68468efe5
+K_bibs = (get_bibcode ∘ get_url).(df_HGHJ.pl_refnames_K) .|> String
+
+# ╔═╡ 8c08b04a-0121-4a17-9f6d-45f9a76170d6
+orb_bibs = (get_bibcode ∘ get_url).(df_HGHJ.pl_refnames_orb) .|> String
+
+# ╔═╡ 4031ef7d-a864-4e71-9a56-22362c65bf9c
+r_Ks = HTTP.request(
+	"POST",
+	"https://api.adsabs.harvard.edu/v1/export/bibtex",
+	["Authorization" => "Bearer 93R7snkzsfTOTdzutpltgTcxGrJonWmzrjwQUiel"],
+	"""{"bibcode": $(unique(K_bibs))}""",
+)
+
+# ╔═╡ 10ae939b-12ee-4179-9af6-825338cbc690
+r_orbs = HTTP.request(
+	"POST",
+	"https://api.adsabs.harvard.edu/v1/export/bibtex",
+	["Authorization" => "Bearer 93R7snkzsfTOTdzutpltgTcxGrJonWmzrjwQUiel"],
+	"""{"bibcode": $(unique(orb_bibs))}""",
+)
+
+# ╔═╡ 645e14c5-3438-4538-9764-99a544959eb3
+K_refs = JSON.parse(String(r_Ks.body))["export"] |> println
+
+# ╔═╡ 8a5e6e35-d092-4306-a2ac-070f7850dc6b
+orb_refs = JSON.parse(String(r_orbs.body))["export"]
+
+# ╔═╡ 893c4a44-f9f6-4185-bd1e-26095339bddc
+latextabular(df_HGHJ_paper, latex=false) |> PlutoUI.Text
+
+# ╔═╡ 00fe5763-64d6-4f95-84db-24a55b7d98b0
+df = df_HGHJ_paper[end, [begin, end]]
+
 # ╔═╡ c7eabcc6-5139-448d-abdb-ec752788bd59
 strip_u(u) = x -> ustrip(u, x)
 
@@ -386,6 +556,29 @@ get_gₚ(Mₚ, RₚRₛ, Rₛ) = G * Mₚ / (RₚRₛ^2 * Rₛ^2)
 df_H2OJ = CSV.read("data/pop/H2O_J_data.csv", DataFrame;
 	stripwhitespace = true,
 )
+
+# ╔═╡ d6449d05-ee95-4bda-8636-37c71e422944
+df_wakeford = let
+	df = leftjoin(df_H2OJ, df_complete, on=:pl_name)
+	@select df begin
+		:pl_name = :pl_name
+		:pl_eqt = @. value(:pl_eqt) |> strip_u(u"K")
+		:pl_eqt_err = @. uncertainty(:pl_eqt) |> strip_u(u"K")
+		:pl_g = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
+		:pl_g_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
+		:H2OJ
+		:H2OJ_unc
+		:TSMR = value.(:TSMR)
+	end
+end
+
+# ╔═╡ 348e5532-5180-41b8-87d9-39dc5affe465
+df_HGHJ_no_H2OJ = filter(:pl_name => ∈(("HAT-P-23 b", "WASP-50 b")), df_HGHJ;
+	view = true
+)
+
+# ╔═╡ c4d4d7b9-4885-423b-8969-1fb192fb1ec1
+df_wakeford
 
 # ╔═╡ 0f9262ef-b774-45bc-bdab-46860779683d
 @mdx """
@@ -453,148 +646,6 @@ compute_H(μ, T, g) = k * T / (μ * g)
 
 # ╔═╡ c1e63cf3-7f30-4858-bdd6-125d2a99529f
 compute_ΔD(H, Rₚ, Rₛ) = 2.0 * H * Rₚ/Rₛ^2
-
-# ╔═╡ 463341ab-318d-402f-9545-b44cf19a75ea
-df_complete = let
-	df = leftjoin(leftjoin(df_K, df_orb; on=:pl_name), df_exoarchive_TICv8;
-		on = :pl_name
-	) |> dropmissing!
-	@transform! df begin
-		:pl_massj = @. compute_Mₚ(
-			:pl_rvamp, :pl_orbincl, :pl_orbper, :st_mass
-		) |> u"Mjup"
-		:pl_radj = @. (:pl_ratror * :st_rad) |> u"Rjup"
-		:pl_ratdor = @. compute_aRₛ(:st_dens_solar, :pl_orbper) |> NoUnits
-	end
-	@transform! df begin
-		:pl_g_SI = @. compute_gₚ(
-			:pl_massj, :pl_ratror, :st_rad
-		) |> u"m/s^2"
-		:pl_eqt = @. compute_Tₚ(:st_teff, :pl_ratdor)
-	end
-	@transform! df begin
-		:pl_H_km = @. compute_H(
-			2.0*u"u", :pl_eqt, :pl_g_SI
-		) |> u"km"
-
-		# Assumes Mp, Rp in Earth units, Teq in K, Rₛ in solar units
-		:TSM = @. compute_TSM(
-			:pl_radj |> strip_u(u"Rearth"),
-			:pl_eqt |> strip_u(u"K"),
-			:pl_massj |> strip_u(u"Mearth"),
-			:st_rad |> strip_u(u"Rsun"),
-			:sy_jmag
-		)
-	end
-	@chain df begin
-		@aside begin
-			targ_idx = _.pl_name .== "HAT-P-23 b"
-			TSM_target = _.TSM[targ_idx][1]
-		end
-		@transform! begin
-			:TSMR = :TSM / TSM_target
-	
-			:ΔD_ppm = @. compute_ΔD(
-				:pl_H_km, :pl_radj, :st_rad
-			) * 5.0 * 1e6 |> NoUnits
-		end
-		@aside ΔD_ppm_targ = _.ΔD_ppm[targ_idx][1]
-		@transform! begin
-			:ΔDR_ppm = :ΔD_ppm / ΔD_ppm_targ
-		end
-	end
-	# @select!(df,
-	# 	:TIC, :pl_name,
-	# 	:Rₛ, :T_eff, :ρₛ, :Mₛ,
-	# 	:K_mps,
-	# 	:r, :aRₛ, :P_d, :i_deg,
-	# 	:Mₚ_J, :Rₚ_J, :Tₚ, :gₚ_SI,
-	# )
-end
-
-# ╔═╡ 373e3a8c-39f8-4656-9fcb-e0fc21cce353
-df_all = @chain df_complete begin
-	@select begin
-		:pl_name
-		:pl_eqt = @. value(:pl_eqt) |> strip_u(u"K")
-		:pl_eqt_err = @. uncertainty(:pl_eqt) |> strip_u(u"K")
-		:pl_g = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
-		:pl_g_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
-		:TSMR = value.(:TSMR)
-	end
-end
-
-# ╔═╡ 998af70c-d784-4791-9261-a6dcbec8c824
-df_HGHJ = @chain df_complete begin
-	@rsubset (1.0 ≤ :TSMR) & (20.0u"m/s^2" ≤ :pl_g_SI) & (0.89u"Rjup" ≤ :pl_radj)
-	sort(:TSMR, rev=true) # To stack smaller circles on top in Figure
-	@select begin
-		:pl_name
-		:pl_eqt = @. value(:pl_eqt) |> strip_u(u"K")
-		:pl_eqt_err = @. uncertainty(:pl_eqt) |> strip_u(u"K")
-		:pl_g = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
-		:pl_g_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
-		:TSMR = value.(:TSMR)
-		:ΔD_ppm = @. value(:ΔD_ppm)
-		# :pl_refnames_K = HTML.(:pl_refnames_K)
-		# :pl_refnames_orb = HTML.(:pl_refnames_orb)
-	end
-	# @rtransform begin
-	# 	:pl_refnames_K = "\\url{$(extract_url(:pl_refnames_K))}"
-	# 	:pl_refnames_orb = "\\url{$(extract_url(:pl_refnames_orb))}"
-	# end
-end
-
-# ╔═╡ 348e5532-5180-41b8-87d9-39dc5affe465
-df_HGHJ_no_H2OJ = filter(:pl_name => ∈(("HAT-P-23 b", "WASP-50 b")), df_HGHJ;
-	view = true
-)
-
-# ╔═╡ b3ae27e9-2564-4f4c-8c51-5a40b2705ecf
-df_HGHJ_paper = @chain df_complete begin
-	@rsubset (1.0 ≤ :TSMR) & (20.0u"m/s^2" ≤ :pl_g_SI) & (0.89u"Rjup" ≤ :pl_radj)
-	sort(:TSMR, rev=true) # To stack smaller circles on top in Figure
-	@select begin
-		:pl_name
-		:pl_eqt = ustrip.(u"K", :pl_eqt)
-		:pl_g = ustrip.(u"m/s^2", :pl_g_SI)
-		:ΔD_ppm
-		:TSMR = @. round(value(:TSMR), digits=2)
-		#:pl_refnames_K
-		#:pl_refnames_orb
-	end
-	# @rtransform begin
-	# 	:pl_refnames_K = "\\href{$(extract_url(:pl_refnames_K))}{Klink}"
-	# 	:pl_refnames_orb = "\\href{$(extract_url(:pl_refnames_orb))}{orblink}"
-	# end
-end
-
-# ╔═╡ b544082d-d093-462d-b98a-39e68468efe5
-df_HGHJ_paper
-
-# ╔═╡ 893c4a44-f9f6-4185-bd1e-26095339bddc
-latextabular(df_HGHJ_paper, latex=false) |> PlutoUI.Text
-
-# ╔═╡ 00fe5763-64d6-4f95-84db-24a55b7d98b0
-df = df_HGHJ_paper[end, [begin, end]]
-
-# ╔═╡ d6449d05-ee95-4bda-8636-37c71e422944
-df_wakeford = let
-	df = leftjoin(df_H2OJ, df_complete, on=:pl_name)
-	@select df begin
-		:pl_name = :pl_name
-		:pl_eqt = @. value(:pl_eqt) |> strip_u(u"K")
-		:pl_eqt_err = @. uncertainty(:pl_eqt) |> strip_u(u"K")
-		:pl_g = @. value(:pl_g_SI) |> strip_u(u"m/s^2")
-		:pl_g_err = @. uncertainty(:pl_g_SI) |> strip_u(u"m/s^2")
-		:H2OJ
-		:H2OJ_unc
-		:TSMR = value.(:TSMR)
-	end
-end
-
-# ╔═╡ c4d4d7b9-4885-423b-8969-1fb192fb1ec1
-df_wakeford
 
 # ╔═╡ 683a8d85-b9a8-4eab-8a4b-e2b57d0783c0
 @mdx """
@@ -838,7 +889,16 @@ end
 # ╠═373e3a8c-39f8-4656-9fcb-e0fc21cce353
 # ╠═998af70c-d784-4791-9261-a6dcbec8c824
 # ╠═b3ae27e9-2564-4f4c-8c51-5a40b2705ecf
+# ╠═5141bbb4-726b-4161-b0ae-ddf747962de6
+# ╠═d835f5bb-37cb-428b-b1a0-7255b1b2e29d
+# ╠═5a27ca82-1416-4fed-8f70-46ecd3c73ed6
 # ╠═b544082d-d093-462d-b98a-39e68468efe5
+# ╠═8c08b04a-0121-4a17-9f6d-45f9a76170d6
+# ╠═4031ef7d-a864-4e71-9a56-22362c65bf9c
+# ╠═10ae939b-12ee-4179-9af6-825338cbc690
+# ╠═b87a9173-4925-4971-93a7-57eb6b43834b
+# ╠═645e14c5-3438-4538-9764-99a544959eb3
+# ╠═8a5e6e35-d092-4306-a2ac-070f7850dc6b
 # ╠═893c4a44-f9f6-4185-bd1e-26095339bddc
 # ╠═00fe5763-64d6-4f95-84db-24a55b7d98b0
 # ╠═37f534d2-5f10-44a0-b332-b0004ac9028e
