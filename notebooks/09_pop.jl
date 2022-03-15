@@ -1,8 +1,18 @@
 ### A Pluto.jl notebook ###
-# v0.18.1
+# v0.18.2
 
 using Markdown
 using InteractiveUtils
+
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
 
 # ╔═╡ 24c6a2d0-0aea-11ec-2cd4-3de7ec08b83e
 begin
@@ -111,6 +121,9 @@ end
 md"""
 After performing the cross-match on this site, we save the final list of exoplanets with updated stellar parameters to use in the rest of our analysis:
 """
+
+# ╔═╡ 67d1e82c-8a24-4ee9-942c-a0e5b80f1ab0
+
 
 # ╔═╡ 11873b78-54c4-452c-a61e-750c467e3d26
 md"""
@@ -363,12 +376,6 @@ compute_Mₚ(K, i, P, Mₛ) = (K/sin(i)) * cbrt(P / (2.0π*G)) * cbrt(Mₛ^2)
 # ╔═╡ 7a688b2e-64bb-4bc5-a799-4b267e5c30ad
 compute_aRₛ(ρₛ, P) = cbrt((G * P^2 * ρₛ)/(3.0π))
 
-# ╔═╡ 29603a24-316b-4d01-9605-6d49424fc7ff
-compute_aRₛ(2.1070418u"g/cm^3", 0.813475u"d") |> NoUnits
-
-# ╔═╡ ee3990d1-91b6-4c47-bba1-d016c75476da
-compute_aRₛ(1.4945u"Msun/Rsun^3", 0.813475u"d") |> u"Msun/Msun"
-
 # ╔═╡ 763503a1-9c3b-4353-b396-96e62c48c2be
 compute_Tₚ(Tₛ, aRₛ; α=0.0) = Tₛ * (1.0 - α)^(1//4) * (0.5/aRₛ)^(1//2)
 
@@ -377,8 +384,8 @@ compute_Tₚ(Tₛ, aRₛ; α=0.0) = Tₛ * (1.0 - α)^(1//4) * (0.5/aRₛ)^(1//2
 ## Split 'em up
 """
 
-# ╔═╡ 10abae61-1530-4143-a4ac-b1908470f85c
-unescapeuri("2010A%26A...517L...1Q")
+# ╔═╡ 55d7cac2-e931-4c9a-868d-085893beb4ac
+replace.(["asdsadaA&A", "asdssadasdaA&A"], "A&A" => "AA")
 
 # ╔═╡ 5141bbb4-726b-4161-b0ae-ddf747962de6
 get_url(s) = split(s, ('=', ' '))[5]
@@ -391,6 +398,16 @@ function get_cite(s)
 	bib_ref = (get_bibcode ∘ unescapeuri ∘ get_url).(s)
 	return "\\citet{$(bib_ref)}"
 end
+
+# ╔═╡ 6327ebe1-0c0f-47b1-8056-3504406e25be
+@bind token confirm(TextField())
+
+# ╔═╡ 5678d8f6-ccb8-4693-af0a-632dc51df278
+isempty(token) &&
+	md"""
+	!!! danger "No token"
+		Enter [ads token](https://ui.adsabs.harvard.edu/user/settings/token) to pull down bib data
+	""";
 
 # ╔═╡ c7eabcc6-5139-448d-abdb-ec752788bd59
 strip_u(u) = x -> ustrip(u, x)
@@ -462,7 +479,8 @@ end
 # ╔═╡ c7960066-cc33-480c-807b-c56ead4262bf
 # Compute TSM, assuming Mp, Rp in Earth units, Teq in K, Rₛ in solar units
 function compute_TSM(Rp, Teq, Mp, Rs, J; denom=1.0)
-	f = compute_scale_factor(Rp)
+	#f = compute_scale_factor(Rp)
+	f = 1.0
 	return f * (Rp^3 * Teq / (Mp * Rs^2)) * 10.0^(-J/5.0) / denom
 end
 
@@ -547,7 +565,7 @@ end
 
 # ╔═╡ 998af70c-d784-4791-9261-a6dcbec8c824
 df_HGHJ = @chain df_complete begin
-	@rsubset (1.0 ≤ :TSMR) & (22.5u"m/s^2" ≤ :pl_g_SI) & (0.89u"Rjup" ≤ :pl_radj) & (:pl_eqt ≤ 2030u"K")
+	@rsubset (1.0 ≤ :TSMR) & (22.5u"m/s^2" ≤ :pl_g_SI) & (1.0u"Rjup" ≤ :pl_radj) & (:pl_eqt ≤ 2200u"K")
 	sort(:TSMR, rev=true) # To stack smaller circles on top in Figure
 	@select begin
 		:pl_name
@@ -568,9 +586,6 @@ end
 
 # ╔═╡ b544082d-d093-462d-b98a-39e68468efe5
 K_bibs = (get_bibcode ∘ get_url).(df_HGHJ.pl_refnames_K) .|> String
-
-# ╔═╡ 7b221182-99e1-476c-ab83-bd25a53d3e3e
-K_bibs
 
 # ╔═╡ 4031ef7d-a864-4e71-9a56-22362c65bf9c
 r_Ks = HTTP.request(
@@ -612,7 +627,7 @@ df_HGHJ_no_H2OJ = filter(:pl_name => ∈(("HAT-P-23 b", "WASP-50 b")), df_HGHJ;
 # Same as df_HGHJ but with ± measurements in each column instead of separate
 # And paper refs in latex format
 df_HGHJ_paper = @chain df_complete begin
-	@rsubset (1.0 ≤ :TSMR) & (22.5u"m/s^2" ≤ :pl_g_SI) & (0.89u"Rjup" ≤ :pl_radj) & (:pl_eqt ≤ 2030u"K")
+	@rsubset (1.0 ≤ :TSMR) & (22.5u"m/s^2" ≤ :pl_g_SI) & (1.0u"Rjup" ≤ :pl_radj) & (:pl_eqt ≤ 2200u"K")
 	sort(:TSMR, rev=true) # To stack smaller circles on top in Figure
 	@select begin
 		:pl_name
@@ -627,10 +642,11 @@ df_HGHJ_paper = @chain df_complete begin
 		:TSMR = @. round(value(:TSMR), digits=2)
 		#:pl_refnames_K
 		#:pl_refnames_orb
-		:K_cite = get_cite.(:pl_refnames_K)
-		:orb_cite = get_cite.(:pl_refnames_orb)
-		:pl_refnames_K = HTML.(:pl_refnames_K)
-		:pl_refnames_orb = HTML.(:pl_refnames_orb)
+		# I'm over you LaTeX
+		:K_cite = replace.(get_cite.(:pl_refnames_K), "A&A" => "AA")
+		:orb_cite = replace.(get_cite.(:pl_refnames_orb), "A&A" => "AA")
+		# :pl_refnames_K = HTML.(:pl_refnames_K)
+		# :pl_refnames_orb = HTML.(:pl_refnames_orb)
 	end
 	# @rtransform begin
 	# 	:pl_refnames_K = "\\href{$(extract_url(:pl_refnames_K))}{Klink}"
@@ -640,9 +656,6 @@ end
 
 # ╔═╡ 893c4a44-f9f6-4185-bd1e-26095339bddc
 latextabular(df_HGHJ_paper; latex=false, fmt="%.1f") |> PlutoUI.Text
-
-# ╔═╡ 00fe5763-64d6-4f95-84db-24a55b7d98b0
-df = df_HGHJ_paper[end, [begin, end]]
 
 # ╔═╡ d6449d05-ee95-4bda-8636-37c71e422944
 df_wakeford = let
@@ -874,6 +887,7 @@ end
 # ╟─db97b969-7960-4ee3-abb6-a97fa657502c
 # ╟─0d629db3-7370-406f-989b-7a2caca020dc
 # ╟─3932694b-ef0c-4a41-bcae-f9749f432d88
+# ╠═67d1e82c-8a24-4ee9-942c-a0e5b80f1ab0
 # ╠═380d05a4-35e9-4db4-b35a-b03de9e695ee
 # ╟─11873b78-54c4-452c-a61e-750c467e3d26
 # ╠═f8b4def8-a46f-4cbc-83c0-ff44a39c1571
@@ -898,28 +912,26 @@ end
 # ╟─4d1a7740-24c7-4cec-b788-a386bc25f836
 # ╠═542c59fd-782f-4e15-ab6c-a450bf4714ba
 # ╠═7a688b2e-64bb-4bc5-a799-4b267e5c30ad
-# ╠═29603a24-316b-4d01-9605-6d49424fc7ff
-# ╠═ee3990d1-91b6-4c47-bba1-d016c75476da
 # ╠═763503a1-9c3b-4353-b396-96e62c48c2be
 # ╟─47831596-0483-4420-a071-832183b1c3bb
 # ╠═373e3a8c-39f8-4656-9fcb-e0fc21cce353
 # ╠═998af70c-d784-4791-9261-a6dcbec8c824
 # ╠═b3ae27e9-2564-4f4c-8c51-5a40b2705ecf
 # ╠═893c4a44-f9f6-4185-bd1e-26095339bddc
-# ╠═7b221182-99e1-476c-ab83-bd25a53d3e3e
-# ╠═10abae61-1530-4143-a4ac-b1908470f85c
+# ╠═55d7cac2-e931-4c9a-868d-085893beb4ac
 # ╠═da3514b9-a7d3-471a-a591-afabf3947025
 # ╠═5141bbb4-726b-4161-b0ae-ddf747962de6
 # ╠═d835f5bb-37cb-428b-b1a0-7255b1b2e29d
 # ╠═5a27ca82-1416-4fed-8f70-46ecd3c73ed6
 # ╠═b544082d-d093-462d-b98a-39e68468efe5
 # ╠═8c08b04a-0121-4a17-9f6d-45f9a76170d6
+# ╟─6327ebe1-0c0f-47b1-8056-3504406e25be
+# ╟─5678d8f6-ccb8-4693-af0a-632dc51df278
 # ╠═4031ef7d-a864-4e71-9a56-22362c65bf9c
 # ╠═10ae939b-12ee-4179-9af6-825338cbc690
 # ╠═b87a9173-4925-4971-93a7-57eb6b43834b
 # ╠═3dca182a-f82c-44f0-b747-35326bb2d37a
 # ╠═882bee23-e6ff-4445-ac5c-606ada2fa7eb
-# ╠═00fe5763-64d6-4f95-84db-24a55b7d98b0
 # ╠═37f534d2-5f10-44a0-b332-b0004ac9028e
 # ╠═d6449d05-ee95-4bda-8636-37c71e422944
 # ╠═c7eabcc6-5139-448d-abdb-ec752788bd59

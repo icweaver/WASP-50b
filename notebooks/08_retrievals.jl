@@ -30,9 +30,6 @@ begin
 	using PythonCall
 end
 
-# ╔═╡ 54d69f6d-cac0-4909-84b0-01f42cb7a4b0
-1400 + 250
-
 # ╔═╡ a21aad0b-5998-420e-b437-d7ad262d0fe4
 begin
 	const DATA_DIR = "data/retrievals"
@@ -91,7 +88,7 @@ species = [
 	"Na_TiO",
 	"K_TiO",
 	"Na_K_TiO",
-	"CO",
+	# "CO",
 	"H2O",
 	# "NH3", # too low
 	# "HCN", # too low
@@ -304,16 +301,22 @@ Dict(k => median(v) ± std(v) for (k, v) ∈ dists)
 cube |> keys
 
 # ╔═╡ 41d8cd60-aacb-46c4-9344-29a8228f43cb
-cube["K"] |> keys
+models = cube["K"] |> keys
+
+# ╔═╡ d5197c68-0045-4ca7-b5c6-f9cd7852d896
+models
+
+# ╔═╡ 9c6a178c-ac7a-4ee5-ada2-05690158fcdb
+models
 
 # ╔═╡ 6ed6b481-4b84-485a-af2f-d2ecb943cd33
-samples = pyconvert(Dict{String, Vector}, cube["K"]["clear"]["retr"]["samples"])
+samples = pyconvert(Dict{String, Vector}, cube["Na"]["clear"]["retr"]["samples"])
+
+# ╔═╡ 8ac2b5d2-eb4b-4a4f-99f8-52830e5ef9e8
+keys(samples)
 
 # ╔═╡ d3ec52e6-205e-4639-bd50-c9ef45e44f8e
-hist(samples["T"])
-
-# ╔═╡ b52a381b-438f-4224-b5f3-7e11db5cc045
-samples["Fhet"] |> median
+hist(samples["T"], bins=20)
 
 # ╔═╡ e43f1834-73dd-4859-b847-f4c552561897
 begin
@@ -405,14 +408,26 @@ let
 		xlabel = "Wavelength (Å)",
 		ylabel = "Transit depth (ppm)",
 		#limits = (0.3, 1.1, 17_500, 21_000),
-		#limits = (4_600, 9_800, 15_500, 22_500),
-		limits = (4_600, 9_800, 15_500, 22_500)
+		limits = (4_000, 9_800, 17_500, 21_500),
+		#limits = (4_600, 9_800, 17_000, 21_000)
+		#limits = (4_000, 13_000, 15_500, 22_500),
+		xticks = LinearTicks(7),
 	)
 
-	plot_retrieval!(ax, cube, "Na_K_TiO", "haze+spot"; color=COLORS[6])
-	plot_retrieval!(ax, cube, "Na", "cloud"; color=COLORS[3])
-	plot_retrieval!(ax, cube, "TiO", "haze"; color=COLORS[5])
-	plot_retrieval!(ax, cube, "CO", "clear"; color=COLORS[1], linewidth=6)
+	# for (i, sp) ∈ enumerate(species)
+	# 	plot_retrieval!(ax, cube, sp, "clear"; color=COLORS[mod1(i, 6)], linewidth=1)
+	# end
+	# for (i, model) ∈ enumerate(models)
+	# 	plot_retrieval!(ax, cube, "TiO", model; color=COLORS[i], linewidth=1)
+	# end
+	plot_retrieval!(ax, cube, "Na_K_TiO", "clear"; color=COLORS[1])
+	plot_retrieval!(ax, cube, "Na_K_TiO", "spot"; color=COLORS[2])
+	plot_retrieval!(ax, cube, "Na_K_TiO", "cloud"; color=COLORS[3])
+	plot_retrieval!(ax, cube, "Na_K_TiO", "haze"; color=COLORS[5])
+	
+	# for sp ∈ species, model ∈ models
+	# 	plot_retrieval!(ax, cube, sp, model)
+	# end
 	
 	fpath_suff = basename(base_dir)
 	if occursin("offs", fpath_suff)
@@ -457,10 +472,9 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
-# ╠═54d69f6d-cac0-4909-84b0-01f42cb7a4b0
 # ╟─0132b4ab-0447-4546-b412-ec598b20d21d
 # ╠═a21aad0b-5998-420e-b437-d7ad262d0fe4
-# ╟─60dc161c-2aa2-4264-884d-6da3ead0e57b
+# ╠═60dc161c-2aa2-4264-884d-6da3ead0e57b
 # ╟─d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
 # ╠═589afac8-0ea5-4962-b52b-7f035e91cf44
 # ╟─2c12ec4d-1184-4755-8bd8-0d7cd59fa205
@@ -480,17 +494,19 @@ body.disable_ui main {
 # ╠═930ec094-7b11-48b8-818e-15c63ed6f8a5
 # ╠═54b5c81a-835a-461c-9dfd-2d938fac3bc4
 # ╟─1c4fe72d-9872-4969-a62a-5163b5009bbb
+# ╠═d5197c68-0045-4ca7-b5c6-f9cd7852d896
 # ╠═e801501c-a882-4f2d-bbc1-40028c1c91d8
 # ╠═00a0f9c4-cd4d-4ae2-80b7-0c044239a571
 # ╠═5569b57c-0585-4300-927b-5d089dde0f43
 # ╠═db524678-9ee2-4934-b1bb-6a2f13bf0fa6
 # ╠═cc011a66-37bd-4543-9a58-b11e1f785e52
 # ╟─0f23e0d6-177d-4bf6-9660-f2c376b3146b
+# ╠═9c6a178c-ac7a-4ee5-ada2-05690158fcdb
 # ╠═95f85651-ca70-4dd8-b82c-b531a966de90
 # ╠═41d8cd60-aacb-46c4-9344-29a8228f43cb
 # ╠═6ed6b481-4b84-485a-af2f-d2ecb943cd33
+# ╠═8ac2b5d2-eb4b-4a4f-99f8-52830e5ef9e8
 # ╠═d3ec52e6-205e-4639-bd50-c9ef45e44f8e
-# ╠═b52a381b-438f-4224-b5f3-7e11db5cc045
 # ╟─1eff1230-2423-4ac3-8e9b-f4e7bcd0121b
 # ╟─eab74923-a084-468c-9b0d-c2cc98a23913
 # ╠═44b3b8cd-4b83-4b27-a948-d1230489552f

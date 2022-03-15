@@ -133,6 +133,7 @@ begin
 	 	cubes[transit]["δ_WLC"] = maxmeasure(p[1], p_u[1], p_d[1])^2 * 1e6
 	end
 
+	delete!(cubes["Transit 1 (IMACS)"]["tspec"], 3)
 	cubes = sort(cubes)
 end
 
@@ -163,9 +164,6 @@ df_common_0 = innerjoin(
 @mdx """
 Conversely, we also store which points in the spectrum are not common between all nights. `Transit 2 (LDSS3C)` encompasses the spectra from all other nights, so we `antijoin` relative to this dataset:
 """
-
-# ╔═╡ 51357cde-d3da-4377-8ae0-10e81a9c5c8d
-occursin("_sp", DATA_DIR)
 
 # ╔═╡ 461097e9-a687-4ef2-a5b4-8bf4d9e1c98f
 dfs_unique = (
@@ -263,7 +261,7 @@ end
 
 # ╔═╡ b32273bc-1bb5-406a-acfe-57fd643ded51
 df_tspecs = sort(vcat(df_common, df_extra), :Wcen)
-#df_tspecs = df_common
+# df_tspecs = df_common
 
 # ╔═╡ 64f608b9-76df-402e-801c-006dc3096f94
 latextabular(df_tspecs, latex=false) |> PlutoUI.Text
@@ -357,6 +355,9 @@ avg_prec_IMACS = getproperty.(df_IMACS[!, :Combined], :err) |> median
 # ╔═╡ b6fa6c00-14cf-47af-9593-c70514373db5
 avg_prec_LDSS3 = getproperty.(df_LDSS3[!, :Combined], :err) |> median
 
+# ╔═╡ 92029dbc-2633-414f-a8ee-0ec61eda0313
+df_common
+
 # ╔═╡ 3af0d3b0-c698-4845-a74e-c7186b03a721
 let
     #f = "$(DATA_DIR)/tspec_w50_IMACS.csv"
@@ -395,15 +396,11 @@ wbins_LDSS3
 Finally, we save the final combined transmission spectrum to file for our retrieval analysis, along with planet/star parameters computed from the WLC fits:
 """
 
-# ╔═╡ 5718672b-1bc6-4676-8703-5fc06b83f0f9
-let
-    #f = "$(DATA_DIR)/tspec_w50_all.csv"
-	#CSV.write(f, create_df(df_tspecs; instrument="IMACS+LDSS3C"))
-	#@info "Saved to $(f)"
-	#f = "$(DATA_DIR)/tspec_w50.csv"
-	#CSV.write(f, create_df(df_common; instrument="IMACS+LDSS3C"))
-	#@info "Saved to $(f)"
-end
+# ╔═╡ 4faac7de-8c38-4f2c-be85-569e8fc83d28
+df_tspecs
+
+# ╔═╡ 3846da6a-af41-47a0-9318-76757a1dba15
+df_common
 
 # ╔═╡ 9141dba4-4c11-404d-b18a-b22f3466caba
 Rₛ = 0.873u"Rsun"
@@ -428,6 +425,16 @@ function create_df(df; instrument="add_instrument")
 		:Instrument = instrument
 		:Offset = "NO"
 	end
+end
+
+# ╔═╡ 5718672b-1bc6-4676-8703-5fc06b83f0f9
+let
+    f = "$(DATA_DIR)/tspec_w50_3.csv"
+	CSV.write(f, create_df(df_tspecs; instrument="IMACS+LDSS3C"))
+	@info "Saved to $(f)"
+	#f = "$(DATA_DIR)/tspec_w50.csv"
+	#CSV.write(f, create_df(df_common; instrument="IMACS+LDSS3C"))
+	#@info "Saved to $(f)"
 end
 
 # ╔═╡ f8a86915-f7d8-4462-980e-7b8124b13a3f
@@ -749,7 +756,6 @@ gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 # ╟─11066667-9da2-4b36-b784-c3515c04a659
 # ╠═cb1b277b-aa92-44de-91ce-88122bc34bb9
 # ╟─acde40fd-8ed4-4175-9a52-13ed91dc5495
-# ╠═51357cde-d3da-4377-8ae0-10e81a9c5c8d
 # ╠═461097e9-a687-4ef2-a5b4-8bf4d9e1c98f
 # ╠═4b9cfc02-5e18-422d-b18e-6301a659561a
 # ╠═45acc116-e585-4ddf-943d-128db7736921
@@ -771,6 +777,7 @@ gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 # ╠═940ad41b-910c-40a8-8752-e68e13ff4a1f
 # ╠═f37d9e45-575c-40d9-8f26-31bd6cc6d145
 # ╠═b6fa6c00-14cf-47af-9593-c70514373db5
+# ╠═92029dbc-2633-414f-a8ee-0ec61eda0313
 # ╠═3af0d3b0-c698-4845-a74e-c7186b03a721
 # ╟─27811c9d-1ee5-49ca-bf09-04dc75dd66be
 # ╠═8644fa54-0407-4494-aef4-eb497a86c35d
@@ -778,6 +785,8 @@ gₚ = G * Mₚ / Rₚ^2 |> u"cm/s^2"
 # ╠═943844ce-a78b-403d-8bae-341216308392
 # ╠═ef04759d-6a2d-488b-ae3b-6595c35dd70a
 # ╟─146a2be7-1c08-4d7c-802f-41f65aeae0d5
+# ╠═4faac7de-8c38-4f2c-be85-569e8fc83d28
+# ╠═3846da6a-af41-47a0-9318-76757a1dba15
 # ╠═5718672b-1bc6-4676-8703-5fc06b83f0f9
 # ╠═9141dba4-4c11-404d-b18a-b22f3466caba
 # ╠═54c341d9-2065-48cf-89bd-11acf72bdf9d
