@@ -1,4 +1,3 @@
-*.pdf
 .CondaPkg
 .ipynb_checkpoints/
 Manifest.toml
