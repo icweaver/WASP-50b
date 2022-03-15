@@ -403,11 +403,17 @@ end
 @bind token confirm(TextField())
 
 # ╔═╡ 5678d8f6-ccb8-4693-af0a-632dc51df278
-isempty(token) &&
+if isempty(token)
 	md"""
 	!!! danger "No token"
 		Enter [ads token](https://ui.adsabs.harvard.edu/user/settings/token) to pull down bib data
-	""";
+	"""
+else
+	md"""
+	!!! tip "token entered"
+		🚀
+	"""
+end
 
 # ╔═╡ c7eabcc6-5139-448d-abdb-ec752788bd59
 strip_u(u) = x -> ustrip(u, x)
