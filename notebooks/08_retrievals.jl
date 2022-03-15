@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.1
+# v0.18.2
 
 using Markdown
 using InteractiveUtils
@@ -315,9 +315,6 @@ samples = pyconvert(Dict{String, Vector}, cube["Na"]["clear"]["retr"]["samples"]
 # ╔═╡ 8ac2b5d2-eb4b-4a4f-99f8-52830e5ef9e8
 keys(samples)
 
-# ╔═╡ d3ec52e6-205e-4639-bd50-c9ef45e44f8e
-hist(samples["T"], bins=20)
-
 # ╔═╡ e43f1834-73dd-4859-b847-f4c552561897
 begin
 	##############
@@ -408,7 +405,7 @@ let
 		xlabel = "Wavelength (Å)",
 		ylabel = "Transit depth (ppm)",
 		#limits = (0.3, 1.1, 17_500, 21_000),
-		limits = (4_000, 9_800, 17_500, 21_500),
+		limits = (4_000, 9_800, 17_000, 21_500),
 		#limits = (4_600, 9_800, 17_000, 21_000)
 		#limits = (4_000, 13_000, 15_500, 22_500),
 		xticks = LinearTicks(7),
@@ -420,10 +417,11 @@ let
 	# for (i, model) ∈ enumerate(models)
 	# 	plot_retrieval!(ax, cube, "TiO", model; color=COLORS[i], linewidth=1)
 	# end
-	plot_retrieval!(ax, cube, "Na_K_TiO", "clear"; color=COLORS[1])
+	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
 	plot_retrieval!(ax, cube, "Na_K_TiO", "spot"; color=COLORS[2])
 	plot_retrieval!(ax, cube, "Na_K_TiO", "cloud"; color=COLORS[3])
 	plot_retrieval!(ax, cube, "Na_K_TiO", "haze"; color=COLORS[5])
+	plot_retrieval!(ax, cube, "TiO", "clear"; color=COLORS[1], linewidth=3)
 	
 	# for sp ∈ species, model ∈ models
 	# 	plot_retrieval!(ax, cube, sp, model)
@@ -506,7 +504,6 @@ body.disable_ui main {
 # ╠═41d8cd60-aacb-46c4-9344-29a8228f43cb
 # ╠═6ed6b481-4b84-485a-af2f-d2ecb943cd33
 # ╠═8ac2b5d2-eb4b-4a4f-99f8-52830e5ef9e8
-# ╠═d3ec52e6-205e-4639-bd50-c9ef45e44f8e
 # ╟─1eff1230-2423-4ac3-8e9b-f4e7bcd0121b
 # ╟─eab74923-a084-468c-9b0d-c2cc98a23913
 # ╠═44b3b8cd-4b83-4b27-a948-d1230489552f
