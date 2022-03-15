@@ -18,6 +18,8 @@ HTML pages for all figure notebooks are available below and include directions f
 1. [Retrievals](https://icweaver.github.io/WASP-50b/html/08_retrievals.html)
 1. [HGHJ Population](https://icweaver.github.io/WASP-50b/html/09_pop.html)
 
+The data repository can be accessed [here](https://app.box.com/s/fwohk8q6dp9wgufa3gv14b492xain11t).
+
 ### General organization and navigation
 The top of each notebook points to a link to download the specific dataset for each notebook. Each figure in the paper
 is given its own section. Within each section, the overal goal is first stated and then the figure is displayed. The
