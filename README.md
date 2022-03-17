@@ -1,5 +1,8 @@
 ## WASP-50b
 
+[![DOI](https://zenodo.org/badge/340757090.svg)](https://zenodo.org/badge/latestdoi/340757090)
+
+
 Collection of [Pluto.jl](https://github.com/fonsp/Pluto.jl) notebooks used to create figures for this project. To
 interact with Python, we use the [PythonCall.jl](https://github.com/cjdoris/PythonCall.jl) package:
 
