@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.2
+# v0.19.8
 
 using Markdown
 using InteractiveUtils
@@ -323,7 +323,7 @@ begin
 	const FIG_TALL = (900, 1_200)
 	const FIG_WIDE = (800, 600)
 	const FIG_LARGE = (1_200, 1_000)
-	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS_SERIES = categorical_colors(:seaborn_colorblind, 9)
 	const COLORS = let
 		pal = Makie.ColorSchemes.Paired_8 |> reverse
 		[pal[7:8] ; pal[5:6] ; pal[1:2]]

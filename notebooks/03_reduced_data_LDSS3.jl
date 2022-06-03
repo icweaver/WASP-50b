@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.1
+# v0.19.8
 
 using Markdown
 using InteractiveUtils
@@ -379,6 +379,9 @@ Finally, we export the external parameters and light curves (in magnitude space)
 # ╔═╡ 301ff07c-8dd5-403a-bae8-a4c38deeb331
 target_name = "aperture_324_803" #"aperture_325_803" # "aperture_324_803"
 
+# ╔═╡ dd8cf833-bb6f-4c70-a7c0-54fc7f08fdfc
+rround(x) = round(x; digits=2)
+
 # ╔═╡ d14ab9de-23b4-4647-a823-9b318bb734e9
 median_eparam(param, cube, obj_name, wav_idxs) = cube[param][obj_name][:, wav_idxs] |>
 	x -> median(x, dims=2) |> vec |> x -> convert(Vector{Float64}, x)
@@ -553,8 +556,8 @@ PyDict{String, Vector}(LC["spectral"])
 
 # ╔═╡ c03cb527-d16d-47aa-ab63-6970f4ff0b1f
 Times, Airmass = let
-	vals = PyTable(LC["temporal"].to_pandas())
-	vals["bjd"], vals["airmass"]
+	vals = DataFrame(PyPandasDataFrame(LC["temporal"].to_pandas()))
+	vals.bjd, vals.airmass
 end
 
 # ╔═╡ 8225c739-f825-43d7-9fd5-064506c619b5
@@ -596,6 +599,13 @@ target_binned_mags = mapslices(f_to_med_mag, oLCw, dims=1)[use_idxs, :]
 
 # ╔═╡ 53f5a645-93e0-499a-bb36-e4ff0153a63c
 comp_binned_mags = mapslices(f_to_med_mag, cLCw, dims=1)[use_idxs, :, :]
+
+# ╔═╡ f56c04c9-a684-4264-80ce-ba41d3f6e527
+let 
+	Z = Airmass
+	b, m, e = Z[begin], Z[(begin+end) ÷ 2], Z[end]
+	println("$(rround(b)) \\to $(rround(m)) \\to $(rround(e))")
+end
 
 # ╔═╡ 354580e4-0aa9-496f-b024-665025a2eeda
 lc = let
@@ -667,7 +677,7 @@ begin
 	const FIG_TALL = 72 .* (6, 8)
 	const FIG_WIDE = 72 .* (12, 6)
 	const FIG_LARGE = 72 .* (12, 12)
-	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS_SERIES = categorical_colors(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
 			"#66C2A5",  # Green
@@ -848,7 +858,7 @@ function plot_BLCs(t, datas, models, wbins, errs, comp_name; offset=0.3)
 	# Color palette
 	N_bins = size(datas, 2)
 	resids = datas - models
-	colors = to_colormap(:Spectral_4, N_bins) |> reverse
+	colors = resample_cmap(:Spectral_4, N_bins) |> reverse
 
 	# Arbitrary offsets for clarity
 	offs = reshape(range(0, offset, length=N_bins), 1, :)
@@ -995,6 +1005,8 @@ blc_plots[cName]
 # ╟─88cc640d-b58d-4cde-b793-6c66e74f6b3a
 # ╠═301ff07c-8dd5-403a-bae8-a4c38deeb331
 # ╠═c03cb527-d16d-47aa-ab63-6970f4ff0b1f
+# ╠═dd8cf833-bb6f-4c70-a7c0-54fc7f08fdfc
+# ╠═f56c04c9-a684-4264-80ce-ba41d3f6e527
 # ╠═c65c2298-e3a3-4666-be9d-73ee43d94847
 # ╠═d14ab9de-23b4-4647-a823-9b318bb734e9
 # ╠═079c3915-33af-40db-a544-28453732c372

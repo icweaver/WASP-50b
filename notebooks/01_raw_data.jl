@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.2
+# v0.19.6
 
 using Markdown
 using InteractiveUtils
@@ -25,13 +25,6 @@ begin
 	using CSV, DataFrames, DataFramesMeta, DelimitedFiles, Glob, OrderedCollections
 	using CCDReduction, ImageFiltering, Statistics
 	using Latexify, Printf
-end
-
-# ╔═╡ d8019fa7-380d-4f40-9e08-420a32c34483
-begin
-	const DATA_DIR = "data/raw"
-	const FIG_DIR = "figures/raw"
-	TableOfContents()
 end
 
 # ╔═╡ fb39c593-86bd-4d4c-b9ec-e5e212a4de98
@@ -80,6 +73,13 @@ For each fits files (1 per chip), we extract the region of each chip dedicated t
 	    └── [ 390]  w50_bins_ut131219.dat
 	```
 """
+
+# ╔═╡ d8019fa7-380d-4f40-9e08-420a32c34483
+begin
+	const DATA_DIR = "data/raw"
+	const FIG_DIR = "figures/raw"
+	TableOfContents()
+end
 
 # ╔═╡ 90845d70-35d9-402d-8936-74936b069577
 @mdx """

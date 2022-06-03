@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.2
+# v0.19.8
 
 using Markdown
 using InteractiveUtils
@@ -166,6 +166,9 @@ end
 
 # ╔═╡ ffbc6cc0-e11b-44b4-a6f8-7d61cd7aa1d2
 TRANSIT = tname(FPATH_LC)
+
+# ╔═╡ b193cd8b-6565-4374-96fb-ac4d0028184e
+rround(x) = round(x; digits=2)
 
 # ╔═╡ e774a20f-2d58-486a-ab71-6bde678b26f8
 @mdx """
@@ -370,6 +373,13 @@ end;
 # ╔═╡ dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
 LC = load_pickle(FPATH_LC);
 
+# ╔═╡ f93010a4-4d41-4917-948c-ac7e0ec7cf47
+let 
+	Z = PyVector(LC["Z"])
+	b, m, e = Z[begin], Z[(begin+end) ÷ 2], Z[end]
+	println("$(rround(b)) \\to $(rround(m)) \\to $(rround(e))")
+end
+
 # ╔═╡ 207a8e79-60f2-426d-866e-e8ddc1798a6c
 t_rel = compute_t_rel(LC["t"]);
 
@@ -452,7 +462,7 @@ begin
 	const FIG_TALL = 72 .* (6, 8)
 	const FIG_WIDE = 72 .* (12, 6)
 	const FIG_LARGE = 72 .* (12, 12)
-	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS_SERIES = categorical_colors(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
 			"#66C2A5",  # Green
@@ -629,7 +639,7 @@ function plot_BLCs(t, datas, models, wbins, errs, comp_name; offset=0.3)
 	# Color palette
 	N_bins = size(datas, 2)
 	resids = datas - models
-	colors = to_colormap(:Spectral_4, N_bins) |> reverse
+	colors = resample_cmap(:Spectral_4, N_bins) |> reverse
 
 	# Arbitrary offsets for clarity
 	offs = reshape(range(0, offset, length=N_bins), 1, :)
@@ -712,6 +722,8 @@ blc_plots[cName]
 # ╟─ffbc6cc0-e11b-44b4-a6f8-7d61cd7aa1d2
 # ╠═3e2df199-d524-4fa9-8b13-2ddc88acd5d2
 # ╠═dd5431a8-113c-4fa8-8fec-bf55c4b75ca4
+# ╠═b193cd8b-6565-4374-96fb-ac4d0028184e
+# ╠═f93010a4-4d41-4917-948c-ac7e0ec7cf47
 # ╠═207a8e79-60f2-426d-866e-e8ddc1798a6c
 # ╠═cb1c4a44-09a8-4fff-8703-2d37647148f0
 # ╟─e774a20f-2d58-486a-ab71-6bde678b26f8

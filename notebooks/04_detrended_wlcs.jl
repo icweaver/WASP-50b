@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.1
+# v0.19.6
 
 using Markdown
 using InteractiveUtils
@@ -515,7 +515,7 @@ begin
 	const FIG_TALL = 72 .* (6, 8)
 	const FIG_WIDE = 72 .* (12, 6)
 	const FIG_LARGE = 72 .* (12, 12)
-	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS_SERIES = categorical_colors(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
 			"#66C2A5",  # Green
@@ -722,17 +722,18 @@ let
 end
 
 # ╔═╡ f47944d8-4501-47c7-a852-d5e2f90e9204
-function plot_x_pairs!(ax, param, BMA; h1=1, h2=2, c1=COLORS[2], c2=COLORS[3], scale=true)
-	transit =  "Transit 2 (IMACS)"
-	x = get_x(param, transit, BMA; scale)
+function plot_x_pairs!(ax, param, BMA;
+	transit1="Transit 2 (IMACS)", transit2="Transit 2 (LDSS3C)",
+	h1=1, h2=2, c1=COLORS[2], c2=COLORS[3], scale=true)
+	
+	x = get_x(param, transit1, BMA; scale)
 	plot_x!(ax, x;
 		h = h1,
 		scatter_kwargs = (color=c1, markersize=20),
 		errorbar_kwargs = (; whiskerwidth=10.0),
 	)
 
-	transit =  "Transit 2 (LDSS3C)"
-	x = get_x(param, transit, BMA; scale)
+	x = get_x(param, transit2, BMA; scale)
 	plot_x!(ax, x;
 		h = h2,
 		scatter_kwargs = (color=c2, markersize=20),
@@ -746,7 +747,7 @@ let
 	ax = Axis(fig[1, 1], xlabel="x", ylabel="Parameter", xticks=LinearTicks(5))
 
 	for (i, param) in enumerate(reverse(BMA.Parameter))
-		i%2 != 0 && hspan!(ax, i-0.5, i+0.5, color=(:darkgrey, 0.25))
+		isodd(i) && hspan!(ax, i-0.5, i+0.5, color=(:darkgrey, 0.25))
 		plot_x_pairs!(ax, param, BMA; h1=i+0.1, h2=i-0.1)
 		#hlines!(ax, i+0.5, color=:darkgrey, linewidth=1.0)
 		text!(param; position=(-4.5, i), align=(:left, :center))
@@ -758,7 +759,7 @@ let
 		color = COLORS[2],
 	)
 	# so hack much rush
-	Label(fig[1, 1], " "^35 * "Transit 2 (LDSS3C)";
+	Label(fig[0, 1], " "^35 * "Transit 2 (LDSS3C)";
 		halign = :left,
 		tellwidth = false,
 		color = COLORS[3],

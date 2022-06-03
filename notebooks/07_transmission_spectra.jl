@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.1
+# v0.19.4
 
 using Markdown
 using InteractiveUtils
@@ -509,7 +509,7 @@ begin
 	const FIG_TALL = 72 .* (6, 8)
 	const FIG_WIDE = 72 .* (12, 6)
 	const FIG_LARGE = 72 .* (12, 12)
-	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS_SERIES = categorical_colors(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
 			"#66C2A5",  # Green
@@ -657,6 +657,7 @@ begin
 	end
 	
 	savefig(fig, "$(FIG_DIR)/tspec_$(fname_suff).pdf")
+	save("/home/mango/Desktop/tspec_wasp50b.svg", fig; pt_per_unit=1)
 	fig
 end
 
