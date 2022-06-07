@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.1
+# v0.19.8
 
 using Markdown
 using InteractiveUtils
@@ -36,7 +36,7 @@ begin
 	const FIG_TALL = 72 .* (6, 8)
 	const FIG_WIDE = 72 .* (12, 6)
 	const FIG_LARGE = 72 .* (12, 12)
-	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS_SERIES = categorical_colors(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
 			"#66C2A5",  # Green
@@ -74,6 +74,9 @@ begin
 
 	COLORS
 end
+
+# ╔═╡ e0656ec8-65a7-429a-8223-bcf601ba5d6a
+using Interpolations
 
 # ╔═╡ 1797234e-6194-4fe5-945d-e7d91761ad7b
 begin
@@ -279,7 +282,16 @@ end;
 
 # ╔═╡ 98823ec4-c425-4a1f-bf84-02a775dd0aa0
 # Table -> DataFrame (pandas) -> PyPandasDataFrame (why astropy, why?)
-to_PyPandas(df_py) = PyTable(df_py.to_pandas().reset_index())
+function to_df(df_py; reset_index=true, make_df=true)
+	df_pd = df_py.to_pandas()
+	reset_index && (df_pd = df_pd.reset_index())
+
+	if make_df
+		return DataFrame(PyPandasDataFrame(df_pd))
+	else
+		return PyPandasDataFrame(df_pd)
+	end
+end
 
 # ╔═╡ 7370a1d9-4f8e-4788-adac-b8be2bcc9643
 function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=1.0)
@@ -302,7 +314,7 @@ function plot_phot!(ax, t, f, f_err; t_offset=0.0, relative_flux=false, binsize=
 		time=t, flux=f, flux_err=f_err
 	).normalize()
 	lc_binned_py = lc.bin(binsize).remove_nans()
-	lc_binned = to_PyPandas(lc_binned_py)
+	lc_binned = to_df(lc_binned_py)
 	t_binned, f_binned, f_err_binned = (
 		lc_binned.time,
 		lc_binned.flux,
@@ -328,7 +340,7 @@ end
 # 	fig = Figure(resolution=FIG_WIDE)
 	
 # 	for (i, (lc, lc_oot)) ∈ enumerate(zip(lcs_cleaned[1:end-1], lcs_oot[1:end-1]))
-# 		lc, lc_oot = to_PyPandas(lc), to_PyPandas(lc_oot)
+# 		lc, lc_oot = to_df(lc), to_df(lc_oot)
 # 		ax = Axis(fig[i, 1])
 # 		errorbars!(ax, lc.time, lc.flux, lc.flux_err;
 # 			color = (:darkgrey, 0.25),
@@ -360,7 +372,7 @@ end
 # end
 
 # ╔═╡ 43de00bf-e616-43c5-92ce-1044cbd8cfe5
-1e6 .* [median(to_PyPandas(lc).flux_err) for lc ∈ lcs_oot]
+1e6 .* [median(to_df(lc).flux_err) for lc ∈ lcs_oot]
 
 # ╔═╡ 99fcf959-665b-44cf-9b5f-fd68a919f846
 @mdx """
@@ -409,7 +421,7 @@ let
 
 	#### Periodogram #######
 	ax_pg = Axis(fig[2, 1], xlabel="Periods (days)", ylabel="log10 Power")
-	pgram, plan = compute_pgram(to_PyPandas(lc_binned))
+	pgram, plan = compute_pgram(to_df(lc_binned))
 	b = LombScargle.bootstrap(100, plan)
 	P_max = findmaxperiod(pgram)[1]
 	lines!(ax_pg, periodpower(pgram)...;
@@ -427,7 +439,7 @@ function compute_window_func(lc; min_period=0.5, max_period=30.0)
 	f = oneunit.(t)
 	f_err = median(lc.flux_err) .* f
 	lc_window_func_py = lk.LightCurve(time=t, flux=f, flux_err=f_err)
-	lc_window_func = to_PyPandas(lc_window_func_py)
+	lc_window_func = to_df(lc_window_func_py)
 	return compute_pgram(lc_window_func; min_period=min_period, max_period=max_period)
 end
 
@@ -435,7 +447,7 @@ end
 begin
 	pgrams, pgrams_window, plans, P_maxs = [], [], [], []
 	for lc in lcs_oot
-		lc = to_PyPandas(lc)
+		lc = to_df(lc)
 		pgram, plan = compute_pgram(lc)
 		pgram_window, _ = compute_window_func(lc)
 		P_max = findmaxperiod(pgram)[1]
@@ -455,15 +467,50 @@ end
 # ╔═╡ 1955e266-eb55-46da-890b-08cc6fc7dfc4
 @py import matplotlib.pyplot as plt
 
+# ╔═╡ f6dbc4d2-0846-4569-9108-909454b01e65
+xs = 1:0.2:5
+
+# ╔═╡ a208599a-62e3-41d7-a1c4-c58684fd35f0
+f(x) = log(x)
+
+# ╔═╡ 5fee352a-445e-4c53-8f30-875a6c10a663
+ys = f.(xs)
+
+# ╔═╡ 95d602e8-af9c-4872-b717-d52005738533
+interp_linear = LinearInterpolation(xs, ys)
+
+# ╔═╡ 5883477e-e601-421a-adb3-43c4777d9a45
+x_binned = 1:0.5:5
+
+# ╔═╡ ff7c8e21-0a49-410f-bc24-01aa8ad52ea1
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1])
+
+	scatterlines!(ax, xs, ys)
+	scatter!(ax, x_binned, interp_linear.(x_binned); color=:red)
+	
+	fig
+end
+
+# ╔═╡ da82ba6e-4e77-440b-85b4-26cbdba9320c
+interp_linear(3) # exactly log(3)
+
+# ╔═╡ fef2cbac-37d8-4613-b8d2-ffa3fcb51224
+yee_folded = lcs_oot[1].fold(P_maxs[1])
+
+# ╔═╡ 81e90330-82a2-4910-b574-483fa5022d2d
+yee_folded_binned = yee_folded.bin(time_bin_size = 0.02)
+
+# ╔═╡ 4c2381ac-f61e-4fde-90ff-ef807f2946ea
+filter(!isnan, pyconvert(Vector, yee_folded_binned.flux.value))
+
 # ╔═╡ f73ee0a5-1b75-40bc-ba28-855601651fdc
 lc_binned = lcs_oot[1].bin(bins=200)
 
-# ╔═╡ 4884b82d-10cc-4cf1-a57f-02eb4c6478cc
-lcs_oot[1].bin(bins=200)
-
 # ╔═╡ 3128e57f-df4f-4811-b867-8a293d7d536d
 function compute_pgram_model(lc, P)
-	lc = to_PyPandas(lc)
+	lc = to_df(lc)
 	t_fit = lc.time
 	s_fit = LombScargle.model(
 		lc.time,
@@ -486,13 +533,16 @@ begin
 		lc_folded = lc.fold(P)
 		#Δt = (lc_folded.time.value |> diff |> median) * 5
 		push!(lcs_folded, lc_folded)
-		push!(lcs_folded_binned, lc_folded.bin(bins=200))
+		push!(lcs_folded_binned, lc_folded.bin(time_bin_size=0.0208333))
 
 		# Model
 		lc_fit_folded = compute_pgram_model(lc, P)
 		push!(lcs_fit_folded, lc_fit_folded)
 	end
 end
+
+# ╔═╡ 7a1f0b75-debd-41a0-a990-2e624e5249bc
+lcs_folded_binned[3]
 
 # ╔═╡ 056281a2-4786-45eb-a9fa-57515153f66c
 @mdx """
@@ -502,7 +552,7 @@ end
 # ╔═╡ 3a612743-7071-4d85-a48d-0a4b12facffc
 # Folded on P_maxs
 ΔLs = map(lcs_fit_folded) do lc
-	lc = to_PyPandas(lc)
+	lc = to_df(lc)
 	minimum(lc.flux) / median(lc.flux)
 end
 
@@ -520,13 +570,13 @@ Ts = 10.0:10.0:5_000
 
 # ╔═╡ df370404-2f12-4925-8827-6198793ae842
 # P_maxs
-extrema(f_sp.(Ts, ΔLs[end], T₀))
+extrema(f_sp.(Ts, ΔLs[end], T₀)) .* 100
 
 # ╔═╡ 8bd502e8-e67d-44be-8a60-d7ad2c147d70
 lcs_oot_comb = lcs_oot[end]
 
 # ╔═╡ 3551787f-0a83-408f-9d78-41309ae3dae3
-(to_PyPandas(lcs_oot_comb).flux_err |> median)
+(to_df(lcs_oot_comb).flux_err |> median)
 
 # ╔═╡ 8c7dcfab-a357-4024-94f3-42d1df80c3c2
 P_maxs
@@ -539,8 +589,8 @@ function fold_and_bin(lc)
 	for P ∈ (16.3)
 		# Data
 		lc_folded = lk.LightCurve(lc).fold(P)
-		push!(lcs_folded, to_PyPandas(lc_folded))
-		push!(lcs_folded_binned, to_PyPandas(lc_folded.bin(bins=200)))
+		push!(lcs_folded, lc_folded)
+		push!(lcs_folded_binned, lc_folded.bin(time_bin_size=0.0208333))
 
 		# Model
 		lc_fit_folded = compute_pgram_model(lc, P)
@@ -550,19 +600,25 @@ function fold_and_bin(lc)
 	return lcs_folded, lcs_folded_binned, lcs_fit_folded
 end
 
+# ╔═╡ a77d7cce-7ee3-486f-ac8a-e858fe25d233
+lc_folded = lk.LightCurve(lcs_oot_comb).fold(16.3)
+
+# ╔═╡ 65ffc145-0e4a-47b0-a9e2-1c36243c3919
+lcs_oot_comb
+
 # ╔═╡ 7a9dd8e0-3c2d-4c99-ae86-401554ad8558
 x = fold_and_bin(lcs_oot_comb)
 
 # ╔═╡ 2429035b-5b8e-45d5-9957-99ad772324af
 # Folded on P_lit (16.3 days)
 ΔLs2 = map(x[3]) do lc
-	lc = to_PyPandas(lc)
+	lc = to_df(lc)
 	minimum(lc.flux) / median(lc.flux)
 end
 
 # ╔═╡ 377c1376-b81f-40e5-8ab3-22cc7d77d7a5
 # P_lit
-extrema(f_sp.(Ts, ΔLs2[end], T₀))
+extrema(f_sp.(Ts, ΔLs2[end], T₀)) .* 100
 
 # ╔═╡ 18223d42-66d8-40d1-9d89-be8af46853e2
 @mdx """
@@ -646,17 +702,28 @@ let
 	for (i, (lc_folded, lc_folded_binned, lc_fit_folded)) in enumerate(zip(
 				lcs_folded, lcs_folded_binned, lcs_fit_folded
 		))
-		lc_folded = to_PyPandas(lc_folded)
-		lc_folded_binned = to_PyPandas(lc_folded_binned)
-		lc_fit_folded = to_PyPandas(lc_fit_folded)
+		lc_folded = lc_folded
+		lc_folded_binned = lc_folded_binned
+		lc_fit_folded = lc_fit_folded
 		ax = Axis(fig[i, 1], xlabelsize = 24,
 		ylabelsize = 24,)
 		push!(axs, ax)
-		scatter!(ax, lc_folded.time, lc_folded.flux, color=(:darkgrey, 0.5))
-		scatter!(ax, lc_folded_binned.time, lc_folded_binned.flux, color=COLORS[2])
+		t = pyconvert(Vector, lc_folded.time.value)
+		f = pyconvert(Vector, lc_folded.flux.value)
+		t_binned = pyconvert(Vector, lc_folded_binned.time.value)
+		f_binned = pyconvert(Vector, lc_folded_binned.flux.value)
+		t_fit = pyconvert(Vector, lc_fit_folded.time.value)
+		f_fit = pyconvert(Vector, lc_fit_folded.flux.value)
+		scatter!(ax, t, f, color=(:darkgrey, 0.5))
+		scatter!(ax, t_binned, f_binned, color=COLORS[2])
 		lines!(
-			ax, lc_fit_folded.time, lc_fit_folded.flux, color=0.5 .*(COLORS[2], 1.0)
+			ax, t_fit, f_fit, color=0.5 .*(COLORS[2], 1.0)
 		)
+		model_interp = LinearInterpolation(t_fit, f_fit)
+		# model_binned = model_interp.(t_binned)
+		# resids = std(t_fit - t_binned)
+		# println(resids)
+		# scatter!(ax, t_binned, model_binned; color=:red)
 		text!(ax, "$(sectors[i])";
 			position = (3.8, 1.006),
 			textsize = 24,
@@ -735,9 +802,20 @@ body.disable_ui main {
 # ╟─a50ef756-ade6-48a3-8d3a-17b56ce03c26
 # ╠═1955e266-eb55-46da-890b-08cc6fc7dfc4
 # ╠═49bcddbe-d413-48ae-91d8-92bcebf40518
+# ╠═e0656ec8-65a7-429a-8223-bcf601ba5d6a
+# ╠═f6dbc4d2-0846-4569-9108-909454b01e65
+# ╠═a208599a-62e3-41d7-a1c4-c58684fd35f0
+# ╠═5fee352a-445e-4c53-8f30-875a6c10a663
+# ╠═95d602e8-af9c-4872-b717-d52005738533
+# ╠═5883477e-e601-421a-adb3-43c4777d9a45
+# ╠═ff7c8e21-0a49-410f-bc24-01aa8ad52ea1
+# ╠═da82ba6e-4e77-440b-85b4-26cbdba9320c
+# ╠═fef2cbac-37d8-4613-b8d2-ffa3fcb51224
+# ╠═81e90330-82a2-4910-b574-483fa5022d2d
+# ╠═4c2381ac-f61e-4fde-90ff-ef807f2946ea
 # ╠═97ced6ba-ff74-46b4-90d5-18e7b2f1b903
+# ╠═7a1f0b75-debd-41a0-a990-2e624e5249bc
 # ╠═f73ee0a5-1b75-40bc-ba28-855601651fdc
-# ╠═4884b82d-10cc-4cf1-a57f-02eb4c6478cc
 # ╠═3128e57f-df4f-4811-b867-8a293d7d536d
 # ╟─056281a2-4786-45eb-a9fa-57515153f66c
 # ╠═3a612743-7071-4d85-a48d-0a4b12facffc
@@ -750,6 +828,8 @@ body.disable_ui main {
 # ╠═8bd502e8-e67d-44be-8a60-d7ad2c147d70
 # ╠═8c7dcfab-a357-4024-94f3-42d1df80c3c2
 # ╠═06abb8cb-9acb-49ba-81b6-37b9f52c89b1
+# ╠═a77d7cce-7ee3-486f-ac8a-e858fe25d233
+# ╠═65ffc145-0e4a-47b0-a9e2-1c36243c3919
 # ╠═7a9dd8e0-3c2d-4c99-ae86-401554ad8558
 # ╠═2429035b-5b8e-45d5-9957-99ad772324af
 # ╟─18223d42-66d8-40d1-9d89-be8af46853e2

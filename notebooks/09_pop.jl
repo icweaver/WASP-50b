@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.2
+# v0.19.8
 
 using Markdown
 using InteractiveUtils
@@ -59,7 +59,7 @@ As of this writing, the planetary parameters reported in the [NASA exoplanet arc
 
 !!! note "Data download"
 	```
-	rclone sync -P drive_ACCESS:papers/WASP-50b/$(DATA_DIR) $(DATA_DIR)
+	rclone sync -P ACCESS_box:WASP-50b/$(DATA_DIR) $(DATA_DIR)
 	```
 	* [Direct link](https://app.box.com/s/p8crolyu1avcbpfv49n0iehcnp8ym72p)
 """
@@ -701,7 +701,7 @@ begin
 	const FIG_TALL = 72 .* (6, 8)
 	const FIG_WIDE = 72 .* (12, 6)
 	const FIG_LARGE = 72 .* (12, 12)
-	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS_SERIES = categorical_colors(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
 			"#66C2A5",  # Green

@@ -43,7 +43,7 @@ end
 
 !!! note "Data download"
 	```
-	rclone sync -P drive_ACCESS:papers/WASP-50b/$(DATA_DIR) $(DATA_DIR)
+	rclone sync -P ACCESS_box:WASP-50b/$(DATA_DIR) $(DATA_DIR)
 	```
 	* [Direct link](https://app.box.com/s/hmqutmcs98rkip3aa4qyt68g3k1vk2du)
 """
@@ -77,6 +77,7 @@ model_names = OrderedDict(
 	#"clear+cloud+haze" => "NoHet_FitP0_Clouds_Haze_$(fit_R0)",
 	"haze+spot" => "Het_FitP0_NoClouds_Haze_$(fit_R0)",
 	#"clear+spot+cloud+haze" => "Het_FitP0_Clouds_Haze_$(fit_R0)",
+	"flat" => "NoHet_FlatLine",
 )
 
 # ╔═╡ 0f65d095-09af-44d2-907b-c30e2c16b609
@@ -165,28 +166,36 @@ function get_retr_model(cube, sp, model)
 end
 
 # ╔═╡ cc011a66-37bd-4543-9a58-b11e1f785e52
-function retrieval!(ax, model0, model_sampled; color=:blue, linewidth=3, label="")
+function retrieval!(ax, model0, model_sampled;
+	color=:blue, linewidth=3, label="", show_scatter=true
+)
 	model = @rsubset model0 :wav < 1.0
 	wav = model.wav .* 10_000
 	wav_sampled = model_sampled.wav .* 10_000
 	lines!(ax, wav, model.flux; color, linewidth, label)
-	scatter!(ax, wav_sampled, model_sampled.flux;
-		marker = :rect,
-		markersize = 15,
-		color,
-		strokewidth = 1.5,
-		strokecolor = color,
-	)
+	if show_scatter
+		scatter!(ax, wav_sampled, model_sampled.flux;
+			marker = :rect,
+			markersize = 15,
+			color,
+			strokewidth = 1.5,
+			strokecolor = color,
+		)
+	end
 	band!(ax, wav, model.flux_d, model.flux_u;
 		color = (color, 0.25),
 	)
 end
 
 # ╔═╡ 00a0f9c4-cd4d-4ae2-80b7-0c044239a571
-function plot_retrieval!(ax, cube, sp, model; color=:blue, linewidth=3)
+function plot_retrieval!(ax, cube, sp, model; color=:blue, linewidth=3, show_scatter=true)
 	retr_model, retr_model_sampled = get_retr_model(cube, sp, model)
-	label = dashplus(sp) * " ($(model))"
-	retrieval!(ax, retr_model, retr_model_sampled; color, linewidth, label)
+	if model == "flat"
+		label = "(flat)"
+	else
+		label = dashplus(sp) * " ($(model))"
+	end
+	retrieval!(ax, retr_model, retr_model_sampled; color, linewidth, label, show_scatter)
 end
 
 # ╔═╡ 0f23e0d6-177d-4bf6-9660-f2c376b3146b
@@ -282,8 +291,14 @@ df_table_not_model = df_table[:, Not(:Model)];
 # ╔═╡ 2d375a76-f06a-43bb-ba45-a944915288ff
 idx_max_model = argmax(Matrix(df_table_not_model))
 
+# ╔═╡ d9bcdac0-fed4-4b60-a5f7-e4035814ee92
+idx_min_model = argmin(Matrix(df_table_not_model))
+
 # ╔═╡ dd81cd2c-4a2e-47a0-9251-7e59d7bc3d45
 df_table.Model[idx_max_model[1]], names(df_table_not_model)[idx_max_model[2]]
+
+# ╔═╡ ef989991-08b1-470d-86b2-016c7c952e79
+df_table.Model[idx_min_model[1]], names(df_table_not_model)[idx_min_model[2]]
 
 # ╔═╡ f834b9fc-e410-442c-b085-8cccb8e30b71
 latextabular(df_table, latex=false) |> PlutoUI.Text
@@ -323,10 +338,10 @@ begin
 	const FIG_TALL = (900, 1_200)
 	const FIG_WIDE = (800, 600)
 	const FIG_LARGE = (1_200, 1_000)
-	const COLORS_SERIES = categorical_colors(:seaborn_colorblind, 9)
+	const COLORS_SERIES = categorical_colors(:seaborn_colorblind, 8)
 	const COLORS = let
 		pal = Makie.ColorSchemes.Paired_8 |> reverse
-		[pal[7:8] ; pal[5:6] ; pal[1:2]]
+		[pal[7:8] ; pal[5:6] ; pal[1:2]; :darkgrey]
 	end
 	
 	set_aog_theme!()
@@ -405,10 +420,10 @@ let
 		xlabel = "Wavelength (Å)",
 		ylabel = "Transit depth (ppm)",
 		#limits = (0.3, 1.1, 17_500, 21_000),
-		limits = (4_000, 9_800, 17_000, 21_500),
+		limits = (4_000, 10_000, 17_000, 21_500),
 		#limits = (4_600, 9_800, 17_000, 21_000)
 		#limits = (4_000, 13_000, 15_500, 22_500),
-		xticks = LinearTicks(7),
+		xticks = LinearTicks(8),
 	)
 
 	# for (i, sp) ∈ enumerate(species)
@@ -418,10 +433,13 @@ let
 	# 	plot_retrieval!(ax, cube, "TiO", model; color=COLORS[i], linewidth=1)
 	# end
 	vlines!(ax, [5892.9, 7682.0, 8189.0], color=:grey, linestyle=:dash, linewidth=0.5)
-	plot_retrieval!(ax, cube, "Na_K_TiO", "spot"; color=COLORS[2])
-	plot_retrieval!(ax, cube, "Na_K_TiO", "cloud"; color=COLORS[3])
-	plot_retrieval!(ax, cube, "Na_K_TiO", "haze"; color=COLORS[5])
-	plot_retrieval!(ax, cube, "TiO", "clear"; color=COLORS[1], linewidth=3)
+	# plot_retrieval!(ax, cube, "Na_K_TiO", "spot"; color=COLORS[2])
+	# plot_retrieval!(ax, cube, "Na_K_TiO", "cloud"; color=COLORS[3])
+	# plot_retrieval!(ax, cube, "Na_K_TiO", "haze"; color=COLORS[5])
+	# plot_retrieval!(ax, cube, "TiO", "clear"; color=COLORS[1], linewidth=3)
+	plot_retrieval!(ax, cube, "TiO", "clear"; color=COLORS[1])
+	plot_retrieval!(ax, cube, "Na_K_TiO", "haze+spot"; show_scatter=false, color=COLORS[6])
+	plot_retrieval!(ax, cube, "Na", "flat"; show_scatter=false, color=COLORS[7])
 	
 	# for sp ∈ species, model ∈ models
 	# 	plot_retrieval!(ax, cube, sp, model)
@@ -477,7 +495,7 @@ body.disable_ui main {
 # ╠═589afac8-0ea5-4962-b52b-7f035e91cf44
 # ╟─2c12ec4d-1184-4755-8bd8-0d7cd59fa205
 # ╠═df43608e-7026-45ae-b87b-d7e0b6cea89c
-# ╟─093156c7-9da7-4814-9260-5173f27fa497
+# ╠═093156c7-9da7-4814-9260-5173f27fa497
 # ╠═0f65d095-09af-44d2-907b-c30e2c16b609
 # ╟─704fa634-eee0-4eef-aacf-f75f2b53f4d2
 # ╠═a7c68d25-a799-421b-9799-38837fa8a188
@@ -487,7 +505,9 @@ body.disable_ui main {
 # ╠═42e909b4-92eb-4ed7-a19c-6e54b21ae07c
 # ╠═83087c2e-852c-49c0-9195-c20e787b60e7
 # ╠═2d375a76-f06a-43bb-ba45-a944915288ff
+# ╠═d9bcdac0-fed4-4b60-a5f7-e4035814ee92
 # ╠═dd81cd2c-4a2e-47a0-9251-7e59d7bc3d45
+# ╠═ef989991-08b1-470d-86b2-016c7c952e79
 # ╠═f834b9fc-e410-442c-b085-8cccb8e30b71
 # ╠═930ec094-7b11-48b8-818e-15c63ed6f8a5
 # ╠═54b5c81a-835a-461c-9dfd-2d938fac3bc4
