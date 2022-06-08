@@ -570,8 +570,9 @@ df_all = @chain df_complete begin
 end
 
 # ╔═╡ 998af70c-d784-4791-9261-a6dcbec8c824
+# @rsubset (1.0 ≤ :TSMR) &(20u"m/s^2" ≤ :pl_g_SI) & (1.0u"Rjup" ≤ :pl_radj) & (:pl_eqt ≤ 2200u"K")
 df_HGHJ = @chain df_complete begin
-	@rsubset (1.0 ≤ :TSMR) & (22.5u"m/s^2" ≤ :pl_g_SI) & (1.0u"Rjup" ≤ :pl_radj) & (:pl_eqt ≤ 2200u"K")
+	@rsubset (1.0 ≤ :TSMR) & (20.0u"m/s^2" ≤ :pl_g_SI) & (1.0u"Rjup" ≤ :pl_radj)
 	sort(:TSMR, rev=true) # To stack smaller circles on top in Figure
 	@select begin
 		:pl_name
@@ -633,7 +634,7 @@ df_HGHJ_no_H2OJ = filter(:pl_name => ∈(("HAT-P-23 b", "WASP-50 b")), df_HGHJ;
 # Same as df_HGHJ but with ± measurements in each column instead of separate
 # And paper refs in latex format
 df_HGHJ_paper = @chain df_complete begin
-	@rsubset (1.0 ≤ :TSMR) & (22.5u"m/s^2" ≤ :pl_g_SI) & (1.0u"Rjup" ≤ :pl_radj) & (:pl_eqt ≤ 2200u"K")
+	@rsubset (1.0 ≤ :TSMR) & (20.0u"m/s^2" ≤ :pl_g_SI) & (1.0u"Rjup" ≤ :pl_radj)
 	sort(:TSMR, rev=true) # To stack smaller circles on top in Figure
 	@select begin
 		:pl_name
@@ -662,6 +663,9 @@ end
 
 # ╔═╡ 893c4a44-f9f6-4185-bd1e-26095339bddc
 latextabular(df_HGHJ_paper; latex=false, fmt="%.1f") |> PlutoUI.Text
+
+# ╔═╡ 4aac8f15-3524-42f1-a162-a4436b55c376
+df_HGHJ_paper.pl_eqt |> extrema
 
 # ╔═╡ d6449d05-ee95-4bda-8636-37c71e422944
 df_wakeford = let
@@ -766,8 +770,8 @@ let
 	
 	fg = draw(p;
 		axis = (;
-			limits = ((0, 3_400), (-1, 55)),
-			yticks = 0:10:50,
+			limits=((0, 4_200), (-1, 63)),
+			yticks = 0:10:60,
 			xlabel = "Equilibrium temperature (K)",
 			ylabel = "Surface gravity (m/s²)",
 		),
@@ -811,7 +815,7 @@ let
 	p = m * data(df_HGHJ) * visual(colormap=:viridis, marker='⬤')
 
 	fg = draw(p;
-		axis = (; limits=((0, 3_400), (-1, 55)), yticks=0:10:50),
+		axis = (; limits=((0, 4_200), (-1, 63)), yticks=0:10:60),
 		figure = (; resolution=FIG_LARGE),
 		colorbar = (; ticksvisible=false),
 	)
@@ -948,6 +952,7 @@ end
 # ╠═c0f576a7-908d-4f10-86e7-cadbb7c77c09
 # ╠═c4d4d7b9-4885-423b-8969-1fb192fb1ec1
 # ╠═8d519cad-8da6-409e-b486-2bc9a6008e0f
+# ╠═4aac8f15-3524-42f1-a162-a4436b55c376
 # ╠═c1cd9292-28b9-4206-b128-608aaf30ff9c
 # ╟─0f9262ef-b774-45bc-bdab-46860779683d
 # ╟─18094afc-b77f-4cae-a30c-2691d34125d8
