@@ -459,6 +459,9 @@ begin
 	end
 end
 
+# ╔═╡ df861240-f14e-445d-adf9-a438c2f9b567
+P_maxs
+
 # ╔═╡ a50ef756-ade6-48a3-8d3a-17b56ce03c26
 @mdx """
 ### Folded lightcurves
@@ -467,11 +470,14 @@ end
 # ╔═╡ 1955e266-eb55-46da-890b-08cc6fc7dfc4
 @py import matplotlib.pyplot as plt
 
+# ╔═╡ cef84dde-c8b9-4c69-a355-0cd348301453
+P_maxs
+
 # ╔═╡ f6dbc4d2-0846-4569-9108-909454b01e65
 xs = 1:0.2:5
 
 # ╔═╡ a208599a-62e3-41d7-a1c4-c58684fd35f0
-f(x) = log(x)
+f(x) = sin(x)
 
 # ╔═╡ 5fee352a-445e-4c53-8f30-875a6c10a663
 ys = f.(xs)
@@ -480,7 +486,7 @@ ys = f.(xs)
 interp_linear = LinearInterpolation(xs, ys)
 
 # ╔═╡ 5883477e-e601-421a-adb3-43c4777d9a45
-x_binned = 1:0.5:5
+x_binned = 1:1.9:5
 
 # ╔═╡ ff7c8e21-0a49-410f-bc24-01aa8ad52ea1
 let
@@ -698,6 +704,7 @@ let
 	fig = Figure(resolution=FIG_LARGE, fontsize=24)
 
 	axs = []
+	axs_resids = []
 	sectors = ("Sector 04", "Sector 31", "Combined")
 	for (i, (lc_folded, lc_folded_binned, lc_fit_folded)) in enumerate(zip(
 				lcs_folded, lcs_folded_binned, lcs_fit_folded
@@ -705,8 +712,7 @@ let
 		lc_folded = lc_folded
 		lc_folded_binned = lc_folded_binned
 		lc_fit_folded = lc_fit_folded
-		ax = Axis(fig[i, 1], xlabelsize = 24,
-		ylabelsize = 24,)
+		ax = Axis(fig[i, 1]; xlabelsize=24, ylabelsize=24,)
 		push!(axs, ax)
 		t = pyconvert(Vector, lc_folded.time.value)
 		f = pyconvert(Vector, lc_folded.flux.value)
@@ -714,16 +720,19 @@ let
 		f_binned = pyconvert(Vector, lc_folded_binned.flux.value)
 		t_fit = pyconvert(Vector, lc_fit_folded.time.value)
 		f_fit = pyconvert(Vector, lc_fit_folded.flux.value)
+		println((maximum(f_fit) - median(f_fit)) * 1e6)
+		println()
 		scatter!(ax, t, f, color=(:darkgrey, 0.5))
 		scatter!(ax, t_binned, f_binned, color=COLORS[2])
 		lines!(
 			ax, t_fit, f_fit, color=0.5 .*(COLORS[2], 1.0)
 		)
-		model_interp = LinearInterpolation(t_fit, f_fit)
-		# model_binned = model_interp.(t_binned)
-		# resids = std(t_fit - t_binned)
-		# println(resids)
-		# scatter!(ax, t_binned, model_binned; color=:red)
+		model_interp = LinearInterpolation(t_fit, f_fit; extrapolation_bc=Periodic())
+		model_binned = model_interp.(t_binned)
+		resid = (f_binned - model_binned) .* 1e6
+		ax_resid = Axis(fig[i, 2])
+		push!(axs_resids, ax_resid)
+		scatter!(ax_resid, resid)
 		text!(ax, "$(sectors[i])";
 			position = (3.8, 1.006),
 			textsize = 24,
@@ -732,6 +741,7 @@ let
 	end
 
 	linkaxes!(axs...)
+	linkaxes!(axs_resids...)
 
 	axs[end].xlabel = "Phase-folded time (d)"
 	axs[2].ylabel = "Normalized flux"
@@ -797,11 +807,13 @@ body.disable_ui main {
 # ╟─99fcf959-665b-44cf-9b5f-fd68a919f846
 # ╠═94d05a5b-b05e-4407-bcd3-7d625680a262
 # ╠═d7f034c5-5925-4b91-9bea-1068a7ce9252
+# ╠═df861240-f14e-445d-adf9-a438c2f9b567
 # ╠═de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
 # ╠═2215ed86-fa78-4811-88ab-e3521e4a1dea
 # ╟─a50ef756-ade6-48a3-8d3a-17b56ce03c26
 # ╠═1955e266-eb55-46da-890b-08cc6fc7dfc4
 # ╠═49bcddbe-d413-48ae-91d8-92bcebf40518
+# ╠═cef84dde-c8b9-4c69-a355-0cd348301453
 # ╠═e0656ec8-65a7-429a-8223-bcf601ba5d6a
 # ╠═f6dbc4d2-0846-4569-9108-909454b01e65
 # ╠═a208599a-62e3-41d7-a1c4-c58684fd35f0
