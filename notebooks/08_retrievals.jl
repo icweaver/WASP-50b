@@ -30,6 +30,17 @@ begin
 	using PythonCall
 end
 
+# ╔═╡ 487bf3b5-f50e-4367-a71f-128624a73d5b
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1])
+	
+	heatmap!(ax, rand(4, 4))
+	scatter!(ax, [2.5], [2.5]; marker='😃', markersize=100)
+	
+	fig
+end
+
 # ╔═╡ a21aad0b-5998-420e-b437-d7ad262d0fe4
 begin
 	const DATA_DIR = "data/retrievals"
@@ -488,6 +499,7 @@ body.disable_ui main {
 """
 
 # ╔═╡ Cell order:
+# ╠═487bf3b5-f50e-4367-a71f-128624a73d5b
 # ╟─0132b4ab-0447-4546-b412-ec598b20d21d
 # ╠═a21aad0b-5998-420e-b437-d7ad262d0fe4
 # ╠═60dc161c-2aa2-4264-884d-6da3ead0e57b
