@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.8
+# v0.19.9
 
 using Markdown
 using InteractiveUtils
@@ -268,7 +268,7 @@ df_K = DataFrame(; pl_name=pl_names_K, pl_rvamp=K_mps, pl_refnames_K, st_refname
 
 # ╔═╡ 3ed05d01-b489-46d6-bcd4-9028d756ab35
 @mdx """
-## Oribital parameters
+## Orbital parameters
 We repeat the same procedure to select the following orbital parameters:
 * period
 * inclination
@@ -682,6 +682,9 @@ df_wakeford = let
 	end
 end
 
+# ╔═╡ 74bbbf9e-1e8e-4ae0-8332-0f352a53f0d3
+df_wakeford.pl_g |> extrema
+
 # ╔═╡ c4d4d7b9-4885-423b-8969-1fb192fb1ec1
 df_wakeford
 
@@ -830,7 +833,7 @@ let
 	annotate_text!(
 		ax,
 		"HAT-P-23b",
-		(HP23x[1], HP23y[1]) .- (-400, -2),
+		(HP23x[1], HP23y[1]) .- (-200, -4),
 		(HP23x[1], HP23y[1]),
 		0.5,
 		0.1;
@@ -840,7 +843,7 @@ let
 	annotate_text!(
 		ax,
 		"WASP-43b",
-		(W43x[1], W43y[1]) .- (300, -2),
+		(W43x[1], W43y[1]) .- (380, -2),
 		(W43x[1], W43y[1]),
 		0.0,
 		0.0;
@@ -860,7 +863,7 @@ let
 	annotate_text!(
 		ax,
 		"HD 189733 b",
-		(hdx[1], hdy[1]) .- (600, -4),
+		(hdx[1], hdy[1]) .- (800, -4),
 		(hdx[1], hdy[1]),
 		0.0,
 		0.0;
@@ -944,6 +947,7 @@ end
 # ╠═882bee23-e6ff-4445-ac5c-606ada2fa7eb
 # ╠═37f534d2-5f10-44a0-b332-b0004ac9028e
 # ╠═d6449d05-ee95-4bda-8636-37c71e422944
+# ╠═74bbbf9e-1e8e-4ae0-8332-0f352a53f0d3
 # ╠═c7eabcc6-5139-448d-abdb-ec752788bd59
 # ╠═e0365154-d6c8-4db2-bb85-bf2536a3aa74
 # ╠═05d65745-6972-41fe-8308-e5c97c85692b

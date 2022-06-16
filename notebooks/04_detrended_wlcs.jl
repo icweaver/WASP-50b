@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.6
+# v0.19.8
 
 using Markdown
 using InteractiveUtils
@@ -753,16 +753,24 @@ let
 		text!(param; position=(-4.5, i), align=(:left, :center))
 	end
 
-	Label(fig[0, 1], "Transit 2 (IMACS)";
-		halign = :left,
+	Label(fig[1, 1], "Transit 2 (IMACS)" * " "^40;
+		halign = :right,
+		valign = :top,
 		tellwidth = false,
+		tellheight = false,
 		color = COLORS[2],
+		textsize = 14,
+		padding = (0, 4, 0, 2),
 	)
 	# so hack much rush
-	Label(fig[0, 1], " "^35 * "Transit 2 (LDSS3C)";
-		halign = :left,
+	Label(fig[1, 1], "Transit 2 (LDSS3C)";
+		halign = :right,
+		valign = :top,
 		tellwidth = false,
+		tellheight = false,
 		color = COLORS[3],
+		textsize = 14,
+		padding = (0, 4, 0, 2),
 	)
 
 	hideydecorations!(ax, label=false)

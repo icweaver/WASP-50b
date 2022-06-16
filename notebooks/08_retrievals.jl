@@ -437,7 +437,7 @@ let
 	# plot_retrieval!(ax, cube, "Na_K_TiO", "cloud"; color=COLORS[3])
 	# plot_retrieval!(ax, cube, "Na_K_TiO", "haze"; color=COLORS[5])
 	# plot_retrieval!(ax, cube, "TiO", "clear"; color=COLORS[1], linewidth=3)
-	plot_retrieval!(ax, cube, "TiO", "clear"; color=COLORS[1])
+	plot_retrieval!(ax, cube, "Na", "clear"; color=COLORS[1])
 	plot_retrieval!(ax, cube, "Na_K_TiO", "haze+spot"; show_scatter=false, color=COLORS[6])
 	plot_retrieval!(ax, cube, "Na", "flat"; show_scatter=false, color=COLORS[7])
 	
