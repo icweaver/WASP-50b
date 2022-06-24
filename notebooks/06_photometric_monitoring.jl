@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.8
+# v0.19.9
 
 using Markdown
 using InteractiveUtils
@@ -379,12 +379,50 @@ end
 ### Periodogram
 """
 
+# ╔═╡ 4abfa25d-8f51-460d-be97-ff8d649a1e3c
+lc_S31 = to_df(lcs_oot[2])
+
+# ╔═╡ 0371e674-ea32-483c-a736-9aefab6dda8c
+t, y = lc_S31.time, lc_S31.flux
+
+# ╔═╡ b1610036-e3e8-43ea-9b75-beedbbd90f8a
+pgram = lombscargle(t, y; samples_per_peak=40, minimum_frequency = 1.0 / 30,
+		maximum_frequency = 1.0 / 0.5,)
+
+# ╔═╡ 974d3167-9849-4833-91d8-5e56d4a7343d
+xx, yy = periodpower(pgram)
+
+# ╔═╡ c006ef02-50fd-4d2c-9ad1-5a6d2207e2c4
+let
+	fig = Figure()
+	ax = Axis(fig[1, 1]; limits=(0, 30, nothing, nothing))
+
+	lines!(ax, periodpower(pgram)...)
+
+	scatter!(ax, xx[140], yy[140]; color=:red)
+	
+	fig
+end
+
+# ╔═╡ 46222311-3773-400b-97e8-00e4660ea4ed
+xx[140]
+
+# ╔═╡ d8fa12ac-85e9-4a84-a89f-d405063dc72f
+findlocalmaxima(yy)
+
+# ╔═╡ cfb82231-542e-49ae-bec6-4f44281d68cc
+function maxk(a, k)
+    b = partialsortperm(a, 1:k, rev=true)
+    return collect(zip(b, a[b]))
+end
+
 # ╔═╡ de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
 function compute_pgram(lc; min_period=0.5, max_period=30.0)
 	plan = LombScargle.plan(
 		lc.time, lc.flux .± lc.flux_err,
 		minimum_frequency = 1.0 / max_period,
 		maximum_frequency = 1.0 / min_period,
+		samples_per_peak = 40,
 	)
 	return lombscargle(plan), plan
 end
@@ -446,11 +484,16 @@ end
 # ╔═╡ d7f034c5-5925-4b91-9bea-1068a7ce9252
 begin
 	pgrams, pgrams_window, plans, P_maxs = [], [], [], []
-	for lc in lcs_oot
+	for (i, lc) in enumerate(lcs_oot)
 		lc = to_df(lc)
 		pgram, plan = compute_pgram(lc)
 		pgram_window, _ = compute_window_func(lc)
-		P_max = findmaxperiod(pgram)[1]
+
+		if i == 2
+			P_max = xx[140]
+		else
+			P_max = findmaxperiod(pgram)[1]
+		end
 
 		push!(pgrams, pgram)
 		push!(pgrams_window, pgram_window)
@@ -458,9 +501,6 @@ begin
 		push!(P_maxs, P_max)
 	end
 end
-
-# ╔═╡ df861240-f14e-445d-adf9-a438c2f9b567
-P_maxs
 
 # ╔═╡ a50ef756-ade6-48a3-8d3a-17b56ce03c26
 @mdx """
@@ -487,17 +527,6 @@ interp_linear = LinearInterpolation(xs, ys)
 
 # ╔═╡ 5883477e-e601-421a-adb3-43c4777d9a45
 x_binned = 1:1.9:5
-
-# ╔═╡ ff7c8e21-0a49-410f-bc24-01aa8ad52ea1
-let
-	fig = Figure()
-	ax = Axis(fig[1, 1])
-
-	scatterlines!(ax, xs, ys)
-	scatter!(ax, x_binned, interp_linear.(x_binned); color=:red)
-	
-	fig
-end
 
 # ╔═╡ da82ba6e-4e77-440b-85b4-26cbdba9320c
 interp_linear(3) # exactly log(3)
@@ -660,7 +689,7 @@ let
 
 	ax_window = Axis(fig[1, 1], xlabelsize = 24,
 		ylabelsize = 24,)
-	for (i, pgram_window) ∈ enumerate(pgrams_window)
+	for (i, pgram_window) ∈ enumerate(reverse(pgrams_window))
 		lines!(ax_window, periodpower(pgram_window)..., color=COLORS_SERIES[i])
 	end
 	text!(ax_window, "Window function", position=(1, 0.3), textsize=24)
@@ -669,7 +698,8 @@ let
 		ylabelsize = 24,)
 	sectors = ("Sector 04", "Sector 31", "Combined")
 	for (i, (pgram, plan, P_max, sector)) ∈ enumerate(
-		zip(pgrams, plans, P_maxs, sectors)
+		# zip(pgrams, plans, P_maxs, sectors)
+		zip(reverse(pgrams), reverse(plans), reverse(P_maxs), reverse(sectors))
 	)
 		# Compute FAPs
 		b = LombScargle.bootstrap(100, plan)
@@ -701,7 +731,7 @@ end
 
 # ╔═╡ 49bcddbe-d413-48ae-91d8-92bcebf40518
 let
-	fig = Figure(resolution=FIG_LARGE, fontsize=24)
+	fig = Figure(resolution=FIG_LARGE)
 
 	axs = []
 	axs_resids = []
@@ -727,21 +757,25 @@ let
 		lines!(
 			ax, t_fit, f_fit, color=0.5 .*(COLORS[2], 1.0)
 		)
-		model_interp = LinearInterpolation(t_fit, f_fit; extrapolation_bc=Periodic())
-		model_binned = model_interp.(t_binned)
-		resid = (f_binned - model_binned) .* 1e6
-		ax_resid = Axis(fig[i, 2])
-		push!(axs_resids, ax_resid)
-		scatter!(ax_resid, resid)
+		
+		# model_interp = LinearInterpolation(t_fit, f_fit; extrapolation_bc=Periodic())
+		# model_binned = model_interp.(t_binned)
+		# resid = (f_binned - model_binned) .* 1e6
+		# ax_resid = Axis(fig[i, 2])
+		# push!(axs_resids, ax_resid)
+		# scatter!(ax_resid, resid)
+		
 		text!(ax, "$(sectors[i])";
 			position = (3.8, 1.006),
 			textsize = 24,
 		)
+
+		xlims!(ax, -2.7, 2.7)
 		ylims!(ax, 0.991, 1.01)
 	end
 
-	linkaxes!(axs...)
-	linkaxes!(axs_resids...)
+	# linkaxes!(axs...)
+	# linkaxes!(axs_resids...)
 
 	axs[end].xlabel = "Phase-folded time (d)"
 	axs[2].ylabel = "Normalized flux"
@@ -807,7 +841,14 @@ body.disable_ui main {
 # ╟─99fcf959-665b-44cf-9b5f-fd68a919f846
 # ╠═94d05a5b-b05e-4407-bcd3-7d625680a262
 # ╠═d7f034c5-5925-4b91-9bea-1068a7ce9252
-# ╠═df861240-f14e-445d-adf9-a438c2f9b567
+# ╠═4abfa25d-8f51-460d-be97-ff8d649a1e3c
+# ╠═0371e674-ea32-483c-a736-9aefab6dda8c
+# ╠═b1610036-e3e8-43ea-9b75-beedbbd90f8a
+# ╠═c006ef02-50fd-4d2c-9ad1-5a6d2207e2c4
+# ╠═974d3167-9849-4833-91d8-5e56d4a7343d
+# ╠═46222311-3773-400b-97e8-00e4660ea4ed
+# ╠═d8fa12ac-85e9-4a84-a89f-d405063dc72f
+# ╠═cfb82231-542e-49ae-bec6-4f44281d68cc
 # ╠═de104bdf-e95a-4a6b-9178-c6b2a2f2f5ea
 # ╠═2215ed86-fa78-4811-88ab-e3521e4a1dea
 # ╟─a50ef756-ade6-48a3-8d3a-17b56ce03c26
@@ -820,7 +861,6 @@ body.disable_ui main {
 # ╠═5fee352a-445e-4c53-8f30-875a6c10a663
 # ╠═95d602e8-af9c-4872-b717-d52005738533
 # ╠═5883477e-e601-421a-adb3-43c4777d9a45
-# ╠═ff7c8e21-0a49-410f-bc24-01aa8ad52ea1
 # ╠═da82ba6e-4e77-440b-85b4-26cbdba9320c
 # ╠═fef2cbac-37d8-4613-b8d2-ffa3fcb51224
 # ╠═81e90330-82a2-4910-b574-483fa5022d2d

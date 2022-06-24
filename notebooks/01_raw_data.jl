@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.6
+# v0.19.9
 
 using Markdown
 using InteractiveUtils
@@ -25,6 +25,16 @@ begin
 	using CSV, DataFrames, DataFramesMeta, DelimitedFiles, Glob, OrderedCollections
 	using CCDReduction, ImageFiltering, Statistics
 	using Latexify, Printf
+end
+
+# ╔═╡ e0cd40b4-c616-41b1-8d4d-b9283a46863d
+using BenchmarkTools
+
+# ╔═╡ d8019fa7-380d-4f40-9e08-420a32c34483
+begin
+	const DATA_DIR = "data/raw"
+	const FIG_DIR = "figures/raw"
+	TableOfContents()
 end
 
 # ╔═╡ fb39c593-86bd-4d4c-b9ec-e5e212a4de98
@@ -73,13 +83,6 @@ For each fits files (1 per chip), we extract the region of each chip dedicated t
 	    └── [ 390]  w50_bins_ut131219.dat
 	```
 """
-
-# ╔═╡ d8019fa7-380d-4f40-9e08-420a32c34483
-begin
-	const DATA_DIR = "data/raw"
-	const FIG_DIR = "figures/raw"
-	TableOfContents()
-end
 
 # ╔═╡ 90845d70-35d9-402d-8936-74936b069577
 @mdx """
@@ -144,6 +147,12 @@ We follow the same operations to visualize the two chips for LDSS3C below.
 
 # ╔═╡ 0e66d467-1098-46dc-8d06-36d488b14637
 @bind DATA_DIR_LDSS3 Select(glob("$(DATA_DIR)/LDSS3C/ut*"))
+
+# ╔═╡ 97445546-41c0-46ca-9339-a0f9fb87b2c1
+f1(img) = heatmap(img)
+
+# ╔═╡ 0b469e00-386f-401b-949d-e0715b4d9def
+f2(img) = image(img)
 
 # ╔═╡ c6205ad9-4d3c-420a-a279-81731d83603b
 @mdx """
@@ -236,7 +245,7 @@ begin
 	const FIG_TALL = 72 .* (6, 8)
 	const FIG_WIDE = 72 .* (12, 6)
 	const FIG_LARGE = 72 .* (12, 12)
-	const COLORS_SERIES = to_colormap(:seaborn_colorblind, 9)
+	const COLORS_SERIES = categorical_colors(:seaborn_colorblind, 9)
 	const COLORS = parse.(Makie.Colors.Colorant,
 		[
 			"#66C2A5",  # Green
@@ -373,6 +382,9 @@ end
 # ╟─06a834f0-8c90-4013-af34-725166970969
 # ╟─0e66d467-1098-46dc-8d06-36d488b14637
 # ╠═71ba9181-90e4-4d12-97c0-462b3f1df077
+# ╠═97445546-41c0-46ca-9339-a0f9fb87b2c1
+# ╠═0b469e00-386f-401b-949d-e0715b4d9def
+# ╠═e0cd40b4-c616-41b1-8d4d-b9283a46863d
 # ╟─c6205ad9-4d3c-420a-a279-81731d83603b
 # ╠═5c6e6f7b-70e0-49a8-b064-60dcf1440223
 # ╠═c488270a-3126-4e38-a0c8-ee242115a3ea
