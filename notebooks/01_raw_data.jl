@@ -179,6 +179,7 @@ function plot_frame!(ax;
 )
 	hm = plot!(ax, img;
 		colormap = :magma,
+		rasterize = true,
 		hm_kwargs...,
 	)
 
@@ -324,7 +325,7 @@ let
 
 	Label(fig[0, end], transits[DATA_DIR_IMACS], tellwidth=false, halign=:right)
 	
-    savefig(fig, "$(FIG_DIR)/sci_IMACS_$(basename(DATA_DIR_IMACS)).png")
+    savefig(fig, "$(FIG_DIR)/sci_IMACS_$(basename(DATA_DIR_IMACS)).pdf")
 
 	fig
 end
@@ -359,7 +360,7 @@ let
 
 	Label(fig[0, end], "Transit 2 (LDSS3C)", tellwidth=false, halign=:right)
 	
-    savefig(fig, "$(FIG_DIR)/sci_LDSS3_$(basename(DATA_DIR_LDSS3)).png")
+    savefig(fig, "$(FIG_DIR)/sci_LDSS3_$(basename(DATA_DIR_LDSS3)).pdf")
 	
 	fig
 end
