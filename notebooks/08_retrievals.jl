@@ -67,6 +67,9 @@ md"""
 ## Evidences
 """
 
+# ╔═╡ 9b43cef3-4583-4463-89ac-5f8678d1e843
+help_attributes(VLines)
+
 # ╔═╡ 093156c7-9da7-4814-9260-5173f27fa497
 model_names = OrderedDict(
 	"clear" => "NoHet_FitP0_NoClouds_NoHaze_$(fit_R0)",
@@ -380,9 +383,9 @@ end
 
 # ╔═╡ 65c3647d-d786-4a2c-89c8-f44aa6aa9f80
 begin
-	directions = [Vec2f(1), Vec2f(1, -1), Vec2f(1, 0), Vec2f(0, 1), [Vec2f(1, 0), Vec2f(0, 1)], [Vec2f(1), Vec2f(1, -1)]]
+	directions = [Vec2f(1, 1), Vec2f(1, 1), Vec2f(1, -1), Vec2f(1, -1), [Vec2f(1, 1), Vec2f(1, -1)], [Vec2f(1), Vec2f(1, -1)]]
 	
-	patterns = [[Makie.LinePattern(direction=hatch; background_color=COLORS[i])
+	patterns = [[Makie.LinePattern(direction=hatch, tilesize=(16, 16), background_color=COLORS[i])
 	    for (i, hatch) in enumerate(directions)]; :darkgrey]
 end
 
@@ -398,10 +401,9 @@ let
 			dodge = :Model => sort_order,
 			color = :Model => sort_order,
 		) *
-		visual(BarPlot; dodge_gap=0, gap=0.1)
+		visual(BarPlot; dodge_gap=0.0, gap=0.1)
 	
 	fg = draw(plt;
-		# axis = (; limits=(nothing, nothing, 0, 4.0)),
 		legend = (
 			position = :top,
 			nbanks = 2,
@@ -413,6 +415,9 @@ let
 		palettes = bar_theme,
 		figure = (; resolution=(1000, 500)),
 	)
+
+	ax = fg.figure[1, 1]
+	vlines!(ax, [i + 0.5 for i in 1:7]; color=:lightgrey)
 	
 	# Label(fg.figure[2, 1], fname_suff;
 	# 	halign = :right,
@@ -511,6 +516,7 @@ body.disable_ui main {
 # ╠═589afac8-0ea5-4962-b52b-7f035e91cf44
 # ╟─2c12ec4d-1184-4755-8bd8-0d7cd59fa205
 # ╠═65c3647d-d786-4a2c-89c8-f44aa6aa9f80
+# ╠═9b43cef3-4583-4463-89ac-5f8678d1e843
 # ╠═df43608e-7026-45ae-b87b-d7e0b6cea89c
 # ╠═31473b50-9d12-41a2-8cbd-a12db0cb3706
 # ╠═093156c7-9da7-4814-9260-5173f27fa497
