@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.8
+# v0.19.9
 
 using Markdown
 using InteractiveUtils
@@ -280,6 +280,10 @@ begin
 		:Species = dashplus.(:Species)
 		:ΔlnZ_m = (:lnZ .± :lnZ_err) .- minimum(:lnZ .± :lnZ_err)
 	end
+
+	# df_evidences.ΔlnZ .-= df_evidences[df_evidences.Model .== "flat", :lnZ][1]
+
+	df_evidences
 end
 
 # ╔═╡ 42e909b4-92eb-4ed7-a19c-6e54b21ae07c
@@ -374,6 +378,17 @@ begin
 
 end
 
+# ╔═╡ 65c3647d-d786-4a2c-89c8-f44aa6aa9f80
+begin
+	directions = [Vec2f(1), Vec2f(1, -1), Vec2f(1, 0), Vec2f(0, 1), [Vec2f(1, 0), Vec2f(0, 1)], [Vec2f(1), Vec2f(1, -1)]]
+	
+	patterns = [[Makie.LinePattern(direction=hatch; background_color=COLORS[i])
+	    for (i, hatch) in enumerate(directions)]; :darkgrey]
+end
+
+# ╔═╡ 31473b50-9d12-41a2-8cbd-a12db0cb3706
+bar_theme = (; color=patterns)
+
 # ╔═╡ df43608e-7026-45ae-b87b-d7e0b6cea89c
 let
 	sort_order = sorter(model_names.keys)
@@ -383,10 +398,10 @@ let
 			dodge = :Model => sort_order,
 			color = :Model => sort_order,
 		) *
-		visual(BarPlot)
+		visual(BarPlot; dodge_gap=0, gap=0.1)
 	
 	fg = draw(plt;
-		axis = (; limits=(nothing, nothing, 0, 4.0)),
+		# axis = (; limits=(nothing, nothing, 0, 4.0)),
 		legend = (
 			position = :top,
 			nbanks = 2,
@@ -394,7 +409,8 @@ let
 			titleposition = :left,
 			titlegap = 25,
 		),
-		palettes = (; color=COLORS),
+		axis = (; limits = (0.5, 8.5, 0, nothing)),
+		palettes = bar_theme,
 		figure = (; resolution=(1000, 500)),
 	)
 	
@@ -494,7 +510,9 @@ body.disable_ui main {
 # ╟─d7ce97c1-82f2-46f1-a5ac-73e38e032fc8
 # ╠═589afac8-0ea5-4962-b52b-7f035e91cf44
 # ╟─2c12ec4d-1184-4755-8bd8-0d7cd59fa205
+# ╠═65c3647d-d786-4a2c-89c8-f44aa6aa9f80
 # ╠═df43608e-7026-45ae-b87b-d7e0b6cea89c
+# ╠═31473b50-9d12-41a2-8cbd-a12db0cb3706
 # ╠═093156c7-9da7-4814-9260-5173f27fa497
 # ╠═0f65d095-09af-44d2-907b-c30e2c16b609
 # ╟─704fa634-eee0-4eef-aacf-f75f2b53f4d2
