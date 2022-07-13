@@ -385,7 +385,7 @@ end
 begin
 	directions = [Vec2f(1, 1), Vec2f(1, 1), Vec2f(1, -1), Vec2f(1, -1), [Vec2f(1, 1), Vec2f(1, -1)], [Vec2f(1), Vec2f(1, -1)]]
 	
-	patterns = [[Makie.LinePattern(direction=hatch, tilesize=(16, 16), background_color=COLORS[i])
+	patterns = [[Makie.LinePattern(direction=hatch, tilesize=(16, 16), background_color=COLORS[i], linecolor=:white)
 	    for (i, hatch) in enumerate(directions)]; :darkgrey]
 end
 
